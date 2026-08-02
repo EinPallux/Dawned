@@ -155,6 +155,12 @@ at that load, prediction-mismatch test suite green.
       p50 0.66 / p95 1.0 / max 3.6 ms (<15 ms gate), ~42 kB/s total egress; prediction at
       100 ms ± 20 ms over 60 s sprint-jumping → corrections p95 39 mm, **0 hard snaps**
       (`tools/smoke/predict-lag.mjs`). Docs: NETWORKING.md §2/§5/§6/§8 as-built notes.
+- [x] **Feel rework after the owner's first playtest** (movement "extremely bad"): fixed the
+      swapped A/D strafe axis (screen-right sign, now unit- and browser-pinned), sub-tick
+      render extrapolation of the local player over the 20 Hz sim (the reported lag was raw
+      tick-stepped drawing), live-yaw model facing, gait retune to the clips' natural speeds
+      (run = sprint cycle ~1.06×, walk band, jog for strafes — kills the skating), foot-phase
+      carry across gait changes, sticky 8-way sectors, sprint FOV push.
 - [ ] **Owner signoff on real hardware:** group sprint-jump session at `/netsim 100 20` —
       LAN-like feel, no rubber-banding on slopes, bubbles/reconnect behave. Then P3 closes.
 

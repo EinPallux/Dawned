@@ -5,6 +5,26 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — movement feel rework (owner playtest feedback, 2026-08-02)
+
+- **A/D were swapped** — the camera-relative strafe math used the wrong sign for
+  the screen-right axis. D now strafes right, A left, at every camera angle; a
+  unit suite and a browser check pin the mapping so it can't quietly regress.
+- **The "laggy" feel**: the simulation runs at 20 Hz, and your own character was
+  drawn at raw tick positions — 27 cm jumps between frames on a 60/144 Hz
+  screen. The local player now renders extrapolated through the sub-tick
+  remainder (terrain-grounded, wall-aware) and the model faces the LIVE mouse
+  yaw instead of the last tick's — motion and turning are now frame-smooth.
+- **"Skating" animations**: locomotion clips now play at their natural gait
+  speeds (measured from the baked cycles) instead of a fixed reference — plain
+  running uses the sprint cycle at ~1.06× (it IS 5.5 m/s), a real walk cycle
+  covers slow speeds, and the jog family drives strafes/backpedal/diagonals.
+  Foot phase carries across gait/direction changes (no mid-stride restarts),
+  8-way sectors are sticky at their borders (no clip flicker on held
+  diagonals), and only idles randomize their start phase.
+- **Polish**: sprinting eases the field of view out by 6° (speed you can feel),
+  and the camera starts looking the way your character faces on entry.
+
 ### Added — Phase P3: movement, netcode core & chat v1 (built 2026-08-02; owner signoff pending)
 - **Swimming**: water deeper than 1.2 m carries you — movement pins to the surface,
   speed drops to ×0.55, sprint-swimming drains stamina faster, jumping is inert, and

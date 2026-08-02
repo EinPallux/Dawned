@@ -44,6 +44,7 @@ const REQUIRED_CLIPS = [
   'Sword_Idle',
   'Spell_Simple_Idle_Loop',
   'Spell_Double_Idle_Loop',
+  'Walk_Loop',
   'Jog_Fwd_Loop',
   'Jog_Bwd_Loop',
   'Jog_Left_Loop',

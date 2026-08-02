@@ -123,6 +123,11 @@ export const runWorld = (
         }
       },
       onNotice: callbacks.onNotice,
+      onWelcome: (welcome) => {
+        // Look where the character faces on entry — a camera stuck at yaw 0
+        // would stare into their face until the first mouse move.
+        input.yaw = welcome.spawn.yaw;
+      },
       onChat: (message) => {
         hud.addChat(message);
         // Bubble above the speaker (system lines stay chat-log only).
@@ -256,10 +261,12 @@ export const runWorld = (
     // 2. Per-frame networking housekeeping (corrections, interpolation).
     connection.update(deltaMs);
 
-    // 3. Draw.
+    // 3. Draw. The local player renders extrapolated by the accumulator's
+    // sub-tick remainder (smooth at any fps over the 20 Hz sim) and faces the
+    // LIVE mouse yaw — tick-quantized facing reads as input lag.
     const dtSeconds = deltaMs / 1000;
-    const position = connection.renderPosition();
-    localView.setPose(position.x, position.y, position.z, connection.predicted.yaw);
+    const position = connection.renderPosition(simulationReady ? accumulatorMs : 0);
+    localView.setPose(position.x, position.y, position.z, input.yaw);
     localView.update(dtSeconds, {
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
@@ -272,6 +279,11 @@ export const runWorld = (
     updateFoliageWind(now / 1000);
 
     cameraTarget.set(position.x, position.y, position.z);
+    // Sprint gets a small FOV push — speed you can feel, not just read.
+    scene.setSprintBoost(
+      connection.predicted.sprinting && !connection.predicted.swimming,
+      dtSeconds,
+    );
     scene.updateCamera(cameraTarget, input.yaw, input.pitch);
     scene.render();
 
