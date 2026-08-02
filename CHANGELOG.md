@@ -5,7 +5,7 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
-### Added — Phase P1: accounts, characters & menus (in progress)
+### Added — Phase P1: accounts, characters & menus (live on the VPS 2026-08-02)
 - **Accounts & sessions (server)**: PostgreSQL 16 + Drizzle schema (`accounts`, `sessions`,
   `characters`, `bans`) with committed migrations; argon2id password hashing; registration
   (open, dormant invite-code toggle per Q8), login with per-IP throttles, failed-login lockouts

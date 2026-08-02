@@ -84,13 +84,13 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 16 initial owner decisions are answered and folded (decision log in USER_QUESTIONS.md).
-**Current phase: P1 — Accounts, Characters & Menus — built and verified locally (2026-08-02);
-one DoD item remains: the owner deploys and re-runs the friend-check on the VPS** (ROADMAP.md P1
-status). P1's close unlocks A0 in the Dawned-Admin repo. Auth stack (Postgres/Drizzle/argon2id,
-protocol v2), character pipeline (head+outfit+hair composition, UAL clips), "Cut Facets" menus and
-in-world animated rigs are all in. Deploys to production happen only when the owner merges to
-`main` and runs `deploy/UPDATE.sh` on the VPS (it provisions nothing new — P0's DEPLOY.sh already
-set up Postgres; UPDATE.sh migrates automatically).
+**Phase P1 is ✅ complete and live (verified on the VPS by the owner, 2026-08-02)**: auth stack
+(Postgres/Drizzle/argon2id, protocol v2), character pipeline (head+outfit+hair composition, UAL
+clips), "Cut Facets" menus, in-world animated rigs, session resume — registration, character
+creation and multiplayer visibility all confirmed in production. **Next up: P2 — Terrain & World
+Streaming (game repo) and A0 — panel scaffold (Dawned-Admin repo, now unlocked); neither is
+started.** Deploys to production happen only when the owner merges to `main` and runs
+`deploy/UPDATE.sh` on the VPS (its migration step is strict since the P1 deploy fix).
 
 ### Running it locally
 

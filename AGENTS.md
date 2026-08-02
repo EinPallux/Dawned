@@ -21,6 +21,7 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0 live at https://play.pathlands.cc; P1 (accounts, characters & menus — auth
-  stack, character pipeline, "Cut Facets" menus, in-world animated rigs) built and verified
-  locally — awaiting the owner's VPS deploy + friend-DoD to close (ROADMAP.md P1 status).
+- **State:** P0 and P1 live at https://play.pathlands.cc (P1 verified on the VPS 2026-08-02:
+  accounts, character creation, animated rigs, multiplayer visibility). Next: P2 (terrain &
+  world streaming) in this repo; A0 (panel scaffold) is unlocked in Dawned-Admin. Neither
+  started — wait for the owner's go.

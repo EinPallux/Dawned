@@ -11,7 +11,7 @@
 | Phase | Name                                     | Size | Status                    |
 | ----- | ---------------------------------------- | ---- | ------------------------- |
 | P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
-| P1    | Accounts, Characters & Menus             | M    | 🟨 built — VPS check open |
+| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
 | P2    | Terrain & World Streaming                | L    | 🔲                        |
 | P3    | Movement, Netcode Core & Chat v1         | L    | 🔲                        |
 | P4    | Combat Foundation                        | XL   | 🔲                        |
@@ -88,7 +88,10 @@ delete one — on the VPS, on 1080p and 1440p, with zero placeholder UI.
       resume verified (relog lands at the persisted spot, Δ 0.00 m)
 - [x] Security checklist §7-P1 run and recorded (SECURITY.md); both smoke tests rewritten for
       the auth flow and green; CI runs against a real Postgres service
-- [ ] **Owner: deploy to the VPS (UPDATE.sh) and run the friend-DoD there — then P1 closes**
+- [x] Deployed to the VPS and verified by the owner (2026-08-02): registration, character
+      creation and two players seeing each other in the world all work in production —
+      after fixing a swallowed-migration deploy bug (see CHANGELOG "Fixed — P1 VPS deploy").
+      **P1 closed. A0 (Dawned-Admin) is unlocked.**
 
 ## P2 — Terrain & World Streaming (L) ⚙unlocks A2 (map editor terrain)
 
