@@ -67,7 +67,8 @@
 | Fishing minigame | 1 tuned (parameters per fish rarity) |
 
 ## 7. Audio (per design/AUDIO.md)
-7 zone tracks + login + 2 combat layers · 7 ambience beds · ~10 emitters · ~135 SFX/vocal files.
+7 zone tracks + login + 2 combat layers · 9 ambience beds (incl. rain/storm) · ~11 emitters
+(incl. thunder set) · ~135 SFX/vocal files.
 
 ## 8. UI Surfaces
 All 18 screens/surfaces of design/UI_UX.md §4 complete, animated, rebindable controls, settings

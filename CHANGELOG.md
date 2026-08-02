@@ -21,6 +21,15 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
     USER_QUESTIONS.md for pending owner decisions, CLAUDE.md/AGENTS.md working agreements.
 - Companion planning in the Dawned-Admin repository (editor & ops panel).
 
+### Changed
+- Folded all 16 initial owner decisions (2026-08-02) into the docs. Highlights: mouselook
+  controls confirmed; jumping with light fall damage specced; English-only content; **open
+  registration** (invite-code toggle kept available); admin panel at `/admin` with allowlist off;
+  off-box backups manual via Hostinger hPanel (local nightly backups unchanged); CC0-first audio
+  sourcing confirmed; 5 skin tones added to character creation; and **visual weather added to
+  0.1.0 scope** — zone-profiled rain, thunderstorms with distance-delayed thunder, and post-rain
+  rainbows, landing in P14 alongside day/night (WORLD.md §4.6, `/weather` GM command,
+  `WeatherState` protocol message). Full decision log: USER_QUESTIONS.md.
+
 ### Notes
-- No game code yet by design — implementation starts at Phase P0 once USER_QUESTIONS.md answers
-  are folded in.
+- No game code yet by design — Phase P0 is ready to start.

@@ -66,9 +66,10 @@ docs/design/GAME_DESIGN.md (what the game is), docs/tech/ARCHITECTURE.md (how it
 ## Working with the owner
 The owner (solo, plays with friends) will edit content via Dawned-Admin and expects to extend the
 game for years: optimize for **readable, editable, documented** over clever. When touching a
-design doc's territory, update the doc in the same change. German-speaking owner — keep player-
-facing text English (Q4 pending), keep docs/comments English.
+design doc's territory, update the doc in the same change. German-speaking owner — player-facing
+text is English-only (decided), docs/comments English.
 
 ## Current state
-**Planning phase complete** — all systems designed in docs/, roadmap fixed, no code yet.
-Next milestone: **P0 Foundations** (see ROADMAP.md) after USER_QUESTIONS.md answers land.
+**Planning complete; all 16 initial owner decisions answered and folded** (2026-08-02 — decision
+log in USER_QUESTIONS.md). No code yet. Next milestone: **P0 Foundations** (see ROADMAP.md) —
+ready to start.

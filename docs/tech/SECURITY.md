@@ -12,7 +12,7 @@
 | Account names | CITEXT unique, 3–20 `[a-z0-9_]`, reserved list (admin, gm, system, dawned…) |
 | Sessions | 128-bit random opaque token; DB stores SHA-256 of it; game: bearer in `Hello` packet (kept in memory, sessionStorage only — survives F5 via "remember me" localStorage opt-in); admin: httpOnly Secure SameSite=Strict cookie; game sessions 30 d sliding, admin 12 h |
 | Login rate limits | per-IP: 10/min + exponential lockout per-account (5 fails → 1 min, doubling to 1 h cap, resets on success); constant-time compares; identical error for wrong-name vs wrong-pass |
-| Registration | open by default, `world_settings.inviteCode` optional toggle (friends-server switch); per-IP 3 accounts/day |
+| Registration | **open** (owner decision, 2026-08-02); `world_settings.inviteCode` toggle stays available if ever needed; per-IP 3 accounts/day |
 | Transport | HTTPS/WSS only (Caddy TLS, HSTS); HTTP→HTTPS redirect; no mixed content |
 | Secrets | `.env` on VPS root-owned 0600 (DB creds, session pepper); never in git; DEPLOY.sh generates strong defaults |
 
@@ -60,8 +60,9 @@ visible per player in Dawned-Admin live view.
   localhost; ops API localhost).
 - Services run as unprivileged `dawned` user; systemd sandboxing (`ProtectSystem=strict`,
   `PrivateTmp`, `NoNewPrivileges`, RW only where needed).
-- Unattended-upgrades (security) on; Caddy auto-TLS; weekly `BACKUP.sh` off-box copy reminder
-  (manual scp/rclone hook left as TODO for the owner — question in USER_QUESTIONS.md).
+- Unattended-upgrades (security) on; Caddy auto-TLS. Off-box backup copies: the owner handles
+  them manually via Hostinger hPanel snapshots (decision 2026-08-02); the `AFTER_BACKUP_CMD` hook
+  stays available if automation is ever wanted. Local nightly backups + rotation run regardless.
 - Node deps: lockfile-pinned, `pnpm audit` in `pnpm check`, minimal dependency policy (every new
   dep is a review item in phase DoD).
 

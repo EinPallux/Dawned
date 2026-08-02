@@ -79,8 +79,10 @@ live 3D login vignette remains primary (UI_UX.md).
 ## 8. Gaps & Acquisitions (tracked; CC0-first policy)
 | Gap | Plan |
 |---|---|
-| **Audio: entirely absent** | Source per design/AUDIO.md §3 (Kenney CC0 + curated CC0/CC-BY) — user question pending |
+| **Audio: entirely absent** | Source per design/AUDIO.md §3 (Kenney CC0 + curated CC0/CC-BY) — **decided 2026-08-02** |
 | Fonts | Amaranth + Nunito Sans (OFL) self-hosted — download at P1 |
+| Skin-tone variants | 5 palette-swap variants of the base-character texture (approved) — texture pipeline, P1 |
+| Weather VFX | rain sheets from Kenney particle pack + lightning flash (light pulse) + rainbow billboard (generated art) — P14 |
 | Icons | game-icons.net SVGs (CC BY 3.0) via pipeline — P8 |
 | Water/sky | shader-generated (no assets needed) |
 | Splat ground textures | hand-painted flat-color ramps + noise (generated in-pipeline, Farever-vibrant) |

@@ -4,8 +4,8 @@
 > at the box. Goal per spec: **deploying and updating must be dead simple** — one script to install,
 > one to update, one to back up, one to roll back. The scripts below are the reviewed drafts; they
 > land as real files in `deploy/` during Phase 0 and are validated on the actual VPS as that
-> phase's Definition of Done. (Admin panel hosting decision — subdomain vs `/admin` path — is an
-> open question in USER_QUESTIONS.md; default shown: **`/admin` path**, zero extra DNS.)
+> phase's Definition of Done. (Admin panel hosting: **decided — `/admin` path**, IP allowlist off
+> for now; the subdomain variant stays documented below in case it is ever wanted.)
 
 ## 1. Topology on the box
 
@@ -243,8 +243,10 @@ script at Phase 0.
   last 5 separately; `--verify` (monthly timer) restores newest into `dawned_verify` scratch DB and
   runs row-count sanity, alerting into the admin dashboard on failure.
 - Maintenance same timer: purge expired sessions, chat_log >7 d, metrics >14 d, `vacuumdb --analyze`.
-- Off-box copies: hook point `AFTER_BACKUP_CMD` in `/etc/dawned/backup.env` (owner decides:
-  rclone/scp target — see USER_QUESTIONS.md).
+- Off-box copies: owner's choice (2026-08-02) — manual snapshots via the Hostinger hPanel; the
+  `AFTER_BACKUP_CMD` hook point in `/etc/dawned/backup.env` remains for future automation. Local
+  nightly dumps + rotation still run regardless (they protect against app-level mistakes and bad
+  publishes, which hPanel snapshots don't cover as granularly).
 
 ## 7. `deploy/ROLLBACK.sh` (draft behavior)
 `ROLLBACK.sh game <git-ref> [--db <backup-file>]`: checks out ref, rebuilds, optionally restores DB

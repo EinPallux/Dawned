@@ -1,102 +1,36 @@
-# USER_QUESTIONS — decisions I need from you
+# USER_QUESTIONS — owner decision inbox
 
-> Each question has a **recommended default** — the plan currently assumes it. Answer inline under
-> each question (edit this file, or just tell me "defaults are fine except #3, #7…"). Once answered,
-> I fold the decisions into the docs and delete resolved entries. Nothing in P0–P2 is blocked by
-> these; combat-relevant ones (Q1–Q3) should be settled before P3/P4.
+> Single inbox for design questions to the owner (from both repos). New questions get added here
+> with context + a **recommended default**; answered ones move to the decision log below after
+> being folded into the docs. Rule of the project: never silently guess a design the owner might
+> feel differently about — but never block on an answer either (implement the recommendation,
+> note it here).
 
-## Controls & Combat
+## Open questions
 
-**Q1. Camera/control scheme — is mouselook right?**
-Planned: BDO/Farever-style pointer-lock mouselook (character turns with camera, LMB/RMB are combat
-buttons, `Alt` frees the cursor). Alternative: GW2-style hybrid (free cursor always, hold-RMB to
-turn camera, click-to-aim). Mouselook is more "action", hybrid is friendlier for UI-heavy play.
-**Recommended: mouselook (as planned).** How did Farever control, if you remember — and which do
-you want?
-> Answer:
+*None right now.* 🎉
 
-**Q2. Jumping — confirmed yes?** Planned: yes (free jump, no fall damage below ~12 m, fall damage
-beyond). Some browser MMOs skip jumping entirely.
-**Recommended: yes, with light fall damage.**
-> Answer:
+---
 
-**Q3. Dodge input** — planned `V` (also Mouse4) as dedicated dodge key. Alternative: double-tap
-direction (feels great but eats WASD responsiveness). **Recommended: dedicated key.**
-> Answer:
+## Decision log
 
-## World & Content
+### 2026-08-02 — initial planning round (16/16 answered, all folded into docs)
 
-**Q4. World language — English only?** All content text is planned English-only (code and content
-are i18n-ready string keys regardless, so a German pass later is data work, not code work).
-**Recommended: English for 0.1.0.**
-> Answer:
-
-**Q5. Death penalty** — planned: respawn at attuned shrine + 30 s −15% damage debuff, no XP/item
-loss. Harsher options (gold cost, XP debt) exist but fight the casual-friends profile.
-**Recommended: as planned (light).**
-> Answer:
-
-**Q6. Fast travel** — planned: shrine-to-shrine teleport for scaling gold cost after attunement
-(no mounts per spec). Purists might want none at all. **Recommended: as planned — the archipelago
-is big enough that zero fast travel will hurt evenings.**
-> Answer:
-
-**Q7. Day/night cycle** — planned as **visual-only** in P14 (light/fog tint, ~40 min cycle), with
-a `night-only spawns` flag shipped inert (gameplay hooks in 0.2). OK, or skip entirely for 0.1.0?
-**Recommended: visual-only in 0.1.0.**
-> Answer:
-
-## Accounts & Operations
-
-**Q8. Registration: open or invite code?** The server is for friends. Planned: open registration
-with an **optional invite-code toggle** (world setting, default ON with a code you set).
-**Recommended: invite code ON.**
-> Answer:
-
-**Q9. Password resets without email** — spec says accountname+password only, so recovery = an admin
-resets the password from Dawned-Admin (audited). Acceptable? (Alternative: optional recovery email
-field — adds scope + privacy surface.) **Recommended: admin-reset only.**
-> Answer:
-
-**Q10. Admin panel URL** — planned default `play.pathlands.cc/admin` (zero DNS work). Alternative:
-`admin.play.pathlands.cc` subdomain (needs one DNS A-record; slightly cleaner cookie isolation —
-Caddyfile includes the variant either way). Also: do you want the optional IP allowlist for the
-admin panel? **Recommended: `/admin` path, allowlist off until you ask.**
-> Answer:
-
-**Q11. Off-box backups** — nightly backups land on the VPS disk with rotation; a hook exists for
-copying them off-box (rclone to a cloud drive, or scp to your PC). Where should they go, if
-anywhere? **Recommended: set up rclone to any free cloud storage you have — a VPS-dies scenario
-otherwise loses everything.**
-> Answer:
-
-## Art & Audio
-
-**Q12. Audio sourcing** — repo has zero audio. Planned: CC0-first curation (Kenney + curated
-freesound/GDC packs) processed through our pipeline, full attribution ledger; music = CC0/CC-BY
-folk-orchestral loops. Alternatives: you commission/provide tracks, or 0.1.0 ships SFX-only with
-minimal music. **Recommended: CC0 curation as planned.** Any taste direction for music beyond
-"warm folk adventure"?
-> Answer:
-
-**Q13. Character creation scope** — planned options: body (M/F), outfit family (Ranger/Peasant,
-recolorable), 7 hairstyles + 8 colors, eyebrows, beard toggle — all from the Quaternius packs.
-Skin-tone variants are texture-feasible; include (~+1 asset-pipeline day)? **Recommended: yes,
-4–6 skin tones.**
-> Answer:
-
-**Q14. Farever reference** — the world layout leans on its map composition (archipelago, biome
-color-blocking, bridges). Is there anything *specific* from Farever you want copied closer
-(camera distance? UI vibe? specific zone feel?) or deliberately avoided?
-> Answer:
-
-## Scope Confirmations (one-word answers fine)
-
-**Q15. Cleric solo-damage identity** — planned as a real battle-priest (smite/hammer kit ~72% of
-Rogue DPS, plus self-healing) so healing-mains can solo the whole map. Confirm?
-> Answer:
-
-**Q16. 28 side quests + 6 zones + ~210 items + 36 enemy types + 6 bosses** (CONTENT_0.1.md) — does
-this match your picture of "full 0.1.0", or do you want any category bigger/smaller before we
-lock the world-building phase?
-> Answer:
+| # | Topic | Decision | Folded into |
+|---|---|---|---|
+| Q1 | Camera/controls | **Mouselook** (pointer-lock, BDO/Farever-style), `Alt` frees cursor | COMBAT.md §1–2 |
+| Q2 | Jumping | **Yes**, with light fall damage (starts >12 m, 6%/m, capped 95%, water negates) | COMBAT.md §2 |
+| Q3 | Dodge input | Dedicated key: **`V` + Mouse4** | COMBAT.md §2 |
+| Q4 | Language | **English only** for 0.1.0 (i18n-ready string keys regardless) | CLAUDE.md |
+| Q5 | Death penalty | Light, as planned: shrine respawn + 30 s −15% dmg debuff, no XP/item loss | WORLD.md §4.2, COMBAT.md §10 |
+| Q6 | Fast travel | **Shrine-to-shrine** after attunement, scaling gold cost; no mounts ever | WORLD.md §4.2 |
+| Q7 | Day/night & weather | Visual-only day/night in 0.1.0 **plus visual weather: rain, thunderstorms, post-rain rainbows** | WORLD.md §4.6 (new), ROADMAP P14, NETWORKING `WeatherState`, GM `/weather`, AUDIO beds, zone ambience data |
+| Q8 | Registration | **Open registration** (invite-code toggle stays available, off) | SECURITY.md §1 |
+| Q9 | Password recovery | **Admin resets via Dawned-Admin** (no email), audited | SECURITY.md §1, Admin docs |
+| Q10 | Admin panel URL | **`play.pathlands.cc/admin`**, IP allowlist **off** for now | DEPLOYMENT.md §2, Admin ARCHITECTURE.md |
+| Q11 | Off-box backups | **Manual via Hostinger hPanel** by the owner; local nightly backups + rotation still run; automation hook kept dormant | DEPLOYMENT.md §6, SECURITY.md §5 |
+| Q12 | Audio sourcing | **CC0-first**: Kenney + curated freesound/GDC packs, full attribution ledger | AUDIO.md §3, ASSET_PIPELINE.md §5 |
+| Q13 | Character creation | As planned **plus 5 skin tones** (palette-swap pipeline) | UI_UX.md §4, ASSET_PIPELINE.md §3, DATABASE.md (`characters.skin`), ROADMAP P1 |
+| Q14 | Farever reference | Keep the general look & feel; **no blatant copying** — treat it as a style/composition reference only | WORLD.md §7 (already worded so) |
+| Q15 | Cleric identity | Confirmed: battle-priest with real solo damage (~72% envelope) + healing kit | CLASSES.md §4–5 |
+| Q16 | 0.1.0 content scope | Confirmed: 6 zones, 28 quests, ~210 items, 36 enemy types + 6 bosses per CONTENT_0.1.md | CONTENT_0.1.md |
