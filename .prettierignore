@@ -4,6 +4,7 @@ node_modules/
 assets/
 assets_baked/
 packages/client/public/assets/
+packages/shared/drizzle/
 pnpm-lock.yaml
 *.tsbuildinfo
 CHANGELOG.md

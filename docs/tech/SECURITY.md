@@ -81,6 +81,13 @@ screen. Friends deserve the same care as customers.
 ## 7. Phase Gates (security is roadmapped, not vibes)
 
 - P1 exit: auth flow pen-checklist (rate limits, timing, token handling, session fixation) ✔
+  — **run 2026-08-02**: per-IP login (10/min) + registration (10/day) windows and the
+  doubling per-account lockout exercised by integration tests + smoke fixtures; unknown-name
+  vs wrong-password logins measured at overlapping latencies (dummy-hash burn, medians
+  239 ms / 204 ms) with byte-identical 401 responses; tokens are 128-bit random, stored only
+  as SHA-256 digests, minted exclusively server-side on login/register (no client-supplied
+  session ids anywhere → no fixation surface), invalidated on logout, 30-day sliding expiry
+  with hourly purge; the game socket re-validates the token + ban/status per connection.
 - P4 exit: movement/ability validation suite green (scripted cheat-client harness in `tools/cheatbot/`) ✔
 - P8 exit: inventory transaction fuzz (parallel op storm, zero dupes) ✔
 - P14: full checklist re-run + `cheatbot` regression + dependency audit + backup restore drill ✔

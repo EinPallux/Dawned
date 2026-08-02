@@ -153,8 +153,7 @@ export class Connection {
     this.events = events;
   }
 
-  connect(url: string, name: string): void {
-    this.playerName = name;
+  connect(url: string, token: string, characterId: number): void {
     this.setStatus('connecting');
 
     const socket = new WebSocket(url);
@@ -163,7 +162,7 @@ export class Connection {
 
     socket.addEventListener('open', () => {
       this.setStatus('connected');
-      socket.send(encodeHello({ protocolVersion: PROTOCOL_VERSION, name }));
+      socket.send(encodeHello({ protocolVersion: PROTOCOL_VERSION, token, characterId }));
       this.sendPing();
       this.pingTimer = setInterval(() => {
         this.sendPing();
@@ -234,9 +233,11 @@ export class Connection {
       case ServerOp.Welcome: {
         const welcome = decodeJsonEnvelope<WelcomeMessage>(reader);
         this.selfId = welcome.selfId;
+        this.playerName = welcome.players.find((p) => p.id === welcome.selfId)?.name ?? '';
         this.predicted.x = welcome.spawn.x;
         this.predicted.y = welcome.spawn.y;
         this.predicted.z = welcome.spawn.z;
+        this.predicted.yaw = welcome.spawn.yaw;
         cloneInto(this.authoritative, this.predicted);
         this.roster = welcome.players;
         this.setStatus('playing');
@@ -393,6 +394,11 @@ export class Connection {
 
   private nameFor(id: number): string {
     return this.roster.find((entry) => entry.id === id)?.name ?? `Player ${id}`;
+  }
+
+  /** Roster data (class, level, appearance) for an entity, once known. */
+  rosterEntryFor(id: number): RosterEntry | undefined {
+    return this.roster.find((entry) => entry.id === id);
   }
 
   private syncRemotesWithRoster(): void {

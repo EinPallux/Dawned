@@ -3,11 +3,13 @@
  * Asset pipeline CLI.
  *
  *   pnpm assets:build [--force]   convert selected source packs → assets_baked/
- *   pnpm assets:report            validate the manifest, licenses and budgets
+ *   pnpm assets:report            validate the manifest, licenses, budgets, rigs
+ *   pnpm assets:sync              copy assets_baked/ → packages/client/public/assets
  */
 
 import { build } from '../src/build.mjs';
 import { report } from '../src/report.mjs';
+import { sync } from '../src/sync.mjs';
 
 const [command = 'report', ...flags] = process.argv.slice(2);
 
@@ -23,8 +25,12 @@ const run = async () => {
       if (!result.ok) process.exitCode = 1;
       return;
     }
+    case 'sync': {
+      await sync();
+      return;
+    }
     default:
-      console.error(`unknown command "${command}" — expected "build" or "report"`);
+      console.error(`unknown command "${command}" — expected "build", "report" or "sync"`);
       process.exitCode = 1;
   }
 };

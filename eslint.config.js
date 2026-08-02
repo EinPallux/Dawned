@@ -2,6 +2,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import reactHooks from 'eslint-plugin-react-hooks';
 import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
@@ -50,8 +51,14 @@ export default tseslint.config(
   },
   {
     // Client code runs in the browser.
-    files: ['packages/client/**/*.ts'],
+    files: ['packages/client/**/*.ts', 'packages/client/**/*.tsx'],
     languageOptions: { globals: { ...globals.browser } },
+  },
+  {
+    // React hook rules for the menu shell (the in-world game is not React).
+    files: ['packages/client/**/*.tsx'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: reactHooks.configs.recommended.rules,
   },
   {
     // Tooling scripts and build config: plain ESM, outside the composite projects,

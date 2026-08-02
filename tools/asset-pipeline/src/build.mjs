@@ -14,7 +14,27 @@ import { readFile, writeFile, mkdir, readdir, stat, rm } from 'node:fs/promises'
 import path from 'node:path';
 import { NodeIO } from '@gltf-transform/core';
 import { KHRONOS_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, prune, weld, flatten, join } from '@gltf-transform/functions';
+import {
+  compactPrimitive,
+  dedup,
+  prune,
+  weld,
+  flatten,
+  join,
+  resample,
+  textureCompress,
+} from '@gltf-transform/functions';
+import sharp from 'sharp';
+
+/**
+ * Substitute for source images that a rule marks broken (`imageOverrides: null`).
+ * Recognizable by exact bytes after read, so the placeholder-texture slots can be
+ * stripped from materials again before writing. 1×1 white PNG.
+ */
+const PLACEHOLDER_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4//8/AwAI/AL+hc2rNAAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 export const REPO_ROOT = path.resolve(import.meta.dirname, '../../..');
 const CONFIG_PATH = path.join(REPO_ROOT, 'tools/asset-pipeline/config/packs.json');
@@ -22,6 +42,9 @@ export const BAKED_DIR = path.join(REPO_ROOT, 'assets_baked');
 export const MANIFEST_PATH = path.join(BAKED_DIR, 'manifest.json');
 
 const io = new NodeIO().registerExtensions(KHRONOS_EXTENSIONS);
+
+/** Bump when the behavior behind rule options (skinned/animationsOnly/…) changes. */
+const OPTION_TRANSFORM_VERSION = 3;
 
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 
@@ -70,16 +93,195 @@ const matchGlob = async (root, pattern) => {
   return files.sort();
 };
 
-/** Every file a glTF depends on (its .bin buffers and textures). */
-const gatherDependencies = async (filePath) => {
+/**
+ * Every file a glTF depends on (its .bin buffers and textures), with a rule's
+ * `imageOverrides` applied — so hashing tracks the files actually baked.
+ */
+const gatherDependencies = async (filePath, imageOverrides = {}) => {
   if (!filePath.endsWith('.gltf')) return [];
   const raw = JSON.parse(await readFile(filePath, 'utf8'));
   const dir = path.dirname(filePath);
+  const resolve = (uri) => {
+    const override = imageOverrides[uri];
+    if (override === null) return null; // broken source image, replaced by a placeholder
+    const overridePath = typeof override === 'string' ? override : override?.path;
+    return path.join(dir, decodeURIComponent(overridePath ?? uri));
+  };
   const uris = [
     ...(raw.buffers ?? []).map((buffer) => buffer.uri),
     ...(raw.images ?? []).map((image) => image.uri),
   ].filter((uri) => typeof uri === 'string' && !uri.startsWith('data:'));
-  return uris.map((uri) => path.join(dir, decodeURIComponent(uri)));
+  return uris.map(resolve).filter(Boolean);
+};
+
+/**
+ * Read a source model. Rules may carry `imageOverrides`, keyed by referenced uri:
+ *   - null                      → drop the broken reference (placeholder bytes,
+ *                                 slot stripped after load)
+ *   - "path/relative/to/model"  → substitute another file's bytes
+ *   - { path?, multiplyRGB? }   → substitute and/or color-correct (per-channel
+ *                                 linear gain via sharp)
+ * Some upstream packs ship dangling texture URIs or only a wrong-variant texture
+ * (docs/tech/ASSET_PIPELINE.md §2) — this keeps the raw packs pristine while the
+ * baked output gets the intended pixels.
+ */
+const readDocument = async (sourcePath, imageOverrides) => {
+  if (!imageOverrides || !sourcePath.endsWith('.gltf')) {
+    return io.read(sourcePath);
+  }
+  const json = JSON.parse(await readFile(sourcePath, 'utf8'));
+  const dir = path.dirname(sourcePath);
+  const resources = {};
+  const uris = [
+    ...(json.buffers ?? []).map((buffer) => buffer.uri),
+    ...(json.images ?? []).map((image) => image.uri),
+  ].filter((uri) => typeof uri === 'string' && !uri.startsWith('data:'));
+  for (const uri of uris) {
+    const override = imageOverrides[uri];
+    if (override === null) {
+      resources[uri] = PLACEHOLDER_PNG;
+      continue;
+    }
+    const spec = typeof override === 'string' ? { path: override } : (override ?? {});
+    let bytes = await readFile(path.join(dir, decodeURIComponent(spec.path ?? uri)));
+    if (spec.grayscale) {
+      // Neutralize to a luminance/shading map — runtime multiply-tints then land
+      // on the exact picked hue with the painted strand shading preserved.
+      bytes = await sharp(bytes).grayscale().png().toBuffer();
+    }
+    if (spec.multiplyRGB) {
+      // sharp reorders chained ops, so the gain must match the source's real
+      // channel count (a 3-channel PNG rejects a 4-length linear()).
+      const { channels } = await sharp(bytes).metadata();
+      const gain = channels === 4 ? [...spec.multiplyRGB, 1] : [...spec.multiplyRGB];
+      bytes = await sharp(bytes).linear(gain, new Array(gain.length).fill(0)).png().toBuffer();
+    }
+    resources[uri] = bytes;
+  }
+  return io.readJSON({ json, resources });
+};
+
+/** Remove texture slots that still point at placeholder bytes (see readDocument). */
+const stripPlaceholderTextures = (document) => {
+  for (const texture of document.getRoot().listTextures()) {
+    const image = texture.getImage();
+    if (image && Buffer.from(image).equals(PLACEHOLDER_PNG)) {
+      texture.dispose(); // detaches it from every material slot
+    }
+  }
+};
+
+/** Keep only allowlisted clips — animation libraries ship hundreds we don't use. */
+const filterAnimations = (document, keep) => {
+  const kept = new Set(keep);
+  const missing = new Set(keep);
+  for (const animation of document.getRoot().listAnimations()) {
+    if (kept.has(animation.getName())) {
+      missing.delete(animation.getName());
+      continue;
+    }
+    // Dispose the whole chain: orphaned channels/samplers would otherwise still
+    // parent their accessors, which keeps prune() from reclaiming the key data.
+    for (const channel of animation.listChannels()) channel.dispose();
+    for (const sampler of animation.listSamplers()) sampler.dispose();
+    animation.dispose();
+  }
+  return [...missing];
+};
+
+/** Strip meshes/skins/materials from an animation library — only clips + the bone hierarchy ship. */
+const stripToAnimations = (document) => {
+  const root = document.getRoot();
+  for (const node of root.listNodes()) {
+    node.setMesh(null);
+    node.setSkin(null);
+  }
+  for (const mesh of root.listMeshes()) mesh.dispose();
+  for (const skin of root.listSkins()) skin.dispose();
+  for (const material of root.listMaterials()) material.dispose();
+  for (const texture of root.listTextures()) texture.dispose();
+};
+
+/**
+ * Cut a skinned mesh down to the triangles weighted to a bone set. Used to derive
+ * the head from a fused full-body base: the modular outfits ARE the body below
+ * the neck (they ship their own skin geometry), so the base contributes head +
+ * neck only and the seam hides inside every outfit's collar/hood
+ * (docs/tech/ASSET_PIPELINE.md §2).
+ *
+ * options: { meshPattern, bones: string[], threshold } — a triangle survives when
+ * every vertex carries at least `threshold` total weight on the listed bones.
+ */
+const cutSkinnedMeshToBones = (document, options) => {
+  const meshRegex = new RegExp(options.meshPattern, 'i');
+  const boneNames = new Set(options.bones);
+  const threshold = options.threshold ?? 0.5;
+  const root = document.getRoot();
+
+  for (const node of root.listNodes()) {
+    const mesh = node.getMesh();
+    const skin = node.getSkin();
+    if (!mesh || !skin || !meshRegex.test(mesh.getName() || node.getName())) continue;
+
+    const keptJointIndices = new Set(
+      skin
+        .listJoints()
+        .map((joint, index) => (boneNames.has(joint.getName()) ? index : -1))
+        .filter((index) => index >= 0),
+    );
+
+    for (const primitive of mesh.listPrimitives()) {
+      const joints = primitive.getAttribute('JOINTS_0');
+      const weights = primitive.getAttribute('WEIGHTS_0');
+      const indices = primitive.getIndices();
+      if (!joints || !weights || !indices) continue;
+
+      const jointElement = [0, 0, 0, 0];
+      const weightElement = [0, 0, 0, 0];
+      const vertexKept = (vertex) => {
+        joints.getElement(vertex, jointElement);
+        weights.getElement(vertex, weightElement);
+        let onBones = 0;
+        for (let i = 0; i < 4; i++) {
+          if (keptJointIndices.has(jointElement[i])) onBones += weightElement[i];
+        }
+        return onBones >= threshold;
+      };
+
+      const kept = [];
+      for (let i = 0; i < indices.getCount(); i += 3) {
+        const a = indices.getScalar(i);
+        const b = indices.getScalar(i + 1);
+        const c = indices.getScalar(i + 2);
+        if (vertexKept(a) && vertexKept(b) && vertexKept(c)) kept.push(a, b, c);
+      }
+
+      const nextIndices = document
+        .createAccessor()
+        .setType('SCALAR')
+        .setArray(new Uint32Array(kept))
+        .setBuffer(root.listBuffers()[0] ?? document.createBuffer());
+      const previous = primitive.getIndices();
+      primitive.setIndices(nextIndices);
+      previous.dispose();
+      compactPrimitive(primitive); // drop the vertex data the cut orphaned
+    }
+  }
+};
+
+/**
+ * Character texture policy (docs/tech/ASSET_PIPELINE.md §2): the vibrant low-poly
+ * look shades with flat lighting + tints, so 4K normal/roughness/ORM maps from the
+ * source packs are dead weight — drop the map slots (numeric factors survive) and
+ * let textureCompress shrink what remains to 1024px WebP.
+ */
+const stripDetailMaps = (document) => {
+  for (const material of document.getRoot().listMaterials()) {
+    material.setNormalTexture(null);
+    material.setOcclusionTexture(null);
+    material.setMetallicRoughnessTexture(null);
+    material.setEmissiveTexture(null);
+  }
 };
 
 const countTriangles = (document) => {
@@ -181,11 +383,32 @@ export const build = async ({ force = false, verbose = true } = {}) => {
       }
 
       // Hash the source *and* its external dependencies so texture-only edits rebuild.
-      const dependencies = await gatherDependencies(sourcePath);
+      // Rule options (and the option-transform version) join the hash only when a
+      // rule uses them: changing options or their semantics re-bakes those assets
+      // without churning the manifest entries of plain rules.
+      const dependencies = await gatherDependencies(sourcePath, rule.imageOverrides);
       const hasher = createHash('sha256');
       hasher.update(await readFile(sourcePath));
       for (const dependency of dependencies) {
         hasher.update(await readFile(dependency).catch(() => Buffer.alloc(0)));
+      }
+      if (
+        rule.imageOverrides ||
+        rule.skinned ||
+        rule.animationsOnly ||
+        rule.animationKeep ||
+        rule.bodyCut
+      ) {
+        hasher.update(
+          JSON.stringify({
+            transformVersion: OPTION_TRANSFORM_VERSION,
+            imageOverrides: rule.imageOverrides ?? null,
+            skinned: rule.skinned ?? false,
+            animationsOnly: rule.animationsOnly ?? false,
+            animationKeep: rule.animationKeep ?? null,
+            bodyCut: rule.bodyCut ?? null,
+          }),
+        );
       }
       const sourceHash = hasher.digest('hex');
 
@@ -205,15 +428,41 @@ export const build = async ({ force = false, verbose = true } = {}) => {
 
       let document;
       try {
-        document = await io.read(sourcePath);
+        document = await readDocument(sourcePath, rule.imageOverrides);
       } catch (error) {
         problems.push(`failed to read ${relativeSource}: ${error.message}`);
         continue;
       }
 
+      if (rule.animationKeep) {
+        const missing = filterAnimations(document, rule.animationKeep);
+        for (const clip of missing) {
+          problems.push(`${id}: animationKeep clip "${clip}" not found in ${relativeSource}`);
+        }
+      }
+      if (rule.animationsOnly) stripToAnimations(document);
+      if (rule.imageOverrides) stripPlaceholderTextures(document);
+      if (rule.bodyCut) cutSkinnedMeshToBones(document, rule.bodyCut);
+
       // Structural optimization. Mesh compression (meshopt) lands with the streaming
       // work in P2 — it needs the runtime decoder wired into the client loader.
-      await document.transform(dedup(), flatten(), join(), weld(), prune());
+      // Skinned models keep their node hierarchy: flatten/join would reparent or
+      // merge nodes whose names the runtime relies on for rebinding and tinting.
+      // Animation libraries keep untargeted leaf bones so hierarchies stay whole;
+      // resample() collapses the packs' dense per-frame keys on constant tracks.
+      if (rule.animationsOnly) {
+        await document.transform(resample(), dedup(), prune({ keepLeaves: true }));
+      } else if (rule.skinned) {
+        stripDetailMaps(document);
+        await document.transform(
+          dedup(),
+          weld(),
+          textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [1024, 1024] }),
+          prune(),
+        );
+      } else {
+        await document.transform(dedup(), flatten(), join(), weld(), prune());
+      }
 
       const glb = Buffer.from(await io.writeBinary(document));
       const outputHash = sha256(glb).slice(0, 8);

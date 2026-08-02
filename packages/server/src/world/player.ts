@@ -9,6 +9,8 @@ import {
   EntityFlag,
   InputButton,
   createMovementState,
+  type Appearance,
+  type ClassId,
   type MovementIntent,
   type MovementState,
 } from '@dawned/shared';
@@ -45,14 +47,24 @@ export class ServerPlayer {
   /** Anti-cheat counters (docs/tech/SECURITY.md §4). */
   violations = 0;
 
+  /** Wall-clock of the last position flush (playtime accounting). */
+  lastPersistedAt = Date.now();
+
   constructor(
     readonly id: number,
+    readonly characterId: number,
+    readonly accountId: number,
     readonly name: string,
+    readonly classId: ClassId,
+    readonly level: number,
+    readonly appearance: Appearance,
     spawnX: number,
     spawnY: number,
     spawnZ: number,
+    yaw: number,
   ) {
     this.movement = createMovementState(spawnX, spawnY, spawnZ);
+    this.movement.yaw = yaw;
   }
 
   /** Buffer a validated intent from the client. */

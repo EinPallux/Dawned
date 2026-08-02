@@ -10,6 +10,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # The auth integration tests and the smoke run against a real database,
+    # exactly like the VPS (docs/tech/DATABASE.md).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dawned
+          POSTGRES_PASSWORD: dawned
+          POSTGRES_DB: dawned
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U dawned"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://dawned:dawned@127.0.0.1:5432/dawned
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,14 +44,17 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # typecheck + lint + format + tests + asset report (see package.json)
+      - name: Migrate database
+        run: pnpm db:migrate
+
+      # typecheck + lint + format + tests (incl. DB integration) + asset report
       - name: Check
         run: pnpm check
 
       - name: Build
         run: pnpm build
 
-      - name: Protocol smoke test (headless, two clients)
+      - name: Protocol smoke test (headless, two authenticated clients)
         run: |
           node packages/server/dist/index.js &
           SERVER_PID=$!

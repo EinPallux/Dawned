@@ -69,9 +69,34 @@ Pack id `kaykit-weapons` · author **Kay Lousberg (KayKit)** · license **CC0-1.
 - `items_weapons_sword_b` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_B.gltf
 - `items_weapons_sword_c` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_C.gltf
 
+### Quaternius Universal Base Characters (Standard)
+Pack id `quaternius-base-characters` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/
+
+- `characters_hair_beard` — assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Beard.gltf
+- `characters_hair_buns` — assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buns.gltf
+- `characters_hair_buzzed` — assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buzzed.gltf
+- `characters_hair_buzzedfemale` — assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_BuzzedFemale.gltf
+- `characters_hair_long` — assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Long.gltf
+- `characters_hair_simpleparted` — assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf
+- `characters_superhero_female_fullbody` — assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf
+- `characters_superhero_male_fullbody` — assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf
+
 ### Quaternius Monster Bundle
 Pack id `quaternius-monsters` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/
 
 - `enemies_glub` — assets/enemy_models/Quaternius Monster Bundle/Glub.glb
 - `enemies_mushnub` — assets/enemy_models/Quaternius Monster Bundle/Mushnub.glb
+
+### Quaternius Modular Character Outfits — Fantasy (Standard)
+Pack id `quaternius-outfits-fantasy` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/
+
+- `characters_female_peasant` — assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Peasant.gltf
+- `characters_female_ranger` — assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Ranger.gltf
+- `characters_male_peasant` — assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Peasant.gltf
+- `characters_male_ranger` — assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Ranger.gltf
+
+### Quaternius Universal Animation Library 1 (PRO)
+Pack id `quaternius-ual1` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/
+
+- `characters_ual1` — assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb
 

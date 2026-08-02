@@ -24,10 +24,22 @@
 - **gltf-transform pass:** dedup, prune, weld, quantize (POSITION 14-bit ok for props), meshopt
   compression, strip unused UVs/targets, palette-texture verification (KayKit/Quaternius use tiny
   palette PNGs — force NEAREST-free bilinear, power-of-two check), name normalization.
-- **Rig assets:** Universal Base Characters + UAL animation GLBs are retargeted **once at build
-  time** into per-class "character bundles": base mesh + outfit variants + hair meshes + the ~80
-  clips we actually use (clip allowlist in `tools/config/clips.json`), sharing one skeleton —
-  runtime does zero retargeting.
+- **Rig assets (as built in P1 — deviation from the original bundle-merge idea):** the Quaternius
+  "Universal" packs share one 65-bone rig (verified by the report gate,
+  `tools/asset-pipeline/src/verify-characters.mjs`), so pieces bake **individually** and the client
+  composes them at load time by name-based skeleton rebinding
+  (`packages/client/src/world/characters.ts`) — cheaper than a bake-time merge (no per-combination
+  bundles for body × outfit × hair), zero per-frame retarget cost. Supporting rule options in
+  `tools/asset-pipeline/config/packs.json`:
+  - `skinned` — keep node hierarchy/names (no flatten/join), strip normal/ORM/roughness maps
+    (vibrant flat look), basecolors → 1024 px WebP;
+  - `bodyCut` — the modular outfits ARE the body below the neck (own skin geometry), so the fused
+    base bakes down to head + neck (triangle filter by bone weights; seam hides in every collar);
+  - `imageOverrides` — per-uri fixes for the packs' broken/wrong-variant texture refs
+    (`null` drop, path repoint, `multiplyRGB` gain, `grayscale` neutralize). Raw packs stay pristine;
+  - `animationsOnly` + `animationKeep` — UAL libraries ship mesh-free with only the clips shipped
+    phases use (13 in P1; extend the allowlist as phases land). Curves are `resample()`d
+    (21 MB source → ~0.7 MB baked).
 - **Collision extraction:** per world-prop: auto-generate collider (AABB or convex 12-vert hull or
   cylinder by heuristic + per-asset override file) → written into manifest for both server
   (authoritative) and admin editor (preview).
@@ -40,9 +52,10 @@
 - **Backgrounds** (`assets/backgrounds/*.png`, user-made): optimized + sized to 1080p/1440p double
   set — used on menu screens as fallbacks/vignettes per UI_UX.md.
 - Kenney particle sheets → packed atlas (`tools/atlas/`) with JSON frames for the VFX system.
-- **Character skin tones:** the base-character palette texture gets 5 generated tone variants
-  (palette-swap pass), selectable at character creation; outfit recolor variants (class accents,
-  zone-tier weapon tints) ride the same mechanism.
+- **Character skin tones (as built in P1):** runtime multiplicative tints over the baked Light
+  basecolor (`SKIN_TONES` in `@dawned/shared` appearance.ts) — no texture variants to bake or
+  ship. Outfit tints work the same; hair/beard/eyebrow basecolors bake to brightness-normalized
+  grayscale so hair-color multiplies land on the exact picked swatch with strand shading intact.
 
 ## 4. Icon Pipeline (`tools/icons/`) — every item unique
 

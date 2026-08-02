@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  plugins: [react()],
   // @dawned/shared is a workspace package that we rebuild constantly. Pre-bundling
   // it makes the dev server serve a stale copy after every `pnpm build` of shared,
   // which shows up as phantom "no such export" errors — so keep it out of the cache.

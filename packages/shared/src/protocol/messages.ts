@@ -16,6 +16,7 @@ import {
   quantizeAngle,
 } from './codec.js';
 import { ClientOp, ServerOp, type NoticeCode } from './opcodes.js';
+import type { Appearance, ClassId } from '../data/appearance.js';
 
 const encodeJsonEnvelope = (
   opcode: number,
@@ -39,22 +40,22 @@ export const peekOpcode = (data: Uint8Array): number => {
 
 export interface HelloMessage {
   protocolVersion: number;
-  /**
-   * Display name. P0 has no accounts; P1 replaces this with a session token +
-   * character id once packages/server gains the auth layer.
-   */
-  name: string;
+  /** Opaque session token from POST /api/auth/login (32 hex chars). */
+  token: string;
+  /** The character to enter the world as (must belong to the token's account). */
+  characterId: number;
 }
 
 export const encodeHello = (msg: HelloMessage, writer?: BinaryWriter): Uint8Array => {
   const w = (writer ?? new BinaryWriter(64)).reset();
-  w.u8(ClientOp.Hello).u16(msg.protocolVersion).string(msg.name);
+  w.u8(ClientOp.Hello).u16(msg.protocolVersion).string(msg.token).u32(msg.characterId);
   return w.toUint8Array();
 };
 
 export const decodeHello = (reader: BinaryReader): HelloMessage => ({
   protocolVersion: reader.u16(),
-  name: reader.string(),
+  token: reader.string(),
+  characterId: reader.u32(),
 });
 
 export interface InputIntentMessage {
@@ -119,14 +120,18 @@ export const encodeChat = (msg: ChatMessage, writer?: BinaryWriter): Uint8Array 
 export interface RosterEntry {
   id: number;
   name: string;
+  classId: ClassId;
+  level: number;
+  appearance: Appearance;
 }
 
 export interface WelcomeMessage {
   protocolVersion: number;
   selfId: number;
+  characterId: number;
   tickRate: number;
   serverTimeMs: number;
-  spawn: { x: number; y: number; z: number };
+  spawn: { x: number; y: number; z: number; yaw: number };
   players: RosterEntry[];
 }
 

@@ -32,11 +32,14 @@ import type { Logger } from '../logger.js';
 import type { Config } from '../config.js';
 import type { MetricsRing } from '../metrics/ring.js';
 import type { World } from '../world/world.js';
+import type { ServerPlayer } from '../world/player.js';
+import type { AuthService } from '../auth/service.js';
+import { CharacterService, toAppearance } from '../characters/service.js';
 import { Session } from './session.js';
 
-const NAME_PATTERN = /^[A-Za-z0-9_]{2,16}$/;
-const RESERVED_NAMES = new Set(['admin', 'gm', 'system', 'server', 'dawned', 'moderator']);
 const MAX_CHAT_LENGTH = 200;
+/** Position write-behind cadence (docs/tech/DATABASE.md §2). */
+const PERSIST_INTERVAL_MS = 10_000;
 const MAX_PACKET_BYTES = 4096;
 /**
  * Sockets silent for this long are dropped. The client pings every 2 s in the
@@ -60,6 +63,8 @@ export class Gateway {
     private readonly config: Config,
     private readonly log: Logger,
     private readonly metrics: MetricsRing,
+    private readonly auth: AuthService,
+    private readonly characters: CharacterService,
   ) {
     this.wss = new WebSocketServer({
       server,
@@ -140,7 +145,12 @@ export class Gateway {
 
     switch (opcode) {
       case ClientOp.Hello:
-        this.handleHello(session, reader);
+        // Async (DB lookups) — decode happens synchronously inside before any await,
+        // so the reader's buffer is consumed safely; failures disconnect the session.
+        this.handleHello(session, reader).catch((error: unknown) => {
+          this.log.error({ sessionId: session.id, err: error }, 'hello handling failed');
+          this.disconnect(session, NoticeCode.InvalidHello, 'internal error');
+        });
         return;
       case ClientOp.InputIntent:
         this.handleInput(session, reader);
@@ -156,12 +166,18 @@ export class Gateway {
     }
   }
 
-  private handleHello(session: Session, reader: BinaryReader): void {
+  /**
+   * Authenticated handshake (protocol v2): token → account → owned character →
+   * spawn. Async because it hits the database; the session is parked in
+   * 'authenticating' so a second Hello or early input can't race it.
+   */
+  private async handleHello(session: Session, reader: BinaryReader): Promise<void> {
     if (session.state !== 'handshaking') {
       this.disconnect(session, NoticeCode.InvalidHello, 'already handshaked');
       return;
     }
     const hello = decodeHello(reader);
+    session.state = 'authenticating';
 
     if (hello.protocolVersion !== PROTOCOL_VERSION) {
       this.log.info(
@@ -172,21 +188,50 @@ export class Gateway {
       return;
     }
 
-    const name = hello.name.trim();
-    if (!NAME_PATTERN.test(name) || RESERVED_NAMES.has(name.toLowerCase())) {
-      this.disconnect(session, NoticeCode.NameInvalid);
+    const account = await this.auth.validateSession(hello.token);
+    if (!account) {
+      this.disconnect(session, NoticeCode.AuthFailed);
       return;
     }
-    if (this.world.hasName(name)) {
-      this.disconnect(session, NoticeCode.NameTaken);
+    if (!session.isIn('authenticating')) return; // socket died during the DB trip
+
+    const character = await this.characters.getOwned(account.id, hello.characterId);
+    if (!character) {
+      this.disconnect(session, NoticeCode.CharacterUnavailable);
       return;
     }
+    if (!session.isIn('authenticating')) return;
+
     if (this.world.playerCount >= this.config.MAX_PLAYERS) {
       this.disconnect(session, NoticeCode.ServerFull);
       return;
     }
 
-    const player = this.world.addPlayer(name);
+    // Single session per account (docs/tech/SECURITY.md §2): the newest login
+    // wins, the older one is told why. Save the old character's position first.
+    const existing = this.world.findByAccount(account.id);
+    if (existing) {
+      const existingSession = this.findSessionByPlayer(existing.id);
+      if (existingSession) {
+        await this.persistPlayer(existing);
+        this.disconnect(existingSession, NoticeCode.ReplacedByNewLogin);
+      } else {
+        this.world.removePlayer(existing.id);
+      }
+    }
+
+    const player = this.world.addPlayer({
+      characterId: character.id,
+      accountId: account.id,
+      name: character.name,
+      classId: character.classId,
+      level: character.level,
+      appearance: toAppearance(character),
+      position:
+        character.posX !== null && character.posY !== null && character.posZ !== null
+          ? { x: character.posX, y: character.posY, z: character.posZ, yaw: character.yaw }
+          : null,
+    });
     session.player = player;
     session.state = 'playing';
 
@@ -195,18 +240,34 @@ export class Gateway {
         {
           protocolVersion: PROTOCOL_VERSION,
           selfId: player.id,
+          characterId: character.id,
           tickRate: TICK_RATE,
           serverTimeMs: Date.now(),
-          spawn: { x: player.movement.x, y: player.movement.y, z: player.movement.z },
+          spawn: {
+            x: player.movement.x,
+            y: player.movement.y,
+            z: player.movement.z,
+            yaw: player.movement.yaw,
+          },
           players: this.world.roster(),
         },
         session.writer,
       ),
     );
 
-    this.log.info({ sessionId: session.id, name, id: player.id }, 'player entered the world');
+    this.log.info(
+      { sessionId: session.id, account: account.name, character: character.name, id: player.id },
+      'player entered the world',
+    );
     this.broadcastRoster();
-    this.broadcastSystemChat(`${name} entered the world.`);
+    this.broadcastSystemChat(`${character.name} entered the world.`);
+  }
+
+  private findSessionByPlayer(playerId: number): Session | undefined {
+    for (const session of this.sessions.values()) {
+      if (session.player?.id === playerId) return session;
+    }
+    return undefined;
   }
 
   private handleInput(session: Session, reader: BinaryReader): void {
@@ -334,12 +395,43 @@ export class Gateway {
     session.state = 'closed';
     const player = session.player;
     if (player) {
-      // P3 adds the 15 s reconnect grace window; P0 despawns immediately.
+      // Save last position/playtime before the entity vanishes. Fire-and-forget:
+      // the disconnect path must never block on the database.
+      this.persistPlayer(player).catch((error: unknown) => {
+        this.log.error({ err: error, character: player.characterId }, 'position save failed');
+      });
+      // P3 adds the 15 s reconnect grace window; for now despawn immediately.
       this.world.removePlayer(player.id);
       this.log.info({ sessionId: session.id, name: player.name }, 'player left the world');
       this.broadcastRoster();
       this.broadcastSystemChat(`${player.name} left the world.`);
     }
+  }
+
+  /** Write one player's position + accrued playtime (write-behind flush). */
+  private async persistPlayer(player: ServerPlayer): Promise<void> {
+    const now = Date.now();
+    const playtimeDelta = (now - player.lastPersistedAt) / 1000;
+    player.lastPersistedAt = now;
+    const m = player.movement;
+    await this.characters.savePosition(
+      player.characterId,
+      { x: m.x, y: m.y, z: m.z, yaw: m.yaw },
+      playtimeDelta,
+    );
+  }
+
+  /** Periodic write-behind for everyone online (started by the server boot). */
+  startPersistence(): void {
+    setInterval(() => {
+      for (const session of this.sessions.values()) {
+        const player = session.player;
+        if (session.state !== 'playing' || !player) continue;
+        this.persistPlayer(player).catch((error: unknown) => {
+          this.log.error({ err: error, character: player.characterId }, 'position flush failed');
+        });
+      }
+    }, PERSIST_INTERVAL_MS).unref();
   }
 
   /** Announce and close every socket — used by graceful shutdown. */

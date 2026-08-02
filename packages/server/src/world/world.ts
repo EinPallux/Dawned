@@ -10,7 +10,10 @@ import {
   TICK_DT,
   devTerrain,
   stepMovement,
+  type Appearance,
+  type ClassId,
   type MovementStepResult,
+  type RosterEntry,
   type SnapshotEntity,
   type TerrainSampler,
 } from '@dawned/shared';
@@ -46,12 +49,20 @@ export class World {
     return this.players.get(id);
   }
 
-  hasName(name: string): boolean {
-    const lowered = name.toLowerCase();
+  /** The entity currently playing this character, if any (one world, no dupes). */
+  findByCharacter(characterId: number): ServerPlayer | undefined {
     for (const player of this.players.values()) {
-      if (player.name.toLowerCase() === lowered) return true;
+      if (player.characterId === characterId) return player;
     }
-    return false;
+    return undefined;
+  }
+
+  /** Any entity belonging to this account (single-session-per-account rule). */
+  findByAccount(accountId: number): ServerPlayer | undefined {
+    for (const player of this.players.values()) {
+      if (player.accountId === accountId) return player;
+    }
+    return undefined;
   }
 
   /** Spawn point: a ring around the hill so players don't stack on login. */
@@ -63,10 +74,36 @@ export class World {
     return { x, y: this.terrain.heightAt(x, z), z };
   }
 
-  addPlayer(name: string): ServerPlayer {
+  addPlayer(spec: {
+    characterId: number;
+    accountId: number;
+    name: string;
+    classId: ClassId;
+    level: number;
+    appearance: Appearance;
+    /** Persisted position; null = first spawn (server picks the ring). */
+    position: { x: number; y: number; z: number; yaw: number } | null;
+  }): ServerPlayer {
     const id = this.nextEntityId++;
-    const spawn = this.spawnPosition();
-    const player = new ServerPlayer(id, name, spawn.x, spawn.y, spawn.z);
+    const spawn = spec.position ?? { ...this.spawnPosition(), yaw: 0 };
+    // Re-ground a persisted position: the terrain may have changed since the
+    // last save (map edits), and standing inside a hill helps nobody.
+    const groundY = this.terrain.heightAt(spawn.x, spawn.z);
+    const y = spec.position ? Math.max(spawn.y, groundY) : groundY;
+
+    const player = new ServerPlayer(
+      id,
+      spec.characterId,
+      spec.accountId,
+      spec.name,
+      spec.classId,
+      spec.level,
+      spec.appearance,
+      spawn.x,
+      y,
+      spawn.z,
+      spawn.yaw,
+    );
     this.players.set(id, player);
     return player;
   }
@@ -119,7 +156,13 @@ export class World {
     return out;
   }
 
-  roster(): { id: number; name: string }[] {
-    return Array.from(this.players.values(), (player) => ({ id: player.id, name: player.name }));
+  roster(): RosterEntry[] {
+    return Array.from(this.players.values(), (player) => ({
+      id: player.id,
+      name: player.name,
+      classId: player.classId,
+      level: player.level,
+      appearance: player.appearance,
+    }));
   }
 }

@@ -34,7 +34,7 @@ class TokenBucket {
   }
 }
 
-export type SessionState = 'handshaking' | 'playing' | 'closed';
+export type SessionState = 'handshaking' | 'authenticating' | 'playing' | 'closed';
 
 /** Socket buffer above which we start shedding non-essential traffic. */
 const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
@@ -61,6 +61,15 @@ export class Session {
     readonly ip: string,
     private readonly onBytesOut: (bytes: number) => void,
   ) {}
+
+  /**
+   * State check that survives control-flow narrowing: socket close events mutate
+   * `state` concurrently with awaited handshake work, so callers re-checking after
+   * an `await` must not let TypeScript "prove" the comparison constant.
+   */
+  isIn(state: SessionState): boolean {
+    return this.state === state;
+  }
 
   allowInput(): boolean {
     return this.inputLimit.tryConsume();

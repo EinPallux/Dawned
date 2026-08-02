@@ -497,6 +497,373 @@
         ]
       },
       "animations": []
+    },
+    "characters_superhero_female_fullbody": {
+      "id": "characters_superhero_female_fullbody",
+      "category": "characters",
+      "file": "assets_baked/characters/superhero_female_fullbody.4e9e115c.glb",
+      "bytes": 292520,
+      "sourceHash": "33dcd1d11ca90a4bc659688462756dbe9b631c16434290adeb90d9277eeceae1",
+      "source": "assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf",
+      "pack": "quaternius-base-characters",
+      "packName": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5320,
+      "bounds": {
+        "min": [
+          -0.0889,
+          1.4797,
+          -0.1129
+        ],
+        "max": [
+          0.0889,
+          1.7666,
+          0.1119
+        ]
+      },
+      "animations": []
+    },
+    "characters_superhero_male_fullbody": {
+      "id": "characters_superhero_male_fullbody",
+      "category": "characters",
+      "file": "assets_baked/characters/superhero_male_fullbody.da8ac88d.glb",
+      "bytes": 260480,
+      "sourceHash": "a58032ec86b0e2abccbf96d67d960783021811fe87d22c333c20459cd1ded518",
+      "source": "assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf",
+      "pack": "quaternius-base-characters",
+      "packName": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4636,
+      "bounds": {
+        "min": [
+          -0.0994,
+          1.5277,
+          -0.1311
+        ],
+        "max": [
+          0.0994,
+          1.8101,
+          0.1152
+        ]
+      },
+      "animations": []
+    },
+    "characters_hair_beard": {
+      "id": "characters_hair_beard",
+      "category": "characters",
+      "file": "assets_baked/characters/hair_beard.a821a2a0.glb",
+      "bytes": 91224,
+      "sourceHash": "2200931f540b292483d3c73085ee3bae1a16b5c795bf0c0da13c950c06ab274e",
+      "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Beard.gltf",
+      "pack": "quaternius-base-characters",
+      "packName": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1034,
+      "bounds": {
+        "min": [
+          -0.0808,
+          1.5495,
+          -0.0081
+        ],
+        "max": [
+          0.0808,
+          1.6894,
+          0.0968
+        ]
+      },
+      "animations": []
+    },
+    "characters_hair_buns": {
+      "id": "characters_hair_buns",
+      "category": "characters",
+      "file": "assets_baked/characters/hair_buns.1fc68dd7.glb",
+      "bytes": 264612,
+      "sourceHash": "c2901c51b930bebf5fdcc5efcb0f59abbf976a4f2823141099503556316f72d4",
+      "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buns.gltf",
+      "pack": "quaternius-base-characters",
+      "packName": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3284,
+      "bounds": {
+        "min": [
+          -0.1508,
+          1.5301,
+          -0.1341
+        ],
+        "max": [
+          0.1508,
+          1.7792,
+          0.1027
+        ]
+      },
+      "animations": []
+    },
+    "characters_hair_buzzed": {
+      "id": "characters_hair_buzzed",
+      "category": "characters",
+      "file": "assets_baked/characters/hair_buzzed.8dbf3857.glb",
+      "bytes": 83244,
+      "sourceHash": "d6dc45e79ac0f5b47ca1667cd2c8e5e941f3ccee367ab6335d6a152180008526",
+      "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buzzed.gltf",
+      "pack": "quaternius-base-characters",
+      "packName": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 830,
+      "bounds": {
+        "min": [
+          -0.0773,
+          1.6441,
+          -0.108
+        ],
+        "max": [
+          0.0773,
+          1.8135,
+          0.0829
+        ]
+      },
+      "animations": []
+    },
+    "characters_hair_buzzedfemale": {
+      "id": "characters_hair_buzzedfemale",
+      "category": "characters",
+      "file": "assets_baked/characters/hair_buzzedfemale.5e8faee0.glb",
+      "bytes": 83772,
+      "sourceHash": "bafc819c6375185c2183f9a70d28280b1de659d48da647e25bc8b1c8ef7744a0",
+      "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_BuzzedFemale.gltf",
+      "pack": "quaternius-base-characters",
+      "packName": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 830,
+      "bounds": {
+        "min": [
+          -0.0793,
+          1.6008,
+          -0.1147
+        ],
+        "max": [
+          0.0793,
+          1.7709,
+          0.0829
+        ]
+      },
+      "animations": []
+    },
+    "characters_hair_long": {
+      "id": "characters_hair_long",
+      "category": "characters",
+      "file": "assets_baked/characters/hair_long.6eb203db.glb",
+      "bytes": 240456,
+      "sourceHash": "d7bb884648dd2b28b9c737aa902943e86bf8f10e09b20edcb51f71bbb834fe77",
+      "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Long.gltf",
+      "pack": "quaternius-base-characters",
+      "packName": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2906,
+      "bounds": {
+        "min": [
+          -0.1224,
+          1.5009,
+          -0.1616
+        ],
+        "max": [
+          0.1224,
+          1.7772,
+          0.1089
+        ]
+      },
+      "animations": []
+    },
+    "characters_hair_simpleparted": {
+      "id": "characters_hair_simpleparted",
+      "category": "characters",
+      "file": "assets_baked/characters/hair_simpleparted.cd612f7c.glb",
+      "bytes": 101204,
+      "sourceHash": "098d6fa88d5f07cedac9719777c27092ea309cd6746609437e37b1667723e560",
+      "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf",
+      "pack": "quaternius-base-characters",
+      "packName": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1301,
+      "bounds": {
+        "min": [
+          -0.0854,
+          1.6606,
+          -0.1082
+        ],
+        "max": [
+          0.09,
+          1.8397,
+          0.0788
+        ]
+      },
+      "animations": []
+    },
+    "characters_female_peasant": {
+      "id": "characters_female_peasant",
+      "category": "characters",
+      "file": "assets_baked/characters/female_peasant.1a3743a0.glb",
+      "bytes": 686464,
+      "sourceHash": "6ae7fd6e3a98786a530e9150ab657e275e45c6755c90cf0cbd43479dcb1a92fb",
+      "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Peasant.gltf",
+      "pack": "quaternius-outfits-fantasy",
+      "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 13568,
+      "bounds": {
+        "min": [
+          -0.8319,
+          -0.0067,
+          -0.1673
+        ],
+        "max": [
+          0.8319,
+          1.5184,
+          0.1675
+        ]
+      },
+      "animations": []
+    },
+    "characters_female_ranger": {
+      "id": "characters_female_ranger",
+      "category": "characters",
+      "file": "assets_baked/characters/female_ranger.f344256f.glb",
+      "bytes": 1654600,
+      "sourceHash": "41fbdf7a36e70701dfa86299056ff4f46dba29353613483ac5504a7bbd5b2039",
+      "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Ranger.gltf",
+      "pack": "quaternius-outfits-fantasy",
+      "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 26966,
+      "bounds": {
+        "min": [
+          -0.8319,
+          -0.004,
+          -0.2096
+        ],
+        "max": [
+          0.8319,
+          1.7941,
+          0.1675
+        ]
+      },
+      "animations": []
+    },
+    "characters_male_peasant": {
+      "id": "characters_male_peasant",
+      "category": "characters",
+      "file": "assets_baked/characters/male_peasant.1ff17763.glb",
+      "bytes": 654824,
+      "sourceHash": "1c3541a9ab120e0254f930b71372ad98dcce05a3c3c0594d3176b226e97ee40c",
+      "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Peasant.gltf",
+      "pack": "quaternius-outfits-fantasy",
+      "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 12894,
+      "bounds": {
+        "min": [
+          -0.8994,
+          -0.004,
+          -0.1845
+        ],
+        "max": [
+          0.8994,
+          1.5587,
+          0.1675
+        ]
+      },
+      "animations": []
+    },
+    "characters_male_ranger": {
+      "id": "characters_male_ranger",
+      "category": "characters",
+      "file": "assets_baked/characters/male_ranger.fa540f1a.glb",
+      "bytes": 1644860,
+      "sourceHash": "5fb50f7d27a34fd3532be72632708d4bd5b320ccc03ee809735a46e3eae4f131",
+      "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Ranger.gltf",
+      "pack": "quaternius-outfits-fantasy",
+      "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 26982,
+      "bounds": {
+        "min": [
+          -0.8994,
+          -0.004,
+          -0.206
+        ],
+        "max": [
+          0.8994,
+          1.865,
+          0.1675
+        ]
+      },
+      "animations": []
+    },
+    "characters_ual1": {
+      "id": "characters_ual1",
+      "category": "characters",
+      "file": "assets_baked/characters/ual1.0262db75.glb",
+      "bytes": 730928,
+      "sourceHash": "1525e4efa6569d9b26c1471ae4dbbb6a267be7dbd9dd8b9357f36f4d6a92b8dc",
+      "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
+      "pack": "quaternius-ual1",
+      "packName": "Quaternius Universal Animation Library 1 (PRO)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [
+        "Idle_LookAround_Loop",
+        "Idle_Loop",
+        "Jog_Bwd_Loop",
+        "Jog_Fwd_Loop",
+        "Jog_Left_Loop",
+        "Jog_Right_Loop",
+        "Jump_Land",
+        "Jump_Loop",
+        "Jump_Start",
+        "Spell_Double_Idle_Loop",
+        "Spell_Simple_Idle_Loop",
+        "Sprint_Loop",
+        "Sword_Idle"
+      ]
     }
   }
 }

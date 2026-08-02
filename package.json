@@ -20,6 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "assets:build": "node tools/asset-pipeline/bin/assets.mjs build",
+    "assets:sync": "node tools/asset-pipeline/bin/assets.mjs sync",
+    "db:migrate": "pnpm --filter @dawned/server db:migrate",
     "assets:report": "node tools/asset-pipeline/bin/assets.mjs report",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm assets:report"
   },
@@ -28,6 +30,7 @@
     "@types/node": "^22.19.2",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.9.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
