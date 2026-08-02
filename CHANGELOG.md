@@ -61,6 +61,9 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   note the implemented v1 subset, DEPLOYMENT.md §8 documents private-repo deploy keys; removed a
   dead constant, a dead field and an unused re-export; added the missing ChatBroadcast codec
   test (38 tests total).
+- **DEPLOY.sh can no longer lock the owner out of the VPS**: it only disables SSH password login
+  once an SSH key is actually installed for root (fail2ban guards passwords until then). Added
+  `deploy/FIRST_DEPLOY.md` — a beginner walkthrough for the first deployment with private repos.
 
 ### Fixed
 - Remote players rendered several metres behind their true position on slow clients: the

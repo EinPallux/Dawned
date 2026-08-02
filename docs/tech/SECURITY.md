@@ -59,8 +59,10 @@ visible per player in Dawned-Admin live view.
 
 ## 5. VPS Hardening (executed by DEPLOY.sh, documented in DEPLOYMENT.md)
 
-- SSH: key-only, root login off, fail2ban sshd jail. UFW: allow 22/80/443 only (Postgres bound to
-  localhost; ops API localhost).
+- SSH: key-only, root password login off, fail2ban sshd jail. (DEPLOY.sh applies the key-only
+  switch **only once a key is installed** for root — a password-only owner must never be locked
+  out of their own box; fail2ban covers the interim.) UFW: allow 22/80/443 only (Postgres bound
+  to localhost; ops API localhost).
 - Services run as unprivileged `dawned` user; systemd sandboxing (`ProtectSystem=strict`,
   `PrivateTmp`, `NoNewPrivileges`, RW only where needed).
 - Unattended-upgrades (security) on; Caddy auto-TLS. Off-box backup copies: the owner handles
