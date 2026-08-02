@@ -52,6 +52,8 @@ export const TERMINAL_VELOCITY = 55;
 export const BASE_STAMINA = 100;
 /** Stamina drained per second while sprinting. */
 export const SPRINT_STAMINA_PER_SEC = 8;
+/** Swim-sprint drains faster than land sprint (docs/design/COMBAT.md §7). */
+export const SWIM_SPRINT_STAMINA_PER_SEC = 10;
 /** Stamina regenerated per second once the regen delay has elapsed. */
 export const STAMINA_REGEN_PER_SEC = 15;
 /** Delay in ms after spending stamina before regeneration resumes. */
@@ -82,6 +84,12 @@ export const CHUNK_SIZE = 64;
 export const WORLD_BOUNDS = 1024;
 /** Sea level height in metres. */
 export const SEA_LEVEL = 0;
+/** Water deeper than this over the ground is swum, not waded (docs/design/WORLD.md). */
+export const SWIM_DEPTH = 1.2;
+/** Horizontal speed multiplier while swimming (surface swim, GAME_DESIGN §"Movement"). */
+export const SWIM_SPEED_FACTOR = 0.55;
+/** How far the body sits below the water surface while swimming. */
+export const SWIM_SURFACE_OFFSET = 0.55;
 /**
  * The active map artifact version under assets_baked/map/ (client fetches it
  * from /assets/map/<version>/). Becomes dynamic when the admin publish

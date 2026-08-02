@@ -128,6 +128,7 @@ export class ServerPlayer {
     if (m.grounded) flags |= EntityFlag.Grounded;
     if (m.sprinting) flags |= EntityFlag.Sprinting;
     if (Math.abs(m.vx) > 0.1 || Math.abs(m.vz) > 0.1) flags |= EntityFlag.Moving;
+    if (m.swimming) flags |= EntityFlag.Swimming;
     return flags;
   }
 }
