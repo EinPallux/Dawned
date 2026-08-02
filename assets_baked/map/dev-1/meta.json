@@ -1,0 +1,25 @@
+{
+  "mapVersion": "dev-1",
+  "seed": 7,
+  "spawn": {
+    "x": 0,
+    "y": 2.5875445503081207,
+    "z": 400,
+    "yaw": 3.141592653589793
+  },
+  "seaLevel": 0,
+  "lake": {
+    "x": -150,
+    "z": -70,
+    "radius": 52,
+    "depth": 3.2,
+    "level": 17.830371547815083
+  },
+  "chunks": {
+    "emitted": 271,
+    "minCx": 6,
+    "minCy": 7,
+    "maxCx": 23,
+    "maxCy": 24
+  }
+}
