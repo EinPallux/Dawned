@@ -6,6 +6,7 @@
 > colliders/markers). Inventory of what we have: [../ASSET_INVENTORY.md](../ASSET_INVENTORY.md).
 
 ## 1. Principles
+
 1. **Never ship raw packs.** FBX/OBJ/blend never load at runtime; GLB (meshopt-compressed) only.
 2. **Manifest-driven.** A generated `asset-manifest.json` (id → file, hash, size, tags, bounds,
    collider ref, thumbnail) is the only way code references assets — no hardcoded paths.
@@ -14,9 +15,10 @@
    generated from it (fails the build if a file lacks provenance).
 
 ## 2. Model Pipeline (`tools/convert-models/`)
+
 - **Input tiers:** GLB/GLTF packs pass through gltf-transform directly; FBX-only packs (UAL Unity
   variants, Modular Outfits FBX) convert via **Blender 4 headless** batch script (`--background
-  --python fbx2glb.py`) run on dev machines only. Decision: baked GLB outputs are **committed to
+--python fbx2glb.py`) run on dev machines only. Decision: baked GLB outputs are **committed to
   the repo** under `assets_baked/` (meshopt-compressed props are ~10–60 kB typical), so VPS builds
   never need Blender installed.
 - **gltf-transform pass:** dedup, prune, weld, quantize (POSITION 14-bit ok for props), meshopt
@@ -32,6 +34,7 @@
 - Output naming: `assets/models/<category>/<slug>.<contenthash>.glb`.
 
 ## 3. Texture/Image Pipeline
+
 - Palette + splat + particle textures → PNG optimized (sharp: strip metadata, correct sRGB), sizes
   verified (≤2048); UI images → PNG/WebP dual output.
 - **Backgrounds** (`assets/backgrounds/*.png`, user-made): optimized + sized to 1080p/1440p double
@@ -42,24 +45,27 @@
   zone-tier weapon tints) ride the same mechanism.
 
 ## 4. Icon Pipeline (`tools/icons/`) — every item unique
+
 1. Curated mapping file `tools/config/icon-map.json`: content id → game-icons.net icon name (+
    transform: mirror/rotate/recolor accent) — curation is a per-content-phase task, validated
    (build fails on unmapped items).
 2. Downloader pulls SVGs into `assets_vendor/game-icons/` (committed; license CC BY 3.0 recorded
    per icon with author from its metadata).
 3. Generator renders themed PNGs: parchment-on-ink base, class/rarity accent tint variants, 64 px
-   + 128 px, packed into icon atlases + CSS sprite JSON for the DOM UI.
+   - 128 px, packed into icon atlases + CSS sprite JSON for the DOM UI.
 4. CREDITS.md section auto-regenerated (author list per game-icons attribution requirements).
-Result: the user can later replace any icon by dropping a PNG at the content id path — override dir
-`assets/icons_custom/` wins over generated (their stated plan to hand-make icons someday is a
-first-class path).
+   Result: the user can later replace any icon by dropping a PNG at the content id path — override dir
+   `assets/icons_custom/` wins over generated (their stated plan to hand-make icons someday is a
+   first-class path).
 
 ## 5. Audio Pipeline (`tools/audio/`) — sources per AUDIO.md §3 (CC0-first, decided)
+
 `assets/audio_src/<bucket>/` → ffmpeg batch: trim silence, loudness normalize (music −16 LUFS,
 SFX −12 dBTP), loop-point metadata (JSON sidecar), OGG Vorbis (music 128k, SFX 96k) →
 `assets/audio/<bucket>/<slug>.<hash>.ogg` + manifest entries with license/source (§1.4 applies).
 
 ## 6. Terrain & World Bakes (owned by Dawned-Admin publish, formats defined here)
+
 - `map/<version>/chunk_<cx>_<cy>.bin` — heightmap 65×65 f32 + splat weights + water flag (see
   DATABASE.md `content_map_chunks`; disk mirror is what clients fetch, immutable + cached).
 - `map/<version>/walkgrid.bin` — 1 m bitfield + slope classes (server + admin debug overlay).
@@ -69,6 +75,7 @@ SFX −12 dBTP), loop-point metadata (JSON sidecar), OGG Vorbis (music 128k, SFX
   display-relevant fields only — server-only numbers like loot odds stay server-side).
 
 ## 7. Client Loading Strategy
+
 - Boot: manifest + login-screen bundle (≤8 MB budget: UI atlas, fonts, login vignette scene subset).
 - Char select/create: character bundles (the heaviest single load, ~4–6 MB) — behind the login,
   preloaded during typing.
@@ -79,6 +86,7 @@ SFX −12 dBTP), loop-point metadata (JSON sidecar), OGG Vorbis (music 128k, SFX
   second login is near-instant; content hash mismatch (`ContentInvalidate`) evicts precisely.
 
 ## 8. Dev Ergonomics
+
 `pnpm assets:build` (all), `pnpm assets:watch` (chokidar incremental during art passes),
 `pnpm assets:report` (sizes, missing colliders/icons/licenses, budget check vs TECH_STACK budgets —
 run in `pnpm check`). Thumbnails for the Admin asset browser are rendered by `tools/thumbs/`

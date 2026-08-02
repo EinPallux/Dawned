@@ -36,15 +36,15 @@ Zone = gameplay region with level band, palette, fog/lighting profile, music moo
 resource tier and one settlement/camp. Zones are painted as polygons in the Admin Map Editor and
 drive: nameplate banner on entry, minimap label, enemy/resource spawn tables, ambience.
 
-| # | Zone | Levels | Biome & palette | Settlement | Resource tier |
-|---|---|---|---|---|---|
-| 1 | **Dawnshore** | 1–6 | Lush spring meadows, flower fields, white beaches; fresh greens + warm sand | **Dawnhaven** (main town, safe zone) | T1 |
-| 2 | **Verdant Weald** | 6–12 | Dense old forest, giant trees, mossy rocks, fireflies; deep greens, teal shade | **Mosshollow** (village) | T2 |
-| 3 | **Emberwood** | 12–18 | Crimson/autumn forest, red maples, ruins overgrown with red ivy; reds, oranges, warm browns | **Cinderfall** (ruined-town camp) | T3 |
-| 4 | **Sungraze Savanna** | 18–24 | Golden dry grassland, acacia-style trees, abandoned farmsteads, rock outcrops; yellows, ochre | **Sunwatch** (palisade outpost) | T4 |
-| 5 | **Ashcrag Canyons** | 24–30 | Red-rock mesas, canyons, scree, sparse dead trees, mining scars; rust reds, purple shadow | **Rustpick Camp** (mining camp) | T5 |
-| 6 | **The Elder Grove** | 30 (elite) | Small hidden islet, luminous ancient grove, giant mushrooms; saturated emerald + glow accents | — (one hermit NPC) | T5 rare |
-| — | **The Dawnsea** | n/a | Ocean, beaches, shallows, tiny sandbars with chests | — | Fishing everywhere |
+| #   | Zone                 | Levels     | Biome & palette                                                                               | Settlement                           | Resource tier      |
+| --- | -------------------- | ---------- | --------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------ |
+| 1   | **Dawnshore**        | 1–6        | Lush spring meadows, flower fields, white beaches; fresh greens + warm sand                   | **Dawnhaven** (main town, safe zone) | T1                 |
+| 2   | **Verdant Weald**    | 6–12       | Dense old forest, giant trees, mossy rocks, fireflies; deep greens, teal shade                | **Mosshollow** (village)             | T2                 |
+| 3   | **Emberwood**        | 12–18      | Crimson/autumn forest, red maples, ruins overgrown with red ivy; reds, oranges, warm browns   | **Cinderfall** (ruined-town camp)    | T3                 |
+| 4   | **Sungraze Savanna** | 18–24      | Golden dry grassland, acacia-style trees, abandoned farmsteads, rock outcrops; yellows, ochre | **Sunwatch** (palisade outpost)      | T4                 |
+| 5   | **Ashcrag Canyons**  | 24–30      | Red-rock mesas, canyons, scree, sparse dead trees, mining scars; rust reds, purple shadow     | **Rustpick Camp** (mining camp)      | T5                 |
+| 6   | **The Elder Grove**  | 30 (elite) | Small hidden islet, luminous ancient grove, giant mushrooms; saturated emerald + glow accents | — (one hermit NPC)                   | T5 rare            |
+| —   | **The Dawnsea**      | n/a        | Ocean, beaches, shallows, tiny sandbars with chests                                           | —                                    | Fishing everywhere |
 
 Zone asset sourcing (all packs already in `assets/world/`): Dawnshore & Verdant Weald ← KayKit Forest
 Nature, Low Poly Nature Models, Stylized Mega Nature Kit, Nature Mega Pack; Emberwood ← recolored
@@ -57,6 +57,7 @@ harbor of Dawnhaven.
 ## 3. Zone Details
 
 ### 3.1 Dawnshore (1–6) — "the first hour is sacred"
+
 - **Function:** Teach by playing: movement, sprint, first combat, first gather of each profession,
   first quest, first vendor, first shrine. No tutorial popup walls — signposts, NPC one-liners and a
   handful of "Getting Started" side quests.
@@ -72,6 +73,7 @@ harbor of Dawnhaven.
   **Mossback the Ancient Glub** (lvl 6, quest target).
 
 ### 3.2 Verdant Weald (6–12)
+
 - **Feel:** canopy shade, god-ray shafts, fireflies at all hours, mossy boulders; verticality via
   fallen giant trunks as ramps.
 - **Beats:** Mosshollow treetop-adjacent village → herb hollows (T2 herbs) → old logging site
@@ -82,6 +84,7 @@ harbor of Dawnhaven.
   outcasts (Monster Bundle Wizard/Tribal), wolves (Cat model recolor "Weald Stalker").
 
 ### 3.3 Emberwood (12–18)
+
 - **Feel:** perpetual autumn; red leaf-fall particle ambience; ruins of the old kingdom (Fantasy
   Free Pack / Dungeon Pack pieces surface-dressed).
 - **Beats:** Cinderfall camp in a ruined plaza → leaf-buried road network (discovery rewards for
@@ -92,6 +95,7 @@ harbor of Dawnhaven.
   Monkroose (feral orchards), bandit Rangers (KayKit Adventurer Ranger).
 
 ### 3.4 Sungraze Savanna (18–24)
+
 - **Feel:** wide open sightlines — the "learn to pick your fights" zone; heat shimmer, tall golden
   grass patches that hide swarms; abandoned farmsteads to loot.
 - **Beats:** Sunwatch palisade → dust road with ambush points → three farm ruins (each a themed camp:
@@ -101,6 +105,7 @@ harbor of Dawnhaven.
   Chicken/Bunny ambient, Cactoro Evolved, dust Hywirls.
 
 ### 3.5 Ashcrag Canyons (24–30)
+
 - **Feel:** hostile, vertical, echoing; wind gusts; narrow choke fights and mesa-top vistas; the
   endgame zone where sprint/stamina and dodge mastery are assumed.
 - **Beats:** Rustpick Camp clinging to a cliff → switchback descent into the Great Rift → abandoned
@@ -111,6 +116,7 @@ harbor of Dawnhaven.
   elite guards, Squidle (toxic pools), Dragon (roaming lvl 28 rare).
 
 ### 3.6 The Elder Grove (30, elite islet)
+
 - Hidden: no bridge, no map label until discovered; reachable only by a long swim from Verdant Weald's
   north cape (stamina check) or a one-way ancient portal POI in Ashcrag.
 - Content: elite versions of forest fauna, the hermit NPC (lore + one long quest), T5-rare herb
@@ -120,6 +126,7 @@ harbor of Dawnhaven.
 ## 4. World Systems
 
 ### 4.1 Points of Interest & Discovery
+
 - POI types: **Vista** (climbable lookout, camera flourish + XP), **Landmark** (named place, XP on
   first entry), **Hidden Cache** (chest behind light platforming/searching), **Camp** (enemy
   concentration with named elite), **Ancient Shrine** (respawn + fast-travel node), **Curiosity**
@@ -129,6 +136,7 @@ harbor of Dawnhaven.
 - Zone discovery: entering a zone first time = banner + XP + map region un-grays.
 
 ### 4.2 Shrines, death & fast travel
+
 - Each zone has 1–2 **Ancient Shrines** + towns/camps have one. Attuning (interact once) unlocks it.
 - Death → soul screen → respawn at last-attuned or nearest-attuned shrine with 30 s "Dawned"
   weakness debuff (-15% damage dealt). No XP loss, no durability (0.1.0 keeps death light; revisit
@@ -138,6 +146,7 @@ harbor of Dawnhaven.
   later. No mounts ever — sprint + shrines is the travel model.
 
 ### 4.3 Interactables (world objects with verbs)
+
 Framework object (see tech/ARCHITECTURE.md §entities): prompt radius, hold-or-press F, per-type
 server logic, cooldown/one-shot/respawn policy, optional loot table, optional quest hook.
 0.1.0 set: chests (common/rare, respawning), resource nodes (see PROFESSIONS.md), quest props
@@ -145,6 +154,7 @@ server logic, cooldown/one-shot/respawn policy, optional loot table, optional qu
 (world flavor + directions), doors/gates (settlements), the Elder portal, quest boards, vendor stalls.
 
 ### 4.4 Zone system (technical contract)
+
 - Zones are painted polygons (admin editor) with properties: id, name, level band, ambience profile
   (fog color/density, light tint, music track id, ambient SFX set), safe-zone flag, respawn shrine
   list, spawn-table bindings.
@@ -153,11 +163,13 @@ server logic, cooldown/one-shot/respawn policy, optional loot table, optional qu
   crossfade, minimap label.
 
 ### 4.5 Ambient life (P3 "alive" pillar)
+
 Non-combat critters with wander AI: Bunny, Cat, Chicken, Pigeon, Birb (flight loops), Fish schools
 (Animated Fish Bundle) in shallows; butterflies/fireflies as particles; NPC villagers with tiny
-routines (2–3 waypoints + idle anims: Counter_*, Sitting_*, Farm_* from UAL packs).
+routines (2–3 waypoints + idle anims: Counter__, Sitting__, Farm_* from UAL packs).
 
 ### 4.6 Weather (visual, lands in P14 with day/night)
+
 - A world-level **weather director** rolls per-zone states from each zone's ambience-profile
   weights (`clear / overcast / rain / storm`, duration 4–10 min per state). Everyone in a zone
   sees the same sky (server-broadcast `WeatherState`, ~10 s blend transitions).
@@ -170,6 +182,7 @@ routines (2–3 waypoints + idle anims: Counter_*, Sitting_*, Farm_* from UAL pa
   are 0.4+ candidates. GM override: `/weather` (GM_TOOLS.md).
 
 ## 5. World Map & Minimap
+
 - **World map (M):** stylized top-down render of the archipelago (baked from actual terrain at map
   publish, palette-graded to look hand-drawn like the Farever reference). Fog-of-unknowing: zones
   gray until entered, POIs hidden until discovered. Player marker, shrine icons (click = fast
@@ -179,6 +192,7 @@ routines (2–3 waypoints + idle anims: Counter_*, Sitting_*, Farm_* from UAL pa
   while unlocked profession and within 40 m ("prospector sense" keeps exploration honest).
 
 ## 6. Terrain & environment art targets
+
 - Heightmap terrain, 1 m grid, painted with 8 splat layers per zone set (grass, lush grass, dirt,
   path, sand, rock, red-leaf litter, ash/scree — final set per zone in Admin editor), cliffs from
   rock meshes where slope > 55° (painted rock walls, not stretched terrain).
@@ -190,8 +204,9 @@ routines (2–3 waypoints + idle anims: Counter_*, Sitting_*, Farm_* from UAL pa
   chapter turn.
 
 ## 7. Authoring pipeline
-The world ships **pre-built by us** but 100% editable: it is authored *in the Dawned-Admin Map
-Editor* (terrain sculpt/paint, prop placement, spawn/zone/POI painting) on top of a generated base
+
+The world ships **pre-built by us** but 100% editable: it is authored _in the Dawned-Admin Map
+Editor_ (terrain sculpt/paint, prop placement, spawn/zone/POI painting) on top of a generated base
 (island masks → heightmap synth → auto-splat pass), then hand-dressed per the beats above. The owner
 can extend it, or wipe any layer (props/spawns/paint) per zone and redecorate from scratch. Nothing
 about the shipped world is special-cased in code.

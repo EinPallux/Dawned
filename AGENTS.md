@@ -5,6 +5,7 @@ complete version of these rules — read it first.** This file is the tool-agnos
 nothing beyond it.
 
 ## TL;DR for any agent
+
 - **Project:** Dawned — low-poly browser 3D action-combat sandbox MMORPG (5–20 players), VPS-hosted
   (4 GB/1 core, Ubuntu 24.04, play.pathlands.cc). 0.1.0 must be a complete Early Access game, not
   an MVP. Companion repo: **Dawned-Admin** (editor/ops panel).

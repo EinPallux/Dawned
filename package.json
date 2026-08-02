@@ -1,0 +1,37 @@
+{
+  "name": "dawned",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dawned — low-poly browser 3D action-combat sandbox MMORPG",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" build",
+    "dev": "pnpm --parallel --filter \"./packages/*\" dev",
+    "dev:server": "pnpm --filter @dawned/server dev",
+    "dev:client": "pnpm --filter @dawned/client dev",
+    "typecheck": "tsc -b --pretty",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "assets:build": "node tools/asset-pipeline/bin/assets.mjs build",
+    "assets:report": "node tools/asset-pipeline/bin/assets.mjs report",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm assets:report"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.19.2",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.9.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^3.2.4"
+  }
+}

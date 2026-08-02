@@ -1,0 +1,502 @@
+{
+  "generatedBy": "tools/asset-pipeline",
+  "generatedFor": "Dawned",
+  "pipelineVersion": 1,
+  "assets": {
+    "world_nature_tree_1_a_color1": {
+      "id": "world_nature_tree_1_a_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/tree_1_a_color1.0b2c82e5.glb",
+      "bytes": 67544,
+      "sourceHash": "6703d945885818e843547ffa78e113eebfb2569cde393f6aeb4d994dccc2522a",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_A_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 530,
+      "bounds": {
+        "min": [
+          -1.9346,
+          -0.2613,
+          -1.6256
+        ],
+        "max": [
+          1.2464,
+          3.8994,
+          1.6256
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_tree_1_b_color1": {
+      "id": "world_nature_tree_1_b_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/tree_1_b_color1.6b7fb183.glb",
+      "bytes": 69068,
+      "sourceHash": "0340557d1979aadf69d0421356b2cf1aebec63980ca1398c5ddeba04d9591af7",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_B_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 636,
+      "bounds": {
+        "min": [
+          -1.7895,
+          -0.341,
+          -1.7227
+        ],
+        "max": [
+          2.2173,
+          4.5886,
+          1.7227
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_tree_1_c_color1": {
+      "id": "world_nature_tree_1_c_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/tree_1_c_color1.8ada6938.glb",
+      "bytes": 96352,
+      "sourceHash": "66c165a476b82fd25974ce18224130c696c3058e9e662089bfe137cd8b7561e1",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_C_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 1364,
+      "bounds": {
+        "min": [
+          -2.7458,
+          -0.3923,
+          -2.8767
+        ],
+        "max": [
+          3.9455,
+          7.4219,
+          2.8767
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_tree_2_a_color1": {
+      "id": "world_nature_tree_2_a_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/tree_2_a_color1.f5b935c1.glb",
+      "bytes": 58244,
+      "sourceHash": "4200841646b5ddd96aab0488e9b24375587a125886aae7f304da8264268c12a1",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_2_A_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 336,
+      "bounds": {
+        "min": [
+          -1.6411,
+          -0.3735,
+          -1.2144
+        ],
+        "max": [
+          0.9589,
+          4.3013,
+          0.7856
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_rock_1_a_color1": {
+      "id": "world_nature_rock_1_a_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/rock_1_a_color1.5d13e91a.glb",
+      "bytes": 52876,
+      "sourceHash": "daf9928f3c7ff4c5bf82c9ebfff1b322de9438cd6c64f90def738c5b20e04650",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_A_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 48,
+      "bounds": {
+        "min": [
+          -0.3195,
+          0,
+          -0.3039
+        ],
+        "max": [
+          0.2585,
+          0.5403,
+          0.3039
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_rock_1_b_color1": {
+      "id": "world_nature_rock_1_b_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/rock_1_b_color1.a2dd81af.glb",
+      "bytes": 52816,
+      "sourceHash": "d57c5ee10286c900ceb836104ac6878532bb93a8a50dd35168bb1bc36f7efe25",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_B_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 48,
+      "bounds": {
+        "min": [
+          -0.3841,
+          0,
+          -0.3066
+        ],
+        "max": [
+          0.167,
+          0.5403,
+          0.2712
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_rock_1_c_color1": {
+      "id": "world_nature_rock_1_c_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/rock_1_c_color1.df23ff5a.glb",
+      "bytes": 52940,
+      "sourceHash": "669cbcefe699dde999ac24792a6dac1bc06b0b79aef9a77bcabc5fd20d7f73b7",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_C_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 48,
+      "bounds": {
+        "min": [
+          -0.2254,
+          0,
+          -0.3389
+        ],
+        "max": [
+          0.2935,
+          0.5403,
+          0.2662
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_sword_a": {
+      "id": "items_weapons_sword_a",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/sword_a.188dec4b.glb",
+      "bytes": 32360,
+      "sourceHash": "99ea7d51db4f9d321cf486326b9a67723a89aa823a83b53bcc9f3772e5770403",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_A.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 292,
+      "bounds": {
+        "min": [
+          -0.3039,
+          -0.357,
+          -0.0643
+        ],
+        "max": [
+          0.3039,
+          1.4168,
+          0.0643
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_sword_b": {
+      "id": "items_weapons_sword_b",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/sword_b.2cae0739.glb",
+      "bytes": 39100,
+      "sourceHash": "cd82cd3b4df9a2b8adabdf25a40f20304e78344f96aaae8bfa67ad50db1cf989",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_B.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 460,
+      "bounds": {
+        "min": [
+          -0.3054,
+          -0.3658,
+          -0.0601
+        ],
+        "max": [
+          0.3055,
+          1.4198,
+          0.0601
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_sword_c": {
+      "id": "items_weapons_sword_c",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/sword_c.e88e5a7e.glb",
+      "bytes": 35844,
+      "sourceHash": "8535f3cdb054df35af68e987b36a1702fbcdf9c6330f96045b64c65f65c0375a",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_C.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 349,
+      "bounds": {
+        "min": [
+          -0.1223,
+          -0.4269,
+          -0.0768
+        ],
+        "max": [
+          0.1431,
+          1.7023,
+          0.0768
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_staff_a": {
+      "id": "items_weapons_staff_a",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/staff_a.a1bf378d.glb",
+      "bytes": 39884,
+      "sourceHash": "be51d9104a5e4a6c45616d6d0dcbb6c1bf36831889c88d7f69267e4f6d5af9b3",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/staff_A.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 500,
+      "bounds": {
+        "min": [
+          -0.0611,
+          -1.0747,
+          -0.0524
+        ],
+        "max": [
+          0.0638,
+          1.0747,
+          0.0591
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_staff_b": {
+      "id": "items_weapons_staff_b",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/staff_b.dcbdcf06.glb",
+      "bytes": 51424,
+      "sourceHash": "87c129812df7bdec395690a25976ddaafc88ae03106c04414a5bd8f7b13f35c7",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/staff_B.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 664,
+      "bounds": {
+        "min": [
+          -0.3086,
+          -0.8617,
+          -0.1371
+        ],
+        "max": [
+          0.3084,
+          1.4542,
+          0.1366
+        ]
+      },
+      "animations": []
+    },
+    "items_tools_pickaxe": {
+      "id": "items_tools_pickaxe",
+      "category": "items/tools",
+      "file": "assets_baked/items/tools/pickaxe.cc22bd18.glb",
+      "bytes": 50588,
+      "sourceHash": "573e1bde91d55587892efbd0d843d5c0c2b5904ec6363d0b1fd5fce67523c486",
+      "source": "assets/items/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf/pickaxe.gltf",
+      "pack": "kaykit-tools",
+      "packName": "KayKit RPG Tools Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 508,
+      "bounds": {
+        "min": [
+          -0.7242,
+          -0.2249,
+          -0.1042
+        ],
+        "max": [
+          0.7242,
+          1.1605,
+          0.1042
+        ]
+      },
+      "animations": []
+    },
+    "items_tools_axe": {
+      "id": "items_tools_axe",
+      "category": "items/tools",
+      "file": "assets_baked/items/tools/axe.62305537.glb",
+      "bytes": 51672,
+      "sourceHash": "53e868b42c0fc4eeda4e0e694c156a7bf8337c5f1cde37a246de59b0a5787657",
+      "source": "assets/items/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf/axe.gltf",
+      "pack": "kaykit-tools",
+      "packName": "KayKit RPG Tools Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 508,
+      "bounds": {
+        "min": [
+          -0.4262,
+          -0.2847,
+          -0.1122
+        ],
+        "max": [
+          0.1969,
+          0.7697,
+          0.1122
+        ]
+      },
+      "animations": []
+    },
+    "enemies_mushnub": {
+      "id": "enemies_mushnub",
+      "category": "enemies",
+      "file": "assets_baked/enemies/mushnub.2a4ee21c.glb",
+      "bytes": 61508,
+      "sourceHash": "04614a9d0db2a00d17cd85f4ef9c54e19cd3692530c0724b46809aa928e161e9",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Mushnub.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1248,
+      "bounds": {
+        "min": [
+          -0.0138,
+          -0.0138,
+          -0.0005
+        ],
+        "max": [
+          0.0138,
+          0.0138,
+          0.0324
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_glub": {
+      "id": "enemies_glub",
+      "category": "enemies",
+      "file": "assets_baked/enemies/glub.1b6da24d.glb",
+      "bytes": 127308,
+      "sourceHash": "afa0ae7178b047cd3c210fd864aebc8b64e5608a951efc4f073bf538cb04929c",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Glub.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2528,
+      "bounds": {
+        "min": [
+          -0.0215,
+          -0.0079,
+          0.0138
+        ],
+        "max": [
+          0.0215,
+          0.0138,
+          0.0373
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_skeleton_minion": {
+      "id": "enemies_skeleton_minion",
+      "category": "enemies",
+      "file": "assets_baked/enemies/skeleton_minion.ae7d9a9f.glb",
+      "bytes": 315332,
+      "sourceHash": "1fadbf1bc66fd7ce008eecd0ffccc8f8089e1c2887813559ca553680a738fece",
+      "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Minion.glb",
+      "pack": "kaykit-skeletons",
+      "packName": "KayKit Skeletons 1.1 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 5288,
+      "bounds": {
+        "min": [
+          -0.9691,
+          0,
+          -0.4584
+        ],
+        "max": [
+          0.9691,
+          2.1661,
+          0.4538
+        ]
+      },
+      "animations": []
+    }
+  }
+}

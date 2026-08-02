@@ -1,0 +1,253 @@
+import { describe, expect, it } from 'vitest';
+import {
+  cloneMovementState,
+  createMovementState,
+  flatTerrain,
+  maxHorizontalStep,
+  maxStaminaFor,
+  stepMovement,
+  type MovementIntent,
+  type MovementState,
+  type TerrainSampler,
+} from './movement.js';
+import {
+  BASE_STAMINA,
+  FALL_DAMAGE_MAX_FRACTION,
+  MOVE_SPEED,
+  SPRINT_MULTIPLIER,
+  SPRINT_STAMINA_PER_SEC,
+  TICK_DT,
+} from '../constants.js';
+import { InputButton } from '../protocol/opcodes.js';
+
+const ground = flatTerrain(0);
+const idle: MovementIntent = { moveX: 0, moveZ: 0, yaw: 0, buttons: 0 };
+const forward: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: 0 };
+const forwardSprint: MovementIntent = { ...forward, buttons: InputButton.Sprint };
+
+/** Run `ticks` fixed steps and return the state (mutated in place). */
+const simulate = (
+  state: MovementState,
+  intent: MovementIntent,
+  ticks: number,
+  terrain: TerrainSampler = ground,
+): MovementState => {
+  for (let i = 0; i < ticks; i++) stepMovement(state, intent, TICK_DT, terrain);
+  return state;
+};
+
+describe('stepMovement — horizontal', () => {
+  it('reaches jog speed and holds it', () => {
+    const state = simulate(createMovementState(), forward, 40);
+    expect(Math.hypot(state.vx, state.vz)).toBeCloseTo(MOVE_SPEED, 4);
+  });
+
+  it('sprints faster than it jogs and drains stamina for it', () => {
+    const jog = simulate(createMovementState(), forward, 40);
+    const sprint = simulate(createMovementState(), forwardSprint, 40);
+    expect(Math.hypot(sprint.vx, sprint.vz)).toBeCloseTo(MOVE_SPEED * SPRINT_MULTIPLIER, 4);
+    expect(sprint.stamina).toBeLessThan(jog.stamina);
+    expect(sprint.stamina).toBeCloseTo(BASE_STAMINA - SPRINT_STAMINA_PER_SEC * 40 * TICK_DT, 4);
+  });
+
+  it('never lets a diagonal outrun a straight line', () => {
+    const straight = simulate(createMovementState(), forward, 60);
+    const diagonal = simulate(createMovementState(), { ...forward, moveX: 1, moveZ: 1 }, 60);
+    expect(Math.hypot(diagonal.vx, diagonal.vz)).toBeLessThanOrEqual(
+      Math.hypot(straight.vx, straight.vz) + 1e-6,
+    );
+  });
+
+  it('decelerates to a stop when input is released', () => {
+    const state = simulate(createMovementState(), forward, 40);
+    simulate(state, idle, 30);
+    expect(Math.hypot(state.vx, state.vz)).toBeCloseTo(0, 5);
+  });
+
+  it('stops sprinting when stamina runs out', () => {
+    const state = createMovementState();
+    state.stamina = 2; // below SPRINT_MIN_STAMINA — cannot start
+    simulate(state, forwardSprint, 20);
+    expect(state.sprinting).toBe(false);
+    expect(Math.hypot(state.vx, state.vz)).toBeCloseTo(MOVE_SPEED, 4);
+  });
+
+  it('regenerates stamina only after the idle delay', () => {
+    const state = createMovementState();
+    simulate(state, forwardSprint, 20); // spend
+    const spent = state.stamina;
+    simulate(state, forward, 10); // 0.5 s — still inside the 1 s delay
+    expect(state.stamina).toBe(spent);
+    simulate(state, forward, 40); // now past it
+    expect(state.stamina).toBeGreaterThan(spent);
+  });
+
+  it('clamps stamina to the pool for the character', () => {
+    const max = maxStaminaFor(30, 20);
+    const state = createMovementState(0, 0, 0, max);
+    simulate(state, idle, 400);
+    expect(state.stamina).toBe(max);
+    expect(max).toBe(BASE_STAMINA + 5 * 20 + 2 * 29);
+  });
+
+  it('keeps the character inside world bounds', () => {
+    const state = createMovementState();
+    simulate(state, { moveX: 1, moveZ: 0, yaw: 0, buttons: InputButton.Sprint }, 20_000);
+    expect(Math.abs(state.x)).toBeLessThanOrEqual(1024);
+  });
+
+  it('respects the anti-speedhack step bound every tick', () => {
+    const state = createMovementState();
+    const bound = maxHorizontalStep(TICK_DT);
+    for (let i = 0; i < 200; i++) {
+      const before = { x: state.x, z: state.z };
+      stepMovement(state, { ...forwardSprint, moveX: 1 }, TICK_DT, ground);
+      const travelled = Math.hypot(state.x - before.x, state.z - before.z);
+      expect(travelled).toBeLessThanOrEqual(bound + 1e-6);
+    }
+  });
+});
+
+describe('stepMovement — vertical', () => {
+  it('jumps, rises, and lands back on the ground', () => {
+    const state = createMovementState();
+    const jump = stepMovement(state, { ...idle, buttons: InputButton.Jump }, TICK_DT, ground);
+    expect(jump.jumped).toBe(true);
+    expect(state.grounded).toBe(false);
+
+    let landedTick = -1;
+    let apex = state.y;
+    for (let i = 0; i < 60; i++) {
+      const result = stepMovement(state, idle, TICK_DT, ground);
+      apex = Math.max(apex, state.y);
+      if (result.landed) {
+        landedTick = i;
+        break;
+      }
+    }
+    expect(apex).toBeGreaterThan(0.9);
+    expect(apex).toBeLessThan(1.4);
+    expect(landedTick).toBeGreaterThan(0);
+    expect(state.grounded).toBe(true);
+    expect(state.y).toBe(0);
+  });
+
+  it('cannot double-jump in mid-air', () => {
+    const state = createMovementState();
+    stepMovement(state, { ...idle, buttons: InputButton.Jump }, TICK_DT, ground);
+    const second = stepMovement(state, { ...idle, buttons: InputButton.Jump }, TICK_DT, ground);
+    expect(second.jumped).toBe(false);
+  });
+
+  it('takes no fall damage below the threshold', () => {
+    const state = createMovementState(0, 10, 0);
+    state.grounded = false;
+    state.fallPeakY = 10;
+    let damage = 0;
+    for (let i = 0; i < 200; i++) {
+      const result = stepMovement(state, idle, TICK_DT, ground);
+      if (result.landed) {
+        damage = result.fallDamageFraction;
+        break;
+      }
+    }
+    expect(damage).toBe(0);
+  });
+
+  it('applies 6% per metre beyond 12 m', () => {
+    const state = createMovementState(0, 20, 0);
+    state.grounded = false;
+    state.fallPeakY = 20;
+    let result = { fallDamageFraction: 0, fallDistance: 0 };
+    for (let i = 0; i < 400; i++) {
+      const step = stepMovement(state, idle, TICK_DT, ground);
+      if (step.landed) {
+        result = step;
+        break;
+      }
+    }
+    expect(result.fallDistance).toBeCloseTo(20, 1);
+    expect(result.fallDamageFraction).toBeCloseTo((20 - 12) * 0.06, 2);
+  });
+
+  it('caps fall damage so a full-HP character survives any drop', () => {
+    const state = createMovementState(0, 900, 0);
+    state.grounded = false;
+    state.fallPeakY = 900;
+    let damage = 0;
+    for (let i = 0; i < 2000; i++) {
+      const step = stepMovement(state, idle, TICK_DT, ground);
+      if (step.landed) {
+        damage = step.fallDamageFraction;
+        break;
+      }
+    }
+    expect(damage).toBe(FALL_DAMAGE_MAX_FRACTION);
+    expect(damage).toBeLessThan(1);
+  });
+
+  it('lands on raised terrain instead of falling through it', () => {
+    const plateau: TerrainSampler = { heightAt: (x) => (x > 5 ? 3 : 0) };
+    const state = createMovementState(0, 0, 0);
+    simulate(state, { moveX: 1, moveZ: 0, yaw: 0, buttons: 0 }, 60, plateau);
+    expect(state.x).toBeGreaterThan(5);
+    expect(state.y).toBe(3);
+    expect(state.grounded).toBe(true);
+  });
+});
+
+describe('client/server prediction parity', () => {
+  it('produces bit-identical state for identical input streams', () => {
+    // This is the whole anti-desync promise: two independent runs of the same code
+    // over the same inputs must not drift by even a float ulp.
+    const scripted: MovementIntent[] = [];
+    let seed = 12345;
+    const rand = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    for (let i = 0; i < 10_000; i++) {
+      scripted.push({
+        moveX: rand() * 2 - 1,
+        moveZ: rand() * 2 - 1,
+        yaw: rand() * Math.PI * 2,
+        buttons: (rand() > 0.5 ? InputButton.Sprint : 0) | (rand() > 0.95 ? InputButton.Jump : 0),
+      });
+    }
+
+    const rolling: TerrainSampler = {
+      heightAt: (x, z) => Math.sin(x * 0.05) * 2 + Math.cos(z * 0.05) * 2,
+    };
+
+    const clientState = createMovementState(0, 0, 0);
+    const serverState = createMovementState(0, 0, 0);
+    for (const intent of scripted) {
+      stepMovement(clientState, intent, TICK_DT, rolling);
+      stepMovement(serverState, intent, TICK_DT, rolling);
+    }
+
+    expect(clientState).toEqual(serverState);
+  });
+
+  it('replays from a snapshot to the same state (reconciliation contract)', () => {
+    // The client rewinds to the server's authoritative state and replays unacked
+    // inputs; replaying must land exactly where continuous simulation would.
+    const intents: MovementIntent[] = Array.from({ length: 12 }, (_, i) => ({
+      moveX: i % 3 === 0 ? 1 : -0.4,
+      moveZ: 1,
+      yaw: i * 0.3,
+      buttons: i % 4 === 0 ? InputButton.Sprint : 0,
+    }));
+
+    const continuous = createMovementState();
+    for (const intent of intents) stepMovement(continuous, intent, TICK_DT, ground);
+
+    const authoritative = createMovementState();
+    for (const intent of intents.slice(0, 5)) stepMovement(authoritative, intent, TICK_DT, ground);
+
+    const replayed = cloneMovementState(authoritative);
+    for (const intent of intents.slice(5)) stepMovement(replayed, intent, TICK_DT, ground);
+
+    expect(replayed).toEqual(continuous);
+  });
+});

@@ -7,15 +7,15 @@
 
 ## 1. Timing Model
 
-| Constant | Value |
-|---|---|
-| Server simulation tick | **20 Hz** (50 ms), fixed, drift-corrected |
-| Snapshot send | every tick (20 Hz), delta-compressed, per-client AOI |
-| Client input send | 30 Hz coalesced intent packets (or immediately with an ability/interact request) |
-| Client interpolation delay (remotes) | 100 ms (2 snapshots buffered; adaptive +50 ms on loss) |
-| Lag-compensation rewind window | ≤ 250 ms (5 ticks of position history) |
-| Clock sync | ping/pong every 2 s, EWMA offset+RTT; client renders server-time − interp delay |
-| Disconnect grace | 15 s entity lingers (combat-loggable? — character stays in world 15 s, standard MMO rule) |
+| Constant                             | Value                                                                                                                                                                                                      |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server simulation tick               | **20 Hz** (50 ms), fixed, drift-corrected                                                                                                                                                                  |
+| Snapshot send                        | every tick (20 Hz), delta-compressed, per-client AOI                                                                                                                                                       |
+| Client input send                    | **20 Hz — exactly one intent per predicted tick, tick-locked** (ability/interact requests send immediately). Revised from "30 Hz coalesced" during P0: 1:1 tick pairing makes reconciliation replay exact. |
+| Client interpolation delay (remotes) | 100 ms (2 snapshots buffered; adaptive +50 ms on loss)                                                                                                                                                     |
+| Lag-compensation rewind window       | ≤ 250 ms (5 ticks of position history)                                                                                                                                                                     |
+| Clock sync                           | ping/pong every 2 s, EWMA offset+RTT; client renders server-time − interp delay                                                                                                                            |
+| Disconnect grace                     | 15 s entity lingers (combat-loggable? — character stays in world 15 s, standard MMO rule)                                                                                                                  |
 
 Transport: **WSS** (via Caddy) → `ws` on Node. Nagle disabled by WS framing anyway; one WS message
 per tick per client (batched), permessage-deflate **off** (CPU on 1 core; our binary is small).
@@ -24,42 +24,50 @@ per tick per client (batched), permessage-deflate **off** (CPU on 1 core; our bi
 
 Binary little-endian, hand-rolled writer/reader in `@dawned/shared/protocol` (unit-tested
 round-trip). Every message: `u8 opcode` + payload. Cold-path messages (login handshake, chat,
-inventory ops, quest text) use `opcode=JSON_ENVELOPE` + msgpack-free plain JSON string (they're
-rare; readability wins). Hot path is pure binary.
+inventory ops, quest text) ride JSON envelopes (they're rare; readability wins). Hot path is pure
+binary.
+
+> **Implementation status:** the tables below describe the full 0.1.0 target protocol. The
+> implemented subset (protocol v1, P0) lives in `packages/shared/src/protocol/`:
+> Hello/InputIntent/Ping/Chat up, Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice down,
+> with full-state snapshots. Delta compression, the ENTER/UPDATE/LEAVE sections, AOI routing and
+> the remaining messages land in their phases (P3+), each bumping `PROTOCOL_VERSION`.
 
 ### 2.1 Client → Server
-| Op | Message | Payload (packed) |
-|---|---|---|
-| 0x01 | `Hello` | protocolVersion u16, sessionToken (16B), characterId u32 |
-| 0x02 | `InputIntent` | seq u16, tickEcho u16, moveX/moveZ i8 (−127..127 normalized), facing u16 (radians×10430), buttons u8 bitfield (sprint, jump, dodge, rmb), aimPitch i8 |
-| 0x03 | `AbilityRequest` | seq u16, slot u8, aimYaw u16, aimPitch i8, targetEntity u32?, groundX/Y/Z f32? (per targeting type) |
-| 0x04 | `InteractRequest` | entityId u32, verb u8 |
-| 0x05 | `LootRequest` | bagId u32, itemIndex u8 (0xFF = all) |
-| 0x06 | `EquipRequest` / `InventoryOp` | JSON envelope (move/split/use/sell…) |
-| 0x07 | `ChatSend` | JSON envelope { channel, text, to? } |
-| 0x08 | `Ping` | clientTime f64 |
-| 0x09 | `RespawnRequest` / `FastTravelRequest` | shrineId u16 |
-| 0x0A | `CancelCast` | — |
-| 0x0B | `GmCommand` | JSON envelope (role-gated server-side) |
+
+| Op   | Message                                | Payload (packed)                                                                                                                                      |
+| ---- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0x01 | `Hello`                                | protocolVersion u16, sessionToken (16B), characterId u32                                                                                              |
+| 0x02 | `InputIntent`                          | seq u16, tickEcho u16, moveX/moveZ i8 (−127..127 normalized), facing u16 (radians×10430), buttons u8 bitfield (sprint, jump, dodge, rmb), aimPitch i8 |
+| 0x03 | `AbilityRequest`                       | seq u16, slot u8, aimYaw u16, aimPitch i8, targetEntity u32?, groundX/Y/Z f32? (per targeting type)                                                   |
+| 0x04 | `InteractRequest`                      | entityId u32, verb u8                                                                                                                                 |
+| 0x05 | `LootRequest`                          | bagId u32, itemIndex u8 (0xFF = all)                                                                                                                  |
+| 0x06 | `EquipRequest` / `InventoryOp`         | JSON envelope (move/split/use/sell…)                                                                                                                  |
+| 0x07 | `ChatSend`                             | JSON envelope { channel, text, to? }                                                                                                                  |
+| 0x08 | `Ping`                                 | clientTime f64                                                                                                                                        |
+| 0x09 | `RespawnRequest` / `FastTravelRequest` | shrineId u16                                                                                                                                          |
+| 0x0A | `CancelCast`                           | —                                                                                                                                                     |
+| 0x0B | `GmCommand`                            | JSON envelope (role-gated server-side)                                                                                                                |
 
 ### 2.2 Server → Client
-| Op | Message | Payload |
-|---|---|---|
-| 0x81 | `Welcome` | JSON: character full state, world settings, content version hash, spawn pos, server tick |
-| 0x82 | `Snapshot` | tick u16, lastInputSeq u16, **self block** (pos f32×3, vel, stamina, hp, resource, states), entity sections: ENTER (full: id, type, contentId, pos, yaw, hp%, rank, name idx…), UPDATE (bit-masked deltas: pos quantized i16 cell-relative, yaw u8, hp% u8, anim state u8, speed u8), LEAVE (ids) |
-| 0x83 | `AbilityStart` | caster u32, abilityId u16, castMs u16, aim, predicted flag |
-| 0x84 | `AbilityResolve` | caster u32, abilityId u16, results[]: target u32, kind u8 (dmg/heal/shield/miss/immune), amount u24, crit flag, killed flag |
-| 0x85 | `EffectApply/Remove` | target u32, effectId u16, stacks u8, durMs u16 |
-| 0x86 | `TelegraphSpawn` | shape u8, params (pos, radius/angle/len), durMs u16, hostileFlag |
-| 0x87 | `ProjectileSpawn/Despawn` | id u32, kind u16, origin, dir, speed |
-| 0x88 | `EntityEvent` | id u32, event u8 (death, levelup, dodge, jump, gatherStart/End, emote id…) |
-| 0x89 | `StateDelta` (self) | JSON envelope: xp, level, points, quest counters, inventory diffs, gold, cooldown corrections |
-| 0x8A | `LootBagContents` / `VendorList` / `DialogueNode` / `QuestUpdate` | JSON envelopes |
-| 0x8B | `ChatMessage` | JSON { channel, from, text, gmFlag, ts } |
-| 0x8C | `Pong` | clientTime f64, serverTime f64 |
-| 0x8D | `SystemNotice` | code u16 + JSON params (toasts, errors, announce) |
-| 0x8E | `ContentInvalidate` | new content hash (client refetches bundle lazily) |
-| 0x8F | `WeatherState` | scope u8 (world/zone), zoneIdx u16, weather u8 (clear/overcast/rain/storm/rainbow), transitionMs u16 |
+
+| Op   | Message                                                           | Payload                                                                                                                                                                                                                                                                                           |
+| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0x81 | `Welcome`                                                         | JSON: character full state, world settings, content version hash, spawn pos, server tick                                                                                                                                                                                                          |
+| 0x82 | `Snapshot`                                                        | tick u16, lastInputSeq u16, **self block** (pos f32×3, vel, stamina, hp, resource, states), entity sections: ENTER (full: id, type, contentId, pos, yaw, hp%, rank, name idx…), UPDATE (bit-masked deltas: pos quantized i16 cell-relative, yaw u8, hp% u8, anim state u8, speed u8), LEAVE (ids) |
+| 0x83 | `AbilityStart`                                                    | caster u32, abilityId u16, castMs u16, aim, predicted flag                                                                                                                                                                                                                                        |
+| 0x84 | `AbilityResolve`                                                  | caster u32, abilityId u16, results[]: target u32, kind u8 (dmg/heal/shield/miss/immune), amount u24, crit flag, killed flag                                                                                                                                                                       |
+| 0x85 | `EffectApply/Remove`                                              | target u32, effectId u16, stacks u8, durMs u16                                                                                                                                                                                                                                                    |
+| 0x86 | `TelegraphSpawn`                                                  | shape u8, params (pos, radius/angle/len), durMs u16, hostileFlag                                                                                                                                                                                                                                  |
+| 0x87 | `ProjectileSpawn/Despawn`                                         | id u32, kind u16, origin, dir, speed                                                                                                                                                                                                                                                              |
+| 0x88 | `EntityEvent`                                                     | id u32, event u8 (death, levelup, dodge, jump, gatherStart/End, emote id…)                                                                                                                                                                                                                        |
+| 0x89 | `StateDelta` (self)                                               | JSON envelope: xp, level, points, quest counters, inventory diffs, gold, cooldown corrections                                                                                                                                                                                                     |
+| 0x8A | `LootBagContents` / `VendorList` / `DialogueNode` / `QuestUpdate` | JSON envelopes                                                                                                                                                                                                                                                                                    |
+| 0x8B | `ChatMessage`                                                     | JSON { channel, from, text, gmFlag, ts }                                                                                                                                                                                                                                                          |
+| 0x8C | `Pong`                                                            | clientTime f64, serverTime f64                                                                                                                                                                                                                                                                    |
+| 0x8D | `SystemNotice`                                                    | code u16 + JSON params (toasts, errors, announce)                                                                                                                                                                                                                                                 |
+| 0x8E | `ContentInvalidate`                                               | new content hash (client refetches bundle lazily)                                                                                                                                                                                                                                                 |
+| 0x8F | `WeatherState`                                                    | scope u8 (world/zone), zoneIdx u16, weather u8 (clear/overcast/rain/storm/rainbow), transitionMs u16                                                                                                                                                                                              |
 
 Quantization: entity positions sent as cell-relative i16 (1/64 m precision within AOI cell) — full
 f32 only on ENTER. Bandwidth estimate @20 players clustered worst-case: self 40 B + 25 entities × ~14 B
@@ -67,6 +75,7 @@ avg deltas + events ≈ **~450 B/tick ≈ 9 kB/s**; typical exploration ≈ 2–
 budget; no compression needed.
 
 ### 2.3 Versioning
+
 `protocolVersion` bumps on any wire change → server rejects stale clients with `UpdateRequired`
 notice (client shows reload screen — deploys are seamless because the client is a static bundle).
 
@@ -114,6 +123,7 @@ notice (client shows reload screen — deploys are seamless because the client i
   (chat global/system, announces) bypass.
 
 ## 6. Connection Lifecycle
+
 1. HTTPS `POST /api/auth/login` → session token (see SECURITY.md) → character list.
 2. `WSS /game` + `Hello` (token) → validate, single-session enforce (kick older with notice),
    `Welcome` + spawn into AOI.
@@ -123,6 +133,7 @@ notice (client shows reload screen — deploys are seamless because the client i
    same socket (session re-`Hello`).
 
 ## 7. Server Performance Practices
+
 - Zero per-tick allocations on the hot path: preallocated snapshot writers per client, pooled
   event objects, typed arrays for position history rings.
 - Spatial hash rebuilt incrementally (entities update cell on crossing only).
@@ -133,6 +144,7 @@ notice (client shows reload screen — deploys are seamless because the client i
   `/perf` GM command).
 
 ## 8. Testing Strategy
+
 - Codec: property-based round-trip tests (fuzz values, truncation, malformed input safety).
 - Prediction: headless sim test — scripted intents through client-step and server-step must match
   within tolerance across 10k ticks including slope/collision cases.

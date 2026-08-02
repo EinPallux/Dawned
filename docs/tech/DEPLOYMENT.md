@@ -9,14 +9,14 @@
 
 ## 1. Topology on the box
 
-| Unit | What | Resources (steady) |
-|---|---|---|
-| `caddy.service` (distro pkg) | TLS (auto Let's Encrypt), static files, reverse proxy | ~40 MB |
-| `dawned-game.service` | Node 22: game server (REST+WSS, world sim) | ≤700 MB, most of the CPU |
-| `dawned-admin.service` | Node 22: admin API + SPA serving | ≤300 MB |
-| `postgresql@16-main` | database (localhost only) | ~300 MB tuned |
-| `dawned-maintenance.timer` | nightly: backups, session/chat purges, log rotation is journald's | burst |
-| Paths | app `/opt/dawned/{game,admin}` (git clones) · data `/var/lib/dawned/` (published maps, content bundles, backups) · env `/etc/dawned/*.env` | |
+| Unit                         | What                                                                                                                                       | Resources (steady)       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| `caddy.service` (distro pkg) | TLS (auto Let's Encrypt), static files, reverse proxy                                                                                      | ~40 MB                   |
+| `dawned-game.service`        | Node 22: game server (REST+WSS, world sim)                                                                                                 | ≤700 MB, most of the CPU |
+| `dawned-admin.service`       | Node 22: admin API + SPA serving                                                                                                           | ≤300 MB                  |
+| `postgresql@16-main`         | database (localhost only)                                                                                                                  | ~300 MB tuned            |
+| `dawned-maintenance.timer`   | nightly: backups, session/chat purges, log rotation is journald's                                                                          | burst                    |
+| Paths                        | app `/opt/dawned/{game,admin}` (git clones) · data `/var/lib/dawned/` (published maps, content bundles, backups) · env `/etc/dawned/*.env` |                          |
 
 RAM budget total ≈ 1.4–1.6 GB steady → comfortable on 4 GB with OS cache. Single CPU core: the game
 server is the priority — admin build steps are niced, Postgres tuned small, no other tenants.
@@ -101,6 +101,7 @@ MemoryMax=1200M
 [Install]
 WantedBy=multi-user.target
 ```
+
 `dawned-admin.service` mirrors it (port 8082 env, `MemoryHigh=400M`, `OOMScoreAdjust=0`).
 
 ## 4. `deploy/DEPLOY.sh` — one-time provisioning (draft)
@@ -238,6 +239,7 @@ grace window); UPDATE.sh announces in-game 60 s prior via ops API when the serve
 script at Phase 0.
 
 ## 6. `deploy/BACKUP.sh` + maintenance (draft behavior)
+
 - Nightly (timer 04:30 UTC): `pg_dump -Fc` → `/var/lib/dawned/backups/db-YYYYMMDD.dump` + tar of
   `/var/lib/dawned/published` → rotation **14 daily + 8 weekly**; `--quick` mode (pre-update) keeps
   last 5 separately; `--verify` (monthly timer) restores newest into `dawned_verify` scratch DB and
@@ -249,23 +251,46 @@ script at Phase 0.
   publishes, which hPanel snapshots don't cover as granularly).
 
 ## 7. `deploy/ROLLBACK.sh` (draft behavior)
+
 `ROLLBACK.sh game <git-ref> [--db <backup-file>]`: checks out ref, rebuilds, optionally restores DB
-(with a loud double-confirm — restoring rolls back *player progress*, content publishes include
+(with a loud double-confirm — restoring rolls back _player progress_, content publishes include
 their own revert path via publish versions instead: prefer `content_publishes` re-activate in the
 admin panel over DB restores).
 
-## 8. Ops Runbook (quick reference)
-| Task | Command |
-|---|---|
-| Logs (live) | `journalctl -u dawned-game -f` |
-| Status/health | `systemctl status dawned-game` · `curl localhost:8081/api/health` |
-| Restart game | `systemctl restart dawned-game` (players see reconnect overlay) |
-| In-game announce | GM `/announce` or admin panel Live Ops |
-| Metrics | Admin panel dashboard (tick p95, RSS, players) — or `curl -H "X-Ops: …" localhost:8081/ops/metrics` |
-| Disk check | `df -h /` + backups dir size in nightly report line (admin dashboard) |
-| TLS | automatic (Caddy); `systemctl reload caddy` after Caddyfile edits |
+## 8. Repository access (private repos)
 
-## 9. Update-flow UX contract
+`DEPLOY.sh`/`UPDATE.sh` clone and pull over HTTPS, which only works while the repositories are
+public. If they are (or become) private, set up **read-only deploy keys** once:
+
+```bash
+# on the VPS, as root:
+sudo -u dawned ssh-keygen -t ed25519 -N '' -f /var/lib/dawned/.ssh/id_ed25519
+sudo -u dawned cat /var/lib/dawned/.ssh/id_ed25519.pub
+# → add as a read-only Deploy Key on GitHub for BOTH repos (Settings → Deploy keys)
+# then deploy with SSH URLs:
+DAWNED_REPO_GAME=git@github.com:EinPallux/Dawned.git \
+DAWNED_REPO_ADMIN=git@github.com:EinPallux/Dawned-Admin.git \
+bash DEPLOY.sh
+```
+
+(One key can serve both repos only via a "machine user"; plain deploy keys are per-repo — generate
+a second key with a distinct filename plus an `~/.ssh/config` host alias, or use a fine-grained
+PAT in the HTTPS URL instead. Existing clones can be switched later with `git remote set-url`.)
+
+## 9. Ops Runbook (quick reference)
+
+| Task             | Command                                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| Logs (live)      | `journalctl -u dawned-game -f`                                                                      |
+| Status/health    | `systemctl status dawned-game` · `curl localhost:8081/api/health`                                   |
+| Restart game     | `systemctl restart dawned-game` (players see reconnect overlay)                                     |
+| In-game announce | GM `/announce` or admin panel Live Ops                                                              |
+| Metrics          | Admin panel dashboard (tick p95, RSS, players) — or `curl -H "X-Ops: …" localhost:8081/ops/metrics` |
+| Disk check       | `df -h /` + backups dir size in nightly report line (admin dashboard)                               |
+| TLS              | automatic (Caddy); `systemctl reload caddy` after Caddyfile edits                                   |
+
+## 10. Update-flow UX contract
+
 Deploys must never hard-strand a player: client detects protocol/content mismatch → toast with
 reload button; server drains with 60 s announce for planned updates; abrupt restarts are survivable
 (reconnect grace + ≤10 s movement rollback per ARCHITECTURE.md persistence rules). This contract is

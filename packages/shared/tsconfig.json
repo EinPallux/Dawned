@@ -1,0 +1,14 @@
+{
+  // Editor + ESLint view of the package: includes tests so they get full type-aware
+  // linting. The emitting project is tsconfig.build.json (see `pnpm build`).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src/**/*.ts"]
+}
