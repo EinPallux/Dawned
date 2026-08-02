@@ -5,7 +5,7 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
-### Added — Phase P2: terrain & world streaming (built; owner FPS check open)
+### Added — Phase P2: terrain & world streaming (verified on real hardware 2026-08-02)
 - **The Dawnlands gain real ground**: a ~1 km dev island (Dawnshore meadows and beaches,
   the wooded Verdant Weald, the stark Ashen Reach, an inland lake) generated deterministically
   by `pnpm world:generate` into committed map artifacts — 271 terrain chunks (~25 kB each:

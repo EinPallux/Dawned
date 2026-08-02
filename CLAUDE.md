@@ -84,14 +84,12 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 16 initial owner decisions are answered and folded (decision log in USER_QUESTIONS.md).
-**P0 and P1 are ✅ live at play.pathlands.cc. P2 — Terrain & World Streaming — is built and
-verified in dev (2026-08-02)**: shared chunk/walkgrid/zone formats (protocol v3), the
-deterministic ~1 km dev island (`pnpm world:generate`, artifacts committed under
-assets_baked/map/dev-1), client streaming with IndexedDB cache + zone ambience + foliage, and
-the server's full-map mirror enforcing ground + walkability. Budgets measured within limits
-(ROADMAP P2 status). **One DoD item open: the owner walks the island on real hardware (60 FPS /
-streaming-invisible check) — then P2 closes.** A0 (Dawned-Admin) is independently unlocked and
-not started. Deploys to production happen only when the owner merges to `main` and runs
+**P0, P1 and P2 are ✅ complete (P2 verified by the owner on real hardware, 2026-08-02)**: the
+deterministic ~1 km dev island (chunk/walkgrid/zone formats, protocol v3, `pnpm world:generate`),
+client streaming with IndexedDB cache + zone ambience + foliage, and the server's full-map mirror
+enforcing ground + walkability — budgets measured within limits (ROADMAP P2 status). **Next:
+P3 — Movement, Netcode Core & Chat v1 (game repo) and/or A0 — panel foundation (Dawned-Admin);
+neither started, wait for the owner's go.** Deploys to production happen only when the owner merges to `main` and runs
 `deploy/UPDATE.sh` on the VPS (its migration step is strict since the P1 deploy fix).
 
 ### Running it locally

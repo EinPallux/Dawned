@@ -12,7 +12,7 @@
 | ----- | ---------------------------------------- | ---- | ------------------------- |
 | P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
 | P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
-| P2    | Terrain & World Streaming                | L    | 🟨 built — FPS check open |
+| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
 | P3    | Movement, Netcode Core & Chat v1         | L    | 🔲                        |
 | P4    | Combat Foundation                        | XL   | 🔲                        |
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                        |
@@ -124,8 +124,8 @@ zones tint fog/light on crossing, budgets measured and recorded.
       0 hard corrections), zone crossing tints fog/light (Dawnshore → Verdant Weald / Ashen
       Reach), budgets measured in the worst forest view: **154 draw calls, ~441 k triangles**
       (≤300 / ≤500 k budgets) — recorded in CHANGELOG
-- [ ] **Owner: pull + walk the island on real hardware (60 FPS + streaming-invisible check;
-      containers here render via software GL) — then P2 closes and unlocks A2's terrain work**
+- [x] Walked on real hardware by the owner (2026-08-02) — runs fine, streaming unobtrusive.
+      **P2 closed. A2's terrain tooling is unblocked (once A0/A1 exist in Dawned-Admin).**
 
 ## P3 — Movement, Netcode Core & Chat v1 (L)
 
