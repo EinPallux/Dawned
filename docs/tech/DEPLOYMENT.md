@@ -257,7 +257,27 @@ script at Phase 0.
 their own revert path via publish versions instead: prefer `content_publishes` re-activate in the
 admin panel over DB restores).
 
-## 8. Ops Runbook (quick reference)
+## 8. Repository access (private repos)
+
+`DEPLOY.sh`/`UPDATE.sh` clone and pull over HTTPS, which only works while the repositories are
+public. If they are (or become) private, set up **read-only deploy keys** once:
+
+```bash
+# on the VPS, as root:
+sudo -u dawned ssh-keygen -t ed25519 -N '' -f /var/lib/dawned/.ssh/id_ed25519
+sudo -u dawned cat /var/lib/dawned/.ssh/id_ed25519.pub
+# → add as a read-only Deploy Key on GitHub for BOTH repos (Settings → Deploy keys)
+# then deploy with SSH URLs:
+DAWNED_REPO_GAME=git@github.com:EinPallux/Dawned.git \
+DAWNED_REPO_ADMIN=git@github.com:EinPallux/Dawned-Admin.git \
+bash DEPLOY.sh
+```
+
+(One key can serve both repos only via a "machine user"; plain deploy keys are per-repo — generate
+a second key with a distinct filename plus an `~/.ssh/config` host alias, or use a fine-grained
+PAT in the HTTPS URL instead. Existing clones can be switched later with `git remote set-url`.)
+
+## 9. Ops Runbook (quick reference)
 
 | Task             | Command                                                                                             |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
@@ -269,7 +289,7 @@ admin panel over DB restores).
 | Disk check       | `df -h /` + backups dir size in nightly report line (admin dashboard)                               |
 | TLS              | automatic (Caddy); `systemctl reload caddy` after Caddyfile edits                                   |
 
-## 9. Update-flow UX contract
+## 10. Update-flow UX contract
 
 Deploys must never hard-strand a player: client detects protocol/content mismatch → toast with
 reload button; server drains with 60 s announce for planned updates; abrupt restarts are survivable

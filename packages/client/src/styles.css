@@ -318,3 +318,20 @@ canvas.game {
   max-width: 460px;
   line-height: 1.6;
 }
+
+.overlay-button {
+  margin-top: 18px;
+  padding: 11px 34px;
+  background: var(--gold);
+  border: none;
+  color: #191d26;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+}
+
+.overlay-button:hover {
+  background: var(--gold-bright);
+}

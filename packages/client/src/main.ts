@@ -10,7 +10,7 @@
 
 import './styles.css';
 import * as THREE from 'three';
-import { PLAYER_HEIGHT, TICK_MS, maxStaminaFor } from '@dawned/shared';
+import { NoticeCode, TICK_MS, maxStaminaFor } from '@dawned/shared';
 import { Connection, type RemoteEntity } from './net/connection.js';
 import { InputController } from './input/input.js';
 import { GameScene, PlayerView, remoteColorFor } from './world/scene.js';
@@ -33,10 +33,18 @@ const supportsWebGL2 = (): boolean => {
   }
 };
 
-const showOverlay = (title: string, text: string): void => {
+let overlayShown = false;
+const showOverlay = (title: string, text: string, withReloadButton = false): void => {
+  if (overlayShown) return; // first message wins; stacking overlays helps nobody
+  overlayShown = true;
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
-  overlay.innerHTML = `<div><div class="overlay-title">${title}</div><div class="overlay-text">${text}</div></div>`;
+  overlay.innerHTML = `<div><div class="overlay-title">${title}</div><div class="overlay-text">${text}</div>${
+    withReloadButton ? '<button class="overlay-button" type="button">RELOAD</button>' : ''
+  }</div>`;
+  overlay.querySelector('button')?.addEventListener('click', () => {
+    location.reload();
+  });
   document.body.appendChild(overlay);
 };
 
@@ -103,10 +111,12 @@ const startGame = (name: string): void => {
     },
   );
 
+  let everPlayed = false;
   const connection = new Connection({
     onStatus: (status, detail) => {
       switch (status) {
         case 'playing':
+          everPlayed = true;
           hud.setStatus('connected · in world', 'ok');
           break;
         case 'connecting':
@@ -119,6 +129,21 @@ const startGame = (name: string): void => {
         case 'error':
           hud.setStatus(detail ?? 'connection error', 'error');
           break;
+      }
+    },
+    onNotice: (code, friendlyText) => {
+      if (code === NoticeCode.ServerShuttingDown) {
+        // Deploys restart the server in seconds (UPDATE.sh) — reload onto the
+        // login screen automatically; the saved name makes rejoining two clicks.
+        showOverlay('Restarting', 'The world is restarting — reloading in a few seconds…');
+        setTimeout(() => {
+          location.reload();
+        }, 5000);
+      } else if (!everPlayed) {
+        // Rejected before entering (name taken, server full, old client…):
+        // without this the player would sit on an empty world with only a tiny
+        // status line explaining why.
+        showOverlay('Could not enter the world', friendlyText, true);
       }
     },
     onChat: (message) => {
@@ -255,5 +280,3 @@ if (!supportsWebGL2()) {
 } else {
   showLogin();
 }
-
-export { PLAYER_HEIGHT };

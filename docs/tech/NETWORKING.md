@@ -7,15 +7,15 @@
 
 ## 1. Timing Model
 
-| Constant                             | Value                                                                                     |
-| ------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Server simulation tick               | **20 Hz** (50 ms), fixed, drift-corrected                                                 |
-| Snapshot send                        | every tick (20 Hz), delta-compressed, per-client AOI                                      |
-| Client input send                    | 30 Hz coalesced intent packets (or immediately with an ability/interact request)          |
-| Client interpolation delay (remotes) | 100 ms (2 snapshots buffered; adaptive +50 ms on loss)                                    |
-| Lag-compensation rewind window       | ≤ 250 ms (5 ticks of position history)                                                    |
-| Clock sync                           | ping/pong every 2 s, EWMA offset+RTT; client renders server-time − interp delay           |
-| Disconnect grace                     | 15 s entity lingers (combat-loggable? — character stays in world 15 s, standard MMO rule) |
+| Constant                             | Value                                                                                                                                                                                                      |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server simulation tick               | **20 Hz** (50 ms), fixed, drift-corrected                                                                                                                                                                  |
+| Snapshot send                        | every tick (20 Hz), delta-compressed, per-client AOI                                                                                                                                                       |
+| Client input send                    | **20 Hz — exactly one intent per predicted tick, tick-locked** (ability/interact requests send immediately). Revised from "30 Hz coalesced" during P0: 1:1 tick pairing makes reconciliation replay exact. |
+| Client interpolation delay (remotes) | 100 ms (2 snapshots buffered; adaptive +50 ms on loss)                                                                                                                                                     |
+| Lag-compensation rewind window       | ≤ 250 ms (5 ticks of position history)                                                                                                                                                                     |
+| Clock sync                           | ping/pong every 2 s, EWMA offset+RTT; client renders server-time − interp delay                                                                                                                            |
+| Disconnect grace                     | 15 s entity lingers (combat-loggable? — character stays in world 15 s, standard MMO rule)                                                                                                                  |
 
 Transport: **WSS** (via Caddy) → `ws` on Node. Nagle disabled by WS framing anyway; one WS message
 per tick per client (batched), permessage-deflate **off** (CPU on 1 core; our binary is small).
@@ -24,8 +24,14 @@ per tick per client (batched), permessage-deflate **off** (CPU on 1 core; our bi
 
 Binary little-endian, hand-rolled writer/reader in `@dawned/shared/protocol` (unit-tested
 round-trip). Every message: `u8 opcode` + payload. Cold-path messages (login handshake, chat,
-inventory ops, quest text) use `opcode=JSON_ENVELOPE` + msgpack-free plain JSON string (they're
-rare; readability wins). Hot path is pure binary.
+inventory ops, quest text) ride JSON envelopes (they're rare; readability wins). Hot path is pure
+binary.
+
+> **Implementation status:** the tables below describe the full 0.1.0 target protocol. The
+> implemented subset (protocol v1, P0) lives in `packages/shared/src/protocol/`:
+> Hello/InputIntent/Ping/Chat up, Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice down,
+> with full-state snapshots. Delta compression, the ENTER/UPDATE/LEAVE sections, AOI routing and
+> the remaining messages land in their phases (P3+), each bumping `PROTOCOL_VERSION`.
 
 ### 2.1 Client → Server
 

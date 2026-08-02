@@ -7,7 +7,17 @@
 # Idempotent: safe to re-run. Installs Node/pnpm/Postgres/Caddy, hardens the box,
 # creates the service user, clones both repos, builds, and starts the services.
 # See docs/tech/DEPLOYMENT.md for the full picture.
+#
+# PRIVATE REPOS: the default HTTPS clone URLs only work for public repositories.
+# If the repos are private, either add a read-only deploy key for the `dawned`
+# user (docs/tech/DEPLOYMENT.md §"Repository access") and override with SSH URLs:
+#   DAWNED_REPO_GAME=git@github.com:EinPallux/Dawned.git bash DEPLOY.sh
+# or embed a fine-grained PAT in the HTTPS URL.
 set -euo pipefail
+
+# corepack would otherwise interactively prompt before downloading pnpm (it checks
+# for a TTY) — a silent hang in an unattended install.
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 DOMAIN="${DAWNED_DOMAIN:-play.pathlands.cc}"
 REPO_GAME="${DAWNED_REPO_GAME:-https://github.com/EinPallux/Dawned.git}"
@@ -94,7 +104,7 @@ PGCONF
 fi
 
 log "Cloning repositories"
-sudo -u dawned -H bash -euo pipefail <<EOSU
+sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU
   [ -d "$APP_DIR/game" ]  || git clone -b "$BRANCH" "$REPO_GAME"  "$APP_DIR/game"
   [ -d "$APP_DIR/admin" ] || git clone -b "$BRANCH" "$REPO_ADMIN" "$APP_DIR/admin" || \
     echo "  (admin repo not available yet — skipping; it lands in phase A0)"
@@ -132,7 +142,7 @@ chmod 0640 "$ETC_DIR"/*.env
 chown root:dawned "$ETC_DIR"/*.env
 
 log "Building the game"
-sudo -u dawned -H bash -euo pipefail <<EOSU
+sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU
   cd "$APP_DIR/game"
   pnpm install --frozen-lockfile
   pnpm build
@@ -140,7 +150,7 @@ EOSU
 
 if [[ -d "$APP_DIR/admin" ]]; then
   log "Building the admin panel"
-  sudo -u dawned -H bash -euo pipefail <<EOSU || warn "admin build skipped (no code yet)"
+  sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU || warn "admin build skipped (no code yet)"
     cd "$APP_DIR/admin"
     [ -f package.json ] || exit 0
     pnpm install --frozen-lockfile
@@ -149,7 +159,7 @@ EOSU
 fi
 
 log "Database migrations"
-sudo -u dawned -H bash -euo pipefail <<EOSU || echo "  (no migrations yet — they arrive in P1)"
+sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU || echo "  (no migrations yet — they arrive in P1)"
   cd "$APP_DIR/game"
   pnpm db:migrate
 EOSU

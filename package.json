@@ -23,12 +23,6 @@
     "assets:report": "node tools/asset-pipeline/bin/assets.mjs report",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm assets:report"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "@node-rs/argon2"
-    ]
-  },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^22.19.2",

@@ -3,10 +3,12 @@ import { BinaryReader, BinaryWriter } from './codec.js';
 import {
   decodeHello,
   decodeInputIntent,
+  decodeJsonEnvelope,
   decodePing,
   decodePong,
   decodeSnapshot,
   decodeSystemNotice,
+  encodeChatBroadcast,
   encodeHello,
   encodeInputIntent,
   encodePing,
@@ -14,6 +16,7 @@ import {
   encodeSnapshot,
   encodeSystemNotice,
   peekOpcode,
+  type ChatBroadcastMessage,
   type SnapshotMessage,
 } from './messages.js';
 import { ClientOp, InputButton, NoticeCode, PROTOCOL_VERSION, ServerOp } from './opcodes.js';
@@ -142,6 +145,20 @@ describe('snapshots', () => {
     const small = encodeSnapshot(makeSnapshot(1), writer).byteLength;
     expect(small).toBeLessThan(big);
     expect(decodeSnapshot(body(encodeSnapshot(makeSnapshot(1), writer))).entities).toHaveLength(1);
+  });
+});
+
+describe('chat broadcast', () => {
+  it('round-trips through the JSON envelope with the right opcode', () => {
+    const message: ChatBroadcastMessage = {
+      from: 'Pallux',
+      fromId: 3,
+      text: 'meet at the hill ⚔',
+      system: false,
+    };
+    const packet = encodeChatBroadcast(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.ChatBroadcast);
+    expect(decodeJsonEnvelope<ChatBroadcastMessage>(body(packet))).toEqual(message);
   });
 });
 

@@ -50,8 +50,6 @@ export class Session {
 
   readonly connectedAt = Date.now();
   lastMessageAt = Date.now();
-  /** Round-trip time in ms, updated by ping/pong. */
-  rttMs = 0;
 
   private readonly inputLimit = new TokenBucket(60, 40);
   private readonly chatLimit = new TokenBucket(5, 2);

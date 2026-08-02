@@ -12,8 +12,9 @@ export const TICK_MS = 1000 / TICK_RATE;
 /** Fixed simulation step in seconds. */
 export const TICK_DT = TICK_MS / 1000;
 
-/** Client input send rate (coalesced intents). */
-export const INPUT_SEND_RATE = 30;
+// Note: there is no separate input-send-rate constant — the client sends exactly
+// one InputIntent per predicted simulation tick (TICK_RATE), which is what makes
+// reconciliation replay exact (docs/tech/NETWORKING.md §1/§3).
 
 /** Remote-entity interpolation delay in ms (2 snapshots buffered). */
 export const INTERP_DELAY_MS = 100;

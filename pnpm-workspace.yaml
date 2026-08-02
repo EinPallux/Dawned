@@ -2,5 +2,9 @@ packages:
   - 'packages/*'
   - 'tools'
 
+# The single source of truth for which dependencies may run install scripts
+# (pnpm 10 blocks them by default — this is why e.g. playwright's browser
+# download never runs on the VPS). @node-rs/argon2 is listed ahead of P1.
 onlyBuiltDependencies:
   - esbuild
+  - '@node-rs/argon2'

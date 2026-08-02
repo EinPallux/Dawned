@@ -47,7 +47,7 @@ case "$TARGET" in
 esac
 
 log "Rolling $TARGET back to $REF"
-sudo -u dawned -H bash -euo pipefail <<EOSU
+sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU
   cd "$DIR"
   git fetch --tags origin
   git checkout "$REF"

@@ -79,6 +79,8 @@ export interface ConnectionEvents {
   onChat?: (message: ChatBroadcastMessage) => void;
   onRoster?: (players: RosterEntry[]) => void;
   onWelcome?: (welcome: WelcomeMessage) => void;
+  /** Fired for every SystemNotice so the UI can react per code (restart, name taken…). */
+  onNotice?: (code: NoticeCode, friendlyText: string) => void;
 }
 
 interface PendingInput {
@@ -111,7 +113,15 @@ export class Connection {
   private clockOffsetMs = 0;
   rttMs = 0;
   private clockInitialized = false;
-  private lastPingAt = 0;
+  /**
+   * Ping runs on its own interval timer, NOT the render loop: browsers stop
+   * requestAnimationFrame entirely in hidden tabs, so an rAF-driven ping would get
+   * every alt-tabbed player kicked by the server's idle sweep. Interval timers keep
+   * firing in the background (throttled to 1/s, and to 1/min under Chrome's
+   * intensive throttling after ~5 min hidden) — the server's idle window is sized
+   * to tolerate the worst case (gateway IDLE_TIMEOUT_MS > 60 s).
+   */
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Interpolation clock, in server-time units.
@@ -155,6 +165,9 @@ export class Connection {
       this.setStatus('connected');
       socket.send(encodeHello({ protocolVersion: PROTOCOL_VERSION, name }));
       this.sendPing();
+      this.pingTimer = setInterval(() => {
+        this.sendPing();
+      }, PING_INTERVAL_MS);
     });
 
     socket.addEventListener('message', (event: MessageEvent<ArrayBuffer>) => {
@@ -170,17 +183,27 @@ export class Connection {
     });
 
     socket.addEventListener('close', () => {
+      this.stopPingTimer();
       if (this.status !== 'error') this.setStatus('closed');
     });
 
     socket.addEventListener('error', () => {
+      this.stopPingTimer();
       this.setStatus('error', 'Connection failed.');
     });
   }
 
   disconnect(): void {
+    this.stopPingTimer();
     this.socket?.close();
     this.socket = null;
+  }
+
+  private stopPingTimer(): void {
+    if (this.pingTimer !== null) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
   }
 
   private setStatus(status: ConnectionStatus, detail?: string): void {
@@ -252,6 +275,7 @@ export class Connection {
         // Prefer our own mapped copy; the server's detail is for the log.
         const friendly = noticeTextFor(notice.code);
         this.setStatus('error', friendly);
+        this.events.onNotice?.(notice.code, friendly);
         console.warn('[net] system notice', notice.code, notice.detail ?? friendly);
         return;
       }
@@ -407,10 +431,11 @@ export class Connection {
     }
   }
 
-  /** Per-frame housekeeping: advance the interp clock, decay corrections, ping. */
+  /** Per-frame housekeeping: advance the interp clock, decay corrections, resample. */
   update(dtMs: number): void {
     // Between snapshots the interpolation clock simply runs at local wall speed;
     // each arriving snapshot eases it back onto the server's timeline.
+    // (Pinging is NOT done here — see pingTimer.)
     if (this.interpClockReady) this.interpClockMs += dtMs;
 
     if (this.correction.remainingMs > 0) {
@@ -419,12 +444,6 @@ export class Connection {
       this.correction.y *= decay;
       this.correction.z *= decay;
       this.correction.remainingMs = Math.max(0, this.correction.remainingMs - dtMs);
-    }
-
-    const now = performance.now();
-    if (this.isOpen && now - this.lastPingAt > PING_INTERVAL_MS) {
-      this.lastPingAt = now;
-      this.sendPing();
     }
 
     this.sampleRemotes();

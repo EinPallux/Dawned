@@ -32,6 +32,12 @@ const slugify = (value) =>
     .replace(/^_+|_+$/g, '')
     .toLowerCase();
 
+/**
+ * Manifest paths are part of a committed, cross-platform artifact — normalize to
+ * forward slashes so a Windows dev machine writes the same manifest as Linux/CI.
+ */
+const toPosix = (value) => value.split(path.sep).join('/');
+
 /** Minimal glob: supports `*` inside a path, matched per segment. */
 const matchGlob = async (root, pattern) => {
   const segments = pattern.split('/');
@@ -160,9 +166,19 @@ export const build = async ({ force = false, verbose = true } = {}) => {
     }
 
     for (const sourcePath of matches.slice(0, rule.limit ?? matches.length)) {
-      const relativeSource = path.relative(REPO_ROOT, sourcePath);
+      const relativeSource = toPosix(path.relative(REPO_ROOT, sourcePath));
       const slug = slugify(path.basename(sourcePath));
       const id = `${rule.category.replace(/\//g, '_')}_${slug}`;
+
+      // Two different source files must never silently share an id: the second
+      // would overwrite the first in the manifest and orphan its baked file.
+      const claimed = manifest.assets[id];
+      if (claimed && claimed.source !== relativeSource) {
+        problems.push(
+          `id collision: "${id}" is claimed by both ${claimed.source} and ${relativeSource} — rename or re-categorize one`,
+        );
+        continue;
+      }
 
       // Hash the source *and* its external dependencies so texture-only edits rebuild.
       const dependencies = await gatherDependencies(sourcePath);
@@ -201,7 +217,9 @@ export const build = async ({ force = false, verbose = true } = {}) => {
 
       const glb = Buffer.from(await io.writeBinary(document));
       const outputHash = sha256(glb).slice(0, 8);
-      const outputRelative = path.join('assets_baked', rule.category, `${slug}.${outputHash}.glb`);
+      const outputRelative = toPosix(
+        path.join('assets_baked', rule.category, `${slug}.${outputHash}.glb`),
+      );
       const outputPath = path.join(REPO_ROOT, outputRelative);
 
       await mkdir(path.dirname(outputPath), { recursive: true });

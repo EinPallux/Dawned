@@ -38,8 +38,14 @@ const NAME_PATTERN = /^[A-Za-z0-9_]{2,16}$/;
 const RESERVED_NAMES = new Set(['admin', 'gm', 'system', 'server', 'dawned', 'moderator']);
 const MAX_CHAT_LENGTH = 200;
 const MAX_PACKET_BYTES = 4096;
-/** Sockets silent for this long are dropped (client pings every 2 s). */
-const IDLE_TIMEOUT_MS = 30_000;
+/**
+ * Sockets silent for this long are dropped. The client pings every 2 s in the
+ * foreground, but hidden tabs get their timers throttled — Chrome's intensive
+ * throttling goes as low as one timer fire per minute — so the window must sit
+ * comfortably above 60 s or alt-tabbed players get kicked. Genuinely dead peers
+ * are caught sooner by send backpressure and TCP itself.
+ */
+const IDLE_TIMEOUT_MS = 90_000;
 
 export class Gateway {
   private readonly wss: WebSocketServer;

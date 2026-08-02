@@ -42,7 +42,7 @@ announce() {
   if curl -fsS --max-time 3 -X POST http://127.0.0.1:8081/ops/announce \
       -H "content-type: application/json" \
       -H "x-ops-secret: $secret" \
-      -d "{\"text\":\"Server update in ${ANNOUNCE_SECONDS}s — you will be reconnected automatically.\"}" \
+      -d "{\"text\":\"Server update in ${ANNOUNCE_SECONDS}s — the game will reload to the login screen; hop back in right after.\"}" \
       >/dev/null 2>&1; then
     log "Announced restart in-game; waiting ${ANNOUNCE_SECONDS}s"
     sleep "$ANNOUNCE_SECONDS"
@@ -54,7 +54,7 @@ update_repo() {
   [[ -d "$dir/.git" ]] || { warn "$label: $dir is not a git clone — skipping"; return 0; }
 
   log "$label: pulling"
-  sudo -u dawned -H bash -euo pipefail <<EOSU
+  sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU
     cd "$dir"
     git fetch --tags --prune origin
     if [[ -n "$REF" ]]; then
@@ -68,7 +68,7 @@ update_repo() {
 EOSU
 
   log "$label: migrations"
-  sudo -u dawned -H bash -euo pipefail <<EOSU || echo "  (no migrations to run)"
+  sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU || echo "  (no migrations to run)"
     cd "$dir"
     pnpm db:migrate
 EOSU

@@ -244,8 +244,12 @@ export class GameScene {
     this.scene.add(mesh);
   }
 
+  /** Kept so the shadow frustum can follow the player (see updateCamera). */
+  private sun!: THREE.DirectionalLight;
+
   private buildLights(): void {
     const sun = new THREE.DirectionalLight(0xfff2d0, 2.1);
+    this.sun = sun;
     sun.position.set(60, 90, 40);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -257,12 +261,19 @@ export class GameScene {
     sun.shadow.camera.top = size;
     sun.shadow.camera.bottom = -size;
     this.scene.add(sun);
+    // The target must be in the scene graph for its matrix to update.
+    this.scene.add(sun.target);
 
     this.scene.add(new THREE.HemisphereLight(0xbcd9f0, 0x5c8a3a, 1.15));
   }
 
   /** Third-person orbit camera behind the player (mouselook, Q1 decision). */
   updateCamera(target: { x: number; y: number; z: number }, yaw: number, pitch: number): void {
+    // The shadow frustum is a ±70 m box — anchor it to the player, or shadows
+    // silently vanish the moment they walk away from the world origin.
+    this.sun.position.set(target.x + 60, target.y + 90, target.z + 40);
+    this.sun.target.position.set(target.x, target.y, target.z);
+
     const distance = 6.5;
     const horizontal = Math.cos(pitch) * distance;
     this.camera.position.set(

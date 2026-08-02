@@ -141,6 +141,7 @@ export class Hud {
       `hard     ${String(stats.snaps).padStart(5)}`,
       `pos      ${stats.position.x.toFixed(1)}, ${stats.position.y.toFixed(1)}, ${stats.position.z.toFixed(1)}`,
       `state    ${stats.grounded ? 'grounded' : 'airborne'}${stats.sprinting ? ' · sprinting' : ''}`,
+      `players  ${String(stats.players).padStart(5)}`,
     ].join('\n');
 
     const fraction = stats.maxStamina > 0 ? stats.stamina / stats.maxStamina : 0;

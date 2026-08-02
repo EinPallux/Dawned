@@ -60,7 +60,11 @@ export const decodeHello = (reader: BinaryReader): HelloMessage => ({
 export interface InputIntentMessage {
   /** Monotonic per-client sequence number, wraps at u16. */
   seq: number;
-  /** Camera-relative movement axes in −1..1. */
+  /**
+   * Movement axes in WORLD space, −1..1. The client converts camera-relative
+   * input by its yaw before sending — the server never sees camera space and
+   * simply integrates the direction at the authoritative speed.
+   */
   moveX: number;
   moveZ: number;
   /** Facing in radians. */
