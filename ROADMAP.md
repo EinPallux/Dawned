@@ -11,8 +11,8 @@
 | Phase | Name                                     | Size | Status                    |
 | ----- | ---------------------------------------- | ---- | ------------------------- |
 | P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
-| P1    | Accounts, Characters & Menus             | M    | 🟨 built — VPS check open |
-| P2    | Terrain & World Streaming                | L    | 🔲                        |
+| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
+| P2    | Terrain & World Streaming                | L    | 🟨 built — FPS check open |
 | P3    | Movement, Netcode Core & Chat v1         | L    | 🔲                        |
 | P4    | Combat Foundation                        | XL   | 🔲                        |
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                        |
@@ -88,7 +88,10 @@ delete one — on the VPS, on 1080p and 1440p, with zero placeholder UI.
       resume verified (relog lands at the persisted spot, Δ 0.00 m)
 - [x] Security checklist §7-P1 run and recorded (SECURITY.md); both smoke tests rewritten for
       the auth flow and green; CI runs against a real Postgres service
-- [ ] **Owner: deploy to the VPS (UPDATE.sh) and run the friend-DoD there — then P1 closes**
+- [x] Deployed to the VPS and verified by the owner (2026-08-02): registration, character
+      creation and two players seeing each other in the world all work in production —
+      after fixing a swallowed-migration deploy bug (see CHANGELOG "Fixed — P1 VPS deploy").
+      **P1 closed. A0 (Dawned-Admin) is unlocked.**
 
 ## P2 — Terrain & World Streaming (L) ⚙unlocks A2 (map editor terrain)
 
@@ -101,6 +104,28 @@ authored via a temporary in-repo script (replaced by admin editor at A2/A3); wor
 renders. Server terrain mirror for authoritative Y + walkability.
 **DoD:** walk (debug controller) across a 1 km dev island at 60 FPS with streaming invisible,
 zones tint fog/light on crossing, budgets measured and recorded.
+
+**Status (2026-08-02):**
+
+- [x] Shared terrain core: ~25 kB chunk codec (65×65 f32 + 2×RGBA splat + water level),
+      seam-continuous bilinear sampler, 2-bit walkgrid (walkable/steep/wade/blocked), zone
+      polygon + ambience contract (zod), walkability inside the shared movement step
+      (axis-separated slide, never traps) — protocol v3
+- [x] Deterministic worldgen: ~1 km dev island (271 chunks, byte-stable across runs and
+      verified against the committed artifacts), three zones with distinct ambience profiles,
+      lake with per-chunk water level, walkgrid, south-beach spawn, worldmap + minimap renders
+- [x] Client streaming: residency rings with IndexedDB cache, one amortized mesh build per
+      frame, vertex-color splat terrain with skirts, shore-blended water, zone fog/sky/light
+      blending (~4 s settle), deterministic wind-swayed foliage instancing
+- [x] Server mirror: full map in memory at boot (refuses to start without it), authoritative
+      ground + walkability every tick, spawn ring at the baked spawn, stale persisted
+      positions relocate
+- [x] Verified: both smokes green on the island (server/client terrain agreement Δ0.000 m,
+      0 hard corrections), zone crossing tints fog/light (Dawnshore → Verdant Weald / Ashen
+      Reach), budgets measured in the worst forest view: **154 draw calls, ~441 k triangles**
+      (≤300 / ≤500 k budgets) — recorded in CHANGELOG
+- [ ] **Owner: pull + walk the island on real hardware (60 FPS + streaming-invisible check;
+      containers here render via software GL) — then P2 closes and unlocks A2's terrain work**
 
 ## P3 — Movement, Netcode Core & Chat v1 (L)
 

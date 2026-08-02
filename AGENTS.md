@@ -21,6 +21,7 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0 live at https://play.pathlands.cc; P1 (accounts, characters & menus — auth
-  stack, character pipeline, "Cut Facets" menus, in-world animated rigs) built and verified
-  locally — awaiting the owner's VPS deploy + friend-DoD to close (ROADMAP.md P1 status).
+- **State:** P0 + P1 live at https://play.pathlands.cc. P2 (terrain & world streaming) built
+  and verified in dev — chunked island, streaming, zones, walkability, budgets in limits;
+  awaiting the owner's real-hardware 60 FPS check to close (ROADMAP P2 status). A0
+  (Dawned-Admin) unlocked, not started.

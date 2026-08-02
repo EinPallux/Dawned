@@ -1,25 +1,27 @@
 /**
  * The rendered world.
  *
- * P0 drew the dev island with the same terrain function the simulation walks on,
- * plus a stylized sky and water. P1 moved player rendering to composed character
- * rigs (see character-view.ts); real terrain streaming lands in P2 — the structure
- * here (scene owner, camera rig) is what those phases extend.
+ * P2 shape: the scene owns the camera rig, the sky dome, the sun/hemisphere
+ * lights and linear fog — all mutable, because zone ambience blends them at
+ * runtime (ambience.ts). Terrain, water and foliage are streamed in and out by
+ * TerrainManager; nothing static is built here anymore.
  */
 
 import * as THREE from 'three';
-import {
-  PALETTE,
-  buildLights,
-  buildSkyMesh,
-  buildTerrainMesh,
-  buildWaterMesh,
-} from './environment.js';
+import { PALETTE, buildLights, buildSkyMesh } from './environment.js';
+import type { AmbienceTargets } from './ambience.js';
 
 export class GameScene {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   readonly renderer: THREE.WebGLRenderer;
+
+  private readonly sun: THREE.DirectionalLight;
+  private readonly hemisphere: THREE.HemisphereLight;
+  private readonly sky: THREE.Mesh;
+  private readonly skyTop = PALETTE.skyTop.clone();
+  private readonly skyHorizon = PALETTE.skyHorizon.clone();
+  private readonly fog: THREE.Fog;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -29,7 +31,7 @@ export class GameScene {
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.camera = new THREE.PerspectiveCamera(
@@ -39,14 +41,35 @@ export class GameScene {
       2000,
     );
 
-    this.scene.fog = new THREE.Fog(PALETTE.fog, 90, 320);
-    this.buildSky();
-    this.buildTerrain();
-    this.buildWater();
-    this.buildLights();
+    this.fog = new THREE.Fog(PALETTE.fog, 90, 520);
+    this.scene.fog = this.fog;
+
+    // Sky dome shares the Color instances ambience mutates. It follows the
+    // camera (updateCamera) so the world's 2 km extent never pokes through it.
+    this.sky = buildSkyMesh(this.skyTop, this.skyHorizon);
+    this.scene.add(this.sky);
+
+    const { sun, hemisphere } = buildLights();
+    this.sun = sun;
+    this.hemisphere = hemisphere;
+    this.scene.add(sun);
+    // The target must be in the scene graph for its matrix to update.
+    this.scene.add(sun.target);
+    this.scene.add(hemisphere);
 
     window.addEventListener('resize', this.handleResize);
     this.handleResize();
+  }
+
+  /** Handles the ambience controller writes into (world/ambience.ts). */
+  get ambienceTargets(): AmbienceTargets {
+    return {
+      fog: this.fog,
+      skyTop: this.skyTop,
+      skyHorizon: this.skyHorizon,
+      sun: this.sun,
+      hemisphere: this.hemisphere,
+    };
   }
 
   private handleResize = (): void => {
@@ -56,30 +79,6 @@ export class GameScene {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
   };
-
-  private buildSky(): void {
-    this.scene.add(buildSkyMesh(PALETTE.skyTop, PALETTE.skyHorizon));
-  }
-
-  private buildTerrain(): void {
-    this.scene.add(buildTerrainMesh());
-  }
-
-  private buildWater(): void {
-    this.scene.add(buildWaterMesh());
-  }
-
-  /** Kept so the shadow frustum can follow the player (see updateCamera). */
-  private sun!: THREE.DirectionalLight;
-
-  private buildLights(): void {
-    const { sun, hemisphere } = buildLights();
-    this.sun = sun;
-    this.scene.add(sun);
-    // The target must be in the scene graph for its matrix to update.
-    this.scene.add(sun.target);
-    this.scene.add(hemisphere);
-  }
 
   /** Third-person orbit camera behind the player (mouselook, Q1 decision). */
   updateCamera(target: { x: number; y: number; z: number }, yaw: number, pitch: number): void {
@@ -96,6 +95,7 @@ export class GameScene {
       target.z - Math.cos(yaw) * horizontal,
     );
     this.camera.lookAt(target.x, target.y + 1.35, target.z);
+    this.sky.position.copy(this.camera.position);
   }
 
   render(): void {

@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "assets:build": "node tools/asset-pipeline/bin/assets.mjs build",
     "assets:sync": "node tools/asset-pipeline/bin/assets.mjs sync",
+    "world:generate": "node tools/worldgen/bin/worldgen.mjs",
     "db:migrate": "pnpm --filter @dawned/server db:migrate",
     "assets:report": "node tools/asset-pipeline/bin/assets.mjs report",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm assets:report"

@@ -8,6 +8,7 @@
 
 import {
   TICK_DT,
+  WORLD_BOUNDS,
   devTerrain,
   stepMovement,
   type Appearance,
@@ -18,6 +19,13 @@ import {
   type TerrainSampler,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
+
+export interface SpawnPoint {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+}
 
 export interface WorldEvent {
   type: 'fall-damage';
@@ -30,7 +38,10 @@ export class World {
   private readonly players = new Map<number, ServerPlayer>();
   private nextEntityId = 1;
 
-  constructor(private readonly terrain: TerrainSampler = devTerrain) {}
+  constructor(
+    private readonly terrain: TerrainSampler = devTerrain,
+    private readonly spawn: SpawnPoint = { x: 0, y: 0, z: 0, yaw: 0 },
+  ) {}
 
   get playerCount(): number {
     return this.players.size;
@@ -65,13 +76,23 @@ export class World {
     return undefined;
   }
 
-  /** Spawn point: a ring around the hill so players don't stack on login. */
-  private spawnPosition(): { x: number; y: number; z: number } {
+  /** Spawn ring around the map's spawn point so players don't stack on login. */
+  private spawnPosition(): SpawnPoint {
     const angle = (this.nextEntityId * 2.399963) % (Math.PI * 2); // golden-angle spread
-    const radius = 18;
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    return { x, y: this.terrain.heightAt(x, z), z };
+    const radius = 4 + (this.nextEntityId % 5) * 2.5;
+    const x = this.spawn.x + Math.cos(angle) * radius;
+    const z = this.spawn.z + Math.sin(angle) * radius;
+    // The ring may brush an unwalkable cell — fall back to the exact point.
+    if (this.terrain.walkableAt && !this.terrain.walkableAt(x, z)) {
+      return { ...this.spawn, y: this.terrain.heightAt(this.spawn.x, this.spawn.z) };
+    }
+    return { x, y: this.terrain.heightAt(x, z), z, yaw: this.spawn.yaw };
+  }
+
+  /** A persisted position is only trusted if it's still inside the walkable world. */
+  private isValidPersisted(position: { x: number; z: number }): boolean {
+    if (Math.abs(position.x) > WORLD_BOUNDS || Math.abs(position.z) > WORLD_BOUNDS) return false;
+    return this.terrain.walkableAt ? this.terrain.walkableAt(position.x, position.z) : true;
   }
 
   addPlayer(spec: {
@@ -85,11 +106,15 @@ export class World {
     position: { x: number; y: number; z: number; yaw: number } | null;
   }): ServerPlayer {
     const id = this.nextEntityId++;
-    const spawn = spec.position ?? { ...this.spawnPosition(), yaw: 0 };
+    // A stale persisted position (map changed underneath it — e.g. the P1 flat
+    // world became the P2 island) relocates to spawn instead of stranding the
+    // character in deep water or inside a cliff.
+    const persisted = spec.position && this.isValidPersisted(spec.position) ? spec.position : null;
+    const spawn = persisted ?? this.spawnPosition();
     // Re-ground a persisted position: the terrain may have changed since the
     // last save (map edits), and standing inside a hill helps nobody.
     const groundY = this.terrain.heightAt(spawn.x, spawn.z);
-    const y = spec.position ? Math.max(spawn.y, groundY) : groundY;
+    const y = persisted ? Math.max(spawn.y, groundY) : groundY;
 
     const player = new ServerPlayer(
       id,

@@ -63,9 +63,16 @@ export interface MovementIntent {
   buttons: number;
 }
 
-/** Terrain the simulation walks on. P0 ships a flat plane; P2 swaps in heightmap chunks. */
+/** Terrain the simulation walks on. P0 shipped a flat plane; P2 streams heightmap chunks. */
 export interface TerrainSampler {
   heightAt(x: number, z: number): number;
+  /**
+   * Whether a position may be entered (walkgrid: slope/water classes). Optional —
+   * samplers without it (flat/dev terrain) are fully walkable. Enforced by
+   * {@link stepMovement} only when moving FROM a walkable cell, so a character
+   * that somehow starts on blocked ground can always leave it.
+   */
+  walkableAt?(x: number, z: number): boolean;
 }
 
 /** Flat ground at a fixed height — the P0 dev world and a useful test fixture. */
@@ -189,10 +196,29 @@ export function stepMovement(
     if (state.vy < -TERMINAL_VELOCITY) state.vy = -TERMINAL_VELOCITY;
   }
 
-  // 7. Integrate.
-  state.x += state.vx * dt;
+  // 7. Integrate horizontally against walkability (axis-separated slide: a
+  // blocked diagonal still slides along the open axis). Applies airborne too —
+  // cliffs and deep water cannot be jumped into. Only enforced from a walkable
+  // cell, so nobody can get stuck inside a blocked region.
+  const nextX = state.x + state.vx * dt;
+  const nextZ = state.z + state.vz * dt;
+  if (!terrain.walkableAt || !terrain.walkableAt(state.x, state.z)) {
+    state.x = nextX;
+    state.z = nextZ;
+  } else if (terrain.walkableAt(nextX, nextZ)) {
+    state.x = nextX;
+    state.z = nextZ;
+  } else if (terrain.walkableAt(nextX, state.z)) {
+    state.x = nextX;
+    state.vz = 0;
+  } else if (terrain.walkableAt(state.x, nextZ)) {
+    state.z = nextZ;
+    state.vx = 0;
+  } else {
+    state.vx = 0;
+    state.vz = 0;
+  }
   state.y += state.vy * dt;
-  state.z += state.vz * dt;
 
   // 8. World bounds (hard clamp; the real world edge is ocean + invisible wall).
   state.x = clamp(state.x, -WORLD_BOUNDS, WORLD_BOUNDS);

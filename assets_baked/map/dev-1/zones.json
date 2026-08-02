@@ -1,0 +1,130 @@
+{
+  "defaultAmbience": {
+    "fogColor": "#f4b98d",
+    "fogNear": 90,
+    "fogFar": 520,
+    "skyTop": "#5a6fc0",
+    "skyHorizon": "#ffb37a",
+    "sunColor": "#ffe3bb",
+    "sunIntensity": 2.2,
+    "hemiSky": "#dce8ff",
+    "hemiGround": "#3a4a3a",
+    "hemiIntensity": 0.8
+  },
+  "zones": [
+    {
+      "id": "verdant_weald",
+      "name": "The Verdant Weald",
+      "levelMin": 6,
+      "levelMax": 12,
+      "polygon": [
+        [
+          -620,
+          -620
+        ],
+        [
+          0,
+          -620
+        ],
+        [
+          0,
+          -70
+        ],
+        [
+          -620,
+          -70
+        ]
+      ],
+      "ambience": {
+        "fogColor": "#9fc79a",
+        "fogNear": 45,
+        "fogFar": 300,
+        "skyTop": "#4f6f9f",
+        "skyHorizon": "#cfe2b8",
+        "sunColor": "#f2ffd9",
+        "sunIntensity": 1.9,
+        "hemiSky": "#cfe6c8",
+        "hemiGround": "#324530",
+        "hemiIntensity": 0.9
+      },
+      "safe": false,
+      "settlement": null
+    },
+    {
+      "id": "ashen_reach",
+      "name": "The Ashen Reach",
+      "levelMin": 12,
+      "levelMax": 18,
+      "polygon": [
+        [
+          0,
+          -620
+        ],
+        [
+          620,
+          -620
+        ],
+        [
+          620,
+          -70
+        ],
+        [
+          0,
+          -70
+        ]
+      ],
+      "ambience": {
+        "fogColor": "#8a8298",
+        "fogNear": 35,
+        "fogFar": 240,
+        "skyTop": "#3c3a52",
+        "skyHorizon": "#b9a8b0",
+        "sunColor": "#e8d8e0",
+        "sunIntensity": 1.6,
+        "hemiSky": "#b8b0c8",
+        "hemiGround": "#3a3540",
+        "hemiIntensity": 0.8
+      },
+      "safe": false,
+      "settlement": null
+    },
+    {
+      "id": "dawnshore",
+      "name": "Dawnshore",
+      "levelMin": 1,
+      "levelMax": 6,
+      "polygon": [
+        [
+          -620,
+          -70
+        ],
+        [
+          620,
+          -70
+        ],
+        [
+          620,
+          620
+        ],
+        [
+          -620,
+          620
+        ]
+      ],
+      "ambience": {
+        "fogColor": "#ffc99b",
+        "fogNear": 110,
+        "fogFar": 560,
+        "skyTop": "#6f87d8",
+        "skyHorizon": "#ffc9a0",
+        "sunColor": "#fff0d0",
+        "sunIntensity": 2.6,
+        "hemiSky": "#e6f0ff",
+        "hemiGround": "#4a5a40",
+        "hemiIntensity": 1
+      },
+      "safe": false,
+      "settlement": "Dawnhaven (P12)"
+    }
+  ]
+}

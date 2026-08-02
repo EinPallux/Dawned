@@ -8,11 +8,12 @@
  * baked manifest with `file` fields rewritten to web paths under /assets/.
  */
 
-import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { MANIFEST_PATH, REPO_ROOT } from './build.mjs';
 
 const CLIENT_ASSETS_DIR = path.join(REPO_ROOT, 'packages/client/public/assets');
+const MAP_DIR = path.join(REPO_ROOT, 'assets_baked/map');
 
 export const sync = async () => {
   let manifest;
@@ -44,9 +45,19 @@ export const sync = async () => {
     `${JSON.stringify(served, null, 2)}\n`,
   );
 
+  // Map artifacts (chunks/walkgrid/zones/renders — docs/tech/ASSET_PIPELINE.md §6)
+  // ship verbatim under /assets/map/<version>/.
+  const hasMap = await stat(MAP_DIR)
+    .then((info) => info.isDirectory())
+    .catch(() => false);
+  if (hasMap) {
+    await cp(MAP_DIR, path.join(CLIENT_ASSETS_DIR, 'map'), { recursive: true });
+  }
+
   const count = Object.keys(served.assets).length;
   console.log(
-    `assets: synced ${count} files (${(bytes / 1024 / 1024).toFixed(2)} MB) → packages/client/public/assets`,
+    `assets: synced ${count} files (${(bytes / 1024 / 1024).toFixed(2)} MB)` +
+      `${hasMap ? ' + map artifacts' : ''} → packages/client/public/assets`,
   );
   return { count, bytes };
 };

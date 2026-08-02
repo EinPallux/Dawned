@@ -81,6 +81,25 @@
       "limit": 3
     },
     {
+      "$comment": "P2 foliage set — instanced per terrain chunk (grass tufts, bushes, bare trees for the ashen zone).",
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Grass_*_Color1.gltf",
+      "limit": 4
+    },
+    {
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Bush_1_*_Color1.gltf",
+      "limit": 3
+    },
+    {
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Tree_Bare_*_Color1.gltf",
+      "limit": 3
+    },
+    {
       "pack": "kaykit-weapons",
       "category": "items/weapons",
       "glob": "Assets/gltf/sword_*.gltf",

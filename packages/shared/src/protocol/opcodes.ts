@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 2; // v2 (P1): authenticated Hello, appearance in roster
+export const PROTOCOL_VERSION = 3; // v3 (P2): chunk terrain + walkability in the movement step
 
 /** Client → server opcodes. */
 export const ClientOp = {

@@ -5,7 +5,34 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
-### Added — Phase P1: accounts, characters & menus (in progress)
+### Added — Phase P2: terrain & world streaming (built; owner FPS check open)
+- **The Dawnlands gain real ground**: a ~1 km dev island (Dawnshore meadows and beaches,
+  the wooded Verdant Weald, the stark Ashen Reach, an inland lake) generated deterministically
+  by `pnpm world:generate` into committed map artifacts — 271 terrain chunks (~25 kB each:
+  65×65 heights at 1 m + 8-layer splat weights + per-chunk water level), a 1 MiB walkability
+  grid, zone polygons with ambience profiles, worldmap/minimap renders and a spawn point.
+  The admin map editor takes over authoring at A2/A3 using the same formats.
+- **Client streaming**: chunks load in residency rings around the player (IndexedDB-cached
+  per map version, two fetches in flight, one mesh build per frame — no frame hitches),
+  and unload past an outer ring. Terrain renders as flat-shaded vertex-color splat blends
+  with edge skirts; water planes blend from glassy shallows to deep blue at the shore;
+  an ocean backdrop covers the horizon.
+- **Zone ambience**: fog color/range, sky gradient, sun and hemisphere light ease toward
+  the profile of the zone polygon underfoot (~4 s settle) — crossing from Dawnshore into
+  the Weald visibly closes the fog green; the Ashen Reach goes grey-violet.
+- **Foliage**: deterministic per-chunk scatter of grass, bushes, trees and bare trees from
+  splat weights as instanced meshes with a vertex-shader wind sway — two clients on the
+  same meadow see the same field.
+- **Walkability is law**: the shared movement step now consults the walkgrid (slopes over
+  50°, deep water and the open ocean block; shallows are wadeable) with axis-separated
+  sliding, enforced identically by prediction and the authoritative server (protocol v3).
+- **Server terrain mirror**: the full map loads at boot (~8 MB; the server refuses to start
+  without it); persisted positions that are now off-world or unwalkable relocate to spawn.
+- **Budgets measured** (worst case, dense forest view at 1080p): 154 draw calls,
+  ~441 k triangles — within the ≤300 calls / ≤500 k tris budgets (TECH_STACK.md). Real-GPU
+  60 FPS validation is the owner's remaining DoD step (dev containers render via software GL).
+
+### Added — Phase P1: accounts, characters & menus (live on the VPS 2026-08-02)
 - **Accounts & sessions (server)**: PostgreSQL 16 + Drizzle schema (`accounts`, `sessions`,
   `characters`, `bans`) with committed migrations; argon2id password hashing; registration
   (open, dormant invite-code toggle per Q8), login with per-IP throttles, failed-login lockouts
