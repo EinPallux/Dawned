@@ -5,7 +5,7 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
-### Added — Phase P3: movement, netcode core & chat v1 (in progress)
+### Added — Phase P3: movement, netcode core & chat v1 (built 2026-08-02; owner signoff pending)
 - **Swimming**: water deeper than 1.2 m carries you — movement pins to the surface,
   speed drops to ×0.55, sprint-swimming drains stamina faster, jumping is inert, and
   diving into deep water always negates fall damage. Enforced by the same shared
@@ -31,6 +31,11 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 - **Fix**: teleports into not-yet-streamed terrain (e.g. `/stuck` from far away) no
   longer free-fall the camera while chunks load — the client adopts the server's
   authoritative state until the ground data arrives.
+- **Load & latency gates measured** (dev container): 20 wandering bots + 1 client →
+  tick p50 0.66 / p95 1.0 / max 3.6 ms (<15 ms budget), ~42 kB/s total server egress;
+  headless prediction client at 100 ms RTT ± 20 ms jitter, 60 s of sprint-jumping →
+  corrections p95 39 mm, zero hard snaps. New harnesses: `tools/bots/swarm.mjs`,
+  `tools/smoke/predict-lag.mjs`, `tools/smoke/browser-p3.mjs`.
 
 ### Added — Phase P2: terrain & world streaming (verified on real hardware 2026-08-02)
 - **The Dawnlands gain real ground**: a ~1 km dev island (Dawnshore meadows and beaches,
