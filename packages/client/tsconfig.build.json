@@ -5,8 +5,13 @@
     "outDir": "./dist-types",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts"],
-  "references": [{ "path": "../shared/tsconfig.build.json" }]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "references": [
+    {
+      "path": "../shared/tsconfig.build.json"
+    }
+  ]
 }

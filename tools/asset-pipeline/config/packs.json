@@ -40,6 +40,30 @@
       "verified": true,
       "source": "https://quaternius.com/",
       "root": "assets/enemy_models/Quaternius Monster Bundle"
+    },
+    "quaternius-base-characters": {
+      "name": "Quaternius Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/player_characters/Universal Base Characters[Standard]"
+    },
+    "quaternius-outfits-fantasy": {
+      "name": "Quaternius Modular Character Outfits — Fantasy (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]"
+    },
+    "quaternius-ual1": {
+      "name": "Quaternius Universal Animation Library 1 (PRO)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/player_characters/Universal Animation Library 1[PRO]"
     }
   },
   "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land — the pipeline itself does not change.",
@@ -92,6 +116,70 @@
       "category": "enemies",
       "glob": "characters/gltf/Skeleton_Minion.glb",
       "limit": 1
+    },
+    {
+      "$comment": "P1 player heads: the modular outfits ship their own body geometry (bodyCut keeps head+neck of the fused base; the seam hides in every collar). The pack's Godot-UE export references two textures that do not exist (typo'd `_png.png` names) and defaults to the Dark basecolor variants — the runtime skin-tint model multiplies DOWN from the Light variants (packages/shared appearance.ts), so both are overridden. `null` drops the broken slot.",
+      "pack": "quaternius-base-characters",
+      "category": "characters",
+      "glob": "Base Characters/Godot - UE/Superhero_*_FullBody.gltf",
+      "skinned": true,
+      "bodyCut": {
+        "meshPattern": "Superhero|Retopology",
+        "bones": ["Head", "neck_01"],
+        "threshold": 0.4
+      },
+      "imageOverrides": {
+        "T_Hair_1_Normal_png.png": null,
+        "T_Eye_Normal_png.png": null,
+        "T_Superhero_Male_Dark.png": "../Textures/T_Superhero_Male_Ligh.png",
+        "T_Superhero_Female_Dark_BaseColor.png": "../Textures/T_Superhero_Female_Light_BaseColor.png",
+        "T_Hair_1_BaseColor.png": { "grayscale": true, "multiplyRGB": [1.47, 1.47, 1.47] },
+        "T_Hair_2_BaseColor.png": { "grayscale": true, "multiplyRGB": [1.47, 1.47, 1.47] }
+      }
+    },
+    {
+      "$comment": "Hairstyles + beard, skinned to the shared 65-bone rig (head bone variant). Eyebrows_* are deliberately excluded — the base bodies ship eyebrows built in. Hair basecolors bake to a brightness-normalized luminance map (grayscale mean 0.56 × 1.47 ≈ 0.82) so runtime multiply tints land on the picked swatch with strand shading intact.",
+      "pack": "quaternius-base-characters",
+      "category": "characters",
+      "glob": "Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_*.gltf",
+      "skinned": true,
+      "imageOverrides": {
+        "T_Hair_1_BaseColor.png": { "grayscale": true, "multiplyRGB": [1.47, 1.47, 1.47] },
+        "T_Hair_2_BaseColor.png": { "grayscale": true, "multiplyRGB": [1.47, 1.47, 1.47] }
+      }
+    },
+    {
+      "$comment": "Outfits are full bodies below the neck, incl. their own exposed-skin geometry (MI_Regular_* materials). The pack only ships the Dark skin variant; multiplyRGB lifts it to the Light superhero tone the faces use (per-channel light/dark means measured with sharp), so one runtime skin tint lands on the same color for face and hands.",
+      "pack": "quaternius-outfits-fantasy",
+      "category": "characters",
+      "glob": "Exports/glTF (Godot-Unreal)/Outfits/*_*.gltf",
+      "skinned": true,
+      "imageOverrides": {
+        "T_Regular_Male_Dark_BaseColor.png": { "multiplyRGB": [1.062, 1.094, 1.13] },
+        "T_Regular_Female_Dark_BaseColor.png": { "multiplyRGB": [1.036, 1.055, 1.078] }
+      }
+    },
+    {
+      "$comment": "Animation library — only the clips a shipped phase uses are kept (menus: class poses; world: locomotion). Extend animationKeep as phases land; UAL2 joins when combat/professions need it.",
+      "pack": "quaternius-ual1",
+      "category": "characters",
+      "glob": "Unreal-Godot/UAL1.glb",
+      "animationsOnly": true,
+      "animationKeep": [
+        "Idle_Loop",
+        "Idle_LookAround_Loop",
+        "Sword_Idle",
+        "Spell_Simple_Idle_Loop",
+        "Spell_Double_Idle_Loop",
+        "Jog_Fwd_Loop",
+        "Jog_Bwd_Loop",
+        "Jog_Left_Loop",
+        "Jog_Right_Loop",
+        "Sprint_Loop",
+        "Jump_Start",
+        "Jump_Loop",
+        "Jump_Land"
+      ]
     }
   ]
 }

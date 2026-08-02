@@ -8,20 +8,14 @@
  */
 
 import * as THREE from 'three';
-import { DEV_TERRAIN_EXTENT, PLAYER_HEIGHT, PLAYER_RADIUS, devTerrain } from '@dawned/shared';
-
-/** Vibrant, saturated palette (docs/design/GAME_DESIGN.md §6). */
-const PALETTE = {
-  sand: new THREE.Color('#e8d7a2'),
-  grassLow: new THREE.Color('#5cb84b'),
-  grassHigh: new THREE.Color('#3f9c46'),
-  rock: new THREE.Color('#8d8a7a'),
-  water: new THREE.Color('#2f8fd0'),
-  skyTop: new THREE.Color('#3f7fd0'),
-  skyHorizon: new THREE.Color('#ffd9a0'),
-  fog: new THREE.Color('#bcd9f0'),
-  localPlayer: new THREE.Color('#f0c46b'),
-};
+import { PLAYER_HEIGHT, PLAYER_RADIUS } from '@dawned/shared';
+import {
+  PALETTE,
+  buildLights,
+  buildSkyMesh,
+  buildTerrainMesh,
+  buildWaterMesh,
+} from './environment.js';
 
 const REMOTE_COLORS = ['#d8663a', '#4fa3e8', '#8bc44a', '#efd26e', '#a44fe0', '#3fbf5a'];
 
@@ -162,109 +156,27 @@ export class GameScene {
   };
 
   private buildSky(): void {
-    const geometry = new THREE.SphereGeometry(900, 24, 16);
-    const material = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      uniforms: {
-        topColor: { value: PALETTE.skyTop },
-        horizonColor: { value: PALETTE.skyHorizon },
-      },
-      vertexShader: /* glsl */ `
-        varying vec3 vWorldPosition;
-        void main() {
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform vec3 topColor;
-        uniform vec3 horizonColor;
-        varying vec3 vWorldPosition;
-        void main() {
-          float h = normalize(vWorldPosition).y;
-          float t = clamp(pow(max(h, 0.0), 0.55), 0.0, 1.0);
-          gl_FragColor = vec4(mix(horizonColor, topColor, t), 1.0);
-        }
-      `,
-    });
-    this.scene.add(new THREE.Mesh(geometry, material));
+    this.scene.add(buildSkyMesh(PALETTE.skyTop, PALETTE.skyHorizon));
   }
 
   private buildTerrain(): void {
-    const extent = DEV_TERRAIN_EXTENT * 2;
-    const segments = 160;
-    const geometry = new THREE.PlaneGeometry(extent, extent, segments, segments);
-    geometry.rotateX(-Math.PI / 2);
-
-    const position = geometry.attributes.position as THREE.BufferAttribute;
-    const colors = new Float32Array(position.count * 3);
-    const color = new THREE.Color();
-
-    for (let i = 0; i < position.count; i++) {
-      const x = position.getX(i);
-      const z = position.getZ(i);
-      const height = devTerrain.heightAt(x, z);
-      position.setY(i, height);
-
-      if (height < 0.15) color.copy(PALETTE.sand);
-      else if (height < 2.5) color.copy(PALETTE.grassLow).lerp(PALETTE.grassHigh, height / 2.5);
-      else color.copy(PALETTE.grassHigh).lerp(PALETTE.rock, Math.min(1, (height - 2.5) / 3));
-
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
-    }
-
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.computeVertexNormals();
-
-    const mesh = new THREE.Mesh(
-      geometry,
-      new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
-    );
-    mesh.receiveShadow = true;
-    this.scene.add(mesh);
+    this.scene.add(buildTerrainMesh());
   }
 
   private buildWater(): void {
-    const geometry = new THREE.PlaneGeometry(DEV_TERRAIN_EXTENT * 6, DEV_TERRAIN_EXTENT * 6);
-    geometry.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(
-      geometry,
-      new THREE.MeshLambertMaterial({
-        color: PALETTE.water,
-        transparent: true,
-        opacity: 0.78,
-        flatShading: true,
-      }),
-    );
-    mesh.position.y = -0.35;
-    this.scene.add(mesh);
+    this.scene.add(buildWaterMesh());
   }
 
   /** Kept so the shadow frustum can follow the player (see updateCamera). */
   private sun!: THREE.DirectionalLight;
 
   private buildLights(): void {
-    const sun = new THREE.DirectionalLight(0xfff2d0, 2.1);
+    const { sun, hemisphere } = buildLights();
     this.sun = sun;
-    sun.position.set(60, 90, 40);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.near = 1;
-    sun.shadow.camera.far = 260;
-    const size = 70;
-    sun.shadow.camera.left = -size;
-    sun.shadow.camera.right = size;
-    sun.shadow.camera.top = size;
-    sun.shadow.camera.bottom = -size;
     this.scene.add(sun);
     // The target must be in the scene graph for its matrix to update.
     this.scene.add(sun.target);
-
-    this.scene.add(new THREE.HemisphereLight(0xbcd9f0, 0x5c8a3a, 1.15));
+    this.scene.add(hemisphere);
   }
 
   /** Third-person orbit camera behind the player (mouselook, Q1 decision). */

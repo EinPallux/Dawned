@@ -8,6 +8,7 @@
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { BAKED_DIR, REPO_ROOT, loadConfig, loadManifest } from './build.mjs';
+import { verifyCharacters } from './verify-characters.mjs';
 
 /** Budgets from docs/tech/TECH_STACK.md (initial load ≤8 MB critical path). */
 const BUDGETS = {
@@ -75,6 +76,10 @@ export const report = async () => {
       `baked assets total ${totalMb.toFixed(1)} MB, over the ${BUDGETS.totalBakedMb} MB budget`,
     );
   }
+
+  // 5. Character rig contract (skips itself while no character assets are baked).
+  const rig = await verifyCharacters();
+  failures.push(...rig.failures);
 
   // --- output ---------------------------------------------------------------
   console.log(`assets: ${assets.length} baked, ${totalMb.toFixed(2)} MB total`);

@@ -29,12 +29,14 @@ const body = (packet: Uint8Array): BinaryReader => {
 };
 
 describe('handshake and input messages', () => {
-  it('round-trips Hello', () => {
-    const packet = encodeHello({ protocolVersion: PROTOCOL_VERSION, name: 'Pallux' });
+  it('round-trips the authenticated Hello', () => {
+    const token = 'a'.repeat(32);
+    const packet = encodeHello({ protocolVersion: PROTOCOL_VERSION, token, characterId: 42 });
     expect(peekOpcode(packet)).toBe(ClientOp.Hello);
     expect(decodeHello(body(packet))).toEqual({
       protocolVersion: PROTOCOL_VERSION,
-      name: 'Pallux',
+      token,
+      characterId: 42,
     });
   });
 

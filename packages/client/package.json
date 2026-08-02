@@ -5,17 +5,23 @@
   "type": "module",
   "description": "Dawned game client — three.js renderer with predicted, server-authoritative movement.",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b tsconfig.build.json && vite build",
+    "dev": "node ../../tools/asset-pipeline/bin/assets.mjs sync && vite",
+    "build": "node ../../tools/asset-pipeline/bin/assets.mjs sync && tsc -b tsconfig.build.json && vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist dist-types *.tsbuildinfo"
+    "clean": "rm -rf dist dist-types *.tsbuildinfo public/assets"
   },
   "dependencies": {
     "@dawned/shared": "workspace:*",
-    "three": "^0.185.1"
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "three": "^0.185.1",
+    "zustand": "5.0.14"
   },
   "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
     "@types/three": "^0.185.3",
-    "vite": "^7.1.14"
+    "@vitejs/plugin-react": "5.2.0",
+    "vite": "^7.3.6"
   }
 }

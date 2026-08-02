@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2; // v2 (P1): authenticated Hello, appearance in roster
 
 /** Client → server opcodes. */
 export const ClientOp = {
@@ -61,6 +61,9 @@ export const NoticeCode = {
   Kicked: 7,
   ServerShuttingDown: 8,
   MalformedPacket: 9,
+  AuthFailed: 10,
+  CharacterUnavailable: 11,
+  ReplacedByNewLogin: 12,
 } as const;
 export type NoticeCode = (typeof NoticeCode)[keyof typeof NoticeCode];
 
@@ -79,6 +82,9 @@ export const noticeText: Record<NoticeCode, string> = {
   [NoticeCode.Kicked]: 'You were disconnected by a game master.',
   [NoticeCode.ServerShuttingDown]: 'The server is restarting — reconnecting shortly.',
   [NoticeCode.MalformedPacket]: 'Connection closed: malformed packet.',
+  [NoticeCode.AuthFailed]: 'Your session has expired — please log in again.',
+  [NoticeCode.CharacterUnavailable]: 'That character is not available on this account.',
+  [NoticeCode.ReplacedByNewLogin]: 'This account logged in from somewhere else.',
 };
 
 /** Safe lookup for a code that came off the wire (may be unknown to this client). */

@@ -5,6 +5,33 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — Phase P1: accounts, characters & menus (in progress)
+- **Accounts & sessions (server)**: PostgreSQL 16 + Drizzle schema (`accounts`, `sessions`,
+  `characters`, `bans`) with committed migrations; argon2id password hashing; registration
+  (open, dormant invite-code toggle per Q8), login with per-IP throttles, failed-login lockouts
+  and timing-safe unknown-name handling; 30-day sliding sessions (hashed tokens); REST API
+  (`/api/auth/*`, `/api/characters`) validated with the shared zod schemas. Five integration
+  tests run the full flow against a real database.
+- **Characters (server)**: five slots per account, world-unique names, class + full appearance
+  stored per character, soft delete that frees the name, position/playtime persistence
+  (10 s write-behind + on disconnect), single-session-per-account (newest login wins).
+- **Protocol v2**: authenticated `Hello` (session token + character id) replaces the P0
+  name-claim handshake; `Welcome` carries the spawn (persisted position on relog) and a roster
+  with class, level and appearance for every player.
+- **Character asset pipeline**: Quaternius Universal Base Characters, Modular Fantasy Outfits
+  and Universal Animation Library baked through new rule options (`skinned`, `bodyCut`,
+  `imageOverrides`, `animationsOnly`/`animationKeep` — see docs/tech/ASSET_PIPELINE.md §2);
+  13 character assets at 6.6 MB total incl. a mesh-free 13-clip animation library; a rig
+  verification gate (bone/track-name contract) now runs inside `pnpm assets:report`;
+  `pnpm assets:sync` publishes baked assets into the client.
+- **Menus & design system v1 (client)**: React 19 front door over the three.js world — login/
+  register screen on a live dawn vignette, character select with 3D stage, character creation
+  with class carousel (posed, animated rigs), body/skin/outfit/tint/hair/color/beard controls
+  on the live model, and the "Cut Facets" design language (Amaranth + Nunito Sans, corner-cut
+  panels, gold-seam buttons) as reusable primitives.
+- **Character composition (client)**: load-time skeleton rebinding of outfit/hair pieces onto
+  the shared 65-bone rig, multiplicative skin/outfit/hair tinting, UAL clips with crossfade.
+
 ### Added — Phase P0: foundations & walking skeleton
 - **Monorepo**: pnpm workspaces (`packages/shared`, `packages/server`, `packages/client`,
   `tools`), TypeScript strict everywhere, ESLint 9 + Prettier, Vitest, a single `pnpm check`

@@ -15,9 +15,27 @@ import { World } from './world/world.js';
 import { TickLoop } from './world/tick-loop.js';
 import { Gateway } from './net/gateway.js';
 import { registerRoutes } from './http/routes.js';
+import { registerAuthRoutes } from './http/auth-routes.js';
+import { assertDbReachable, createDb } from './db/client.js';
+import { runMigrations } from './db/migrate.js';
+import { AuthService } from './auth/service.js';
+import { CharacterService } from './characters/service.js';
 
 const config = loadConfig();
 const log = createLogger(config.LOG_LEVEL, config.NODE_ENV !== 'production');
+
+// --- database ---------------------------------------------------------------
+// Dev runs migrations automatically for a zero-step loop; production applies
+// them explicitly via UPDATE.sh *before* the restart (docs/tech/DEPLOYMENT.md).
+if (config.NODE_ENV !== 'production') {
+  await runMigrations(config.DATABASE_URL);
+  log.info('dev migrations applied');
+}
+const dbHandle = createDb(config.DATABASE_URL);
+await assertDbReachable(dbHandle);
+
+const auth = new AuthService(dbHandle.db, config.INVITE_CODE);
+const characterService = new CharacterService(dbHandle.db);
 
 const metrics = new MetricsRing();
 const world = new World();
@@ -35,10 +53,31 @@ await app.register(cors, {
 
 // Order matters: Fastify refuses new routes once listening, and the gateway needs
 // the raw http server (which exists before listen) to handle WS upgrades.
-const gateway = new Gateway(app.server, world, config, log.child({ component: 'net' }), metrics);
+const gateway = new Gateway(
+  app.server,
+  world,
+  config,
+  log.child({ component: 'net' }),
+  metrics,
+  auth,
+  characterService,
+);
 registerRoutes(app, { config, world, gateway, metrics });
+registerAuthRoutes(app, { auth, characters: characterService });
 
 await app.listen({ host: config.HOST, port: config.PORT });
+
+gateway.startPersistence();
+
+// Hourly housekeeping: expired sessions don't need a cron, just an interval.
+setInterval(
+  () => {
+    auth.purgeExpiredSessions().catch((error: unknown) => {
+      log.error({ err: error }, 'session purge failed');
+    });
+  },
+  60 * 60 * 1000,
+).unref();
 
 let idleSweepCounter = 0;
 let consecutiveTickErrors = 0;
@@ -100,6 +139,7 @@ function shutdown(signal: string, exitCode = 0): void {
   log.info({ signal, exitCode }, 'shutting down');
   loop.stop();
   gateway.shutdown();
+  void dbHandle.close().catch(() => undefined);
   void app.close().then(
     () => {
       process.exit(exitCode);
