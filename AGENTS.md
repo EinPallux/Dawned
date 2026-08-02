@@ -23,5 +23,6 @@ nothing beyond it.
   questions in USER_QUESTIONS.md with a recommended default.
 - **State:** P0-P2 complete (owner-verified). P3 (movement/netcode core/chat v1, protocol v4)
   built and verified in dev 2026-08-02 — swimming, AOI, reconnect grace, chat+bubbles+/stuck,
-  8-way/lean/swim anims, lag lab; load/latency gates green (ROADMAP P3 status). Open: owner's
-  real-hardware 100 ms signoff, then P3 closes. A0 (panel foundation) underway in Dawned-Admin.
+  8-way/lean/swim anims, lag lab; load/latency gates green (ROADMAP P3 status). A0 (panel
+  foundation) built and verified in dev in Dawned-Admin. Open: the owner's real-hardware 100 ms
+  P3 signoff and the /admin login check — then both phases close.

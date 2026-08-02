@@ -90,9 +90,11 @@ verified in dev (2026-08-02, protocol v4)**: swimming in the shared step, AOI in
 animations, `/netsim` lag lab + netgraph. Load/latency gates measured green (tick p95 1 ms at
 21 players; prediction p95 39 mm / 0 hard snaps at 100 ms ± 20 ms — ROADMAP P3 status).
 **One DoD item open: the owner's real-hardware group session at `/netsim 100 20`. A0 (panel
-foundation) is underway in Dawned-Admin per the owner's directive.** Deploys to production happen
-only when the owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step
-is strict since the P1 deploy fix).
+foundation) is built and verified in dev in Dawned-Admin — its ROADMAP A0 status lists the
+owner's /admin login check as the last open item.** Deploys to production happen only when the
+owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is strict
+since the P1 deploy fix; it now also bridges the GitHub PAT so the admin panel's pinned
+`@dawned/shared` git dependency installs on the private repos).
 
 ### Running it locally
 

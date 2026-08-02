@@ -160,6 +160,14 @@ EOSU
 
 if [[ -d "$APP_DIR/admin" ]]; then
   log "Building the admin panel"
+  # The panel pins @dawned/shared as a GitHub git dependency (codeload tarball);
+  # private repos need the PAT for that fetch — reuse the one in the remote URL.
+  ADMIN_GIT_TOKEN="$(git -C "$APP_DIR/admin" remote get-url origin 2>/dev/null \
+    | sed -n 's|https://[^:/@]*:\([^@]*\)@github.com/.*|\1|p')"
+  if [[ -n "$ADMIN_GIT_TOKEN" ]]; then
+    sudo -u dawned -H bash -c \
+      "umask 077; printf '//codeload.github.com/:_authToken=%s\n' '$ADMIN_GIT_TOKEN' > ~/.npmrc"
+  fi
   sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU || warn "admin build skipped (no code yet)"
     cd "$APP_DIR/admin"
     [ -f package.json ] || exit 0

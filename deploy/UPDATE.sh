@@ -49,9 +49,27 @@ announce() {
   fi
 }
 
+# The admin repo pins @dawned/shared as a GitHub git dependency, which pnpm
+# fetches as a codeload.github.com tarball — a private repo needs the PAT for
+# that fetch. Reuse the token already embedded in the clone's origin remote
+# (FIRST_DEPLOY.md) by writing it into the dawned user's ~/.npmrc before the
+# install. No-op when the remote carries no token (public repos).
+write_npmrc_for_git_deps() {
+  local dir="$1"
+  local token
+  token="$(git -C "$dir" remote get-url origin 2>/dev/null \
+    | sed -n 's|https://[^:/@]*:\([^@]*\)@github.com/.*|\1|p')"
+  if [[ -n "$token" ]]; then
+    sudo -u dawned -H bash -c \
+      "umask 077; printf '//codeload.github.com/:_authToken=%s\n' '$token' > ~/.npmrc"
+  fi
+}
+
 update_repo() {
   local dir="$1" service="$2" label="$3" envfile="$4"
   [[ -d "$dir/.git" ]] || { warn "$label: $dir is not a git clone — skipping"; return 0; }
+
+  [[ "$label" == "admin" ]] && write_npmrc_for_git_deps "$dir"
 
   log "$label: pulling"
   sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU
