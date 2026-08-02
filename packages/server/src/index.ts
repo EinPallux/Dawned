@@ -124,10 +124,11 @@ const loop = new TickLoop(
       }
       gateway.broadcastSnapshots(tick);
 
-      // Once a second: drop dead sockets.
+      // Once a second: drop dead sockets and expire reconnect grace windows.
       if (++idleSweepCounter >= TICK_RATE) {
         idleSweepCounter = 0;
         gateway.sweepIdle();
+        gateway.sweepLingering();
       }
       consecutiveTickErrors = 0;
     } catch (error) {

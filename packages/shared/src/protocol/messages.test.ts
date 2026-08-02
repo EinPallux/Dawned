@@ -97,6 +97,7 @@ describe('snapshots', () => {
     },
     entities: Array.from({ length: entityCount }, (_, i) => ({
       id: i + 1,
+      kind: 0,
       x: i * 2,
       y: 0,
       z: -i,
@@ -128,6 +129,7 @@ describe('snapshots', () => {
       const source = snapshot.entities[i]!;
       const target = decoded.entities[i]!;
       expect(target.id).toBe(source.id);
+      expect(target.kind).toBe(source.kind);
       expect(target.x).toBe(source.x);
       expect(target.z).toBe(source.z);
       expect(target.flags).toBe(source.flags);
