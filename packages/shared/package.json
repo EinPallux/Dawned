@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
+    "prepare": "tsc -b tsconfig.build.json",
     "db:generate": "drizzle-kit generate",
     "clean": "rm -rf dist dist-types *.tsbuildinfo"
   },
@@ -31,8 +32,10 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@types/node": "22.19.2",
     "@types/pg": "8.20.3",
     "drizzle-kit": "0.31.10",
-    "pg": "8.22.0"
+    "pg": "8.22.0",
+    "typescript": "5.9.3"
   }
 }

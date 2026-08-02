@@ -121,18 +121,18 @@ describe('walkgrid', () => {
     const grid = Walkgrid.empty(WalkClass.Blocked);
     grid.setClassAtCell(1024, 1024, WalkClass.Walkable);
     grid.setClassAtCell(1025, 1024, WalkClass.Steep);
-    grid.setClassAtCell(1026, 1024, WalkClass.WaterWade);
+    grid.setClassAtCell(1026, 1024, WalkClass.Water);
     const decoded = Walkgrid.decode(grid.encode());
     expect(decoded.classAtCell(1024, 1024)).toBe(WalkClass.Walkable);
     expect(decoded.classAtCell(1025, 1024)).toBe(WalkClass.Steep);
-    expect(decoded.classAtCell(1026, 1024)).toBe(WalkClass.WaterWade);
+    expect(decoded.classAtCell(1026, 1024)).toBe(WalkClass.Water);
     expect(decoded.classAtCell(0, 0)).toBe(WalkClass.Blocked);
     expect(grid.encode().byteLength).toBe(WALKGRID_ENCODED_BYTES);
   });
 
-  it('answers world-space walkability (wade counts as walkable)', () => {
+  it('answers world-space walkability (water counts as enterable)', () => {
     const grid = Walkgrid.empty(WalkClass.Blocked);
-    grid.setClassAtCell(1024, 1024, WalkClass.WaterWade); // world (0..1, 0..1)
+    grid.setClassAtCell(1024, 1024, WalkClass.Water); // world (0..1, 0..1)
     expect(grid.walkableAt(0.5, 0.5)).toBe(true);
     expect(grid.walkableAt(2.5, 0.5)).toBe(false);
     expect(grid.walkableAt(-5000, 0)).toBe(false); // off-world
@@ -239,5 +239,117 @@ describe('zones', () => {
       zones: [{ ...zone('x', square(0, 0, 10)), polygon: [[0, 0]] }],
     });
     expect(bad.success).toBe(false);
+  });
+});
+
+describe('swimming', () => {
+  const still: MovementIntent = { moveX: 0, moveZ: 0, yaw: 0, buttons: 0 };
+  const fwd: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: 0 };
+
+  /** Ground drops from 0 to -6 across z ∈ [10, 16]; water surface at 0 beyond z=10. */
+  const shoreTerrain = () => ({
+    heightAt: (_x: number, z: number) => (z <= 10 ? 0 : Math.max(-6, -(z - 10))),
+    waterLevelAt: (_x: number, z: number) => (z > 10 ? 0 : null),
+  });
+
+  it('enters swim in deep water, pinned under the surface, and exits on the shore', () => {
+    const state = createMovementState(0, 0, 0);
+    const terrain = shoreTerrain();
+    for (let i = 0; i < 200; i++) stepMovement(state, fwd, TICK_DT, terrain);
+    expect(state.swimming).toBe(true);
+    expect(state.z).toBeGreaterThan(12);
+    expect(state.y).toBeCloseTo(-0.55, 3); // surface (0) − SWIM_SURFACE_OFFSET
+    expect(state.grounded).toBe(false);
+
+    const back: MovementIntent = { moveX: 0, moveZ: -1, yaw: 0, buttons: 0 };
+    for (let i = 0; i < 300; i++) stepMovement(state, back, TICK_DT, terrain);
+    expect(state.swimming).toBe(false);
+    expect(state.grounded).toBe(true);
+    expect(state.y).toBeCloseTo(0, 2);
+  });
+
+  it('swims slower than it runs', () => {
+    const terrain = shoreTerrain();
+    const runner = createMovementState(0, 0, 0);
+    for (let i = 0; i < 40; i++) stepMovement(runner, fwd, TICK_DT, terrain);
+    const runSpeed = Math.hypot(runner.vx, runner.vz);
+
+    const swimmer = createMovementState(0, -0.55, 14);
+    swimmer.swimming = true;
+    swimmer.grounded = false;
+    for (let i = 0; i < 40; i++) stepMovement(swimmer, fwd, TICK_DT, terrain);
+    const swimSpeed = Math.hypot(swimmer.vx, swimmer.vz);
+    expect(swimSpeed).toBeLessThan(runSpeed * 0.65);
+    expect(swimSpeed).toBeGreaterThan(runSpeed * 0.4);
+  });
+
+  it('negates fall damage when landing in swimmable water', () => {
+    const terrain = shoreTerrain();
+    const diver = createMovementState(0, 30, 14); // high above deep water
+    diver.grounded = false;
+    diver.fallPeakY = 30;
+    let damaged = 0;
+    for (let i = 0; i < 200; i++) {
+      damaged += stepMovement(diver, still, TICK_DT, terrain).fallDamageFraction;
+    }
+    expect(diver.swimming).toBe(true);
+    expect(damaged).toBe(0);
+
+    // The same drop onto dry ground DOES hurt.
+    const faller = createMovementState(0, 30, 0);
+    faller.grounded = false;
+    faller.fallPeakY = 30;
+    let groundDamage = 0;
+    for (let i = 0; i < 200; i++) {
+      groundDamage += stepMovement(faller, still, TICK_DT, terrain).fallDamageFraction;
+    }
+    expect(groundDamage).toBeGreaterThan(0);
+  });
+
+  it('drains stamina faster while swim-sprinting and never jumps from water', () => {
+    const terrain = shoreTerrain();
+    const sprintFwd: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: 1 }; // Sprint bit
+    const jumpFwd: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: 2 }; // Jump bit
+
+    const swimmer = createMovementState(0, -0.55, 14);
+    swimmer.swimming = true;
+    swimmer.grounded = false;
+    const before = swimmer.stamina;
+    for (let i = 0; i < 20; i++) stepMovement(swimmer, sprintFwd, TICK_DT, terrain);
+    const swimDrain = before - swimmer.stamina;
+
+    const runner = createMovementState(0, 0, 0);
+    const beforeRun = runner.stamina;
+    for (let i = 0; i < 20; i++) stepMovement(runner, sprintFwd, TICK_DT, terrain);
+    const runDrain = beforeRun - runner.stamina;
+    expect(swimDrain).toBeGreaterThan(runDrain);
+
+    const jumper = createMovementState(0, -0.55, 14);
+    jumper.swimming = true;
+    jumper.grounded = false;
+    const result = stepMovement(jumper, jumpFwd, TICK_DT, terrain);
+    expect(result.jumped).toBe(false);
+    expect(jumper.y).toBeCloseTo(-0.55, 3); // still pinned to the surface
+  });
+
+  it('client/server parity holds across 10k mixed land/water ticks', () => {
+    const terrain = shoreTerrain();
+    const a = createMovementState(0, 0, 0);
+    const b = createMovementState(0, 0, 0);
+    let hash = 7;
+    for (let i = 0; i < 10_000; i++) {
+      // Deterministic pseudo-random intents crossing the shoreline repeatedly.
+      hash = (Math.imul(hash, 1103515245) + 12345) | 0;
+      const intent: MovementIntent = {
+        moveX: ((hash >> 3) % 3) - 1,
+        moveZ: ((hash >> 7) % 3) - 1,
+        yaw: ((hash >> 11) % 628) / 100,
+        buttons: (hash >> 15) & 3,
+      };
+      stepMovement(a, intent, TICK_DT, terrain);
+      stepMovement(b, intent, TICK_DT, terrain);
+    }
+    expect(a).toEqual(b);
+    expect(Number.isFinite(a.x + a.y + a.z)).toBe(true);
   });
 });

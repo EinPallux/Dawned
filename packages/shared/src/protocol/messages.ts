@@ -155,8 +155,16 @@ export interface ChatBroadcastMessage {
 export const encodeChatBroadcast = (msg: ChatBroadcastMessage, writer?: BinaryWriter): Uint8Array =>
   encodeJsonEnvelope(ServerOp.ChatBroadcast, msg, writer);
 
+/** Entity taxonomy on the wire — the P4/P9 seam (enemies, projectiles, props). */
+export const EntityKind = {
+  Player: 0,
+} as const;
+export type EntityKind = (typeof EntityKind)[keyof typeof EntityKind];
+
 export interface SnapshotEntity {
   id: number;
+  /** {@link EntityKind} discriminator. */
+  kind: number;
   x: number;
   y: number;
   z: number;
@@ -204,6 +212,7 @@ export const encodeSnapshot = (msg: SnapshotMessage, writer?: BinaryWriter): Uin
   w.u16(msg.entities.length);
   for (const entity of msg.entities) {
     w.u32(entity.id)
+      .u8(entity.kind)
       .f32(entity.x)
       .f32(entity.y)
       .f32(entity.z)
@@ -235,6 +244,7 @@ export const decodeSnapshot = (reader: BinaryReader): SnapshotMessage => {
   for (let i = 0; i < count; i++) {
     entities[i] = {
       id: reader.u32(),
+      kind: reader.u8(),
       x: reader.f32(),
       y: reader.f32(),
       z: reader.f32(),

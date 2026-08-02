@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 3; // v3 (P2): chunk terrain + walkability in the movement step
+export const PROTOCOL_VERSION = 4; // v4 (P3): swimming (movement + entity flag)
 
 /** Client → server opcodes. */
 export const ClientOp = {
@@ -44,6 +44,7 @@ export const EntityFlag = {
   Grounded: 1 << 0,
   Sprinting: 1 << 1,
   Moving: 1 << 2,
+  Swimming: 1 << 3,
 } as const;
 export type EntityFlag = (typeof EntityFlag)[keyof typeof EntityFlag];
 

@@ -8,6 +8,7 @@
 
 import {
   BinaryReader,
+  EntityFlag,
   INTERP_DELAY_MS,
   NoticeCode,
   PROTOCOL_VERSION,
@@ -54,6 +55,13 @@ const INTERP_CLOCK_EASE = 0.15;
 const INTERP_MAX_LAG_MS = 60;
 /** Hard bound on running ahead (which would starve the buffer and stutter). */
 const INTERP_MAX_LEAD_MS = 40;
+/**
+ * Reconnect schedule after an unexpected socket loss. Cumulative attempt times
+ * (~0.4 / 1.6 / 4.1 / 8.1 / 13.1 s) all land inside the server's 15 s grace
+ * window (gateway LINGER_MS), so a successful attempt reattaches the same
+ * entity in place and nobody around sees a despawn.
+ */
+const RECONNECT_DELAYS_MS = [400, 1200, 2500, 4000, 5000];
 
 export interface RemoteSample {
   time: number;
@@ -72,7 +80,8 @@ export interface RemoteEntity {
   render: { x: number; y: number; z: number; yaw: number; flags: number };
 }
 
-export type ConnectionStatus = 'connecting' | 'connected' | 'playing' | 'closed' | 'error';
+export type ConnectionStatus =
+  'connecting' | 'connected' | 'playing' | 'reconnecting' | 'closed' | 'error';
 
 export interface ConnectionEvents {
   onStatus?: (status: ConnectionStatus, detail?: string) => void;
@@ -95,6 +104,19 @@ export class Connection {
   status: ConnectionStatus = 'connecting';
   selfId = 0;
   playerName = '';
+
+  /** Credentials kept for automatic reconnection after a socket loss. */
+  private url = '';
+  private token = '';
+  private characterId = 0;
+  private reconnectAttempt = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /** True once the player was in-world — only then is auto-reconnect worth it. */
+  private everPlayed = false;
+  /** Set by {@link disconnect} so an intentional close never auto-reconnects. */
+  private manualClose = false;
+  /** Set when the server names a reason (kick, restart, full) — terminal, no retry. */
+  private refusedByServer = false;
 
   /** Predicted local state — what the player sees themselves as. */
   readonly predicted: MovementState = createMovementState();
@@ -139,38 +161,79 @@ export class Connection {
   readonly remotes = new Map<number, RemoteEntity>();
   private roster: RosterEntry[] = [];
 
-  /** Diagnostics for the HUD. */
+  /** Diagnostics for the HUD netgraph. */
   stats = {
     snapshotsReceived: 0,
     corrections: 0,
     snaps: 0,
     lastCorrectionM: 0,
     bytesIn: 0,
+    bytesOut: 0,
     serverTick: 0,
+    /** performance.now() when the newest snapshot was handled (0 = none yet). */
+    lastSnapshotAtMs: 0,
+    /** Smoothed gap between snapshots — healthy is ~TICK_MS. */
+    snapshotIntervalMs: 0,
   };
+
+  /** Wipe per-session state so a reattached session starts from its first snapshot. */
+  private resetForSession(): void {
+    this.pendingInputs.length = 0;
+    this.correction.x = 0;
+    this.correction.y = 0;
+    this.correction.z = 0;
+    this.correction.remainingMs = 0;
+    this.interpClockReady = false;
+    this.clockInitialized = false;
+    this.remotes.clear();
+    this.stats.lastSnapshotAtMs = 0;
+    this.stats.snapshotIntervalMs = 0;
+  }
 
   /**
    * The terrain the prediction step walks on — the SAME sampler the streaming
    * manager fills, so predicted ground always matches the rendered ground
    * (and, transitively, the server's copy of the same chunk bytes).
+   *
+   * `groundReady` says whether real chunk data backs a position yet. Without it
+   * (e.g. right after a far teleport), replaying inputs would step through void
+   * and gravity-poison the predicted state — so snapshots are adopted verbatim
+   * instead until the ground streams in.
    */
   constructor(
     events: ConnectionEvents = {},
     private readonly terrain: TerrainSampler,
+    private readonly groundReady?: (x: number, z: number) => boolean,
   ) {
     this.events = events;
   }
 
   connect(url: string, token: string, characterId: number): void {
+    this.url = url;
+    this.token = token;
+    this.characterId = characterId;
+    this.manualClose = false;
+    this.refusedByServer = false;
+    this.reconnectAttempt = 0;
     this.setStatus('connecting');
+    this.openSocket();
+  }
 
-    const socket = new WebSocket(url);
+  private openSocket(): void {
+    const socket = new WebSocket(this.url);
     socket.binaryType = 'arraybuffer';
     this.socket = socket;
 
     socket.addEventListener('open', () => {
-      this.setStatus('connected');
-      socket.send(encodeHello({ protocolVersion: PROTOCOL_VERSION, token, characterId }));
+      if (this.socket !== socket) return; // superseded by a newer attempt
+      if (this.status === 'connecting') this.setStatus('connected');
+      this.sendRaw(
+        encodeHello({
+          protocolVersion: PROTOCOL_VERSION,
+          token: this.token,
+          characterId: this.characterId,
+        }),
+      );
       this.sendPing();
       this.pingTimer = setInterval(() => {
         this.sendPing();
@@ -178,8 +241,111 @@ export class Connection {
     });
 
     socket.addEventListener('message', (event: MessageEvent<ArrayBuffer>) => {
+      if (this.socket !== socket) return;
+      this.receiveRaw(socket, new Uint8Array(event.data));
+    });
+
+    // 'error' always precedes 'close' on failures — a single handler decides
+    // whether this socket loss retries or ends the session.
+    socket.addEventListener('close', () => {
+      if (this.socket !== socket) return;
+      this.stopPingTimer();
+      this.handleSocketLoss();
+    });
+  }
+
+  /**
+   * Socket gone. Reattach path (docs/tech/NETWORKING.md §6): the server parks the
+   * entity for 15 s, so we retry on a schedule that fits inside that window and
+   * resume seamlessly. Terminal paths: the user left, the server refused us by
+   * name (kick/restart/full), we never made it in-world, or retries ran out.
+   */
+  private handleSocketLoss(): void {
+    if (this.manualClose || this.refusedByServer) return; // status already set
+    if (!this.everPlayed) {
+      if (this.status !== 'error') this.setStatus('error', 'Connection failed.');
+      return;
+    }
+    if (this.reconnectAttempt >= RECONNECT_DELAYS_MS.length) {
+      this.setStatus('closed');
+      return;
+    }
+    const delay = RECONNECT_DELAYS_MS[this.reconnectAttempt]!;
+    this.reconnectAttempt++;
+    this.setStatus(
+      'reconnecting',
+      `attempt ${this.reconnectAttempt}/${RECONNECT_DELAYS_MS.length}`,
+    );
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (this.manualClose) return;
+      this.openSocket();
+    }, delay);
+  }
+
+  disconnect(): void {
+    this.manualClose = true;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.stopPingTimer();
+    this.socket?.close();
+    this.socket = null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Lag lab (docs/tech/NETWORKING.md §8): artificial latency/jitter, both ways
+  // -------------------------------------------------------------------------
+
+  /**
+   * Injected round-trip latency and jitter, split evenly across send/receive.
+   * Local-only and strictly worse-than-real: the server stays authoritative, so
+   * this can never be more than a self-handicap — safe to leave in production
+   * builds for remote debugging of a player's feel report.
+   */
+  private netsimRttMs = 0;
+  private netsimJitterMs = 0;
+  /** Per-direction monotonic delivery clocks — injected jitter must not reorder. */
+  private sendDeliverAt = 0;
+  private recvDeliverAt = 0;
+
+  setNetsim(rttMs: number, jitterMs: number): void {
+    this.netsimRttMs = Math.max(0, Math.min(2000, rttMs));
+    this.netsimJitterMs = Math.max(0, Math.min(1000, jitterMs));
+  }
+
+  get netsim(): { rttMs: number; jitterMs: number } {
+    return { rttMs: this.netsimRttMs, jitterMs: this.netsimJitterMs };
+  }
+
+  /** One-way artificial delay for this packet (half the RTT + jittered half). */
+  private netsimDelayMs(): number {
+    if (this.netsimRttMs <= 0 && this.netsimJitterMs <= 0) return 0;
+    return this.netsimRttMs / 2 + (Math.random() * this.netsimJitterMs) / 2;
+  }
+
+  private sendRaw(bytes: Uint8Array): void {
+    this.stats.bytesOut += bytes.byteLength;
+    const delay = this.netsimDelayMs();
+    if (delay <= 0) {
+      if (this.isOpen) this.socket!.send(bytes);
+      return;
+    }
+    const socket = this.socket;
+    const now = performance.now();
+    this.sendDeliverAt = Math.max(now + delay, this.sendDeliverAt);
+    setTimeout(() => {
+      // Deliver only onto the same socket generation, and only if still open.
+      if (this.socket === socket && socket?.readyState === WebSocket.OPEN) socket.send(bytes);
+    }, this.sendDeliverAt - now);
+  }
+
+  private receiveRaw(socket: WebSocket, bytes: Uint8Array): void {
+    const deliver = (): void => {
+      if (this.socket !== socket) return; // stale socket's queue — drop
       try {
-        this.handlePacket(new Uint8Array(event.data));
+        this.handlePacket(bytes);
       } catch (error) {
         if (error instanceof ProtocolError) {
           console.error('[net] malformed packet from server:', error.message);
@@ -187,23 +353,15 @@ export class Connection {
           console.error('[net] error handling packet:', error);
         }
       }
-    });
-
-    socket.addEventListener('close', () => {
-      this.stopPingTimer();
-      if (this.status !== 'error') this.setStatus('closed');
-    });
-
-    socket.addEventListener('error', () => {
-      this.stopPingTimer();
-      this.setStatus('error', 'Connection failed.');
-    });
-  }
-
-  disconnect(): void {
-    this.stopPingTimer();
-    this.socket?.close();
-    this.socket = null;
+    };
+    const delay = this.netsimDelayMs();
+    if (delay <= 0) {
+      deliver();
+      return;
+    }
+    const now = performance.now();
+    this.recvDeliverAt = Math.max(now + delay, this.recvDeliverAt);
+    setTimeout(deliver, this.recvDeliverAt - now);
   }
 
   private stopPingTimer(): void {
@@ -240,14 +398,25 @@ export class Connection {
     switch (opcode) {
       case ServerOp.Welcome: {
         const welcome = decodeJsonEnvelope<WelcomeMessage>(reader);
+        // A welcome is a session boundary — on a reattach after reconnect the
+        // server resumes our old entity where it stood, and everything derived
+        // from the previous socket (unacked inputs, corrections, interpolation
+        // buffers) is stale. Start clean; the first snapshot refills all of it.
+        this.resetForSession();
         this.selfId = welcome.selfId;
         this.playerName = welcome.players.find((p) => p.id === welcome.selfId)?.name ?? '';
         this.predicted.x = welcome.spawn.x;
         this.predicted.y = welcome.spawn.y;
         this.predicted.z = welcome.spawn.z;
         this.predicted.yaw = welcome.spawn.yaw;
+        this.predicted.vx = 0;
+        this.predicted.vy = 0;
+        this.predicted.vz = 0;
+        this.predicted.fallPeakY = welcome.spawn.y;
         cloneInto(this.authoritative, this.predicted);
         this.roster = welcome.players;
+        this.everPlayed = true;
+        this.reconnectAttempt = 0;
         this.setStatus('playing');
         this.events.onWelcome?.(welcome);
         this.events.onRoster?.(welcome.players);
@@ -283,6 +452,9 @@ export class Connection {
         const notice = decodeSystemNotice(reader);
         // Prefer our own mapped copy; the server's detail is for the log.
         const friendly = noticeTextFor(notice.code);
+        // A named refusal (kick, restart, full, second login…) is terminal:
+        // auto-reconnecting against it would just get refused again.
+        this.refusedByServer = true;
         this.setStatus('error', friendly);
         this.events.onNotice?.(notice.code, friendly);
         console.warn('[net] system notice', notice.code, notice.detail ?? friendly);
@@ -296,6 +468,13 @@ export class Connection {
   private handleSnapshot(snapshot: SnapshotMessage): void {
     this.stats.snapshotsReceived++;
     this.stats.serverTick = snapshot.tick;
+    const arrivedAt = performance.now();
+    if (this.stats.lastSnapshotAtMs > 0) {
+      const gap = arrivedAt - this.stats.lastSnapshotAtMs;
+      this.stats.snapshotIntervalMs =
+        this.stats.snapshotIntervalMs === 0 ? gap : this.stats.snapshotIntervalMs * 0.9 + gap * 0.1;
+    }
+    this.stats.lastSnapshotAtMs = arrivedAt;
 
     // 1. Adopt the authoritative self state.
     const self = snapshot.self;
@@ -308,8 +487,9 @@ export class Connection {
     this.authoritative.yaw = self.yaw;
     this.authoritative.stamina = self.stamina;
     this.authoritative.maxStamina = this.predicted.maxStamina;
-    this.authoritative.grounded = (self.flags & 1) !== 0;
-    this.authoritative.sprinting = (self.flags & 2) !== 0;
+    this.authoritative.grounded = (self.flags & EntityFlag.Grounded) !== 0;
+    this.authoritative.sprinting = (self.flags & EntityFlag.Sprinting) !== 0;
+    this.authoritative.swimming = (self.flags & EntityFlag.Swimming) !== 0;
     this.authoritative.fallPeakY = this.predicted.fallPeakY;
     this.authoritative.staminaIdleMs = this.predicted.staminaIdleMs;
 
@@ -319,6 +499,24 @@ export class Connection {
       seqLE(this.pendingInputs[0]!.seq, snapshot.lastInputSeq)
     ) {
       this.pendingInputs.shift();
+    }
+
+    // 2b. No chunk data under the authoritative position yet (a far teleport —
+    // /stuck, a future GM recall — outruns streaming): predicting there would
+    // step through void, so gravity marks us airborne and the view free-falls
+    // until the chunk arrives. Take the server's word verbatim and stand down;
+    // run-world gates new inputs on the same ground-readiness, so the pending
+    // buffer stays empty until prediction can resume honestly.
+    if (this.groundReady && !this.groundReady(self.x, self.z)) {
+      this.pendingInputs.length = 0;
+      cloneInto(this.predicted, this.authoritative);
+      this.correction.x = 0;
+      this.correction.y = 0;
+      this.correction.z = 0;
+      this.correction.remainingMs = 0;
+      this.stats.lastCorrectionM = 0;
+      this.bufferRemotes(snapshot);
+      return;
     }
 
     // 3. Replay what it hasn't consumed yet, from the authoritative state.
@@ -352,6 +550,11 @@ export class Connection {
       cloneInto(this.predicted, this.replayScratch);
     }
 
+    this.bufferRemotes(snapshot);
+  }
+
+  /** Steps 5–6: interpolation clock + remote sample buffering (runs on EVERY snapshot). */
+  private bufferRemotes(snapshot: SnapshotMessage): void {
     // 5. Advance the interpolation clock toward this snapshot's timeline.
     const target = snapshot.serverTimeMs - INTERP_DELAY_MS;
     if (!this.interpClockReady || Math.abs(this.interpClockMs - target) > INTERP_RESYNC_MS) {
@@ -433,7 +636,7 @@ export class Connection {
     stepMovement(this.predicted, intent, TICK_DT, this.terrain);
 
     if (this.isOpen) {
-      this.socket!.send(
+      this.sendRaw(
         encodeInputIntent({
           seq: record.seq,
           moveX: intent.moveX,
@@ -510,11 +713,11 @@ export class Connection {
   }
 
   sendChat(text: string): void {
-    if (this.isOpen) this.socket!.send(encodeChat({ text }));
+    if (this.isOpen) this.sendRaw(encodeChat({ text }));
   }
 
   private sendPing(): void {
-    if (this.isOpen) this.socket!.send(encodePing({ clientTimeMs: performance.now() }));
+    if (this.isOpen) this.sendRaw(encodePing({ clientTimeMs: performance.now() }));
   }
 }
 

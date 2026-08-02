@@ -139,18 +139,22 @@ const buildChunk = (seed, cx, cy) => {
   return { chunk: { cx, cy, waterLevel, heights, splat }, maxHeight };
 };
 
-const buildWalkgrid = (seed) => {
+const buildWalkgrid = (seed, emittedChunks) => {
   const grid = Walkgrid.empty(WalkClass.Blocked);
   for (let iz = 0; iz < WORLD_SIZE_M; iz++) {
     for (let ix = 0; ix < WORLD_SIZE_M; ix++) {
+      // Cells on unbaked chunks stay Blocked: the swimmable sea ends exactly
+      // where baked terrain (and its rendered water) ends.
+      const cx = Math.floor(ix / CHUNK_SIZE_M);
+      const cy = Math.floor(iz / CHUNK_SIZE_M);
+      if (!emittedChunks.has(`${cx}_${cy}`)) continue;
       const x = WORLD_ORIGIN_M + ix + 0.5;
       const z = WORLD_ORIGIN_M + iz + 0.5;
       const h = heightAt(seed, x, z);
-      if (h < -5) continue; // deep ocean stays Blocked — skip the expensive rest
       const depth = waterLevelAt(seed, x, z) - h;
       let walkClass;
-      if (depth > 1.2) walkClass = WalkClass.Blocked;
-      else if (depth > 0.05) walkClass = WalkClass.WaterWade;
+      if (depth > 0.05)
+        walkClass = WalkClass.Water; // wade or swim — depth decides at runtime
       else if (slopeDegAt(seed, x, z) > 50) walkClass = WalkClass.Steep;
       else walkClass = WalkClass.Walkable;
       grid.setClassAtCell(ix, iz, walkClass);
@@ -375,7 +379,7 @@ export const generate = async ({ seed = 7, version = 'dev-1' } = {}) => {
   );
 
   // 2. Walkgrid.
-  const grid = buildWalkgrid(seed);
+  const grid = buildWalkgrid(seed, new Set(chunkIds));
   await writeFile(path.join(outDir, 'walkgrid.bin'), grid.encode());
   console.log('  walkgrid: baked');
 

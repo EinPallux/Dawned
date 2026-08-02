@@ -5,7 +5,39 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
-### Added — Phase P2: terrain & world streaming (built; owner FPS check open)
+### Added — Phase P3: movement, netcode core & chat v1 (built 2026-08-02; owner signoff pending)
+- **Swimming**: water deeper than 1.2 m carries you — movement pins to the surface,
+  speed drops to ×0.55, sprint-swimming drains stamina faster, jumping is inert, and
+  diving into deep water always negates fall damage. Enforced by the same shared
+  formula on client prediction and the authoritative server (protocol v4).
+- **Seamless reconnect**: losing the connection no longer despawns you — the server
+  holds your character in place for 15 s while the client auto-retries (banner +
+  status show "reconnecting…"); success resumes the same character mid-world with
+  no leave/join spam for anyone nearby. Cleanly leaving still despawns immediately.
+- **Interest management (AOI)**: snapshots now carry only entities within ~96 m
+  (leave past 104 m, per-client cap 80 nearest) — the network cost of a crowd
+  stays flat no matter how many players share the island.
+- **Chat v1**: global chat with system lines, chat bubbles in the "Cut Facets"
+  style above speakers' heads (~6 s), and `/stuck` — a 60 s-cooldown self-rescue
+  that recalls you to the spawn shore.
+- **Locomotion v2**: 8-way jog blends (diagonals included), sprint turns bank into
+  lean animations, and idle/forward swim strokes on the water — all driven by the
+  same speed/heading logic for your own character and everyone remote.
+- **Cursor without unlocking**: hold **Alt** to free the mouse cursor (chat, future
+  menus) and release it to snap straight back to mouselook.
+- **Lag lab + netgraph**: `/netsim <rtt> [jitter]` injects artificial latency into
+  your own connection for feel-testing; the HUD now graphs RTT and prediction
+  corrections and reads out snapshot cadence/age and up/down throughput.
+- **Fix**: teleports into not-yet-streamed terrain (e.g. `/stuck` from far away) no
+  longer free-fall the camera while chunks load — the client adopts the server's
+  authoritative state until the ground data arrives.
+- **Load & latency gates measured** (dev container): 20 wandering bots + 1 client →
+  tick p50 0.66 / p95 1.0 / max 3.6 ms (<15 ms budget), ~42 kB/s total server egress;
+  headless prediction client at 100 ms RTT ± 20 ms jitter, 60 s of sprint-jumping →
+  corrections p95 39 mm, zero hard snaps. New harnesses: `tools/bots/swarm.mjs`,
+  `tools/smoke/predict-lag.mjs`, `tools/smoke/browser-p3.mjs`.
+
+### Added — Phase P2: terrain & world streaming (verified on real hardware 2026-08-02)
 - **The Dawnlands gain real ground**: a ~1 km dev island (Dawnshore meadows and beaches,
   the wooded Verdant Weald, the stark Ashen Reach, an inland lake) generated deterministically
   by `pnpm world:generate` into committed map artifacts — 271 terrain chunks (~25 kB each:

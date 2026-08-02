@@ -97,4 +97,14 @@ export class ChunkTerrain implements TerrainSampler {
   walkableAt(x: number, z: number): boolean {
     return this.walkgrid ? this.walkgrid.walkableAt(x, z) : true;
   }
+
+  /** Water surface height for the chunk under (x, z); null on dry/unbaked chunks. */
+  waterLevelAt(x: number, z: number): number | null {
+    const gx = x - WORLD_ORIGIN_M;
+    const gz = z - WORLD_ORIGIN_M;
+    if (gx < 0 || gz < 0 || gx >= WORLD_SIZE_M || gz >= WORLD_SIZE_M) return null;
+    const cx = Math.min(Math.floor(gx / CHUNK_SIZE_M), WORLD_CHUNKS - 1);
+    const cy = Math.min(Math.floor(gz / CHUNK_SIZE_M), WORLD_CHUNKS - 1);
+    return this.chunks.get(chunkKey(cx, cy))?.waterLevel ?? null;
+  }
 }

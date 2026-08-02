@@ -12,6 +12,7 @@
     "@gltf-transform/core": "^4.2.1",
     "@gltf-transform/extensions": "^4.2.1",
     "@gltf-transform/functions": "^4.2.1",
+    "pg": "^8.22.0",
     "sharp": "^0.35.3",
     "ws": "^8.21.1"
   },

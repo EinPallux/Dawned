@@ -21,7 +21,8 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0 + P1 live at https://play.pathlands.cc. P2 (terrain & world streaming) built
-  and verified in dev — chunked island, streaming, zones, walkability, budgets in limits;
-  awaiting the owner's real-hardware 60 FPS check to close (ROADMAP P2 status). A0
-  (Dawned-Admin) unlocked, not started.
+- **State:** P0-P2 complete (owner-verified). P3 (movement/netcode core/chat v1, protocol v4)
+  built and verified in dev 2026-08-02 — swimming, AOI, reconnect grace, chat+bubbles+/stuck,
+  8-way/lean/swim anims, lag lab; load/latency gates green (ROADMAP P3 status). A0 (panel
+  foundation) built and verified in dev in Dawned-Admin. Open: the owner's real-hardware 100 ms
+  P3 signoff and the /admin login check — then both phases close.

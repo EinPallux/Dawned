@@ -12,8 +12,8 @@
 | ----- | ---------------------------------------- | ---- | ------------------------- |
 | P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
 | P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
-| P2    | Terrain & World Streaming                | L    | 🟨 built — FPS check open |
-| P3    | Movement, Netcode Core & Chat v1         | L    | 🔲                        |
+| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
+| P3    | Movement, Netcode Core & Chat v1         | L    | 🟨 built — owner signoff  |
 | P4    | Combat Foundation                        | XL   | 🔲                        |
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                        |
 | P6    | Classes II — Mage, Cleric, Status System | L    | 🔲                        |
@@ -124,8 +124,8 @@ zones tint fog/light on crossing, budgets measured and recorded.
       0 hard corrections), zone crossing tints fog/light (Dawnshore → Verdant Weald / Ashen
       Reach), budgets measured in the worst forest view: **154 draw calls, ~441 k triangles**
       (≤300 / ≤500 k budgets) — recorded in CHANGELOG
-- [ ] **Owner: pull + walk the island on real hardware (60 FPS + streaming-invisible check;
-      containers here render via software GL) — then P2 closes and unlocks A2's terrain work**
+- [x] Walked on real hardware by the owner (2026-08-02) — runs fine, streaming unobtrusive.
+      **P2 closed. A2's terrain tooling is unblocked (once A0/A1 exist in Dawned-Admin).**
 
 ## P3 — Movement, Netcode Core & Chat v1 (L)
 
@@ -138,6 +138,25 @@ tools (latency/jitter injection, netgraph overlay); chat v1 (global/system + bub
 **DoD:** 5 real humans + 20 bots sprint-jumping around the dev island feel "LAN-like" at 100 ms
 injected RTT (signoff checklist: no rubber-banding on slopes, dodge-free baseline), tick p95 <15 ms
 at that load, prediction-mismatch test suite green.
+
+**Status (2026-08-02): built and verified in dev — protocol v4.**
+
+- [x] Swimming in the shared movement step (deep >1.2 m, ×0.55 speed, swim-sprint stamina,
+      fall-damage negation), water sampling via per-chunk levels, walkgrid `Water` semantics —
+      22 terrain tests incl. a 10 k-tick shoreline parity fuzz (P3-A).
+- [x] Server: AOI interest sets (96 m enter / 104 m leave / cap 80), 15 s reconnect grace with
+      in-place reattach, `/stuck` (60 s cooldown), `kind` byte on snapshot entities — verified
+      headlessly against a live server (P3-B).
+- [x] Client: auto-reconnect inside the grace window (banner + frozen inputs), hold-Alt cursor,
+      8-way jog blends + sprint-turn lean + swim clips (UAL bake extended), chat bubbles
+      ("Cut Facets" canvas sprites), `/netsim` lag lab + netgraph HUD, void-terrain snapshot
+      adoption after far teleports — `tools/smoke/browser-p3.mjs` drives all of it (P3-C).
+- [x] Load + latency gates (P3-D): 20-bot swarm (`tools/bots/swarm.mjs`) + client → tick
+      p50 0.66 / p95 1.0 / max 3.6 ms (<15 ms gate), ~42 kB/s total egress; prediction at
+      100 ms ± 20 ms over 60 s sprint-jumping → corrections p95 39 mm, **0 hard snaps**
+      (`tools/smoke/predict-lag.mjs`). Docs: NETWORKING.md §2/§5/§6/§8 as-built notes.
+- [ ] **Owner signoff on real hardware:** group sprint-jump session at `/netsim 100 20` —
+      LAN-like feel, no rubber-banding on slopes, bubbles/reconnect behave. Then P3 closes.
 
 ## P4 — Combat Foundation (XL) — _the make-or-break phase_
 

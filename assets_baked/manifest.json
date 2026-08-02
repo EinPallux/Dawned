@@ -1117,9 +1117,9 @@
     "characters_ual1": {
       "id": "characters_ual1",
       "category": "characters",
-      "file": "assets_baked/characters/ual1.0262db75.glb",
-      "bytes": 730928,
-      "sourceHash": "1525e4efa6569d9b26c1471ae4dbbb6a267be7dbd9dd8b9357f36f4d6a92b8dc",
+      "file": "assets_baked/characters/ual1.fa51df61.glb",
+      "bytes": 1129716,
+      "sourceHash": "828a9597ec6ba95050d12d2a3383b108c28dfa257ef08d16685b37df27cd5a7f",
       "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
       "pack": "quaternius-ual1",
       "packName": "Quaternius Universal Animation Library 1 (PRO)",
@@ -1132,8 +1132,14 @@
       "animations": [
         "Idle_LookAround_Loop",
         "Idle_Loop",
+        "Jog_Bwd_L_Loop",
         "Jog_Bwd_Loop",
+        "Jog_Bwd_R_Loop",
+        "Jog_Fwd_L_Loop",
+        "Jog_Fwd_LeanL_Loop",
+        "Jog_Fwd_LeanR_Loop",
         "Jog_Fwd_Loop",
+        "Jog_Fwd_R_Loop",
         "Jog_Left_Loop",
         "Jog_Right_Loop",
         "Jump_Land",
@@ -1142,6 +1148,8 @@
         "Spell_Double_Idle_Loop",
         "Spell_Simple_Idle_Loop",
         "Sprint_Loop",
+        "Swim_Fwd_Loop",
+        "Swim_Idle_Loop",
         "Sword_Idle"
       ]
     }

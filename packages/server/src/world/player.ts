@@ -49,6 +49,10 @@ export class ServerPlayer {
 
   /** Wall-clock of the last position flush (playtime accounting). */
   lastPersistedAt = Date.now();
+  /** Entity ids currently inside this player's AOI (world.entitiesFor). */
+  readonly visible = new Set<number>();
+  /** Last accepted /stuck teleport (60 s cooldown, gateway.handleChat). */
+  lastStuckAt = 0;
 
   constructor(
     readonly id: number,
@@ -128,6 +132,7 @@ export class ServerPlayer {
     if (m.grounded) flags |= EntityFlag.Grounded;
     if (m.sprinting) flags |= EntityFlag.Sprinting;
     if (Math.abs(m.vx) > 0.1 || Math.abs(m.vz) > 0.1) flags |= EntityFlag.Moving;
+    if (m.swimming) flags |= EntityFlag.Swimming;
     return flags;
   }
 }

@@ -16,9 +16,9 @@ export const WalkClass = {
   Walkable: 0,
   /** Too steep — blocked. */
   Steep: 1,
-  /** Shallow water — wadeable (swimming proper lands in P3). */
-  WaterWade: 2,
-  /** Deep water / off-island void — blocked. */
+  /** Water — enterable; the movement step decides wade vs swim by depth (P3). */
+  Water: 2,
+  /** Off-world / unbaked void — blocked. */
   Blocked: 3,
 } as const;
 export type WalkClass = (typeof WalkClass)[keyof typeof WalkClass];
@@ -61,10 +61,10 @@ export class Walkgrid {
     return this.classAtCell(Math.floor(x - WORLD_ORIGIN_M), Math.floor(z - WORLD_ORIGIN_M));
   }
 
-  /** Movement rule: open ground and wadeable shallows are walkable. */
+  /** Movement rule: open ground and water (wade or swim) are enterable. */
   walkableAt(x: number, z: number): boolean {
     const walkClass = this.classAt(x, z);
-    return walkClass === WalkClass.Walkable || walkClass === WalkClass.WaterWade;
+    return walkClass === WalkClass.Walkable || walkClass === WalkClass.Water;
   }
 
   encode(): Uint8Array {

@@ -84,15 +84,17 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 16 initial owner decisions are answered and folded (decision log in USER_QUESTIONS.md).
-**P0 and P1 are ✅ live at play.pathlands.cc. P2 — Terrain & World Streaming — is built and
-verified in dev (2026-08-02)**: shared chunk/walkgrid/zone formats (protocol v3), the
-deterministic ~1 km dev island (`pnpm world:generate`, artifacts committed under
-assets_baked/map/dev-1), client streaming with IndexedDB cache + zone ambience + foliage, and
-the server's full-map mirror enforcing ground + walkability. Budgets measured within limits
-(ROADMAP P2 status). **One DoD item open: the owner walks the island on real hardware (60 FPS /
-streaming-invisible check) — then P2 closes.** A0 (Dawned-Admin) is independently unlocked and
-not started. Deploys to production happen only when the owner merges to `main` and runs
-`deploy/UPDATE.sh` on the VPS (its migration step is strict since the P1 deploy fix).
+**P0–P2 are ✅ complete (owner-verified). P3 — Movement, Netcode Core & Chat v1 — is built and
+verified in dev (2026-08-02, protocol v4)**: swimming in the shared step, AOI interest sets,
+15 s reconnect grace with client auto-reconnect, chat v1 + bubbles + `/stuck`, 8-way/lean/swim
+animations, `/netsim` lag lab + netgraph. Load/latency gates measured green (tick p95 1 ms at
+21 players; prediction p95 39 mm / 0 hard snaps at 100 ms ± 20 ms — ROADMAP P3 status).
+**One DoD item open: the owner's real-hardware group session at `/netsim 100 20`. A0 (panel
+foundation) is built and verified in dev in Dawned-Admin — its ROADMAP A0 status lists the
+owner's /admin login check as the last open item.** Deploys to production happen only when the
+owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is strict
+since the P1 deploy fix; it now also bridges the GitHub PAT so the admin panel's pinned
+`@dawned/shared` git dependency installs on the private repos).
 
 ### Running it locally
 

@@ -49,11 +49,17 @@ const MAX_PACKET_BYTES = 4096;
  * are caught sooner by send backpressure and TCP itself.
  */
 const IDLE_TIMEOUT_MS = 90_000;
+/** Disconnect grace: the entity lingers so a dropped Wi-Fi blip can resume (NETWORKING §6). */
+const LINGER_MS = 15_000;
+/** `/stuck` teleport cooldown. */
+const STUCK_COOLDOWN_MS = 60_000;
 
 export class Gateway {
   private readonly wss: WebSocketServer;
   private readonly sessions = new Map<string, Session>();
   private nextSessionId = 1;
+  /** Entities whose socket dropped, waiting out the reconnect grace (by character id). */
+  private readonly lingering = new Map<number, { player: ServerPlayer; until: number }>();
   /** Scratch array reused for every snapshot build. */
   private readonly entityScratch: SnapshotEntity[] = [];
 
@@ -202,36 +208,51 @@ export class Gateway {
     }
     if (!session.isIn('authenticating')) return;
 
-    if (this.world.playerCount >= this.config.MAX_PLAYERS) {
-      this.disconnect(session, NoticeCode.ServerFull);
-      return;
-    }
-
-    // Single session per account (docs/tech/SECURITY.md §2): the newest login
-    // wins, the older one is told why. Save the old character's position first.
-    const existing = this.world.findByAccount(account.id);
-    if (existing) {
-      const existingSession = this.findSessionByPlayer(existing.id);
-      if (existingSession) {
-        await this.persistPlayer(existing);
-        this.disconnect(existingSession, NoticeCode.ReplacedByNewLogin);
-      } else {
-        this.world.removePlayer(existing.id);
+    // Reconnect inside the grace window: the entity never left — reattach the
+    // new socket to it, exactly where it stands. Bypasses the ServerFull check
+    // (the entity is already counted) and skips the enter/leave broadcasts.
+    const linger = this.lingering.get(character.id);
+    let player: ServerPlayer;
+    let reattached = false;
+    if (linger) {
+      this.lingering.delete(character.id);
+      player = linger.player;
+      reattached = true;
+    } else {
+      if (this.world.playerCount >= this.config.MAX_PLAYERS) {
+        this.disconnect(session, NoticeCode.ServerFull);
+        return;
       }
-    }
 
-    const player = this.world.addPlayer({
-      characterId: character.id,
-      accountId: account.id,
-      name: character.name,
-      classId: character.classId,
-      level: character.level,
-      appearance: toAppearance(character),
-      position:
-        character.posX !== null && character.posY !== null && character.posZ !== null
-          ? { x: character.posX, y: character.posY, z: character.posZ, yaw: character.yaw }
-          : null,
-    });
+      // Single session per account (docs/tech/SECURITY.md §2): the newest login
+      // wins, the older one is told why. Save the old character's position first.
+      // The old entity may also be lingering (its socket already died) — its
+      // grace ends now either way.
+      const existing = this.world.findByAccount(account.id);
+      if (existing) {
+        this.lingering.delete(existing.characterId);
+        const existingSession = this.findSessionByPlayer(existing.id);
+        if (existingSession) {
+          await this.persistPlayer(existing);
+          this.disconnect(existingSession, NoticeCode.ReplacedByNewLogin);
+        } else {
+          this.world.removePlayer(existing.id);
+        }
+      }
+
+      player = this.world.addPlayer({
+        characterId: character.id,
+        accountId: account.id,
+        name: character.name,
+        classId: character.classId,
+        level: character.level,
+        appearance: toAppearance(character),
+        position:
+          character.posX !== null && character.posY !== null && character.posZ !== null
+            ? { x: character.posX, y: character.posY, z: character.posZ, yaw: character.yaw }
+            : null,
+      });
+    }
     session.player = player;
     session.state = 'playing';
 
@@ -255,12 +276,19 @@ export class Gateway {
       ),
     );
 
-    this.log.info(
-      { sessionId: session.id, account: account.name, character: character.name, id: player.id },
-      'player entered the world',
-    );
-    this.broadcastRoster();
-    this.broadcastSystemChat(`${character.name} entered the world.`);
+    if (reattached) {
+      this.log.info(
+        { sessionId: session.id, character: character.name, id: player.id },
+        'player resumed within the grace window',
+      );
+    } else {
+      this.log.info(
+        { sessionId: session.id, account: account.name, character: character.name, id: player.id },
+        'player entered the world',
+      );
+      this.broadcastRoster();
+      this.broadcastSystemChat(`${character.name} entered the world.`);
+    }
   }
 
   private findSessionByPlayer(playerId: number): Session | undefined {
@@ -298,7 +326,40 @@ export class Gateway {
     const text =
       typeof message.text === 'string' ? message.text.trim().slice(0, MAX_CHAT_LENGTH) : '';
     if (!text) return;
+    if (text.startsWith('/')) {
+      this.handleCommand(session, player, text);
+      return;
+    }
     this.broadcastChat(player.name, player.id, text);
+  }
+
+  /** Player slash-commands. GM commands land in P13 with the audit trail. */
+  private handleCommand(session: Session, player: ServerPlayer, text: string): void {
+    const command = text.split(/\s+/, 1)[0]!.toLowerCase();
+    switch (command) {
+      case '/stuck': {
+        const now = Date.now();
+        const waitMs = STUCK_COOLDOWN_MS - (now - player.lastStuckAt);
+        if (waitMs > 0) {
+          this.sendSystemChatTo(
+            session,
+            `/stuck is resting — try again in ${Math.ceil(waitMs / 1000)} s.`,
+          );
+          return;
+        }
+        player.lastStuckAt = now;
+        this.world.teleportToSpawn(player);
+        this.log.info({ name: player.name }, '/stuck teleport');
+        this.sendSystemChatTo(session, 'The dawn pulls you back to the shore.');
+        return;
+      }
+      default:
+        this.sendSystemChatTo(session, `Unknown command: ${command}`);
+    }
+  }
+
+  private sendSystemChatTo(session: Session, text: string): void {
+    session.send(encodeChatBroadcast({ from: 'System', fromId: 0, text, system: true }));
   }
 
   // -------------------------------------------------------------------------
@@ -387,24 +448,51 @@ export class Gateway {
   private disconnect(session: Session, code: NoticeCode, detail?: string): void {
     this.sendNotice(session, code, detail);
     session.close(1000, detail ?? '');
-    this.cleanup(session);
+    // Server-initiated closes are deliberate (kick, replacement, protocol error):
+    // no grace, the entity leaves now.
+    this.cleanup(session, true);
   }
 
-  private cleanup(session: Session): void {
+  private cleanup(session: Session, immediate = false): void {
     if (!this.sessions.delete(session.id)) return;
     session.state = 'closed';
     const player = session.player;
-    if (player) {
-      // Save last position/playtime before the entity vanishes. Fire-and-forget:
-      // the disconnect path must never block on the database.
-      this.persistPlayer(player).catch((error: unknown) => {
-        this.log.error({ err: error, character: player.characterId }, 'position save failed');
-      });
-      // P3 adds the 15 s reconnect grace window; for now despawn immediately.
-      this.world.removePlayer(player.id);
-      this.log.info({ sessionId: session.id, name: player.name }, 'player left the world');
-      this.broadcastRoster();
-      this.broadcastSystemChat(`${player.name} left the world.`);
+    if (!player) return;
+
+    // Save last position/playtime in any case. Fire-and-forget: the disconnect
+    // path must never block on the database.
+    this.persistPlayer(player).catch((error: unknown) => {
+      this.log.error({ err: error, character: player.characterId }, 'position save failed');
+    });
+
+    if (!immediate) {
+      // Unexpected socket loss: the entity lingers for the grace window so the
+      // player can resume seamlessly (their character stands where it was —
+      // combat-loggable by design, NETWORKING §6).
+      this.lingering.set(player.characterId, { player, until: Date.now() + LINGER_MS });
+      this.log.info({ sessionId: session.id, name: player.name }, 'connection lost — lingering');
+      return;
+    }
+
+    this.despawn(player, session.id);
+  }
+
+  private despawn(player: ServerPlayer, sessionId: string): void {
+    this.lingering.delete(player.characterId);
+    this.world.removePlayer(player.id);
+    this.log.info({ sessionId, name: player.name }, 'player left the world');
+    this.broadcastRoster();
+    this.broadcastSystemChat(`${player.name} left the world.`);
+  }
+
+  /** Expire grace windows (called from the tick loop next to sweepIdle). */
+  sweepLingering(): void {
+    const now = Date.now();
+    for (const [characterId, entry] of this.lingering) {
+      if (now >= entry.until) {
+        this.lingering.delete(characterId);
+        this.despawn(entry.player, 'linger');
+      }
     }
   }
 

@@ -27,11 +27,17 @@ round-trip). Every message: `u8 opcode` + payload. Cold-path messages (login han
 inventory ops, quest text) ride JSON envelopes (they're rare; readability wins). Hot path is pure
 binary.
 
-> **Implementation status:** the tables below describe the full 0.1.0 target protocol. The
-> implemented subset (protocol v1, P0) lives in `packages/shared/src/protocol/`:
-> Hello/InputIntent/Ping/Chat up, Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice down,
-> with full-state snapshots. Delta compression, the ENTER/UPDATE/LEAVE sections, AOI routing and
-> the remaining messages land in their phases (P3+), each bumping `PROTOCOL_VERSION`.
+> **Implementation status (P3, protocol v4):** the tables below describe the full 0.1.0 target
+> protocol. Implemented in `packages/shared/src/protocol/`: Hello/InputIntent/Ping/Chat up,
+> Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice down. History: v2 authenticated Hello
+> (P1), v3 chunked terrain + walkability (P2), v4 swimming flag + entity `kind` byte (P3).
+> Snapshots are **full-state within AOI**: every included entity ships id/kind/pos/yaw/flags as
+> plain f32s each tick. Measured at 21 clustered players: ~42 kB/s total server egress ≈ 2 kB/s
+> per client — an order of magnitude under budget, because AOI already bounds the entity list.
+> The ENTER/UPDATE/LEAVE delta sections and i16 quantization stay deferred until P9 raises entity
+> counts (enemies/projectiles); deltas before then would add reconnect/loss-recovery complexity
+> for bandwidth we don't need yet. Remaining messages land with their phases, each bumping
+> `PROTOCOL_VERSION`.
 
 ### 2.1 Client → Server
 
@@ -122,6 +128,12 @@ notice (client shows reload screen — deploys are seamless because the client i
 - Events (`AbilityStart`, telegraphs, chat-local) route through the same grid; global channels
   (chat global/system, announces) bypass.
 
+> **As built (P3):** per-viewer visibility sets with the 96 m enter / 104 m leave hysteresis and
+> the 80-entity nearest-first cap live in `World.entitiesFor`. The scan is a direct O(players²)
+> distance pass — ~2.5 k squared-distance checks per tick at the 50-player cap, measured at
+> ~1 ms tick p95 with 21 players. The spatial hash grid slots into the same method when P9's
+> enemies multiply entity counts. Chat is global/system only until local channels arrive.
+
 ## 6. Connection Lifecycle
 
 1. HTTPS `POST /api/auth/login` → session token (see SECURITY.md) → character list.
@@ -131,6 +143,18 @@ notice (client shows reload screen — deploys are seamless because the client i
    despawn+save. Reconnect within grace resumes the entity seamlessly (token re-auth).
 4. Logout: explicit → immediate save + despawn. Character-switch returns to select screen over the
    same socket (session re-`Hello`).
+
+> **As built (P3):** an abrupt socket loss parks the entity in a lingering map for **15 s**
+> (`LINGER_MS`); position is persisted immediately, no leave broadcast. A `Hello` for the same
+> character inside the window reattaches the SAME entity in place (id, position, stamina — no
+> enter/leave spam for bystanders). Expiry despawns + announces the leave; server-initiated
+> disconnects (kick, shutdown, second login) skip the grace. The client auto-reconnects on a
+> 5-attempt schedule (~0.4/1.6/4.1/8.1/13.1 s cumulative — all inside the window) with a
+> "reconnecting…" banner and frozen inputs; a server-named refusal or exhausted retries hands
+> off to the disconnect overlay. On a welcome the client resets all per-session prediction
+> state, and when the authoritative position lands on unstreamed terrain (far teleports) it
+> adopts server state verbatim instead of replaying inputs through void. `/stuck` (60 s
+> cooldown) teleports to the spawn ring for players wedged by geometry.
 
 ## 7. Server Performance Practices
 
@@ -152,3 +176,22 @@ notice (client shows reload screen — deploys are seamless because the client i
   signoff at 100 ms is a phase gate (P4).
 - Load: bot harness (Node script driving N=25 fake clients with wander+combat scripts) against a
   staging boot on the VPS — p95 tick budget gate before release (P14).
+
+> **As built (P3):**
+>
+> - **Lag lab:** `/netsim <rtt> [jitter]` in the in-game chat injects artificial latency into
+>   your own connection (split across send/receive, order-preserving, capped at 2 s) — local-only
+>   and strictly self-handicapping, so it ships in production builds for remote feel debugging.
+>   The HUD netgraph shows RTT + correction sparklines, snapshot cadence/age, kbps up/down and
+>   the active injection. Packet loss injection: not yet (TCP-backed WS can't drop anyway; loss
+>   presents as delay bursts, which jitter approximates).
+> - **Harnesses:** `tools/bots/swarm.mjs` (N wander/sprint/jump bots, DB-provisioned `zz_bot_*`
+>   accounts that can never log in normally), `tools/smoke/predict-lag.mjs` (headless client
+>   running the real prediction/replay algorithm over a delayed socket), and
+>   `tools/smoke/browser-p3.mjs` (real-browser swim/bubble/reconnect/netsim checks).
+> - **P3 measurements** (dev container, 2026-08-02): 21 players (20 bots + 1 client) → tick
+>   p50 0.66 ms / p95 1.0 ms / max 3.6 ms against the <15 ms gate; ~42 kB/s total egress.
+>   Prediction at 100 ms RTT ± 20 ms jitter over 60 s of sprint-jumping: corrections p50 8 mm /
+>   p95 39 mm / max 0.55 m, **0 hard snaps** (>1.5 m). The "5 humans feel LAN-like at 100 ms"
+>   half of the DoD is the owner's real-hardware signoff — browser rendering load is not
+>   measurable under CI's software GL.

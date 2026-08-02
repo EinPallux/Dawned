@@ -58,7 +58,7 @@ export const runWorld = (
   const hud = new Hud(
     container,
     (text) => {
-      connection.sendChat(text);
+      handleChatSubmit(text);
     },
     (focused) => {
       input.textEntryActive = focused;
@@ -99,30 +99,66 @@ export const runWorld = (
           case 'playing':
             everPlayed = true;
             hud.setStatus('connected · in world', 'ok');
+            hud.setBanner(null);
             break;
           case 'connecting':
           case 'connected':
             hud.setStatus('connecting…', 'warn');
             break;
+          case 'reconnecting':
+            // The server holds our entity for 15 s (NETWORKING.md §6) — the
+            // connection retries inside that window while inputs are frozen.
+            hud.setStatus(`reconnecting… ${detail ?? ''}`, 'warn');
+            hud.setBanner('Connection lost — reconnecting…');
+            break;
           case 'closed':
             hud.setStatus('disconnected', 'error');
+            hud.setBanner(null);
             if (everPlayed) callbacks.onDisconnected();
             break;
           case 'error':
             hud.setStatus(detail ?? 'connection error', 'error');
+            hud.setBanner(null);
             break;
         }
       },
       onNotice: callbacks.onNotice,
       onChat: (message) => {
         hud.addChat(message);
+        // Bubble above the speaker (system lines stay chat-log only).
+        if (!message.system) {
+          if (message.fromId === connection.selfId) localView.showBubble(message.text);
+          else remoteViews.get(message.fromId)?.showBubble(message.text);
+        }
       },
       onRoster: (players) => {
         hud.setRoster(players, connection.selfId);
       },
     },
     terrain.sampler,
+    (x, z) => terrain.isGroundReadyAt(x, z),
   );
+
+  /** Client-side commands (`/netsim`) — anything else goes to the server. */
+  const handleChatSubmit = (text: string): void => {
+    const netsim = /^\/netsim(?:\s+(\d+))?(?:\s+(\d+))?\s*$/.exec(text);
+    if (netsim) {
+      const rtt = Number(netsim[1] ?? 0);
+      const jitter = Number(netsim[2] ?? 0);
+      connection.setNetsim(rtt, jitter);
+      hud.addChat({
+        from: '',
+        fromId: 0,
+        system: true,
+        text:
+          rtt > 0 || jitter > 0
+            ? `Lag lab: injecting ${rtt} ms RTT ± ${jitter} ms jitter (local only). "/netsim" to reset.`
+            : 'Lag lab off.',
+      });
+      return;
+    }
+    connection.sendChat(text);
+  };
 
   const input = new InputController(canvas, () => {
     hud.focusChat();
@@ -166,6 +202,13 @@ export const runWorld = (
       }
       return out;
     },
+    animState: (): { local: string; localBubble: boolean; remotes: Record<string, string> } => {
+      const remotes: Record<string, string> = {};
+      for (const [id, view] of remoteViews) {
+        remotes[connection.rosterEntryFor(id)?.name ?? String(id)] = view.clipName;
+      }
+      return { local: localView.clipName, localBubble: localView.hasBubble, remotes };
+    },
   };
 
   // --- loop ------------------------------------------------------------------
@@ -192,9 +235,14 @@ export const runWorld = (
     // 1. Fixed-timestep simulation — one predicted tick per server tick. Gated
     // until the map, walkgrid and the ground under our feet are loaded: inputs
     // sent while the client would predict against ocean floor only cause
-    // corrections (the server never waits on our assets).
+    // corrections (the server never waits on our assets). Also gated on being
+    // in-world: while reconnecting, predicting movement the server never hears
+    // would only earn a snap back to where the entity actually stands.
     const simulationReady =
-      mapReady && walkgridReady && terrain.isGroundReadyAt(streamPosition.x, streamPosition.z);
+      connection.status === 'playing' &&
+      mapReady &&
+      walkgridReady &&
+      terrain.isGroundReadyAt(streamPosition.x, streamPosition.z);
     if (!simulationReady) accumulatorMs = 0;
     accumulatorMs += deltaMs;
     let ticks = 0;
@@ -215,6 +263,7 @@ export const runWorld = (
     localView.update(dtSeconds, {
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
+      swimming: connection.predicted.swimming,
     });
     syncRemoteViews(dtSeconds);
 
@@ -234,11 +283,18 @@ export const runWorld = (
       corrections: connection.stats.corrections,
       snaps: connection.stats.snaps,
       lastCorrectionM: connection.stats.lastCorrectionM,
+      snapshotAgeMs:
+        connection.stats.lastSnapshotAtMs > 0 ? now - connection.stats.lastSnapshotAtMs : 0,
+      snapshotIntervalMs: connection.stats.snapshotIntervalMs,
+      bytesIn: connection.stats.bytesIn,
+      bytesOut: connection.stats.bytesOut,
+      netsim: connection.netsim,
       position,
       stamina: connection.predicted.stamina,
       maxStamina: connection.predicted.maxStamina,
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
+      swimming: connection.predicted.swimming,
       players: connection.remotes.size + 1,
     });
   };
@@ -264,6 +320,7 @@ export const runWorld = (
       view.update(dtSeconds, {
         grounded: (remote.render.flags & EntityFlag.Grounded) !== 0,
         sprinting: (remote.render.flags & EntityFlag.Sprinting) !== 0,
+        swimming: (remote.render.flags & EntityFlag.Swimming) !== 0,
       });
     }
     for (const [id, view] of remoteViews) {

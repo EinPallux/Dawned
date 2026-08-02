@@ -27,6 +27,10 @@ import {
   SPRINT_STAMINA_PER_SEC,
   STAMINA_REGEN_DELAY_MS,
   STAMINA_REGEN_PER_SEC,
+  SWIM_DEPTH,
+  SWIM_SPEED_FACTOR,
+  SWIM_SPRINT_STAMINA_PER_SEC,
+  SWIM_SURFACE_OFFSET,
   TERMINAL_VELOCITY,
   WORLD_BOUNDS,
 } from '../constants.js';
@@ -44,6 +48,8 @@ export interface MovementState {
   yaw: number;
   grounded: boolean;
   sprinting: boolean;
+  /** Surface swimming (deep water — docs/design/GAME_DESIGN.md "Movement"). */
+  swimming: boolean;
   stamina: number;
   maxStamina: number;
   /** Milliseconds since stamina was last spent (drives the regen delay). */
@@ -73,6 +79,11 @@ export interface TerrainSampler {
    * that somehow starts on blocked ground can always leave it.
    */
   walkableAt?(x: number, z: number): boolean;
+  /**
+   * Water surface height at a position, or null where there is no water.
+   * Optional — samplers without it never produce swimming.
+   */
+  waterLevelAt?(x: number, z: number): number | null;
 }
 
 /** Flat ground at a fixed height — the P0 dev world and a useful test fixture. */
@@ -111,6 +122,7 @@ export const createMovementState = (
   yaw: 0,
   grounded: true,
   sprinting: false,
+  swimming: false,
   stamina: maxStamina,
   maxStamina,
   staminaIdleMs: STAMINA_REGEN_DELAY_MS,
@@ -162,12 +174,15 @@ export function stepMovement(
     sprintHeld && wantsMove && (state.sprinting ? state.stamina > 0 : canStartSprint);
   state.sprinting = sprinting;
 
-  // 4. Accelerate horizontal velocity toward the target.
-  const speed = MOVE_SPEED * (sprinting ? SPRINT_MULTIPLIER : 1);
+  // 4. Accelerate horizontal velocity toward the target. Swim state is read from
+  // the previous tick's resolution (one-tick transition lag, identical on both
+  // sides) — swimming is slower, and swim control feels like ground control.
+  const speed =
+    MOVE_SPEED * (state.swimming ? SWIM_SPEED_FACTOR : 1) * (sprinting ? SPRINT_MULTIPLIER : 1);
   const targetVx = dirX * speed;
   const targetVz = dirZ * speed;
   const baseRate = wantsMove ? MOVE_ACCEL : MOVE_DECEL;
-  const rate = state.grounded ? baseRate : baseRate * AIR_CONTROL;
+  const rate = state.grounded || state.swimming ? baseRate : baseRate * AIR_CONTROL;
   const maxDelta = rate * dt;
 
   const dvx = targetVx - state.vx;
@@ -190,8 +205,8 @@ export function stepMovement(
     result.jumped = true;
   }
 
-  // 6. Gravity.
-  if (!state.grounded) {
+  // 6. Gravity (not while swimming — the surface pin below owns Y).
+  if (!state.grounded && !state.swimming) {
     state.vy -= GRAVITY * dt;
     if (state.vy < -TERMINAL_VELOCITY) state.vy = -TERMINAL_VELOCITY;
   }
@@ -224,10 +239,22 @@ export function stepMovement(
   state.x = clamp(state.x, -WORLD_BOUNDS, WORLD_BOUNDS);
   state.z = clamp(state.z, -WORLD_BOUNDS, WORLD_BOUNDS);
 
-  // 9. Ground resolution + fall damage.
+  // 9. Water & ground resolution + fall damage.
   const groundY = terrain.heightAt(state.x, state.z);
-  if (state.y <= groundY) {
-    if (!state.grounded) {
+  const waterLevel = terrain.waterLevelAt?.(state.x, state.z) ?? null;
+  const swimmable = waterLevel !== null && waterLevel - groundY > SWIM_DEPTH;
+  const surfaceY = waterLevel !== null ? waterLevel - SWIM_SURFACE_OFFSET : 0;
+
+  if (swimmable && state.y <= surfaceY) {
+    // Surface swim: pinned just under the waterline. Entering from a fall is a
+    // soft splash — swimmable water negates fall damage entirely (COMBAT.md §5).
+    state.y = surfaceY;
+    state.vy = 0;
+    state.grounded = false;
+    state.swimming = true;
+    state.fallPeakY = state.y;
+  } else if (state.y <= groundY) {
+    if (!state.grounded && !state.swimming) {
       const drop = state.fallPeakY - groundY;
       result.landed = true;
       result.fallDistance = drop > 0 ? drop : 0;
@@ -241,15 +268,19 @@ export function stepMovement(
     state.y = groundY;
     state.vy = 0;
     state.grounded = true;
+    state.swimming = false;
     state.fallPeakY = groundY;
   } else {
     state.grounded = false;
+    state.swimming = false;
     if (state.y > state.fallPeakY) state.fallPeakY = state.y;
   }
 
-  // 10. Stamina: spend while sprinting, otherwise regenerate after the delay.
+  // 10. Stamina: spend while sprinting (swim-sprint drains faster, COMBAT.md §7),
+  // otherwise regenerate after the delay.
   if (sprinting) {
-    state.stamina = Math.max(0, state.stamina - SPRINT_STAMINA_PER_SEC * dt);
+    const drainPerSec = state.swimming ? SWIM_SPRINT_STAMINA_PER_SEC : SPRINT_STAMINA_PER_SEC;
+    state.stamina = Math.max(0, state.stamina - drainPerSec * dt);
     state.staminaIdleMs = 0;
   } else {
     state.staminaIdleMs += dt * 1000;

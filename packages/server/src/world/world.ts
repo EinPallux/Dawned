@@ -7,6 +7,7 @@
  */
 
 import {
+  EntityKind,
   TICK_DT,
   WORLD_BOUNDS,
   devTerrain,
@@ -19,6 +20,11 @@ import {
   type TerrainSampler,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
+
+/** AOI radii (docs/tech/NETWORKING.md §5): 3×3 of 64 m cells ≈ 96 m, +8 m leave margin. */
+const AOI_ENTER_SQ = 96 * 96;
+const AOI_LEAVE_SQ = 104 * 104;
+const AOI_ENTITY_CAP = 80;
 
 export interface SpawnPoint {
   x: number;
@@ -135,6 +141,9 @@ export class World {
 
   removePlayer(id: number): void {
     this.players.delete(id);
+    // Nobody keeps interest in a despawned entity (ids are never reused, but
+    // the visibility sets should not grow without bound).
+    for (const player of this.players.values()) player.visible.delete(id);
   }
 
   /** Advance the world one tick. Returns events the gateway should broadcast. */
@@ -170,15 +179,66 @@ export class World {
     return events;
   }
 
-  /** Build the entity list visible to `viewer` (everyone else, pre-AOI). */
+  /**
+   * Interest management (docs/tech/NETWORKING.md §5): entities within ~96 m
+   * enter the viewer's set, and only leave past 104 m (+8 m hysteresis, no
+   * border flicker). Per-viewer cap of 80, nearest first.
+   *
+   * The scan is a direct O(players²) distance pass — at ≤50 players that is
+   * ~2.5k squared-distance checks per tick. The spatial hash grid slots in
+   * here when P9's enemies raise entity counts an order of magnitude.
+   */
   entitiesFor(viewer: ServerPlayer, out: SnapshotEntity[]): SnapshotEntity[] {
     out.length = 0;
+    const vm = viewer.movement;
+    const candidates: { player: ServerPlayer; distSq: number }[] = [];
     for (const player of this.players.values()) {
       if (player.id === viewer.id) continue;
       const m = player.movement;
-      out.push({ id: player.id, x: m.x, y: m.y, z: m.z, yaw: m.yaw, flags: player.flags });
+      const distSq = (m.x - vm.x) ** 2 + (m.z - vm.z) ** 2;
+      const wasVisible = viewer.visible.has(player.id);
+      const limit = wasVisible ? AOI_LEAVE_SQ : AOI_ENTER_SQ;
+      if (distSq <= limit) {
+        candidates.push({ player, distSq });
+      } else if (wasVisible) {
+        viewer.visible.delete(player.id);
+      }
+    }
+    if (candidates.length > AOI_ENTITY_CAP) {
+      candidates.sort((a, b) => a.distSq - b.distSq);
+      for (const dropped of candidates.splice(AOI_ENTITY_CAP)) {
+        viewer.visible.delete(dropped.player.id);
+      }
+    }
+    for (const { player } of candidates) {
+      viewer.visible.add(player.id);
+      const m = player.movement;
+      out.push({
+        id: player.id,
+        kind: EntityKind.Player,
+        x: m.x,
+        y: m.y,
+        z: m.z,
+        yaw: m.yaw,
+        flags: player.flags,
+      });
     }
     return out;
+  }
+
+  /** `/stuck` and future GM recalls: back to the spawn ring, cleanly grounded. */
+  teleportToSpawn(player: ServerPlayer): void {
+    const spawn = this.spawnPosition();
+    const m = player.movement;
+    m.x = spawn.x;
+    m.y = spawn.y;
+    m.z = spawn.z;
+    m.vx = 0;
+    m.vy = 0;
+    m.vz = 0;
+    m.grounded = true;
+    m.swimming = false;
+    m.fallPeakY = spawn.y;
   }
 
   roster(): RosterEntry[] {
