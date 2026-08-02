@@ -10,6 +10,32 @@ import { InputButton, type MovementIntent } from '@dawned/shared';
 const PITCH_MIN = -0.35;
 const PITCH_MAX = 1.15;
 
+/**
+ * Camera-relative movement: forward/strafe (WASD) → a world-space direction.
+ *
+ * Conventions (all derived from the camera rig in world/scene.ts): yaw 0 faces
+ * +Z, so forward = (sin yaw, cos yaw). The camera sits BEHIND that facing and
+ * three.js lookAt yields screen-right = up × (eye − target) = (−cos yaw, sin yaw)
+ * — note the MINUS on cos. Getting this sign wrong swaps A and D (it shipped
+ * that way once; input-math.test.ts now pins every direction).
+ */
+export const cameraRelativeMove = (
+  forward: number,
+  strafe: number,
+  yaw: number,
+): { moveX: number; moveZ: number } => {
+  const sin = Math.sin(yaw);
+  const cos = Math.cos(yaw);
+  let moveX = sin * forward - cos * strafe;
+  let moveZ = cos * forward + sin * strafe;
+  const length = Math.hypot(moveX, moveZ);
+  if (length > 1) {
+    moveX /= length;
+    moveZ /= length;
+  }
+  return { moveX, moveZ };
+};
+
 export class InputController {
   private readonly held = new Set<string>();
   private pointerLocked = false;
@@ -99,18 +125,7 @@ export class InputController {
 
     const forward = (this.held.has('KeyW') ? 1 : 0) - (this.held.has('KeyS') ? 1 : 0);
     const strafe = (this.held.has('KeyD') ? 1 : 0) - (this.held.has('KeyA') ? 1 : 0);
-
-    // yaw 0 → facing +Z; right-hand vector is (cos, −sin) in the XZ plane.
-    const sin = Math.sin(this.yaw);
-    const cos = Math.cos(this.yaw);
-    let moveX = sin * forward + cos * strafe;
-    let moveZ = cos * forward - sin * strafe;
-
-    const length = Math.hypot(moveX, moveZ);
-    if (length > 1) {
-      moveX /= length;
-      moveZ /= length;
-    }
+    const { moveX, moveZ } = cameraRelativeMove(forward, strafe, this.yaw);
 
     let buttons = 0;
     if (this.held.has('ShiftLeft') || this.held.has('ShiftRight')) buttons |= InputButton.Sprint;

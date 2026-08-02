@@ -12,18 +12,35 @@ import * as THREE from 'three';
 import { PLAYER_HEIGHT, PLAYER_RADIUS, type Appearance } from '@dawned/shared';
 import { composeCharacter, type CharacterAssets, type ComposedCharacter } from './characters.js';
 
-/** Locomotion tuning — thresholds sit between the shared movement speeds. */
-const IDLE_BELOW_MPS = 0.6;
-const SPRINT_ABOVE_MPS = 6.2; // between MOVE_SPEED (5.5) and sprint speed (7.4)
-const JOG_REFERENCE_MPS = 5.5; // clip authored around jog speed; timeScale follows
-const SWIM_REFERENCE_MPS = 3.0; // ≈ MOVE_SPEED × SWIM_SPEED_FACTOR
+/**
+ * Locomotion tuning.
+ *
+ * Gait selection follows the clips' NATURAL ground speeds — the speed at which
+ * a cycle's feet would not slide, derived from the baked cycle durations
+ * (walk 1.333 s · jog 0.933 s · sprint 0.667 s) and humanoid stride lengths.
+ * timeScale = groundSpeed / naturalSpeed keeps feet planted; the run speed
+ * (5.5 m/s) lands in the SPRINT gait's natural range, so plain running uses
+ * Sprint_Loop at ~1.06 — the jog family covers strafes, backpedal and speed
+ * transitions. (The first playtest played jog at 5.5 m/s ≈ half the leg speed
+ * the ground demanded — the reported "skating".)
+ */
+const WALK_NAT_MPS = 1.2;
+const JOG_NAT_MPS = 2.6;
+const SPRINT_NAT_MPS = 5.2;
+const SWIM_NAT_MPS = 2.2;
+const IDLE_BELOW_MPS = 0.35;
+const WALK_TO_JOG_MPS = 1.9;
+/** Forward gait switches to the sprint cycle here (run 5.5 and sprint 7.4 both). */
+const JOG_TO_RUN_MPS = 3.9;
 const LAND_AFTER_AIR_SECONDS = 0.25;
 const VELOCITY_SMOOTHING = 12; // 1/s — ~80 ms exponential window
-/** Sprint lean (COMBAT.md §9 feel): bank into a turn, with hysteresis so the
+/** Fast-turn lean (COMBAT.md §9 feel): bank into a turn, with hysteresis so the
  * clip doesn't strobe around the threshold. Enter above, exit below, rad/s. */
 const LEAN_ENTER_RAD_PER_S = 1.4;
 const LEAN_EXIT_RAD_PER_S = 0.7;
 const YAW_RATE_SMOOTHING = 10; // 1/s
+/** 8-way sector hysteresis: leave the current sector only past its edge + this. */
+const SECTOR_STICKY_RAD = (8 * Math.PI) / 180;
 
 /** Chat bubbles: visible seconds, and the fade-out tail within them. */
 const BUBBLE_SECONDS = 6;
@@ -51,6 +68,7 @@ export class CharacterView {
   private hasLastYaw = false;
   private yawRate = 0; // smoothed rad/s, drives the sprint lean
   private leanSide: -1 | 0 | 1 = 0;
+  private headingSector = 0; // sticky 8-way sector (stickySector)
 
   private airborneSeconds = 0;
   private wasGrounded = true;
@@ -167,7 +185,7 @@ export class CharacterView {
       if (speed < IDLE_BELOW_MPS) this.playClip('Swim_Idle_Loop');
       else
         this.playClip('Swim_Fwd_Loop', {
-          timeScale: THREE.MathUtils.clamp(speed / SWIM_REFERENCE_MPS, 0.7, 1.4),
+          timeScale: THREE.MathUtils.clamp(speed / SWIM_NAT_MPS, 0.8, 1.6),
         });
       return;
     }
@@ -191,6 +209,7 @@ export class CharacterView {
 
     if (speed < IDLE_BELOW_MPS) {
       this.leanSide = 0;
+      this.headingSector = 0;
       this.playClip('Idle_Loop');
       return;
     }
@@ -200,11 +219,14 @@ export class CharacterView {
     const cos = Math.cos(-this.yaw);
     const localX = this.velocity.x * cos - this.velocity.z * sin;
     const localZ = this.velocity.x * sin + this.velocity.z * cos;
-    const timeScale = THREE.MathUtils.clamp(speed / JOG_REFERENCE_MPS, 0.7, 1.5);
+    const heading = Math.atan2(localX, localZ); // 0 = fwd, ±π = bwd
+    const sector = this.stickySector(heading);
+    const forward = sector === 0;
 
-    // Full sprint: Sprint_Loop, banking into fast turns (lean side keeps the
-    // P1-D strafe convention below: positive local X plays the "L" clip).
-    if (flags.sprinting && speed > SPRINT_ABOVE_MPS && localZ > 0) {
+    // Fast forward movement = the sprint gait (run and sprint both — see the
+    // natural-speed table above), banking into hard turns. The lean side keeps
+    // the P1-D-verified convention: positive local X is the rig's "L" side.
+    if (forward && speed >= JOG_TO_RUN_MPS) {
       if (this.leanSide === 0) {
         if (Math.abs(this.yawRate) > LEAN_ENTER_RAD_PER_S)
           this.leanSide = this.yawRate > 0 ? 1 : -1;
@@ -213,22 +235,30 @@ export class CharacterView {
       } else {
         this.leanSide = this.yawRate > 0 ? 1 : -1;
       }
-      const clip =
-        this.leanSide > 0
-          ? 'Jog_Fwd_LeanL_Loop'
-          : this.leanSide < 0
-            ? 'Jog_Fwd_LeanR_Loop'
-            : 'Sprint_Loop';
-      this.playClip(clip, { timeScale });
+      if (this.leanSide !== 0) {
+        // Lean clips are jog-family — cap the scale, the moment is transient.
+        this.playClip(this.leanSide > 0 ? 'Jog_Fwd_LeanL_Loop' : 'Jog_Fwd_LeanR_Loop', {
+          timeScale: THREE.MathUtils.clamp(speed / JOG_NAT_MPS, 0.8, 1.6),
+        });
+        return;
+      }
+      this.playClip('Sprint_Loop', {
+        timeScale: THREE.MathUtils.clamp(speed / SPRINT_NAT_MPS, 0.7, 1.5),
+      });
       return;
     }
     this.leanSide = 0;
 
-    // 8-way jog blend. Sector borders at 22.5° over the local heading angle;
-    // the ~80 ms velocity smoothing keeps borders from flickering. The L/R
-    // naming convention matches P1-D's verified strafes (positive local X → "Left").
-    const heading = Math.atan2(localX, localZ); // 0 = fwd, ±π = bwd
-    const sector = Math.round(heading / (Math.PI / 4)) & 7; // 8 sectors of 45°
+    // Walking band (spawns, decel tails, analog speeds): a real walk cycle
+    // instead of a slow-motion jog.
+    if (speed < WALK_TO_JOG_MPS) {
+      this.playClip('Walk_Loop', {
+        timeScale: THREE.MathUtils.clamp(speed / WALK_NAT_MPS, 0.7, 1.5),
+      });
+      return;
+    }
+
+    // 8-way jog: strafes, backpedal, diagonals and forward transition speeds.
     const SECTOR_CLIPS = [
       'Jog_Fwd_Loop', //      0: fwd
       'Jog_Fwd_L_Loop', //    1: fwd-left
@@ -239,7 +269,23 @@ export class CharacterView {
       'Jog_Right_Loop', //    6: right
       'Jog_Fwd_R_Loop', //    7: fwd-right
     ] as const;
-    this.playClip(SECTOR_CLIPS[sector]!, { timeScale });
+    this.playClip(SECTOR_CLIPS[sector]!, {
+      timeScale: THREE.MathUtils.clamp(speed / JOG_NAT_MPS, 0.7, 1.6),
+    });
+  }
+
+  /**
+   * Quantize a local heading into one of 8 sectors, sticky at the borders:
+   * the current sector holds until the heading leaves it by SECTOR_STICKY_RAD,
+   * so a diagonal held near 45° never flickers between two clips.
+   */
+  private stickySector(heading: number): number {
+    const currentCenter = (this.headingSector * Math.PI) / 4;
+    const offset = wrapAngle(heading - currentCenter);
+    if (Math.abs(offset) > Math.PI / 8 + SECTOR_STICKY_RAD) {
+      this.headingSector = Math.round(heading / (Math.PI / 4)) & 7;
+    }
+    return this.headingSector;
   }
 
   /** Active animation clip — read by the smoke tests via window.__dawned. */
@@ -293,7 +339,11 @@ export class CharacterView {
     const played = composed.play(name, {
       fadeSeconds: options.fadeSeconds ?? 0.14,
       loopOnce: options.once ?? false,
-      randomizeStart: !options.once,
+      // Gait → gait keeps the foot phase (a direction change mid-stride must
+      // not restart the cycle — that pop read as "broken walking"). Idles
+      // start at a random phase so crowds don't move in lockstep.
+      carryPhase: GAIT_CLIPS.has(this.currentClip) && GAIT_CLIPS.has(name),
+      randomizeStart: IDLE_CLIPS.has(name),
     });
     if (played) {
       this.currentClip = name;
@@ -314,6 +364,25 @@ export class CharacterView {
     this.label.material.dispose();
   }
 }
+
+/** Locomotion cycles that share a two-step gait — phase carries across these. */
+const GAIT_CLIPS = new Set([
+  'Walk_Loop',
+  'Jog_Fwd_Loop',
+  'Jog_Bwd_Loop',
+  'Jog_Left_Loop',
+  'Jog_Right_Loop',
+  'Jog_Fwd_L_Loop',
+  'Jog_Fwd_R_Loop',
+  'Jog_Bwd_L_Loop',
+  'Jog_Bwd_R_Loop',
+  'Jog_Fwd_LeanL_Loop',
+  'Jog_Fwd_LeanR_Loop',
+  'Sprint_Loop',
+]);
+
+/** Clips whose start phase is randomized (desynced crowds, no lockstep idling). */
+const IDLE_CLIPS = new Set(['Idle_Loop', 'Swim_Idle_Loop']);
 
 /** Shortest-path angle wrap into (−π, π] — yaw deltas must not jump at ±π. */
 const wrapAngle = (angle: number): number => {

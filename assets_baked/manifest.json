@@ -1117,9 +1117,9 @@
     "characters_ual1": {
       "id": "characters_ual1",
       "category": "characters",
-      "file": "assets_baked/characters/ual1.fa51df61.glb",
-      "bytes": 1129716,
-      "sourceHash": "828a9597ec6ba95050d12d2a3383b108c28dfa257ef08d16685b37df27cd5a7f",
+      "file": "assets_baked/characters/ual1.6faadc32.glb",
+      "bytes": 1180168,
+      "sourceHash": "6e7984eb4035bf1196afe2e02ce4e351a06f513c80fb53e53d65437f3aa0d42a",
       "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
       "pack": "quaternius-ual1",
       "packName": "Quaternius Universal Animation Library 1 (PRO)",
@@ -1150,7 +1150,8 @@
         "Sprint_Loop",
         "Swim_Fwd_Loop",
         "Swim_Idle_Loop",
-        "Sword_Idle"
+        "Sword_Idle",
+        "Walk_Loop"
       ]
     }
   }

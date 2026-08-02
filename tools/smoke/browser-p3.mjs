@@ -207,6 +207,49 @@ const run = async (browser, token, character) => {
   });
   ok('/stuck recalled the character ashore');
 
+  // --- Controls: D must strafe toward SCREEN RIGHT (−X at yaw 0) ------------
+  // The whole-stack proof of the A/D mapping: real key, real intent, real sim.
+  await page.evaluate(() => {
+    window.__dawned.input.yaw = 0;
+  });
+  await page.keyboard.down('d');
+  // Movement resumes only once the spawn chunks finish streaming — wait for
+  // real velocity before measuring the direction.
+  await page.waitForFunction(
+    () => {
+      const p = window.__dawned.connection.predicted;
+      return Math.hypot(p.vx, p.vz) > 2;
+    },
+    { timeout: 30000 },
+  );
+  const beforeStrafe = await page.evaluate(() => ({ ...window.__dawned.connection.predicted }));
+  await sleep(1200);
+  await page.keyboard.up('d');
+  await sleep(300);
+  const afterStrafe = await page.evaluate(() => ({ ...window.__dawned.connection.predicted }));
+  const dx = afterStrafe.x - beforeStrafe.x;
+  if (dx > -1) fail(`D strafed the wrong way (Δx ${dx.toFixed(2)} — screen right at yaw 0 is −X)`);
+  ok(`D strafes screen-right (Δx ${dx.toFixed(1)} m at yaw 0)`);
+
+  // --- Forward run uses the sprint gait + sub-tick extrapolation ------------
+  await page.keyboard.down('w');
+  await page.waitForFunction(() => window.__dawned.animState().local === 'Sprint_Loop', {
+    timeout: 15000,
+  });
+  ok('forward run plays the sprint-gait cycle (no more half-speed jog skating)');
+  const extrapolation = await page.evaluate(() => {
+    const c = window.__dawned.connection;
+    const now = c.renderPosition(0);
+    const ahead = c.renderPosition(25);
+    return Math.hypot(ahead.x - now.x, ahead.z - now.z);
+  });
+  await page.keyboard.up('w');
+  if (extrapolation < 0.05 || extrapolation > 0.25) {
+    fail(`sub-tick extrapolation looks wrong (${(extrapolation * 100).toFixed(1)} cm over 25 ms)`);
+  }
+  ok(`local render extrapolates between ticks (${(extrapolation * 100).toFixed(1)} cm / 25 ms)`);
+  await sleep(400);
+
   // Hold the diagonal and wait for the jog to engage — right after the recall
   // the spawn chunks may still be streaming in, and movement (correctly) waits.
   await page.keyboard.down('s');

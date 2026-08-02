@@ -666,12 +666,40 @@ export class Connection {
     this.sampleRemotes();
   }
 
-  /** Where the local player should be drawn (prediction + decaying correction). */
-  renderPosition(): { x: number; y: number; z: number } {
+  /**
+   * Where the local player should be drawn: prediction, extrapolated by the
+   * frame's leftover sub-tick time, plus the decaying correction offset.
+   *
+   * The simulation steps at 20 Hz; a 60–144 Hz display drawing raw tick
+   * positions shows the character advancing in 27 cm bursts — the whole game
+   * reads as laggy. Extrapolating along the post-step velocity for the
+   * accumulator's remainder (≤ one tick) is exact whenever the next tick keeps
+   * the same intent — i.e. almost every frame — and off by a frame's worth of
+   * acceleration otherwise, which the correction smoothing absorbs unseen.
+   */
+  renderPosition(aheadMs = 0): { x: number; y: number; z: number } {
+    const p = this.predicted;
+    const t = Math.min(aheadMs, TICK_DT * 1000) / 1000;
+    let x = p.x + p.vx * t;
+    let z = p.z + p.vz * t;
+    // Never extrapolate into a blocked cell — the sim will slide, so should we.
+    if (t > 0 && this.terrain.walkableAt && !this.terrain.walkableAt(x, z)) {
+      x = p.x;
+      z = p.z;
+    }
+    // Vertical: grounded characters follow the terrain under the extrapolated
+    // point (otherwise slopes stair-step at tick rate); airborne integrates vy;
+    // swimming stays pinned to the surface (vy is already 0).
+    let y: number;
+    if (p.grounded) {
+      y = this.terrain.heightAt(x, z);
+    } else {
+      y = p.y + p.vy * t;
+    }
     return {
-      x: this.predicted.x + this.correction.x,
-      y: this.predicted.y + this.correction.y,
-      z: this.predicted.z + this.correction.z,
+      x: x + this.correction.x,
+      y: y + this.correction.y,
+      z: z + this.correction.z,
     };
   }
 

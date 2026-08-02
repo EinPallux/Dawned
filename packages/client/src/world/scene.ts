@@ -80,6 +80,17 @@ export class GameScene {
     this.camera.updateProjectionMatrix();
   };
 
+  /** Eased FOV widening while sprinting (COMBAT.md §9 "speed reads on screen"). */
+  private fovBoost = 0;
+  setSprintBoost(active: boolean, dtSeconds: number): void {
+    const target = active ? 6 : 0;
+    const eased = this.fovBoost + (target - this.fovBoost) * Math.min(1, dtSeconds * 9);
+    if (Math.abs(eased - this.fovBoost) < 0.001) return;
+    this.fovBoost = eased;
+    this.camera.fov = 70 + this.fovBoost;
+    this.camera.updateProjectionMatrix();
+  }
+
   /** Third-person orbit camera behind the player (mouselook, Q1 decision). */
   updateCamera(target: { x: number; y: number; z: number }, yaw: number, pitch: number): void {
     // The shadow frustum is a ±70 m box — anchor it to the player, or shadows

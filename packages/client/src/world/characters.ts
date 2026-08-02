@@ -108,7 +108,13 @@ export interface ComposedCharacter {
   /** Play a UAL clip by name with crossfade; returns false when unknown. */
   play: (
     clipName: string,
-    options?: { fadeSeconds?: number; loopOnce?: boolean; randomizeStart?: boolean },
+    options?: {
+      fadeSeconds?: number;
+      loopOnce?: boolean;
+      randomizeStart?: boolean;
+      /** Start the new clip at the outgoing clip's normalized cycle phase. */
+      carryPhase?: boolean;
+    },
   ) => boolean;
   /** Playback speed of the active clip (foot-slide compensation). */
   setTimeScale: (scale: number) => void;
@@ -277,6 +283,15 @@ export const composeCharacter = (
     } else {
       next.setLoop(THREE.LoopRepeat, Infinity);
     }
+    // Carrying the gait phase into the next cycle keeps feet mid-stride through
+    // direction/gait changes — measured before the fade replaces activeAction.
+    let phase = -1;
+    if (options?.carryPhase && activeAction && activeAction !== next) {
+      const previousClip = activeAction.getClip();
+      if (previousClip.duration > 0) {
+        phase = (activeAction.time % previousClip.duration) / previousClip.duration;
+      }
+    }
     if (activeAction && activeAction !== next) {
       next
         .reset()
@@ -285,9 +300,13 @@ export const composeCharacter = (
     } else {
       next.reset().play();
     }
-    // Desync loops across players so a crowd doesn't idle/jog in lockstep.
-    if (options?.randomizeStart && !options.loopOnce) {
-      next.time = Math.random() * clip.duration;
+    if (!options?.loopOnce) {
+      if (phase >= 0) {
+        next.time = phase * clip.duration;
+      } else if (options?.randomizeStart) {
+        // Desync loops across players so a crowd doesn't idle in lockstep.
+        next.time = Math.random() * clip.duration;
+      }
     }
     activeAction = next;
     return true;
