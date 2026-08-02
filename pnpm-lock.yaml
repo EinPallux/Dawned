@@ -125,6 +125,9 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
+      '@types/node':
+        specifier: 22.19.2
+        version: 22.19.2
       '@types/pg':
         specifier: 8.20.3
         version: 8.20.3
@@ -134,6 +137,9 @@ importers:
       pg:
         specifier: 8.22.0
         version: 8.22.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   tools:
     dependencies:
@@ -1258,6 +1264,9 @@ packages:
 
   '@types/ndarray@1.0.14':
     resolution: {integrity: sha512-oANmFZMnFQvb219SSBIhI1Ih/r4CvHDOzkWyJS/XRqkMrGH5/kaPSA1hQhdIBzouaE+5KpE/f5ylI9cujmckQg==}
+
+  '@types/node@22.19.2':
+    resolution: {integrity: sha512-LPM2G3Syo1GLzXLGJAKdqoU35XvrWzGJ21/7sgZTUpbkBaOasTj8tjwn6w+hCkqaa1TfJ/w67rJSwYItlJ2mYw==}
 
   '@types/node@22.20.1':
     resolution: {integrity: sha512-EANqOCF9QFyra+4pfxUcX9STKJpCLjMbObVzljIJomAWSnuSIEAvyzEU53GaajbXJEgdh0iEcPL+DGvpUd4k1Q==}
@@ -3347,6 +3356,10 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/ndarray@1.0.14': {}
+
+  '@types/node@22.19.2':
+    dependencies:
+      undici-types: 6.21.0
 
   '@types/node@22.20.1':
     dependencies:

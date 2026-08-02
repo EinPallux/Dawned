@@ -17,7 +17,9 @@ import {
   customType,
   index,
   integer,
+  jsonb,
   pgTable,
+  primaryKey,
   real,
   smallint,
   text,
@@ -156,7 +158,57 @@ export const characters = pgTable(
   ],
 );
 
+// ---------------------------------------------------------------------------
+// Ops trail (DATABASE.md §4) — append-only, written by both servers
+// ---------------------------------------------------------------------------
+
+export const auditLog = pgTable(
+  'audit_log',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    actorAccountId: bigint('actor_account_id', { mode: 'number' })
+      .notNull()
+      .references(() => accounts.id),
+    /** Which surface acted: in-game GM command or the admin panel. */
+    surface: text('surface', { enum: ['gm', 'admin'] }).notNull(),
+    /** Verb slug, e.g. 'auth.login', 'world_settings.save_draft', 'player.ban'. */
+    action: text('action').notNull(),
+    args: jsonb('args'),
+    /** What was acted on (slug/account name/character name), when applicable. */
+    target: text('target'),
+    result: text('result', { enum: ['ok', 'denied', 'error'] }).notNull(),
+    /** World position for in-game GM commands; null from the panel. */
+    pos: jsonb('pos'),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('audit_log_actor_idx').on(table.actorAccountId),
+    index('audit_log_at_idx').on(table.at),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Content: world settings (DATABASE.md §3) — the first content table.
+// Draft/published is a per-row status: editors write ONLY draft rows; the
+// publish pipeline (A1) validates and copies draft → published. The game
+// reads published rows exclusively.
+// ---------------------------------------------------------------------------
+
+export const contentWorldSettings = pgTable(
+  'content_world_settings',
+  {
+    key: text('key').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    value: jsonb('value').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.key, table.status] })],
+);
+
 export type AccountRow = typeof accounts.$inferSelect;
 export type SessionRow = typeof sessions.$inferSelect;
 export type CharacterRow = typeof characters.$inferSelect;
 export type BanRow = typeof bans.$inferSelect;
+export type AuditLogRow = typeof auditLog.$inferSelect;
+export type ContentWorldSettingsRow = typeof contentWorldSettings.$inferSelect;
