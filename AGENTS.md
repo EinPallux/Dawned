@@ -21,7 +21,7 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0 and P1 live at https://play.pathlands.cc (P1 verified on the VPS 2026-08-02:
-  accounts, character creation, animated rigs, multiplayer visibility). Next: P2 (terrain &
-  world streaming) in this repo; A0 (panel scaffold) is unlocked in Dawned-Admin. Neither
-  started — wait for the owner's go.
+- **State:** P0 + P1 live at https://play.pathlands.cc. P2 (terrain & world streaming) built
+  and verified in dev — chunked island, streaming, zones, walkability, budgets in limits;
+  awaiting the owner's real-hardware 60 FPS check to close (ROADMAP P2 status). A0
+  (Dawned-Admin) unlocked, not started.

@@ -54,23 +54,26 @@ export interface FoliageAssets {
 }
 
 const KIND_IDS = {
-  grass: ['world_nature_grass_1_a_color1', 'world_nature_grass_1_b_color1'],
+  // The lightest grass variants (14-44 tris) — grass dominates instance counts,
+  // so its per-model cost decides the triangle budget (TECH_STACK ≤500k in view).
+  grass: [
+    'world_nature_grass_1_a_color1',
+    'world_nature_grass_1_a_singlesided_color1',
+    'world_nature_grass_1_b_singlesided_color1',
+  ],
   bush: [
     'world_nature_bush_1_a_color1',
     'world_nature_bush_1_b_color1',
     'world_nature_bush_1_c_color1',
   ],
+  // Light-variant trees only (330-640 tris) — the 1.4k-tri showpieces wait for
+  // hand-placed placements (A3/P12) where counts are curated, not scattered.
   tree: [
     'world_nature_tree_1_a_color1',
     'world_nature_tree_1_b_color1',
-    'world_nature_tree_1_c_color1',
     'world_nature_tree_2_a_color1',
   ],
-  bareTree: [
-    'world_nature_tree_bare_1_a_color1',
-    'world_nature_tree_bare_1_b_color1',
-    'world_nature_tree_bare_1_c_color1',
-  ],
+  bareTree: ['world_nature_tree_bare_1_a_color1', 'world_nature_tree_bare_1_b_color1'],
 } as const;
 
 interface ManifestShape {
@@ -265,10 +268,10 @@ export const buildChunkFoliage = (
         continue;
       }
 
-      if (rand(seed, n++) < (wGrass + wFlowers) * 0.55) place(grass, 0.75, 1.25);
-      if (rand(seed, n++) < wForest * 0.1) place(trees, 0.85, 1.35);
-      if (rand(seed, n++) < wForest * 0.08 + wGrass * 0.012) place(bushes, 0.8, 1.3);
-      if (rand(seed, n++) < wAsh * 0.05) place(bareTrees, 0.9, 1.4);
+      if (rand(seed, n++) < (wGrass + wFlowers) * 0.28) place(grass, 0.75, 1.25);
+      if (rand(seed, n++) < wForest * 0.06) place(trees, 0.85, 1.35);
+      if (rand(seed, n++) < wForest * 0.05 + wGrass * 0.012) place(bushes, 0.8, 1.3);
+      if (rand(seed, n++) < wAsh * 0.035) place(bareTrees, 0.9, 1.4);
     }
   }
 

@@ -84,12 +84,14 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 16 initial owner decisions are answered and folded (decision log in USER_QUESTIONS.md).
-**Phase P1 is ✅ complete and live (verified on the VPS by the owner, 2026-08-02)**: auth stack
-(Postgres/Drizzle/argon2id, protocol v2), character pipeline (head+outfit+hair composition, UAL
-clips), "Cut Facets" menus, in-world animated rigs, session resume — registration, character
-creation and multiplayer visibility all confirmed in production. **Next up: P2 — Terrain & World
-Streaming (game repo) and A0 — panel scaffold (Dawned-Admin repo, now unlocked); neither is
-started.** Deploys to production happen only when the owner merges to `main` and runs
+**P0 and P1 are ✅ live at play.pathlands.cc. P2 — Terrain & World Streaming — is built and
+verified in dev (2026-08-02)**: shared chunk/walkgrid/zone formats (protocol v3), the
+deterministic ~1 km dev island (`pnpm world:generate`, artifacts committed under
+assets_baked/map/dev-1), client streaming with IndexedDB cache + zone ambience + foliage, and
+the server's full-map mirror enforcing ground + walkability. Budgets measured within limits
+(ROADMAP P2 status). **One DoD item open: the owner walks the island on real hardware (60 FPS /
+streaming-invisible check) — then P2 closes.** A0 (Dawned-Admin) is independently unlocked and
+not started. Deploys to production happen only when the owner merges to `main` and runs
 `deploy/UPDATE.sh` on the VPS (its migration step is strict since the P1 deploy fix).
 
 ### Running it locally
