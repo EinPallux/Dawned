@@ -65,9 +65,19 @@ ufw allow OpenSSH >/dev/null
 ufw allow 80/tcp >/dev/null
 ufw allow 443/tcp >/dev/null
 ufw --force enable
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
-systemctl reload ssh || systemctl reload sshd || true
+# Never saw off the branch we're sitting on: disabling password login without an
+# installed SSH key would lock a password-only owner out of their own VPS.
+# fail2ban protects password logins from brute force in the meantime; add your
+# public key to /root/.ssh/authorized_keys and re-run DEPLOY.sh to harden fully.
+if [[ -s /root/.ssh/authorized_keys ]]; then
+  sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+  sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+  systemctl reload ssh || systemctl reload sshd || true
+  echo "  SSH key found — password login disabled (key-only from now on)"
+else
+  warn "No SSH key in /root/.ssh/authorized_keys — leaving password login ENABLED."
+  warn "Recommended later: install a key, then re-run DEPLOY.sh to disable passwords."
+fi
 systemctl enable --now fail2ban
 dpkg-reconfigure -f noninteractive unattended-upgrades || true
 
