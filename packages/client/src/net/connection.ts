@@ -20,7 +20,6 @@ import {
   decodePong,
   decodeSnapshot,
   decodeSystemNotice,
-  devTerrain,
   encodeChat,
   encodeHello,
   encodeInputIntent,
@@ -34,6 +33,7 @@ import {
   type RosterEntry,
   type RosterMessage,
   type SnapshotMessage,
+  type TerrainSampler,
   type WelcomeMessage,
 } from '@dawned/shared';
 
@@ -149,7 +149,15 @@ export class Connection {
     serverTick: 0,
   };
 
-  constructor(events: ConnectionEvents = {}) {
+  /**
+   * The terrain the prediction step walks on — the SAME sampler the streaming
+   * manager fills, so predicted ground always matches the rendered ground
+   * (and, transitively, the server's copy of the same chunk bytes).
+   */
+  constructor(
+    events: ConnectionEvents = {},
+    private readonly terrain: TerrainSampler,
+  ) {
     this.events = events;
   }
 
@@ -316,7 +324,7 @@ export class Connection {
     // 3. Replay what it hasn't consumed yet, from the authoritative state.
     cloneInto(this.replayScratch, this.authoritative);
     for (const pending of this.pendingInputs) {
-      stepMovement(this.replayScratch, pending.intent, TICK_DT, devTerrain);
+      stepMovement(this.replayScratch, pending.intent, TICK_DT, this.terrain);
     }
 
     // 4. Compare with what we predicted and correct smoothly (or snap).
@@ -422,7 +430,7 @@ export class Connection {
     // Bound the buffer: a very long stall should not replay thousands of steps.
     if (this.pendingInputs.length > 120) this.pendingInputs.shift();
 
-    stepMovement(this.predicted, intent, TICK_DT, devTerrain);
+    stepMovement(this.predicted, intent, TICK_DT, this.terrain);
 
     if (this.isOpen) {
       this.socket!.send(

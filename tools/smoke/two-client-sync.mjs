@@ -176,9 +176,10 @@ const main = async () => {
   if (!observer.lastSnapshot) fail('observer received no snapshots');
   const start = { ...walker.lastSnapshot.self };
 
-  // Walk forward (sprinting) for WALK_TICKS ticks, sending input at tick rate.
+  // Walk north (into the island — the spawn beach is near the south coast),
+  // sprinting, for WALK_TICKS ticks at tick rate.
   for (let i = 0; i < WALK_TICKS; i++) {
-    walker.sendInput(0, 1, InputButton.Sprint);
+    walker.sendInput(0, -1, InputButton.Sprint);
     observer.sendInput(0, 0, 0);
     await sleep(TICK_MS);
   }
@@ -222,7 +223,7 @@ const main = async () => {
 
   // Walk back so the persisted position stays near spawn for the next run.
   for (let i = 0; i < WALK_TICKS; i++) {
-    walker.sendInput(0, -1, InputButton.Sprint);
+    walker.sendInput(0, 1, InputButton.Sprint);
     await sleep(TICK_MS);
   }
 

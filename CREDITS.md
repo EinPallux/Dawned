@@ -41,6 +41,13 @@ from these games are used.
 ### KayKit Forest Nature Pack 1.0 FREE
 Pack id `kaykit-forest` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
 
+- `world_nature_bush_1_a_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_A_Color1.gltf
+- `world_nature_bush_1_b_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_B_Color1.gltf
+- `world_nature_bush_1_c_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_C_Color1.gltf
+- `world_nature_grass_1_a_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Grass_1_A_Color1.gltf
+- `world_nature_grass_1_a_singlesided_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Grass_1_A_Singlesided_Color1.gltf
+- `world_nature_grass_1_b_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Grass_1_B_Color1.gltf
+- `world_nature_grass_1_b_singlesided_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Grass_1_B_Singlesided_Color1.gltf
 - `world_nature_rock_1_a_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_A_Color1.gltf
 - `world_nature_rock_1_b_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_B_Color1.gltf
 - `world_nature_rock_1_c_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_C_Color1.gltf
@@ -48,6 +55,9 @@ Pack id `kaykit-forest` · author **Kay Lousberg (KayKit)** · license **CC0-1.0
 - `world_nature_tree_1_b_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_B_Color1.gltf
 - `world_nature_tree_1_c_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_C_Color1.gltf
 - `world_nature_tree_2_a_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_2_A_Color1.gltf
+- `world_nature_tree_bare_1_a_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_A_Color1.gltf
+- `world_nature_tree_bare_1_b_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_B_Color1.gltf
+- `world_nature_tree_bare_1_c_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_C_Color1.gltf
 
 ### KayKit Skeletons 1.1 FREE
 Pack id `kaykit-skeletons` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/

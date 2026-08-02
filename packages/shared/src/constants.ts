@@ -82,6 +82,12 @@ export const CHUNK_SIZE = 64;
 export const WORLD_BOUNDS = 1024;
 /** Sea level height in metres. */
 export const SEA_LEVEL = 0;
+/**
+ * The active map artifact version under assets_baked/map/ (client fetches it
+ * from /assets/map/<version>/). Becomes dynamic when the admin publish
+ * pipeline lands (A2) — until then both sides agree through this constant.
+ */
+export const MAP_VERSION = 'dev-1';
 
 /** Player capsule radius in metres. */
 export const PLAYER_RADIUS = 0.35;

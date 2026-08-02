@@ -5,13 +5,15 @@
  * Shutdown is graceful: announce, drain sockets, stop the loop, exit.
  */
 
+import path from 'node:path';
 import Fastify, { type FastifyError, type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
-import { TICK_RATE } from '@dawned/shared';
+import { MAP_VERSION, TICK_RATE } from '@dawned/shared';
 import { loadConfig } from './config.js';
 import { createLogger } from './logger.js';
 import { MetricsRing } from './metrics/ring.js';
 import { World } from './world/world.js';
+import { loadMapTerrain } from './world/terrain.js';
 import { TickLoop } from './world/tick-loop.js';
 import { Gateway } from './net/gateway.js';
 import { registerRoutes } from './http/routes.js';
@@ -38,8 +40,14 @@ await assertSchemaPresent(dbHandle);
 const auth = new AuthService(dbHandle.db, config.INVITE_CODE);
 const characterService = new CharacterService(dbHandle.db);
 
+// --- terrain ----------------------------------------------------------------
+// The full map lives in memory (~8 MB) — the server is authoritative for
+// ground height and walkability on every tick.
+const map = await loadMapTerrain(path.join(config.MAP_DIR, MAP_VERSION));
+log.info({ mapVersion: map.meta.mapVersion, chunks: map.terrain.chunkCount }, 'map terrain loaded');
+
 const metrics = new MetricsRing();
-const world = new World();
+const world = new World(map.terrain, map.meta.spawn);
 
 const app = Fastify({
   loggerInstance: log.child({ component: 'http' }),

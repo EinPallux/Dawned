@@ -32,7 +32,9 @@ const fail = (message) => {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Time allowed for remote views to converge after movement stops. */
-const SETTLE_MS = 1500;
+const SETTLE_MS = 3000;
+/** Walk long enough that interpolation lag is noise, not signal (≥25 m at sprint). */
+const WALK_MS = 4000;
 
 /** Read the HUD's live position readout. */
 const readPosition = async (page) => {
@@ -68,13 +70,23 @@ const joinWorld = async (browser, accountName, characterName) => {
   }, token);
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-  await page.click(`.char-card:has-text("${characterName}")`, { timeout: 15000 });
-  await page.click('.btn--primary:has-text("ENTER WORLD")');
-  await page.waitForSelector('.hud', { timeout: 15000 });
-  await page.waitForFunction(
-    () => document.querySelector('.hud-status')?.textContent?.includes('in world'),
-    { timeout: 15000 },
-  );
+  // Generous timeouts: under software WebGL (CI containers) two concurrent
+  // clients render at a few fps and terrain meshes build one per frame, so a
+  // busy main thread can stall even the click dispatch.
+  try {
+    await page.click(`.char-card:has-text("${characterName}")`, { timeout: 60000 });
+    await page.click('.btn--primary:has-text("ENTER WORLD")', { timeout: 60000 });
+    await page.waitForSelector('.hud', { timeout: 90000 });
+    await page.waitForFunction(
+      () => document.querySelector('.hud-status')?.textContent?.includes('in world'),
+      { timeout: 90000 },
+    );
+  } catch (error) {
+    fail(
+      `${accountName} never reached the world (${error.message.split('\n')[0]})` +
+        (errors.length ? `; page errors:\n  ${errors.slice(0, 5).join('\n  ')}` : ''),
+    );
+  }
   return { page, context, errors, name: character.name };
 };
 
@@ -115,7 +127,7 @@ const run = async (browser) => {
   await walker.page.locator('canvas.game').click(); // focus the canvas
   await walker.page.keyboard.down('Shift');
   await walker.page.keyboard.down('w');
-  await sleep(2500);
+  await sleep(WALK_MS);
   await walker.page.keyboard.up('w');
   await walker.page.keyboard.up('Shift');
   // Let the world settle: while the walker is moving, every remote view is
@@ -193,7 +205,7 @@ const run = async (browser) => {
   // Walk back so the persisted position stays near spawn for the next run.
   await walker.page.keyboard.down('Shift');
   await walker.page.keyboard.down('s');
-  await sleep(2500);
+  await sleep(WALK_MS);
   await walker.page.keyboard.up('s');
   await walker.page.keyboard.up('Shift');
 };

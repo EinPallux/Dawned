@@ -182,11 +182,7 @@ describe('stepMovement walkability', () => {
 });
 
 describe('zones', () => {
-  const square = (
-    minX: number,
-    minZ: number,
-    size: number,
-  ): [number, number][] => [
+  const square = (minX: number, minZ: number, size: number): [number, number][] => [
     [minX, minZ],
     [minX + size, minZ],
     [minX + size, minZ + size],

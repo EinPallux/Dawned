@@ -354,14 +354,16 @@ export const generate = async ({ seed = 7, version = 'dev-1' } = {}) => {
   console.log(`worldgen: seed ${seed} → assets_baked/map/${version}`);
 
   // 1. Chunks — emit only where there is land or shore (missing = open ocean).
-  let emitted = 0;
+  // The id list goes into meta.json so clients never have to probe for chunks
+  // that were skipped.
+  const chunkIds = [];
   const bounds = { minCx: Infinity, minCy: Infinity, maxCx: -Infinity, maxCy: -Infinity };
   for (let cy = 0; cy < WORLD_CHUNKS; cy++) {
     for (let cx = 0; cx < WORLD_CHUNKS; cx++) {
       const { chunk, maxHeight } = buildChunk(seed, cx, cy);
       if (maxHeight < -6.5) continue; // pure deep ocean
       await writeFile(path.join(outDir, `chunk_${cx}_${cy}.bin`), encodeChunk(chunk));
-      emitted++;
+      chunkIds.push(`${cx}_${cy}`);
       bounds.minCx = Math.min(bounds.minCx, cx);
       bounds.minCy = Math.min(bounds.minCy, cy);
       bounds.maxCx = Math.max(bounds.maxCx, cx);
@@ -369,7 +371,7 @@ export const generate = async ({ seed = 7, version = 'dev-1' } = {}) => {
     }
   }
   console.log(
-    `  chunks: ${emitted} emitted (${WORLD_CHUNKS * WORLD_CHUNKS - emitted} ocean skipped)`,
+    `  chunks: ${chunkIds.length} emitted (${WORLD_CHUNKS * WORLD_CHUNKS - chunkIds.length} ocean skipped)`,
   );
 
   // 2. Walkgrid.
@@ -390,7 +392,7 @@ export const generate = async ({ seed = 7, version = 'dev-1' } = {}) => {
     spawn,
     seaLevel: SEA_LEVEL,
     lake: { ...LAKE, level: lakeLevel(seed) },
-    chunks: { emitted, ...bounds },
+    chunks: { emitted: chunkIds.length, ...bounds, ids: chunkIds },
   };
   await writeFile(path.join(outDir, 'meta.json'), `${JSON.stringify(meta, null, 2)}\n`);
   console.log(`  spawn: (${spawn.x}, ${spawn.y.toFixed(2)}, ${spawn.z})`);

@@ -3,9 +3,18 @@
  * or malformed (docs/tech/ARCHITECTURE.md §6).
  */
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 const DEV_DATABASE_URL = 'postgres://dawned:dawned@127.0.0.1:5432/dawned';
+
+/** Repo-relative default for baked map artifacts (works from src/ and dist/). */
+const DEFAULT_MAP_DIR = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../..',
+  'assets_baked/map',
+);
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -24,6 +33,9 @@ const schema = z.object({
 
   /** Where published map/content artifacts live (P12+). */
   PUBLISHED_DIR: z.string().default('./.published'),
+
+  /** Baked map artifacts root; the active version (shared MAP_VERSION) lives under it. */
+  MAP_DIR: z.string().default(DEFAULT_MAP_DIR),
 
   /** Dev client origin allowed to open a WebSocket. */
   CLIENT_ORIGIN: z.string().default('http://localhost:5173'),

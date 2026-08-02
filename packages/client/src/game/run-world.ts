@@ -5,12 +5,25 @@
  */
 
 import * as THREE from 'three';
-import { EntityFlag, NoticeCode, TICK_MS, maxStaminaFor, type Appearance } from '@dawned/shared';
+import {
+  EntityFlag,
+  MAP_VERSION,
+  NoticeCode,
+  SEA_LEVEL,
+  TICK_MS,
+  maxStaminaFor,
+  type Appearance,
+} from '@dawned/shared';
 import { Connection } from '../net/connection.js';
 import { InputController } from '../input/input.js';
 import { GameScene } from '../world/scene.js';
 import { CharacterView } from '../world/character-view.js';
 import { loadCharacterAssets, type CharacterAssets } from '../world/characters.js';
+import { MapSource } from '../world/map-source.js';
+import { TerrainManager } from '../world/terrain-manager.js';
+import { AmbienceController } from '../world/ambience.js';
+import { buildOceanMesh, updateWaterTime } from '../world/terrain-mesh.js';
+import { loadFoliageAssets, updateFoliageWind } from '../world/foliage.js';
 import { Hud } from '../ui/hud.js';
 
 export interface WorldHandle {
@@ -52,35 +65,64 @@ export const runWorld = (
     },
   );
 
-  let everPlayed = false;
-  const connection = new Connection({
-    onStatus: (status, detail) => {
-      switch (status) {
-        case 'playing':
-          everPlayed = true;
-          hud.setStatus('connected · in world', 'ok');
-          break;
-        case 'connecting':
-        case 'connected':
-          hud.setStatus('connecting…', 'warn');
-          break;
-        case 'closed':
-          hud.setStatus('disconnected', 'error');
-          if (everPlayed) callbacks.onDisconnected();
-          break;
-        case 'error':
-          hud.setStatus(detail ?? 'connection error', 'error');
-          break;
-      }
-    },
-    onNotice: callbacks.onNotice,
-    onChat: (message) => {
-      hud.addChat(message);
-    },
-    onRoster: (players) => {
-      hud.setRoster(players, connection.selfId);
-    },
+  // Terrain: the manager owns the sampler the prediction step walks on. Chunks,
+  // walkgrid and zones stream in asynchronously; simulation is gated below until
+  // the ground under the spawn is real.
+  const mapSource = new MapSource(MAP_VERSION);
+  const terrain = new TerrainManager(scene.scene, mapSource);
+  scene.scene.add(buildOceanMesh(SEA_LEVEL));
+  let ambience: AmbienceController | null = null;
+  let walkgridReady = false;
+  let mapReady = false;
+  void mapSource
+    .open()
+    .then(async ({ zones }) => {
+      ambience = new AmbienceController(scene.ambienceTargets, zones);
+      mapReady = true;
+      const walkgrid = await mapSource.loadWalkgrid();
+      if (walkgrid) terrain.sampler.attachWalkgrid(walkgrid);
+      walkgridReady = true;
+    })
+    .catch((error: unknown) => {
+      console.error('[terrain] map artifacts failed to load:', error);
+      hud.setStatus('map failed to load — refresh', 'error');
+    });
+  void loadFoliageAssets().then((assets) => {
+    if (assets && !disposed) terrain.attachFoliage(assets);
   });
+
+  let everPlayed = false;
+  const connection = new Connection(
+    {
+      onStatus: (status, detail) => {
+        switch (status) {
+          case 'playing':
+            everPlayed = true;
+            hud.setStatus('connected · in world', 'ok');
+            break;
+          case 'connecting':
+          case 'connected':
+            hud.setStatus('connecting…', 'warn');
+            break;
+          case 'closed':
+            hud.setStatus('disconnected', 'error');
+            if (everPlayed) callbacks.onDisconnected();
+            break;
+          case 'error':
+            hud.setStatus(detail ?? 'connection error', 'error');
+            break;
+        }
+      },
+      onNotice: callbacks.onNotice,
+      onChat: (message) => {
+        hud.addChat(message);
+      },
+      onRoster: (players) => {
+        hud.setRoster(players, connection.selfId);
+      },
+    },
+    terrain.sampler,
+  );
 
   const input = new InputController(canvas, () => {
     hud.focusChat();
@@ -108,6 +150,15 @@ export const runWorld = (
     connection,
     input,
     scene,
+    terrainStats: (): { resident: number; pending: number; zone: string | null } => ({
+      resident: terrain.residentCount,
+      pending: terrain.pendingCount,
+      zone: ambience?.zone?.id ?? null,
+    }),
+    rendererInfo: (): { calls: number; triangles: number } => ({
+      calls: scene.renderer.info.render.calls,
+      triangles: scene.renderer.info.render.triangles,
+    }),
     remoteSnapshot: (): Record<string, { x: number; y: number; z: number }> => {
       const out: Record<string, { x: number; y: number; z: number }> = {};
       for (const remote of connection.remotes.values()) {
@@ -134,10 +185,20 @@ export const runWorld = (
     lastFrameMs = now;
     fps = fps * 0.9 + (1000 / Math.max(deltaMs, 0.001)) * 0.1;
 
-    // 1. Fixed-timestep simulation — one predicted tick per server tick.
+    // 0. Stream terrain around wherever the player is (spawn until first input).
+    const streamPosition = connection.renderPosition();
+    terrain.update(deltaMs / 1000, streamPosition.x, streamPosition.z);
+
+    // 1. Fixed-timestep simulation — one predicted tick per server tick. Gated
+    // until the map, walkgrid and the ground under our feet are loaded: inputs
+    // sent while the client would predict against ocean floor only cause
+    // corrections (the server never waits on our assets).
+    const simulationReady =
+      mapReady && walkgridReady && terrain.isGroundReadyAt(streamPosition.x, streamPosition.z);
+    if (!simulationReady) accumulatorMs = 0;
     accumulatorMs += deltaMs;
     let ticks = 0;
-    while (accumulatorMs >= TICK_MS && ticks < 5) {
+    while (simulationReady && accumulatorMs >= TICK_MS && ticks < 5) {
       connection.simulateTick(input.sampleIntent());
       accumulatorMs -= TICK_MS;
       ticks++;
@@ -156,6 +217,10 @@ export const runWorld = (
       sprinting: connection.predicted.sprinting,
     });
     syncRemoteViews(dtSeconds);
+
+    ambience?.update(dtSeconds, position.x, position.z);
+    updateWaterTime(now / 1000);
+    updateFoliageWind(now / 1000);
 
     cameraTarget.set(position.x, position.y, position.z);
     scene.updateCamera(cameraTarget, input.yaw, input.pitch);
@@ -215,6 +280,7 @@ export const runWorld = (
     dispose: () => {
       disposed = true;
       connection.disconnect();
+      terrain.dispose();
       container.replaceChildren();
     },
   };

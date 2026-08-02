@@ -199,6 +199,286 @@
       },
       "animations": []
     },
+    "world_nature_grass_1_a_color1": {
+      "id": "world_nature_grass_1_a_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/grass_1_a_color1.e09e064e.glb",
+      "bytes": 52112,
+      "sourceHash": "c05d9f6bfa17b7a5d23f3e644020797d67e8b2b4bab65c7c14cc915a6578be3e",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Grass_1_A_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 44,
+      "bounds": {
+        "min": [
+          -0.1696,
+          -0.02,
+          -0.0784
+        ],
+        "max": [
+          0.1696,
+          0.5393,
+          0.0734
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_grass_1_a_singlesided_color1": {
+      "id": "world_nature_grass_1_a_singlesided_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/grass_1_a_singlesided_color1.0b288be2.glb",
+      "bytes": 50736,
+      "sourceHash": "e20e3b360e3cde2da7d9be26fd8388a87f3164ae559503b421f6e8bd1c58512d",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Grass_1_A_Singlesided_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 14,
+      "bounds": {
+        "min": [
+          -0.1433,
+          -0.02,
+          -0.0825
+        ],
+        "max": [
+          0.1434,
+          0.5393,
+          0.0444
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_grass_1_b_color1": {
+      "id": "world_nature_grass_1_b_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/grass_1_b_color1.d327e8f9.glb",
+      "bytes": 56224,
+      "sourceHash": "eda1ac5c78817b79450219070ab160d5b96d5a60f81ae8b370acee9b2ef50174",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Grass_1_B_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 132,
+      "bounds": {
+        "min": [
+          -0.266,
+          -0.0563,
+          -0.3368
+        ],
+        "max": [
+          0.2391,
+          0.4812,
+          0.2189
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_grass_1_b_singlesided_color1": {
+      "id": "world_nature_grass_1_b_singlesided_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/grass_1_b_singlesided_color1.9f80957d.glb",
+      "bytes": 52064,
+      "sourceHash": "25c09da33b79b809de5b4270e2a944d87e96ab3b618befdc5e8a6ef69cb7d421",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Grass_1_B_Singlesided_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 42,
+      "bounds": {
+        "min": [
+          -0.2697,
+          -0.0465,
+          -0.343
+        ],
+        "max": [
+          0.2423,
+          0.4737,
+          0.1897
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_bush_1_a_color1": {
+      "id": "world_nature_bush_1_a_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/bush_1_a_color1.ba3d749d.glb",
+      "bytes": 52404,
+      "sourceHash": "c3e8050e067aac78dee2311768f85b5fd29131993e3a59bbb1e4423b7138a8d5",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_A_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 72,
+      "bounds": {
+        "min": [
+          -0.1336,
+          -0.0029,
+          -0.117
+        ],
+        "max": [
+          0.1336,
+          0.2237,
+          0.117
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_bush_1_b_color1": {
+      "id": "world_nature_bush_1_b_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/bush_1_b_color1.6891d5aa.glb",
+      "bytes": 54712,
+      "sourceHash": "b48219b5f531b092140f578ec820b4ce096ca7676223081e0600e619c340af0b",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_B_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 168,
+      "bounds": {
+        "min": [
+          -0.3612,
+          -0.0124,
+          -0.3612
+        ],
+        "max": [
+          0.3612,
+          0.4718,
+          0.3612
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_bush_1_c_color1": {
+      "id": "world_nature_bush_1_c_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/bush_1_c_color1.ff3ff9bf.glb",
+      "bytes": 54708,
+      "sourceHash": "173ea7517d6fbb7a1a86451ccb146d90659ba34d6e8619c7e6ac78a6ac673d78",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_C_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 168,
+      "bounds": {
+        "min": [
+          -0.6021,
+          -0.0114,
+          -0.6021
+        ],
+        "max": [
+          0.6021,
+          0.7961,
+          0.6021
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_tree_bare_1_a_color1": {
+      "id": "world_nature_tree_bare_1_a_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/tree_bare_1_a_color1.17037878.glb",
+      "bytes": 61800,
+      "sourceHash": "8cdbd0c9f583d8add3e955978fa2d623116c59f5aae7d710d61891902bcfdc5c",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_A_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 324,
+      "bounds": {
+        "min": [
+          -0.5122,
+          -0.2613,
+          -0.5944
+        ],
+        "max": [
+          0.6164,
+          2.5956,
+          0.4397
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_tree_bare_1_b_color1": {
+      "id": "world_nature_tree_bare_1_b_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/tree_bare_1_b_color1.ea0ca748.glb",
+      "bytes": 61240,
+      "sourceHash": "d6d64e2d6065fc1ccc92da7e7f7cba51ffcb9b53f13af71327468c8dea82d762",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_B_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 332,
+      "bounds": {
+        "min": [
+          -0.4443,
+          -0.341,
+          -0.9924
+        ],
+        "max": [
+          1.5205,
+          2.9098,
+          0.4588
+        ]
+      },
+      "animations": []
+    },
+    "world_nature_tree_bare_1_c_color1": {
+      "id": "world_nature_tree_bare_1_c_color1",
+      "category": "world/nature",
+      "file": "assets_baked/world/nature/tree_bare_1_c_color1.7c9a75dd.glb",
+      "bytes": 85696,
+      "sourceHash": "6fc8878e5e61bbcd3ac6da974ac5112029fb0b25c431443a01bb9c52597771ce",
+      "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_C_Color1.gltf",
+      "pack": "kaykit-forest",
+      "packName": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 936,
+      "bounds": {
+        "min": [
+          -1.3667,
+          -0.3923,
+          -1.3953
+        ],
+        "max": [
+          2.3703,
+          4.8631,
+          0.6789
+        ]
+      },
+      "animations": []
+    },
     "items_weapons_sword_a": {
       "id": "items_weapons_sword_a",
       "category": "items/weapons",
