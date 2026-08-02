@@ -77,16 +77,16 @@ text is English-only (decided), docs/comments English.
 
 ## Current state
 
-**Phase P0 (foundations & walking skeleton) is code-complete and verified locally**: the monorepo,
-shared protocol/formulas, 20 Hz authoritative server, three.js client with prediction, asset
-pipeline v1 and the deploy scripts all exist, and `pnpm check` is green. Two automated smoke tests
-prove the walking skeleton (`tools/smoke/two-client-sync.mjs`, `tools/smoke/browser-sync.mjs`).
+**Phase P0 is ✅ complete and live at https://play.pathlands.cc** (deployed by the owner on
+2026-08-02): monorepo, shared protocol/formulas, 20 Hz authoritative server, three.js client with
+prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke tests passing
+(`tools/smoke/two-client-sync.mjs`, `tools/smoke/browser-sync.mjs`), and reviewed (see the
+2026-08-02 review commit for netcode-robustness fixes).
 
-**P0's one open item:** running `deploy/DEPLOY.sh` on the real VPS and re-running the browser check
-against `https://play.pathlands.cc` — that needs SSH access to the box.
-
-All 16 initial owner decisions are answered and folded (2026-08-02 — decision log in
-USER_QUESTIONS.md). Next milestone after the VPS run: **P1 Accounts, Characters & Menus**.
+All 16 initial owner decisions are answered and folded (decision log in USER_QUESTIONS.md).
+**Current phase: P1 — Accounts, Characters & Menus** (see ROADMAP.md; its close also unlocks A0
+in the Dawned-Admin repo). Deploys to production happen only when the owner merges to `main` and
+runs `deploy/UPDATE.sh` on the VPS.
 
 ### Running it locally
 

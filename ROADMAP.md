@@ -8,24 +8,24 @@
 >
 > **Status legend:** 🔲 not started · 🟨 in progress · ✅ done — update this file as phases move.
 
-| Phase | Name                                     | Size | Status                        |
-| ----- | ---------------------------------------- | ---- | ----------------------------- |
-| P0    | Foundations & Walking Skeleton           | M    | 🟨 code done, VPS run pending |
-| P1    | Accounts, Characters & Menus             | M    | 🔲                            |
-| P2    | Terrain & World Streaming                | L    | 🔲                            |
-| P3    | Movement, Netcode Core & Chat v1         | L    | 🔲                            |
-| P4    | Combat Foundation                        | XL   | 🔲                            |
-| P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                            |
-| P6    | Classes II — Mage, Cleric, Status System | L    | 🔲                            |
-| P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                            |
-| P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                            |
-| P9    | Enemies & AI Depth                       | L    | 🔲                            |
-| P10   | Gathering Professions                    | M    | 🔲                            |
-| P11   | Quests, POIs & Interactables             | L    | 🔲                            |
-| P12   | World Building (the Dawnlands)           | XL   | 🔲                            |
-| P13   | GM Suite & Live Ops                      | M    | 🔲                            |
-| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                            |
-| P15   | Release 0.1.0                            | M    | 🔲                            |
+| Phase | Name                                     | Size | Status                    |
+| ----- | ---------------------------------------- | ---- | ------------------------- |
+| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
+| P1    | Accounts, Characters & Menus             | M    | 🔲                        |
+| P2    | Terrain & World Streaming                | L    | 🔲                        |
+| P3    | Movement, Netcode Core & Chat v1         | L    | 🔲                        |
+| P4    | Combat Foundation                        | XL   | 🔲                        |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                        |
+| P6    | Classes II — Mage, Cleric, Status System | L    | 🔲                        |
+| P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                        |
+| P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                        |
+| P9    | Enemies & AI Depth                       | L    | 🔲                        |
+| P10   | Gathering Professions                    | M    | 🔲                        |
+| P11   | Quests, POIs & Interactables             | L    | 🔲                        |
+| P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
+| P13   | GM Suite & Live Ops                      | M    | 🔲                        |
+| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
+| P15   | Release 0.1.0                            | M    | 🔲                        |
 
 ---
 
@@ -58,8 +58,8 @@ packs reviewed (ASSET_INVENTORY §9).
 - [x] `deploy/`: DEPLOY/UPDATE/BACKUP/ROLLBACK, Caddyfile, four systemd units
 - [x] Automated DoD checks: `tools/smoke/two-client-sync.mjs` (protocol) and
       `tools/smoke/browser-sync.mjs` (two real Chromium clients) — both passing locally
-- [ ] **Remaining: run `deploy/DEPLOY.sh` on the VPS** and re-run the browser check against
-      `https://play.pathlands.cc` (needs SSH access to the box — owner action)
+- [x] `deploy/DEPLOY.sh` executed on the VPS by the owner — **live and verified at
+      https://play.pathlands.cc (2026-08-02). P0 closed.**
 
 ## P1 — Accounts, Characters & Menus (M) ⚙A0 starts after (schema live)
 

@@ -4,8 +4,8 @@
 community of friends (5–20 players), inspired by the feel of _Farever_, _Guild Wars 2_ and
 _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 
-> **Status: 🛠 Phase P0 code-complete — a walking skeleton you can run: two browsers, one
-> authoritative world.** (The last P0 step, running `deploy/DEPLOY.sh` on the VPS, is pending.)
+> **Status: ✅ Phase P0 complete — live at [play.pathlands.cc](https://play.pathlands.cc):**
+> two browsers, one authoritative world. **Next: P1 — Accounts, Characters & Menus.**
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an
 > authored island open world with levels 1–30, professions, quests, loot, chat, GM tools) — not an
 > MVP, not a prototype. The companion repo **[Dawned-Admin](../Dawned-Admin)** is the web panel

@@ -98,4 +98,5 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   `WeatherState` protocol message). Full decision log: USER_QUESTIONS.md.
 
 ### Notes
-- No game code yet by design — Phase P0 is ready to start.
+- Phase P0 shipped and verified live at play.pathlands.cc on 2026-08-02 (first deployment via
+  `deploy/DEPLOY.sh` on the production VPS). Next phase: P1 — Accounts, Characters & Menus.
