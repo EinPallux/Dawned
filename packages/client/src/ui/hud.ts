@@ -1,5 +1,5 @@
 /**
- * P0 debug HUD and chat.
+ * Debug HUD and chat (P0; carried through P1).
  *
  * Deliberately plain DOM: the real React UI with the "Cut Facets" design system
  * arrives in P1 (docs/design/UI_UX.md). What matters here is that every number a
@@ -44,7 +44,7 @@ export class Hud {
     this.root.className = 'hud';
     this.root.innerHTML = `
       <div class="hud-panel hud-topleft">
-        <div class="hud-title">DAWNED <span class="hud-dim">P0</span></div>
+        <div class="hud-title">DAWNED <span class="hud-dim">P1</span></div>
         <div class="hud-status" data-status>connecting…</div>
         <pre class="hud-stats" data-stats></pre>
         <canvas class="hud-ping" width="220" height="44" data-ping></canvas>

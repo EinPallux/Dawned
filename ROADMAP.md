@@ -11,7 +11,7 @@
 | Phase | Name                                     | Size | Status                    |
 | ----- | ---------------------------------------- | ---- | ------------------------- |
 | P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
-| P1    | Accounts, Characters & Menus             | M    | 🔲                        |
+| P1    | Accounts, Characters & Menus             | M    | 🟨 built — VPS check open |
 | P2    | Terrain & World Streaming                | L    | 🔲                        |
 | P3    | Movement, Netcode Core & Chat v1         | L    | 🔲                        |
 | P4    | Combat Foundation                        | XL   | 🔲                        |
@@ -72,6 +72,23 @@ pipeline character bundles); character select dioramas; session resume; disconne
 checklist §7-P1.
 **DoD:** a friend can register, create all 4 class characters (looks correct, animated), relog,
 delete one — on the VPS, on 1080p and 1440p, with zero placeholder UI.
+
+**Status (2026-08-02):**
+
+- [x] Postgres 16 + Drizzle schema (accounts/sessions/characters/bans), committed migrations,
+      argon2id register/login REST with throttles + lockouts, 30-day sliding sessions,
+      character CRUD (5 slots, world-unique names, soft delete frees the name)
+- [x] Protocol v2: authenticated Hello (token + character id), persisted-position spawn,
+      appearance-carrying roster, single-session-per-account
+- [x] Character pipeline: heads/outfits/hair/UAL clips baked + rig-verified (report gate),
+      `assets:sync` into the client; 13 assets, 6.6 MB
+- [x] Menus ("Cut Facets" v1): login/register on the dawn vignette, character select + create
+      with live posed rigs and full appearance controls — verified at 1080p and 1440p
+- [x] In-world composed rigs with locomotion states (idle/jog/strafe/sprint/jump); session
+      resume verified (relog lands at the persisted spot, Δ 0.00 m)
+- [x] Security checklist §7-P1 run and recorded (SECURITY.md); both smoke tests rewritten for
+      the auth flow and green; CI runs against a real Postgres service
+- [ ] **Owner: deploy to the VPS (UPDATE.sh) and run the friend-DoD there — then P1 closes**
 
 ## P2 — Terrain & World Streaming (L) ⚙unlocks A2 (map editor terrain)
 

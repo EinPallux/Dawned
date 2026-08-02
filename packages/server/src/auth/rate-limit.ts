@@ -3,7 +3,8 @@
  *  - per-IP login attempts: 10/min
  *  - per-account failure lockout: 5 fails → 1 min, doubling per further fail, 1 h cap,
  *    cleared by a successful login
- *  - per-IP registrations: 3/day
+ *  - per-IP registrations: 10/day (a friend group behind one NAT legitimately
+ *    registers several accounts in an evening; smoke fixtures need four)
  *
  * In-memory by design — one server process owns all logins. Entries are pruned
  * periodically so idle IPs don't accumulate forever.
@@ -40,7 +41,7 @@ export class AuthThrottle {
   /** True when this IP may register another account today (counts it). */
   allowRegistration(ip: string, now = Date.now()): boolean {
     this.pruneIfDue(now);
-    return this.countWindow(this.registerByIp, ip, now, DAY_MS, 3);
+    return this.countWindow(this.registerByIp, ip, now, DAY_MS, 10);
   }
 
   /** Milliseconds until the account may try again; 0 = not locked. */

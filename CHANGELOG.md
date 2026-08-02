@@ -31,6 +31,15 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   panels, gold-seam buttons) as reusable primitives.
 - **Character composition (client)**: load-time skeleton rebinding of outfit/hair pieces onto
   the shared 65-bone rig, multiplicative skin/outfit/hair tinting, UAL clips with crossfade.
+- **In-world characters**: composed rigs replace the P0 capsules, with a locomotion state
+  machine (idle / jog forward-back-strafe / sprint / jump start-loop-land), speed-following
+  playback and desynchronized loop phases; appearance and names applied live from the roster.
+- **Session resume**: a returning player lands on character select and re-enters the world at
+  the exact spot they left (position write-behind + on-disconnect persist).
+- **Verification**: both smoke tests now drive the authenticated flow (REST fixtures, token
+  bootstrap, character select, v2 handshake); CI runs against a PostgreSQL 16 service with
+  migrations; the §7-P1 security checklist was run and recorded (timing-oracle measurement,
+  token/session-fixation review); per-IP registration limit set to 10/day.
 
 ### Added — Phase P0: foundations & walking skeleton
 - **Monorepo**: pnpm workspaces (`packages/shared`, `packages/server`, `packages/client`,

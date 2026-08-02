@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 /**
- * Browser-level P0 check: two real Chromium pages join the world, one walks, and
- * each must see the other move. This is the Definition of Done from ROADMAP.md P0,
- * automated so it can be re-run after every netcode change.
+ * Browser-level check: two real Chromium pages log in, pick their characters and
+ * join the world; one walks, and each must see the other move. The P0 Definition
+ * of Done carried through the P1 authenticated front door — re-run after every
+ * netcode or menu change.
+ *
+ * Accounts/characters are provisioned over REST; the session token is injected
+ * before load, so the pages exercise the real bootstrap → character select →
+ * enter-world path (register/create UI has its own coverage in P1's manual DoD).
  *
  * Usage: node tools/smoke/browser-sync.mjs [http://localhost:5173] [--screenshots DIR]
  * Requires the game server and the client dev server (or a built client) to be running.
@@ -11,10 +16,12 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { ensureAccount, ensureCharacter } from './lib/fixtures.mjs';
 
 const BASE_URL = process.argv[2]?.startsWith('http') ? process.argv[2] : 'http://localhost:5173';
 const shotIndex = process.argv.indexOf('--screenshots');
 const SHOT_DIR = shotIndex !== -1 ? process.argv[shotIndex + 1] : null;
+const PASSWORD = 'smoke-pass-123456';
 
 const ok = (message) => console.log(`✅ ${message}`);
 class SmokeFailure extends Error {}
@@ -41,7 +48,11 @@ const readStat = async (page, label) => {
   return match ? Number(match[1]) : 0;
 };
 
-const joinWorld = async (browser, name) => {
+const joinWorld = async (browser, accountName, characterName) => {
+  const apiBase = new URL(BASE_URL).origin;
+  const token = await ensureAccount(apiBase, accountName, PASSWORD);
+  const character = await ensureCharacter(apiBase, token, characterName, 'warrior');
+
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
   const errors = [];
@@ -50,19 +61,25 @@ const joinWorld = async (browser, name) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
+  // Session token in place before the app boots → bootstrap resumes straight to
+  // character select, the same path a returning player takes.
+  await page.addInitScript((sessionToken) => {
+    localStorage.setItem('dawned.token', sessionToken);
+  }, token);
+
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-  await page.fill('#name', name);
-  await page.click('#enter');
+  await page.click(`.char-card:has-text("${characterName}")`, { timeout: 15000 });
+  await page.click('.btn--primary:has-text("ENTER WORLD")');
   await page.waitForSelector('.hud', { timeout: 15000 });
   await page.waitForFunction(
     () => document.querySelector('.hud-status')?.textContent?.includes('in world'),
     { timeout: 15000 },
   );
-  return { page, context, errors, name };
+  return { page, context, errors, name: character.name };
 };
 
 const main = async () => {
-  console.log(`Dawned P0 browser check → ${BASE_URL}\n`);
+  console.log(`Dawned browser check → ${BASE_URL}\n`);
   const browser = await chromium.launch();
   try {
     await run(browser);
@@ -71,28 +88,26 @@ const main = async () => {
     // clean assertion failure into an opaque hang.
     await browser.close();
   }
-  console.log('\n🌅 P0 browser check passed — two browsers, one world.\n');
+  console.log('\n🌅 Browser check passed — two authenticated browsers, one world.\n');
 };
 
 const run = async (browser) => {
-  const walker = await joinWorld(browser, 'BrowserWalker');
-  const watcher = await joinWorld(browser, 'BrowserWatcher');
-  ok('two browser clients reached the world');
+  const walker = await joinWorld(browser, 'zz_browser_walker', 'Browserwalker');
+  const watcher = await joinWorld(browser, 'zz_browser_watcher', 'Browserwatcher');
+  ok('two browser clients logged in, picked characters and reached the world');
 
   // Both must list each other in the roster panel.
   await sleep(600);
   const walkerRoster = await walker.page.locator('.hud-roster').innerText();
   const watcherRoster = await watcher.page.locator('.hud-roster').innerText();
-  if (!walkerRoster.includes('BrowserWatcher'))
-    fail(`walker roster missing watcher: ${walkerRoster}`);
-  if (!watcherRoster.includes('BrowserWalker'))
-    fail(`watcher roster missing walker: ${watcherRoster}`);
+  if (!walkerRoster.includes(watcher.name)) fail(`walker roster missing watcher: ${walkerRoster}`);
+  if (!watcherRoster.includes(walker.name)) fail(`watcher roster missing walker: ${watcherRoster}`);
   ok('each client lists the other in its roster');
 
   const startPos = await readPosition(walker.page);
   // What the watcher renders the walker at, before any movement.
   const watcherViewBefore = await watcher.page.evaluate(() => window.__dawned.remoteSnapshot());
-  if (!watcherViewBefore['BrowserWalker']) {
+  if (!watcherViewBefore[walker.name]) {
     fail(`watcher does not render the walker at all: ${JSON.stringify(watcherViewBefore)}`);
   }
 
@@ -129,8 +144,8 @@ const run = async (browser) => {
   // (Pixel-diffing the canvas is useless here: without preserveDrawingBuffer,
   // toDataURL on a WebGL canvas returns a blank image and would pass vacuously.)
   const watcherViewAfter = await watcher.page.evaluate(() => window.__dawned.remoteSnapshot());
-  const seenBefore = watcherViewBefore['BrowserWalker'];
-  const seenAfter = watcherViewAfter['BrowserWalker'];
+  const seenBefore = watcherViewBefore[walker.name];
+  const seenAfter = watcherViewAfter[walker.name];
   if (!seenAfter) fail('watcher lost track of the walker mid-test');
   const seenTravel = Math.hypot(seenAfter.x - seenBefore.x, seenAfter.z - seenBefore.z);
   ok(
@@ -174,6 +189,13 @@ const run = async (browser) => {
     fail(`console errors in the browser:\n  ${allErrors.slice(0, 5).join('\n  ')}`);
   }
   ok('no console errors in either client');
+
+  // Walk back so the persisted position stays near spawn for the next run.
+  await walker.page.keyboard.down('Shift');
+  await walker.page.keyboard.down('s');
+  await sleep(2500);
+  await walker.page.keyboard.up('s');
+  await walker.page.keyboard.up('Shift');
 };
 
 main().catch(async (error) => {

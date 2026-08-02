@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 /**
- * Headless two-client sync check — the P0 Definition of Done, automated.
+ * Headless two-client sync check — the P0 Definition of Done, carried through
+ * the P1 authenticated world.
  *
- * Connects two clients, walks one of them, and asserts that:
- *   1. both complete the handshake and receive a Welcome,
+ * Provisions two fixture accounts + characters over REST, connects both with the
+ * v2 Hello (session token + character id), walks one, and asserts that:
+ *   1. both complete the authenticated handshake and receive a Welcome,
  *   2. each client sees the other in its snapshots,
  *   3. the walking client's server-side position actually advances,
  *   4. the observer's view of the walker matches the walker's own view,
  *   5. server-authoritative movement stays inside the legal speed envelope.
+ * The walker walks back afterwards so persisted positions stay near spawn
+ * across repeated runs.
  *
  * Usage: node tools/smoke/two-client-sync.mjs [ws://host:port/game]
  * Exits non-zero with a readable reason on any failure.
@@ -28,15 +32,20 @@ import {
   decodeJsonEnvelope,
   peekOpcode,
 } from '@dawned/shared';
+import { ensureAccount, ensureCharacter } from './lib/fixtures.mjs';
 
 const URL = process.argv[2] ?? 'ws://127.0.0.1:8081/game';
+const API_BASE = URL.replace(/^ws/, 'http').replace(/\/game$/, '');
 const WALK_TICKS = 60; // 3 seconds at 20 Hz
+const PASSWORD = 'smoke-pass-123456';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class TestClient {
-  constructor(name) {
-    this.name = name;
+  constructor(label, token, characterId) {
+    this.label = label;
+    this.token = token;
+    this.characterId = characterId;
     this.socket = new WebSocket(URL);
     this.socket.binaryType = 'arraybuffer';
     // Capture 'open' at construction: both clients connect concurrently, so the
@@ -76,15 +85,21 @@ class TestClient {
 
   async connect() {
     await this.opened;
-    this.socket.send(encodeHello({ protocolVersion: PROTOCOL_VERSION, name: this.name }));
+    this.socket.send(
+      encodeHello({
+        protocolVersion: PROTOCOL_VERSION,
+        token: this.token,
+        characterId: this.characterId,
+      }),
+    );
     const deadline = Date.now() + 5000;
     while (!this.welcome && Date.now() < deadline) {
       if (this.notices.length > 0) {
-        throw new Error(`${this.name} rejected: notice code ${this.notices[0].code}`);
+        throw new Error(`${this.label} rejected: notice code ${this.notices[0].code}`);
       }
       await sleep(20);
     }
-    if (!this.welcome) throw new Error(`${this.name} never received Welcome`);
+    if (!this.welcome) throw new Error(`${this.label} never received Welcome`);
   }
 
   sendInput(moveX, moveZ, buttons = 0, yaw = 0) {
@@ -111,10 +126,29 @@ const fail = (message) => {
 const ok = (message) => console.log(`✅ ${message}`);
 
 const main = async () => {
-  console.log(`Dawned P0 smoke test → ${URL}\n`);
+  console.log(`Dawned smoke test → ${URL}\n`);
 
-  const walker = new TestClient('SmokeWalker');
-  const observer = new TestClient('SmokeWatcher');
+  // REST fixtures: two accounts, one character each (world-unique names owned
+  // by their accounts, so re-runs find them again).
+  let walker;
+  let observer;
+  try {
+    const [walkerToken, observerToken] = await Promise.all([
+      ensureAccount(API_BASE, 'zz_smoke_walker', PASSWORD),
+      ensureAccount(API_BASE, 'zz_smoke_watcher', PASSWORD),
+    ]);
+    const [walkerCharacter, observerCharacter] = await Promise.all([
+      ensureCharacter(API_BASE, walkerToken, 'Smokewalker', 'warrior'),
+      ensureCharacter(API_BASE, observerToken, 'Smokewatcher', 'mage'),
+    ]);
+    ok(
+      `fixtures ready (${walkerCharacter.name} #${walkerCharacter.id}, ${observerCharacter.name} #${observerCharacter.id})`,
+    );
+    walker = new TestClient('walker', walkerToken, walkerCharacter.id);
+    observer = new TestClient('observer', observerToken, observerCharacter.id);
+  } catch (error) {
+    fail(`REST fixture setup failed: ${error.message}`);
+  }
 
   try {
     await walker.connect();
@@ -127,6 +161,13 @@ const main = async () => {
 
   if (walker.welcome.protocolVersion !== PROTOCOL_VERSION) {
     fail(`protocol mismatch: server ${walker.welcome.protocolVersion}, client ${PROTOCOL_VERSION}`);
+  }
+  if (walker.welcome.characterId !== walker.characterId) {
+    fail(`welcome carries character ${walker.welcome.characterId}, expected ${walker.characterId}`);
+  }
+  const rosterEntry = observer.welcome.players.find((p) => p.id === walker.welcome.selfId);
+  if (rosterEntry && !rosterEntry.appearance) {
+    fail('roster entries are missing appearance data');
   }
 
   // Let snapshots start flowing, then record the walker's starting position.
@@ -179,11 +220,17 @@ const main = async () => {
   if (!backReference) fail('walker does not see the observer');
   ok('replication is symmetric (each client sees the other)');
 
+  // Walk back so the persisted position stays near spawn for the next run.
+  for (let i = 0; i < WALK_TICKS; i++) {
+    walker.sendInput(0, -1, InputButton.Sprint);
+    await sleep(TICK_MS);
+  }
+
   walker.close();
   observer.close();
   await sleep(100);
 
-  console.log('\n🌅 P0 smoke test passed — two clients, one authoritative world.\n');
+  console.log('\n🌅 Smoke test passed — two authenticated clients, one authoritative world.\n');
 };
 
 main().catch((error) => {
