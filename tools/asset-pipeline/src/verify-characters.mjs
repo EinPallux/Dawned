@@ -45,10 +45,21 @@ const REQUIRED_CLIPS = [
   'Spell_Simple_Idle_Loop',
   'Spell_Double_Idle_Loop',
   'Jog_Fwd_Loop',
+  'Jog_Bwd_Loop',
+  'Jog_Left_Loop',
+  'Jog_Right_Loop',
+  'Jog_Fwd_L_Loop',
+  'Jog_Fwd_R_Loop',
+  'Jog_Bwd_L_Loop',
+  'Jog_Bwd_R_Loop',
+  'Jog_Fwd_LeanL_Loop',
+  'Jog_Fwd_LeanR_Loop',
   'Sprint_Loop',
   'Jump_Start',
   'Jump_Loop',
   'Jump_Land',
+  'Swim_Idle_Loop',
+  'Swim_Fwd_Loop',
 ];
 
 const readBaked = async (manifest, id, failures) => {

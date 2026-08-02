@@ -13,6 +13,8 @@ const PITCH_MAX = 1.15;
 export class InputController {
   private readonly held = new Set<string>();
   private pointerLocked = false;
+  /** True while the cursor is freed by holding Alt — releasing Alt re-locks. */
+  private altReleased = false;
 
   /** Camera yaw/pitch in radians; yaw 0 faces +Z. */
   yaw = 0;
@@ -23,13 +25,15 @@ export class InputController {
   textEntryActive = false;
 
   constructor(
-    canvas: HTMLCanvasElement,
+    private readonly canvas: HTMLCanvasElement,
     private readonly onChatKey: () => void,
   ) {
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
     window.addEventListener('blur', () => {
       this.held.clear();
+      // An alt-tab while the cursor was Alt-freed must not re-lock on return.
+      this.altReleased = false;
     });
 
     canvas.addEventListener('mousedown', () => {
@@ -46,6 +50,17 @@ export class InputController {
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
+    // Hold Alt to use the cursor (inventory later, chat scroll now) without
+    // losing WASD; releasing Alt re-locks. preventDefault stops the browser
+    // from focusing its menu bar on the naked Alt press.
+    if (event.code === 'AltLeft' || event.code === 'AltRight') {
+      event.preventDefault();
+      if (this.pointerLocked) {
+        this.altReleased = true;
+        document.exitPointerLock();
+      }
+      return;
+    }
     if (this.textEntryActive) return;
     if (event.code === 'Enter') {
       this.onChatKey();
@@ -57,6 +72,16 @@ export class InputController {
   };
 
   private handleKeyUp = (event: KeyboardEvent): void => {
+    if (event.code === 'AltLeft' || event.code === 'AltRight') {
+      event.preventDefault();
+      if (this.altReleased && !this.textEntryActive) {
+        // Allowed without a fresh click: the preceding keydown grants transient
+        // activation, and the lock was released by script (not Esc).
+        void this.canvas.requestPointerLock();
+      }
+      this.altReleased = false;
+      return;
+    }
     this.held.delete(event.code);
   };
 

@@ -925,6 +925,40 @@ canvas.game {
   font-weight: 700;
 }
 
+/* Center-screen banner: reconnect and other must-see states. */
+.hud-banner {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 26px;
+  background: rgba(30, 37, 52, 0.92);
+  border: 1px solid var(--warn);
+  clip-path: polygon(
+    0 10px,
+    10px 0,
+    100% 0,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    0 100%
+  );
+  color: var(--warn);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  animation: hud-banner-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hud-banner-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
 .hud-bottom {
   position: absolute;
   bottom: 16px;

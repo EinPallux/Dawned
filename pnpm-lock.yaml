@@ -149,6 +149,9 @@ importers:
       '@gltf-transform/functions':
         specifier: ^4.2.1
         version: 4.4.2(@types/node@22.20.1)
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@22.20.1)

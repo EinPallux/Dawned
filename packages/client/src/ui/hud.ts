@@ -16,11 +16,20 @@ export interface HudStats {
   corrections: number;
   snaps: number;
   lastCorrectionM: number;
+  /** ms since the newest snapshot arrived (0 = none yet). */
+  snapshotAgeMs: number;
+  /** Smoothed arrival gap between snapshots (healthy ≈ 50 ms). */
+  snapshotIntervalMs: number;
+  bytesIn: number;
+  bytesOut: number;
+  /** Lag-lab injection currently active (all zero = off). */
+  netsim: { rttMs: number; jitterMs: number };
   position: { x: number; y: number; z: number };
   stamina: number;
   maxStamina: number;
   grounded: boolean;
   sprinting: boolean;
+  swimming: boolean;
   players: number;
 }
 
@@ -32,8 +41,14 @@ export class Hud {
   private readonly chatLogEl: HTMLElement;
   private readonly chatInput: HTMLInputElement;
   private readonly staminaFill: HTMLElement;
+  private readonly bannerEl: HTMLElement;
   private readonly pingCanvas: HTMLCanvasElement;
+  private readonly correctionCanvas: HTMLCanvasElement;
   private readonly pingHistory: number[] = [];
+  private readonly correctionHistory: number[] = [];
+  /** kbps window: last sample of the cumulative byte counters. */
+  private lastBytes = { in: 0, out: 0, at: 0 };
+  private rateKbps = { in: 0, out: 0 };
 
   constructor(
     parent: HTMLElement,
@@ -44,20 +59,23 @@ export class Hud {
     this.root.className = 'hud';
     this.root.innerHTML = `
       <div class="hud-panel hud-topleft">
-        <div class="hud-title">DAWNED <span class="hud-dim">P1</span></div>
+        <div class="hud-title">DAWNED <span class="hud-dim">P3</span></div>
         <div class="hud-status" data-status>connecting…</div>
         <pre class="hud-stats" data-stats></pre>
         <canvas class="hud-ping" width="220" height="44" data-ping></canvas>
+        <canvas class="hud-ping" width="220" height="32" data-correction title="prediction correction, m"></canvas>
       </div>
       <div class="hud-panel hud-topright">
         <div class="hud-title">IN WORLD</div>
         <div data-roster class="hud-roster"></div>
       </div>
+      <div class="hud-banner" data-banner hidden></div>
       <div class="hud-bottom">
         <div class="hud-stamina"><div class="hud-stamina-fill" data-stamina></div></div>
         <div class="hud-hint">
           <b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>Mouse</b> look
-          (click to capture, <b>Esc</b> to release) · <b>Enter</b> chat
+          (click captures, hold <b>Alt</b> frees the cursor) · <b>Enter</b> chat ·
+          <b>/stuck</b> if trapped
         </div>
       </div>
       <div class="hud-panel hud-chat">
@@ -72,7 +90,9 @@ export class Hud {
     this.rosterEl = this.query('[data-roster]');
     this.chatLogEl = this.query('[data-chatlog]');
     this.staminaFill = this.query('[data-stamina]');
+    this.bannerEl = this.query('[data-banner]');
     this.pingCanvas = this.query('[data-ping]') as HTMLCanvasElement;
+    this.correctionCanvas = this.query('[data-correction]') as HTMLCanvasElement;
     this.chatInput = this.query('[data-chatinput]') as HTMLInputElement;
 
     this.chatInput.addEventListener('focus', () => {
@@ -110,6 +130,12 @@ export class Hud {
     this.statusEl.dataset.tone = tone;
   }
 
+  /** Center-screen banner for states the player must not miss (reconnecting). */
+  setBanner(text: string | null): void {
+    this.bannerEl.hidden = text === null;
+    this.bannerEl.textContent = text ?? '';
+  }
+
   setRoster(players: RosterEntry[], selfId: number): void {
     this.rosterEl.innerHTML = players
       .map(
@@ -132,15 +158,33 @@ export class Hud {
   }
 
   update(stats: HudStats): void {
+    // Throughput from the cumulative byte counters, refreshed twice a second.
+    const now = performance.now();
+    if (this.lastBytes.at === 0) {
+      this.lastBytes = { in: stats.bytesIn, out: stats.bytesOut, at: now };
+    } else if (now - this.lastBytes.at >= 500) {
+      const seconds = (now - this.lastBytes.at) / 1000;
+      this.rateKbps.in = ((stats.bytesIn - this.lastBytes.in) * 8) / 1000 / seconds;
+      this.rateKbps.out = ((stats.bytesOut - this.lastBytes.out) * 8) / 1000 / seconds;
+      this.lastBytes = { in: stats.bytesIn, out: stats.bytesOut, at: now };
+    }
+
+    const state = stats.swimming ? 'swimming' : stats.grounded ? 'grounded' : 'airborne';
+    const netsim =
+      stats.netsim.rttMs > 0 || stats.netsim.jitterMs > 0
+        ? [`netsim   +${stats.netsim.rttMs.toFixed(0)} ms ±${stats.netsim.jitterMs.toFixed(0)}`]
+        : [];
     this.statsEl.textContent = [
       `fps      ${stats.fps.toFixed(0).padStart(5)}`,
       `ping     ${stats.ping.toFixed(0).padStart(5)} ms`,
+      `snaps    ${String(stats.snapshots).padStart(5)} · ${stats.snapshotIntervalMs.toFixed(0)} ms gap · age ${stats.snapshotAgeMs.toFixed(0)} ms`,
+      `net      ${this.rateKbps.in.toFixed(1).padStart(5)} ↓ ${this.rateKbps.out.toFixed(1)} ↑ kbps`,
+      ...netsim,
       `tick     ${String(stats.serverTick).padStart(5)}`,
-      `snaps    ${String(stats.snapshots).padStart(5)}`,
       `corr     ${String(stats.corrections).padStart(5)} (${stats.lastCorrectionM.toFixed(3)} m)`,
       `hard     ${String(stats.snaps).padStart(5)}`,
       `pos      ${stats.position.x.toFixed(1)}, ${stats.position.y.toFixed(1)}, ${stats.position.z.toFixed(1)}`,
-      `state    ${stats.grounded ? 'grounded' : 'airborne'}${stats.sprinting ? ' · sprinting' : ''}`,
+      `state    ${state}${stats.sprinting ? ' · sprinting' : ''}`,
       `players  ${String(stats.players).padStart(5)}`,
     ].join('\n');
 
@@ -150,7 +194,10 @@ export class Hud {
 
     this.pingHistory.push(stats.ping);
     if (this.pingHistory.length > 110) this.pingHistory.shift();
+    this.correctionHistory.push(stats.lastCorrectionM);
+    if (this.correctionHistory.length > 110) this.correctionHistory.shift();
     this.drawPingGraph();
+    this.drawCorrectionGraph();
   }
 
   private drawPingGraph(): void {
@@ -176,6 +223,38 @@ export class Hud {
     ctx.fillStyle = '#9aa3b5';
     ctx.font = '10px ui-monospace, monospace';
     ctx.fillText(`${max.toFixed(0)} ms`, 4, 11);
+  }
+
+  /**
+   * Correction magnitude per frame, scaled to the 1.5 m snap threshold — the
+   * one graph that must stay flat for movement to feel LAN-like (P3 DoD).
+   */
+  private drawCorrectionGraph(): void {
+    const ctx = this.correctionCanvas.getContext('2d');
+    if (!ctx) return;
+    const { width, height } = this.correctionCanvas;
+    const scaleM = 1.5; // CORRECTION_SNAP_M — bars that reach the top mean snaps
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(21,26,38,0.55)';
+    ctx.fillRect(0, 0, width, height);
+
+    const barWidth = width / 110;
+    this.correctionHistory.forEach((meters, index) => {
+      if (meters <= 0.001) return;
+      const fraction = Math.min(1, meters / scaleM);
+      ctx.fillStyle = meters < 0.1 ? '#57c77b' : meters < 0.5 ? '#d9a441' : '#d95757';
+      const barHeight = Math.max(1, fraction * (height - 4));
+      ctx.fillRect(
+        index * barWidth,
+        height - barHeight - 2,
+        Math.max(1, barWidth - 0.5),
+        barHeight,
+      );
+    });
+
+    ctx.fillStyle = '#9aa3b5';
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillText('corr ≤1.5 m', 4, 11);
   }
 }
 
