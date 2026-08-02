@@ -5,6 +5,40 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — Phase P0: foundations & walking skeleton
+- **Monorepo**: pnpm workspaces (`packages/shared`, `packages/server`, `packages/client`,
+  `tools`), TypeScript strict everywhere, ESLint 9 + Prettier, Vitest, a single `pnpm check`
+  gate (typecheck + lint + format + tests + asset report) and a GitHub Actions workflow.
+- **`@dawned/shared`**: binary wire protocol v1 (allocation-free codec, 8 message types,
+  fuzz-tested against malformed input), the shared `stepMovement` simulation step both sides
+  run, movement/stamina/fall-damage constants, and the P0 dev terrain. 37 unit tests, including
+  a 10,000-tick client/server parity test and a reconciliation replay test.
+- **Game server**: Fastify + `ws`, drift-corrected 20 Hz tick loop, session management with
+  per-opcode rate limiting and backpressure shedding, authoritative movement, snapshot fan-out,
+  in-process metrics ring, localhost-only ops API (`/ops/metrics`, `/ops/announce`), graceful
+  shutdown.
+- **Game client**: three.js scene (vertex-coloured terrain, water, gradient sky, shadows),
+  client prediction with reconciliation and smoothed corrections, remote-entity interpolation,
+  pointer-lock mouselook camera, sprint/stamina/jump, chat, roster, and a debug HUD with a
+  ping graph.
+- **Asset pipeline v1**: incremental, hash-based conversion of source packs into
+  `assets_baked/` with a manifest; the report gate fails the build on unattributed assets and
+  budget violations; the CREDITS per-file ledger is generated from manifest provenance.
+  17 starter assets baked (1.2 MB).
+- **Deployment**: real `deploy/` scripts — DEPLOY (provision + harden + build + start), UPDATE
+  (backup → announce → pull → build → migrate → restart), BACKUP (nightly/quick/verify with
+  rotation), ROLLBACK (code, optional double-confirmed DB restore) — plus a Caddyfile with CSP
+  and cache rules and four systemd units.
+- **Automated Definition-of-Done checks**: `tools/smoke/two-client-sync.mjs` (headless protocol
+  test) and `tools/smoke/browser-sync.mjs` (two real Chromium clients: roster, movement,
+  replication, convergence, console errors).
+
+### Fixed
+- Remote players rendered several metres behind their true position on slow clients: the
+  interpolation clock was derived from ping/pong offsets, which skew badly when a stalled frame
+  inflates the measured RTT. Interpolation is now driven off the snapshot stream with bounded
+  lag/lead, so a slow or backgrounded client no longer drags every other player out of place.
+
 ### Added
 - Complete 0.1.0 planning documentation:
   - Design: game vision & pillars, world (the Dawnlands archipelago, 6 zones), action combat

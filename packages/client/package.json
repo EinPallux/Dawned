@@ -1,0 +1,21 @@
+{
+  "name": "@dawned/client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dawned game client — three.js renderer with predicted, server-authoritative movement.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b tsconfig.build.json && vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist dist-types *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@dawned/shared": "workspace:*",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.185.3",
+    "vite": "^7.1.14"
+  }
+}

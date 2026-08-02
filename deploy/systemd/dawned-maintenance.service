@@ -1,0 +1,13 @@
+[Unit]
+Description=Dawned nightly maintenance (backup, rotation, vacuum)
+Documentation=https://github.com/EinPallux/Dawned
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash /opt/dawned/game/deploy/BACKUP.sh
+ExecStartPost=/usr/bin/env bash -c 'sudo -u postgres vacuumdb --analyze --quiet dawned || true'
+Nice=15
+IOSchedulingClass=idle
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dawned-maintenance

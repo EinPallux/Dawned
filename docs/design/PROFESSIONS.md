@@ -8,6 +8,7 @@
 ## 1. Shared System
 
 ### 1.1 Gathering flow
+
 1. Approach node → interact prompt (`F — Chop/Mine/Pick/Fish`) with profession + tier shown.
 2. Tier check: node tier locked if profession level below gate (7/13/19/25 for T2–T5) → prompt shows
    requirement instead (no fail-rolls; deterministic gates keep it kind).
@@ -21,59 +22,66 @@
    `3% + 0.2% × profLevel`.
 
 ### 1.2 Animations & props (real assets)
-| Profession | Channel anim (UAL) | Tool prop shown |
-|---|---|---|
-| Woodcutting | `TreeChopping_Loop` | KayKit RPG Tools `axe` |
-| Mining | `TreeChopping_Loop` retargeted at rock height + `Fixing_Kneeling` accents | RPG Tools `pickaxe` |
-| Herbalism | `PickUp_Kneeling` loop cut | none (hand-pick) |
-| Fishing | `OverhandThrow` (cast) → idle hold → reel loop | Quaternius `Fishing Rod` (5 variants by tier) |
+
+| Profession  | Channel anim (UAL)                                                        | Tool prop shown                               |
+| ----------- | ------------------------------------------------------------------------- | --------------------------------------------- |
+| Woodcutting | `TreeChopping_Loop`                                                       | KayKit RPG Tools `axe`                        |
+| Mining      | `TreeChopping_Loop` retargeted at rock height + `Fixing_Kneeling` accents | RPG Tools `pickaxe`                           |
+| Herbalism   | `PickUp_Kneeling` loop cut                                                | none (hand-pick)                              |
+| Fishing     | `OverhandThrow` (cast) → idle hold → reel loop                            | Quaternius `Fishing Rod` (5 variants by tier) |
 
 ### 1.3 Profession XP & levels
+
 `profXpToNext(L) = round₁₀(60 × L^1.6)`; gather XP = `12 × nodeTier` (×0.5 when node tier is below
 your current gate tier — soft push toward frontier nodes). Level 30 in one profession ≈ focused
 casual week. Professions panel (`J`): level bars, tier gates, discovered-material codex per
 profession (collection-completion itch).
 
 ### 1.4 Node distribution rules (world building contract)
+
 - Every zone carries its tier's nodes of **all four** professions (fishing via coasts/rivers/ponds).
 - Cluster placement: 3–6 nodes per cluster, clusters near landmarks/POIs (gathering tours double as
   sightseeing); ~15% of nodes in risky spots (inside camps, cliff ledges) with +1 proc bonus roll.
 - Density target per zone: ~25 tree, ~20 ore, ~20 herb, ~8 fish spots (counts in CONTENT_0.1.md).
 
 ## 2. Woodcutting
-| Tier (gate) | Wood | Zone | Node models (assets) |
-|---|---|---|---|
-| T1 (1) | Birchwood Logs | Dawnshore | KayKit Forest birch/common trees |
-| T2 (7) | Wealdoak Logs | Verdant Weald | big oaks, mossy variants (Nature packs) |
-| T3 (13) | Emberbark Logs | Emberwood | red-canopy maples, Halloween gnarled trees |
-| T4 (19) | Sungraze Acacia | Sungraze Savanna | flat-top acacia recolors |
-| T5 (25) | Ashwood Logs | Ashcrag Canyons | dead/petrified trees (Desert assets) |
-Procs: Resin (T1–3), Golden Sap (T4–5), rare **Heartwood** (any tier ≥2, future crafting jackpot).
+
+| Tier (gate)                                                                                        | Wood            | Zone             | Node models (assets)                       |
+| -------------------------------------------------------------------------------------------------- | --------------- | ---------------- | ------------------------------------------ |
+| T1 (1)                                                                                             | Birchwood Logs  | Dawnshore        | KayKit Forest birch/common trees           |
+| T2 (7)                                                                                             | Wealdoak Logs   | Verdant Weald    | big oaks, mossy variants (Nature packs)    |
+| T3 (13)                                                                                            | Emberbark Logs  | Emberwood        | red-canopy maples, Halloween gnarled trees |
+| T4 (19)                                                                                            | Sungraze Acacia | Sungraze Savanna | flat-top acacia recolors                   |
+| T5 (25)                                                                                            | Ashwood Logs    | Ashcrag Canyons  | dead/petrified trees (Desert assets)       |
+| Procs: Resin (T1–3), Golden Sap (T4–5), rare **Heartwood** (any tier ≥2, future crafting jackpot). |
 
 ## 3. Mining
-| Tier | Ore | Zone | Node models |
-|---|---|---|---|
-| T1 (1) | Copper Ore | Dawnshore | rock + copper veins (ResourceBits copper nuggets on Low Poly Rocks) |
-| T2 (7) | Iron Ore | Verdant Weald | iron-flecked boulders |
-| T3 (13) | Silverline Ore | Emberwood ruins | silver recolor veins |
-| T4 (19) | Gold Ore | Sungraze ravine | gold veins (ResourceBits gold) |
-| T5 (25) | Dawnstone | Ashcrag mines | glowing amber crystal rock (Gems & Ores pack) |
-Procs: rough gems (Gems & Ores pack models/icons: 6 gem types), rare **Geode** (opens via interact →
-mini loot table). Stone side-yield every gather (future building material, vendors buy).
+
+| Tier                                                                                                 | Ore            | Zone            | Node models                                                         |
+| ---------------------------------------------------------------------------------------------------- | -------------- | --------------- | ------------------------------------------------------------------- |
+| T1 (1)                                                                                               | Copper Ore     | Dawnshore       | rock + copper veins (ResourceBits copper nuggets on Low Poly Rocks) |
+| T2 (7)                                                                                               | Iron Ore       | Verdant Weald   | iron-flecked boulders                                               |
+| T3 (13)                                                                                              | Silverline Ore | Emberwood ruins | silver recolor veins                                                |
+| T4 (19)                                                                                              | Gold Ore       | Sungraze ravine | gold veins (ResourceBits gold)                                      |
+| T5 (25)                                                                                              | Dawnstone      | Ashcrag mines   | glowing amber crystal rock (Gems & Ores pack)                       |
+| Procs: rough gems (Gems & Ores pack models/icons: 6 gem types), rare **Geode** (opens via interact → |
+| mini loot table). Stone side-yield every gather (future building material, vendors buy).             |
 
 ## 4. Herbalism
-| Tier | Herb | Zone | Visual |
-|---|---|---|---|
-| T1 (1) | Meadowbell | Dawnshore | blue bell cluster (nature-pack flowers) |
-| T2 (7) | Mossbloom | Verdant Weald | glowing moss tuft |
-| T3 (13) | Cinderleaf | Emberwood | red spiral fern |
-| T4 (19) | Sunblossom | Sungraze | tall gold flower |
-| T5 (25) | Duskthorn | Ashcrag | purple thorn bush |
-| T5-rare | **Dawnpetal** | Elder Grove only | luminous white flower, long respawn (10 min) |
-Procs: Seeds (future gardening hook), Pollen Cloud curiosity (harmless bee swarm FX + Armabee
-aggro nearby — tiny emergent danger). Herbs feed Alchemist vendor lore + 0.2 alchemy.
+
+| Tier                                                                                          | Herb          | Zone             | Visual                                       |
+| --------------------------------------------------------------------------------------------- | ------------- | ---------------- | -------------------------------------------- |
+| T1 (1)                                                                                        | Meadowbell    | Dawnshore        | blue bell cluster (nature-pack flowers)      |
+| T2 (7)                                                                                        | Mossbloom     | Verdant Weald    | glowing moss tuft                            |
+| T3 (13)                                                                                       | Cinderleaf    | Emberwood        | red spiral fern                              |
+| T4 (19)                                                                                       | Sunblossom    | Sungraze         | tall gold flower                             |
+| T5 (25)                                                                                       | Duskthorn     | Ashcrag          | purple thorn bush                            |
+| T5-rare                                                                                       | **Dawnpetal** | Elder Grove only | luminous white flower, long respawn (10 min) |
+| Procs: Seeds (future gardening hook), Pollen Cloud curiosity (harmless bee swarm FX + Armabee |
+| aggro nearby — tiny emergent danger). Herbs feed Alchemist vendor lore + 0.2 alchemy.         |
 
 ## 5. Fishing (the involved one)
+
 **Waters carry fish tables** (per zone waterbody, painted in the map editor): coast, river, pond,
 deep-sea (sandbars).
 
@@ -83,18 +91,19 @@ a fish icon drifts within a bar, hold/release `F` to keep the catch marker over 
 progress; marker slips = progress drains; empty = escape. Higher-tier & rare fish drift faster with
 smaller markers. Success → catch splash + hold-up-the-fish beat (`PickUp_Table` retimed) + toast.
 
-| Tier | Signature fish (per water) | Rares |
-|---|---|---|
-| T1 | Dawn Sprat, Tidenibbler | Sunscale (T1 rare) |
-| T2 | Mossgill Perch, Weald Trout | Ghostfin (night-flag waters) |
-| T3 | Emberkoi, Ashback Carp | Cinder Eel |
-| T4 | Goldjaw Bass, Steppe Pike | Duneswimmer |
-| T5 | Crag Fang, Deepsea Drum | **The Old One** (deep-sea, trophy item + title toast) |
-Fish models: Quaternius Animated Fish Bundle (world ambience + catch hold-up); items get icons.
-Procs: Sunken Cache (mini loot table: gold, rings, messages in bottles → tiny treasure-map
-curiosities pointing at Hidden Caches).
+| Tier                                                                                            | Signature fish (per water)  | Rares                                                 |
+| ----------------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------- |
+| T1                                                                                              | Dawn Sprat, Tidenibbler     | Sunscale (T1 rare)                                    |
+| T2                                                                                              | Mossgill Perch, Weald Trout | Ghostfin (night-flag waters)                          |
+| T3                                                                                              | Emberkoi, Ashback Carp      | Cinder Eel                                            |
+| T4                                                                                              | Goldjaw Bass, Steppe Pike   | Duneswimmer                                           |
+| T5                                                                                              | Crag Fang, Deepsea Drum     | **The Old One** (deep-sea, trophy item + title toast) |
+| Fish models: Quaternius Animated Fish Bundle (world ambience + catch hold-up); items get icons. |
+| Procs: Sunken Cache (mini loot table: gold, rings, messages in bottles → tiny treasure-map      |
+| curiosities pointing at Hidden Caches).                                                         |
 
 ## 6. Why gather in 0.1.0 (pre-crafting honesty)
+
 - Gold: materials vendor well (Collector +10%), deliberately decent — gathering is a legitimate
   income build.
 - Quests & codex: several side quests want materials; per-profession codex completion (collection UI

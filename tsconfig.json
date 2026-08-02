@@ -1,0 +1,11 @@
+{
+  // Root build graph: `pnpm typecheck` runs `tsc -b` over these emitting projects.
+  // Each package also has a tsconfig.json (non-emitting) that includes its tests,
+  // which is what the editor and ESLint's project service use.
+  "files": [],
+  "references": [
+    { "path": "./packages/shared/tsconfig.build.json" },
+    { "path": "./packages/server/tsconfig.build.json" },
+    { "path": "./packages/client/tsconfig.build.json" }
+  ]
+}

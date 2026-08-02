@@ -1,0 +1,22 @@
+{
+  "name": "@dawned/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared contract between the Dawned client and server: protocol, formulas, constants, math.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "clean": "rm -rf dist dist-types *.tsbuildinfo"
+  }
+}

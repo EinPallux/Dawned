@@ -1,0 +1,15 @@
+node_modules/
+dist/
+dist-types/
+*.tsbuildinfo
+.env
+.env.local
+*.log
+.DS_Store
+.vite/
+coverage/
+
+# Pipeline outputs (generated from assets/ — see docs/tech/ASSET_PIPELINE.md).
+# assets_baked/ IS committed (see the pipeline doc); these are caches only.
+tools/.cache/
+packages/client/public/assets/

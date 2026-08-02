@@ -1,0 +1,46 @@
+name: check
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # typecheck + lint + format + tests + asset report (see package.json)
+      - name: Check
+        run: pnpm check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Protocol smoke test (headless, two clients)
+        run: |
+          node packages/server/dist/index.js &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8081/api/health >/dev/null && break
+            sleep 1
+          done
+          node tools/smoke/two-client-sync.mjs
+          RESULT=$?
+          kill $SERVER_PID
+          exit $RESULT

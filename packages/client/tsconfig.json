@@ -1,0 +1,15 @@
+{
+  // Editor + ESLint view. Vite owns the actual bundling; `pnpm build` runs
+  // tsconfig.build.json for type verification before vite emits.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,72 @@
+# Dawned — Caddy configuration.
+# DEPLOY.sh/UPDATE.sh substitute {{DOMAIN}} and install this at /etc/caddy/Caddyfile.
+# Reference: docs/tech/DEPLOYMENT.md §2.
+
+{{DOMAIN}} {
+	encode zstd gzip
+
+	# --- game server: REST API + WebSocket -----------------------------------
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8081
+	}
+
+	# WebSocket upgrade for the game protocol.
+	handle /game {
+		reverse_proxy 127.0.0.1:8081
+	}
+
+	# --- admin panel (Dawned-Admin, phase A0+) -------------------------------
+	# Decision 2026-08-02: /admin path, IP allowlist off. To restrict later,
+	# uncomment the matcher below and list your addresses.
+	handle /admin* {
+		# @blocked not remote_ip 203.0.113.4 198.51.100.0/24
+		# respond @blocked "Not authorised" 403
+		reverse_proxy 127.0.0.1:8082
+	}
+
+	# --- published map/content artifacts (immutable, versioned paths) --------
+	handle_path /published/* {
+		root * /var/lib/dawned/published
+		file_server
+		header Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	# --- game client (static bundle) -----------------------------------------
+	handle {
+		root * /opt/dawned/game/packages/client/dist
+
+		# Content-hashed assets can be cached forever.
+		@immutable path /assets/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+		# index.html must never be cached, or players get stale bundles after a deploy.
+		@html path / /index.html
+		header @html Cache-Control "no-cache"
+
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		# The client is self-contained: no third-party scripts, fonts or images.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/dawned.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}
+
+# --- Optional subdomain variant for the admin panel ---------------------------
+# Needs a DNS A record for admin.{{DOMAIN}} pointing at this box.
+#
+# admin.{{DOMAIN}} {
+# 	reverse_proxy 127.0.0.1:8082
+# }

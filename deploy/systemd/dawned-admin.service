@@ -1,0 +1,39 @@
+[Unit]
+Description=Dawned admin panel (editor and live ops)
+Documentation=https://github.com/EinPallux/Dawned-Admin
+After=network-online.target postgresql.service dawned-game.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dawned
+Group=dawned
+WorkingDirectory=/opt/dawned/admin
+EnvironmentFile=/etc/dawned/admin.env
+ExecStart=/usr/bin/node --enable-source-maps dist/server/index.js
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/dawned
+
+# Bake/thumbnail work must never starve the game server's tick.
+Nice=10
+CPUWeight=40
+MemoryHigh=400M
+MemoryMax=600M
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dawned-admin
+
+[Install]
+WantedBy=multi-user.target

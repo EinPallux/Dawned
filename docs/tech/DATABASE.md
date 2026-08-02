@@ -8,12 +8,12 @@
 
 ## 1. Domain Split
 
-| Group | Written by | Nature |
-|---|---|---|
-| **Account & character data** (`accounts…character_*`) | game server (admin: audited edits) | live gameplay truth |
-| **Content** (`content_*`) | admin server (drafts + publishes); game server read-only | versioned game definitions |
-| **World baked artifacts** | admin bake pipeline (files under `/var/lib/dawned/published/`), PG holds versions/index | terrain, walkgrid, bundles |
-| **Ops** (`audit_log`, `bans`, `metrics_snapshots`) | both (append-only) | operations trail |
+| Group                                                 | Written by                                                                              | Nature                     |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------- |
+| **Account & character data** (`accounts…character_*`) | game server (admin: audited edits)                                                      | live gameplay truth        |
+| **Content** (`content_*`)                             | admin server (drafts + publishes); game server read-only                                | versioned game definitions |
+| **World baked artifacts**                             | admin bake pipeline (files under `/var/lib/dawned/published/`), PG holds versions/index | terrain, walkgrid, bundles |
+| **Ops** (`audit_log`, `bans`, `metrics_snapshots`)    | both (append-only)                                                                      | operations trail           |
 
 ## 2. Account & Character Tables
 
@@ -89,6 +89,7 @@ not by FKs across draft tables (drafts may be temporarily dangling while editing
 is the gate, and the game only ever sees validated snapshots).
 
 ## 4. Ops Tables
+
 ```
 audit_log        id · actor_account FK · surface ('gm','admin') · action TEXT · args JSONB · target TEXT NULL ·
                  result TEXT · pos JSONB NULL · at TIMESTAMPTZ    [append-only; admin UI filters]
@@ -97,6 +98,7 @@ metrics_snapshots at · tick_p50/p95 REAL · entities INT · players INT · net_
 ```
 
 ## 5. Migrations & Environments
+
 - `drizzle-kit generate` produces SQL migrations committed to the repo (`packages/shared/drizzle/`);
   `UPDATE.sh` runs `drizzle-kit migrate` before restarting services (additive-first policy:
   destructive migrations require a manual flag + backup check).
@@ -107,13 +109,15 @@ metrics_snapshots at · tick_p50/p95 REAL · entities INT · players INT · net_
   `pnpm seed` gives any fresh machine the full game. This is also the disaster-recovery floor.
 
 ## 6. Backup & Retention (details in DEPLOYMENT.md)
+
 Nightly `pg_dump` (custom format) + `/var/lib/dawned/published/` tarball, 14 daily + 8 weekly
 rotations, `BACKUP.sh --verify` restores latest into a scratch DB monthly (drill). Purge jobs:
 sessions (daily), chat_log (7 d), metrics (14 d) — via pg_cron-free systemd timer calling a
 maintenance script (fewer moving parts than pg_cron).
 
 ## 7. Sizing Reality Check
+
 20 players × (1 char row + ~150 item rows + ~60 quest/discovery rows) ≈ trivial; content ≈ tens of
 thousands of small rows + map chunks (1024 × ~25 kB ≈ 25 MB per map version, keep last 5). Postgres
 tuned to shared_buffers 256 MB, work_mem 8 MB, max_connections 40 (pooled: game 10, admin 10). The
-database is never the bottleneck at this scale — the design optimizes for *integrity and editability*.
+database is never the bottleneck at this scale — the design optimizes for _integrity and editability_.

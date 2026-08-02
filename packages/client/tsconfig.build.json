@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist-types",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "emitDeclarationOnly": true
+  },
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../shared/tsconfig.build.json" }]
+}

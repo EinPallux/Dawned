@@ -1,0 +1,320 @@
+/* P0 HUD styling — angular, dark, no rounded blobs (docs/design/UI_UX.md §1).
+   The full "Cut Facets" design system arrives with the React UI in P1. */
+
+:root {
+  --ink: #151a26;
+  --panel: #1e2534;
+  --panel-light: #28324a;
+  --parchment: #ede6d4;
+  --muted: #9aa3b5;
+  --gold: #c9a34e;
+  --gold-bright: #f0c46b;
+  --ok: #57c77b;
+  --warn: #efd26e;
+  --error: #e04d3f;
+  --stamina: #57c77b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--parchment);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+#app,
+canvas.game {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ------------------------------------------------------------------ login */
+
+.login {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(240, 196, 107, 0.16), transparent 55%),
+    linear-gradient(160deg, #10131c 0%, #1a2130 60%, #243049 100%);
+  z-index: 20;
+}
+
+.login-card {
+  width: min(420px, 92vw);
+  padding: 28px 30px 26px;
+  background: var(--panel);
+  border: 1px solid #333a47;
+  /* Cut corners, not rounded blobs. */
+  clip-path: polygon(
+    0 12px,
+    12px 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%
+  );
+  box-shadow: 0 4px 16px #0008;
+}
+
+.login-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  margin: 0 0 4px;
+  color: var(--gold-bright);
+}
+
+.login-sub {
+  margin: 0 0 22px;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.login input {
+  width: 100%;
+  padding: 11px 12px;
+  background: #141a26;
+  border: 1px solid #3a4356;
+  color: var(--parchment);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+}
+
+.login input:focus {
+  border-color: var(--gold);
+}
+
+.login button {
+  margin-top: 14px;
+  width: 100%;
+  padding: 12px;
+  background: var(--gold);
+  border: none;
+  color: #191d26;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+  transition: background 80ms ease;
+}
+
+.login button:hover {
+  background: var(--gold-bright);
+}
+
+.login-error {
+  margin-top: 12px;
+  min-height: 18px;
+  color: var(--error);
+  font-size: 13px;
+}
+
+/* -------------------------------------------------------------------- hud */
+
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  font-size: 12px;
+}
+
+.hud-panel {
+  position: absolute;
+  background: rgba(30, 37, 52, 0.86);
+  border: 1px solid #333a47;
+  clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+  padding: 10px 12px;
+}
+
+.hud-topleft {
+  top: 14px;
+  left: 14px;
+  min-width: 244px;
+}
+
+.hud-topright {
+  top: 14px;
+  right: 14px;
+  min-width: 150px;
+}
+
+.hud-title {
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--gold-bright);
+  margin-bottom: 6px;
+}
+
+.hud-dim {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.hud-status {
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.hud-status[data-tone='ok'] {
+  color: var(--ok);
+}
+.hud-status[data-tone='warn'] {
+  color: var(--warn);
+}
+.hud-status[data-tone='error'] {
+  color: var(--error);
+}
+
+.hud-stats {
+  margin: 0 0 8px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--parchment);
+  white-space: pre;
+}
+
+.hud-ping {
+  display: block;
+  border: 1px solid #333a47;
+}
+
+.hud-roster-row {
+  padding: 2px 0;
+  color: var(--parchment);
+}
+
+.hud-roster-row.is-self {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.hud-bottom {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 70vw);
+  text-align: center;
+}
+
+.hud-stamina {
+  height: 8px;
+  background: rgba(21, 26, 38, 0.85);
+  border: 1px solid #333a47;
+  overflow: hidden;
+}
+
+.hud-stamina-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--stamina);
+  transition: width 120ms linear;
+}
+
+.hud-stamina-fill[data-low='true'] {
+  background: var(--warn);
+}
+
+.hud-hint {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+  text-shadow: 0 1px 3px #000a;
+}
+
+.hud-hint b {
+  color: var(--parchment);
+}
+
+.hud-chat {
+  bottom: 14px;
+  left: 14px;
+  width: 330px;
+  pointer-events: auto;
+}
+
+.hud-chat-log {
+  max-height: 148px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.hud-chat-row.is-system .hud-chat-text {
+  color: var(--gold);
+  font-style: italic;
+}
+
+.hud-chat-from {
+  color: var(--gold-bright);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.hud-chat-text {
+  color: var(--parchment);
+  overflow-wrap: anywhere;
+}
+
+.hud-chat-input {
+  width: 100%;
+  padding: 6px 8px;
+  background: #141a26;
+  border: 1px solid #3a4356;
+  color: var(--parchment);
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.hud-chat-input:focus {
+  border-color: var(--gold);
+}
+
+/* --------------------------------------------------------------- overlays */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(12, 15, 22, 0.86);
+  z-index: 30;
+  text-align: center;
+  padding: 20px;
+}
+
+.overlay-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gold-bright);
+  margin-bottom: 10px;
+}
+
+.overlay-text {
+  color: var(--muted);
+  max-width: 460px;
+  line-height: 1.6;
+}

@@ -35,5 +35,43 @@ from these games are used.
 ---
 
 <!-- GENERATED LEDGER BELOW — do not edit by hand; `pnpm assets:build` rewrites it -->
+
 ## Per-file ledger
-*(generated at build time — empty until Phase 0 pipeline lands)*
+
+### KayKit Forest Nature Pack 1.0 FREE
+Pack id `kaykit-forest` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
+
+- `world_nature_rock_1_a_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_A_Color1.gltf
+- `world_nature_rock_1_b_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_B_Color1.gltf
+- `world_nature_rock_1_c_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_C_Color1.gltf
+- `world_nature_tree_1_a_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_A_Color1.gltf
+- `world_nature_tree_1_b_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_B_Color1.gltf
+- `world_nature_tree_1_c_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_C_Color1.gltf
+- `world_nature_tree_2_a_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_2_A_Color1.gltf
+
+### KayKit Skeletons 1.1 FREE
+Pack id `kaykit-skeletons` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
+
+- `enemies_skeleton_minion` — assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Minion.glb
+
+### KayKit RPG Tools Bits 1.0 FREE
+Pack id `kaykit-tools` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
+
+- `items_tools_axe` — assets/items/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf/axe.gltf
+- `items_tools_pickaxe` — assets/items/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf/pickaxe.gltf
+
+### KayKit Fantasy Weapons Bits 1.0 FREE
+Pack id `kaykit-weapons` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
+
+- `items_weapons_staff_a` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/staff_A.gltf
+- `items_weapons_staff_b` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/staff_B.gltf
+- `items_weapons_sword_a` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_A.gltf
+- `items_weapons_sword_b` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_B.gltf
+- `items_weapons_sword_c` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_C.gltf
+
+### Quaternius Monster Bundle
+Pack id `quaternius-monsters` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/
+
+- `enemies_glub` — assets/enemy_models/Quaternius Monster Bundle/Glub.glb
+- `enemies_mushnub` — assets/enemy_models/Quaternius Monster Bundle/Mushnub.glb
+

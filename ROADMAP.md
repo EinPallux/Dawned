@@ -8,28 +8,29 @@
 >
 > **Status legend:** 🔲 not started · 🟨 in progress · ✅ done — update this file as phases move.
 
-| Phase | Name | Size | Status |
-|---|---|---|---|
-| P0 | Foundations & Walking Skeleton | M | 🔲 |
-| P1 | Accounts, Characters & Menus | M | 🔲 |
-| P2 | Terrain & World Streaming | L | 🔲 |
-| P3 | Movement, Netcode Core & Chat v1 | L | 🔲 |
-| P4 | Combat Foundation | XL | 🔲 |
-| P5 | Classes I — Framework, Warrior, Rogue | L | 🔲 |
-| P6 | Classes II — Mage, Cleric, Status System | L | 🔲 |
-| P7 | Progression — XP, Stats, Skill Trees | M | 🔲 |
-| P8 | Items, Inventory, Loot & Vendors | L | 🔲 |
-| P9 | Enemies & AI Depth | L | 🔲 |
-| P10 | Gathering Professions | M | 🔲 |
-| P11 | Quests, POIs & Interactables | L | 🔲 |
-| P12 | World Building (the Dawnlands) | XL | 🔲 |
-| P13 | GM Suite & Live Ops | M | 🔲 |
-| P14 | Polish, Performance, Audio & Hardening | L | 🔲 |
-| P15 | Release 0.1.0 | M | 🔲 |
+| Phase | Name                                     | Size | Status                        |
+| ----- | ---------------------------------------- | ---- | ----------------------------- |
+| P0    | Foundations & Walking Skeleton           | M    | 🟨 code done, VPS run pending |
+| P1    | Accounts, Characters & Menus             | M    | 🔲                            |
+| P2    | Terrain & World Streaming                | L    | 🔲                            |
+| P3    | Movement, Netcode Core & Chat v1         | L    | 🔲                            |
+| P4    | Combat Foundation                        | XL   | 🔲                            |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                            |
+| P6    | Classes II — Mage, Cleric, Status System | L    | 🔲                            |
+| P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                            |
+| P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                            |
+| P9    | Enemies & AI Depth                       | L    | 🔲                            |
+| P10   | Gathering Professions                    | M    | 🔲                            |
+| P11   | Quests, POIs & Interactables             | L    | 🔲                            |
+| P12   | World Building (the Dawnlands)           | XL   | 🔲                            |
+| P13   | GM Suite & Live Ops                      | M    | 🔲                            |
+| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                            |
+| P15   | Release 0.1.0                            | M    | 🔲                            |
 
 ---
 
 ## P0 — Foundations & Walking Skeleton (M)
+
 **Goal:** a deployed "hello world" that proves the whole pipe: repo → build → VPS → browser →
 authoritative server echo.
 **Scope:** pnpm monorepo (`shared`/`server`/`client` + `tools`), TS strict + ESLint/Prettier +
@@ -42,7 +43,26 @@ actual VPS**; CI script on push.
 round-trips a change in <5 min; backup file exists; `pnpm check` green; license ledger for all
 packs reviewed (ASSET_INVENTORY §9).
 
+**Status (2026-08-02):**
+
+- [x] pnpm monorepo (`shared`/`server`/`client` + `tools`), TS strict, ESLint 9, Prettier, Vitest,
+      `pnpm check` green (37 tests), GitHub Actions workflow
+- [x] `@dawned/shared`: binary protocol v1 (codec + 8 message types, fuzz-tested), the shared
+      `stepMovement` formula, constants, dev terrain
+- [x] Game server: Fastify + `ws`, drift-corrected 20 Hz tick loop, session/rate limiting,
+      snapshot fan-out, metrics ring, localhost-only ops API, graceful shutdown
+- [x] Client: three.js scene (terrain/water/sky/shadows), prediction + reconciliation +
+      remote interpolation, pointer-lock mouselook, stamina/sprint/jump, chat, debug HUD
+- [x] Asset pipeline v1: 17 starter assets baked with provenance; the report gate fails the
+      build on unattributed files; CREDITS ledger auto-generated
+- [x] `deploy/`: DEPLOY/UPDATE/BACKUP/ROLLBACK, Caddyfile, four systemd units
+- [x] Automated DoD checks: `tools/smoke/two-client-sync.mjs` (protocol) and
+      `tools/smoke/browser-sync.mjs` (two real Chromium clients) — both passing locally
+- [ ] **Remaining: run `deploy/DEPLOY.sh` on the VPS** and re-run the browser check against
+      `https://play.pathlands.cc` (needs SSH access to the box — owner action)
+
 ## P1 — Accounts, Characters & Menus (M) ⚙A0 starts after (schema live)
+
 **Goal:** the full front door, production quality.
 **Scope:** Postgres+Drizzle live; accounts/sessions/bans tables; register/login REST (argon2id,
 rate limits, invite-code toggle, reserved names); login/register screen (3D dawn vignette, UI
@@ -54,6 +74,7 @@ checklist §7-P1.
 delete one — on the VPS, on 1080p and 1440p, with zero placeholder UI.
 
 ## P2 — Terrain & World Streaming (L) ⚙unlocks A2 (map editor terrain)
+
 **Goal:** the ground under everything — chunked terrain tech + a dev island.
 **Scope:** heightmap chunk format + splat shader (8 layers, 2 splatmaps) + skirts; chunk
 streaming/residency rings + IndexedDB cache; heightfield collision + slope walkability
@@ -65,7 +86,8 @@ renders. Server terrain mirror for authoritative Y + walkability.
 zones tint fog/light on crossing, budgets measured and recorded.
 
 ## P3 — Movement, Netcode Core & Chat v1 (L)
-**Goal:** the multiplayer *feel* baseline — this phase is re-tested at 100 ms artificial latency.
+
+**Goal:** the multiplayer _feel_ baseline — this phase is re-tested at 100 ms artificial latency.
 **Scope:** shared `stepMovement` (run/sprint+stamina/jump/gravity/slopes/swim); pointer-lock camera
 rig (+Alt cursor); client prediction + reconciliation; snapshot/delta protocol v1 + AOI grid +
 interest events; remote interpolation (100 ms) + anim state machine (8-way locomotion blends,
@@ -75,7 +97,8 @@ tools (latency/jitter injection, netgraph overlay); chat v1 (global/system + bub
 injected RTT (signoff checklist: no rubber-banding on slopes, dodge-free baseline), tick p95 <15 ms
 at that load, prediction-mismatch test suite green.
 
-## P4 — Combat Foundation (XL) — *the make-or-break phase*
+## P4 — Combat Foundation (XL) — _the make-or-break phase_
+
 **Goal:** fighting one enemy type feels **great** before any class/content breadth exists.
 **Scope:** health/damage pipeline + combat math (formulas in shared, unit-tested); hurtbox
 capsules + melee arc / projectile / ground-AoE / cone / dash hit tests; position history + lag
@@ -91,6 +114,7 @@ and it passes the COMBAT.md §9 checklist reviewed line-by-line; feel signoff fr
 (explicitly: does it feel like Farever-smooth action combat? iterate until yes).
 
 ## P5 — Classes I: Ability Framework, Warrior & Rogue (L) ⚙A1 (content editors) in parallel
+
 **Goal:** the data-driven ability pipeline + two full melee kits.
 **Scope:** ability executor (costs/cooldowns/GCD/casts/channels/charges per COMBAT.md §4);
 resources Rage & Energy+Combo; hotbar UI (cooldown radials, insufficient-resource states, proc
@@ -103,6 +127,7 @@ every ability passes the juice checklist; ability numbers live-tunable from admi
 restart.
 
 ## P6 — Classes II: Mage, Cleric & Status System (L)
+
 **Goal:** ranged/caster tech + healing + the full status-effect vocabulary.
 **Scope:** projectile pooling + homing (Barrage), ground-target reticle flow (Meteor/Sanctuary),
 cast bars (self + soft-target), Mage complete; ally-soft targeting + heal pipeline + Cleric
@@ -113,6 +138,7 @@ UI; interrupt system; Mana/potion economy pass; class balance pass #1 (dummy DPS
 cleric heals) plays clean at lag-lab settings.
 
 ## P7 — Progression: XP, Stats & Skill Trees (M)
+
 **Goal:** kills mean something: 1→30 exists end-to-end.
 **Scope:** XP sources + curve + level-ups (juice per PROGRESSION.md §1.3); stat points UI/server +
 derived stats application; skill trees ×4 (server validation + lattice UI + respec at Mirror of
@@ -122,6 +148,7 @@ Dawn); ability unlock flow + toasts; `content_xp_curve`/nodes editable via A1 ed
 all Warrior/Rogue/Mage/Cleric node effects verified by targeted tests; unspent-point UX per design.
 
 ## P8 — Items, Inventory, Loot & Vendors (L) ⚙A1 item/loot editors required
+
 **Goal:** the reward engine.
 **Scope:** item system + rolled stats; inventory grid + paper-doll + tooltips + compare; equipment
 stat application + weapon model attachment (visible weapons per class); loot tables + per-player
@@ -133,6 +160,7 @@ fuzz tests green (no dupes under parallel op storms); icon build fails on any un
 (enforced); 60 items reviewed in-game.
 
 ## P9 — Enemies & AI Depth (L)
+
 **Goal:** the full archetype language + the bestiary breadth machine.
 **Scope:** Ranged/Caster/Charger/Swarm/Elite archetypes complete (incl. enemy projectiles with
 dodgeable travel, caster interrupts, charge telegraph rects, swarm surround); boss framework
@@ -144,6 +172,7 @@ mixed camps (grunt+ranged+caster) create the intended "pick your fight" pressure
 budget at 150 active.
 
 ## P10 — Gathering Professions (M) ⚙A3 node placement tools required
+
 **Goal:** all four professions shippable.
 **Scope:** interactable framework final (prompts, hold-cast, server timers); nodes (tree topple,
 rock crumble, herb pick, respawn scheduling); profession levels/XP/tier gates + panel + codex;
@@ -154,6 +183,7 @@ minigame tuned across 3 rarities; node respawn/depletion correct under multiplay
 (two players, one node — first-tap claim rule verified).
 
 ## P11 — Quests, POIs & Interactables (L) ⚙A4 quest editor required
+
 **Goal:** the discovery layer: quests, dialogue, map, POIs.
 **Scope:** quest framework (all step types, counters via event bus, prerequisites, chains);
 dialogue UI + NPC framing + barks; journal + tracker + map hints; POI/discovery system (vista/
@@ -166,6 +196,7 @@ only in-game affordances; discovery loop (banner/XP/map) fires correctly for eve
 found-object quest works.
 
 ## P12 — World Building: the Dawnlands (XL) ⚙A2+A3 fully required (dogfood!)
+
 **Goal:** the real world, authored with our own tools — the sandbox's heart.
 **Scope:** archipelago terrain (island synth base + hand-sculpt per WORLD.md layouts); all 6 zones
 painted (splat sets, ambience profiles, zone polygons); settlements built (Dawnhaven + 4);
@@ -179,6 +210,7 @@ and was walked by at least one dev character per class archetype pair; every zon
 against its palette/mood spec; owner walkthrough signoff zone by zone.
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel
+
 **Goal:** operating the world from inside and outside.
 **Scope:** full GM command set + palette + GM panel tabs (GM_TOOLS.md complete); roles/grants;
 audit log; chat final (local/whisper/mute + GM gold); announce/xprate events; ops API surface for
@@ -189,21 +221,24 @@ teleport) entirely via GM panel + admin Live Ops; every action lands in audit lo
 attribution.
 
 ## P14 — Polish, Performance, Audio & Hardening (L) ⚙A6 in parallel
+
 **Goal:** from "feature-complete" to "feels finished".
 **Scope:** audio full pass (all AUDIO.md buckets sourced/processed/mixed; music director; ambience
 emitters); settings final (graphics presets incl. foliage/FX density, rebinding UI, a11y toggles);
 day/night visual cycle (subtle, zone-tinted) + **weather system** (zone-profiled rain &
 thunderstorms with distance-delayed thunder, post-rain rainbows — visual only, per WORLD.md §4.6)
-+ `/settime` & `/weather`; juice sweep (screen-edge vignettes, loot
-stingers, level fanfare, idle emotes, ambient critter density); performance closure (client
-worst-vista list @60 FPS, server 25-bot soak 24 h, memory leak watch); security closure
-(SECURITY §7 re-run, cheatbot regression, dependency audit, backup **restore drill**); onboarding
-hints; credits screen; disconnect/reconnect UX final; a closed alpha weekend with the friend group
-+ triage.
-**DoD:** alpha feedback triaged to zero P0/P1 bugs; all budgets green in CI report; the game plays
-start-to-30 with sound, settings persist, and nothing says "TODO".
+
+- `/settime` & `/weather`; juice sweep (screen-edge vignettes, loot
+  stingers, level fanfare, idle emotes, ambient critter density); performance closure (client
+  worst-vista list @60 FPS, server 25-bot soak 24 h, memory leak watch); security closure
+  (SECURITY §7 re-run, cheatbot regression, dependency audit, backup **restore drill**); onboarding
+  hints; credits screen; disconnect/reconnect UX final; a closed alpha weekend with the friend group
+- triage.
+  **DoD:** alpha feedback triaged to zero P0/P1 bugs; all budgets green in CI report; the game plays
+  start-to-30 with sound, settings persist, and nothing says "TODO".
 
 ## P15 — Release 0.1.0 (M)
+
 **Goal:** ship it like it matters.
 **Scope:** content freeze; full-clear balance pass (class × zone matrix, boss timings, economy
 faucet/sink audit); release checklist (CONTENT_0.1 §9 + DEPLOYMENT drill: fresh DEPLOY.sh on a
@@ -217,23 +252,25 @@ launch-day monitoring (dashboard watch, backup verified); post-launch hotfix win
 
 ## Cross-repo sync (details in Dawned-Admin/ROADMAP.md)
 
-| Admin phase | Delivers | Needed by |
-|---|---|---|
-| A0 Foundation (auth, shell, DB link) | after P1 | A1+ |
-| A1 Content editors (items, abilities, enemies, loot, vendors, curves, world settings) | during P5–P8 | P5 ability rows, P8 items |
-| A2 Map editor I — terrain sculpt/paint/publish | after P2 | P12 (early access for dev island iteration from P5 on) |
-| A3 Map editor II — placement/spawns/zones/nodes/POIs | after P9 systems stabilize | P10 nodes, P12 world |
-| A4 Quest & dialogue editor | during P11 | P11 pilot quests |
-| A5 Live ops (players, dashboard, bans, reload) | during P13 | P13 event night |
-| A6 Validation/diff/publish polish + backups UI | during P14 | P15 release ops |
+| Admin phase                                                                           | Delivers                   | Needed by                                              |
+| ------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------ |
+| A0 Foundation (auth, shell, DB link)                                                  | after P1                   | A1+                                                    |
+| A1 Content editors (items, abilities, enemies, loot, vendors, curves, world settings) | during P5–P8               | P5 ability rows, P8 items                              |
+| A2 Map editor I — terrain sculpt/paint/publish                                        | after P2                   | P12 (early access for dev island iteration from P5 on) |
+| A3 Map editor II — placement/spawns/zones/nodes/POIs                                  | after P9 systems stabilize | P10 nodes, P12 world                                   |
+| A4 Quest & dialogue editor                                                            | during P11                 | P11 pilot quests                                       |
+| A5 Live ops (players, dashboard, bans, reload)                                        | during P13                 | P13 event night                                        |
+| A6 Validation/diff/publish polish + backups UI                                        | during P14                 | P15 release ops                                        |
 
 ## Post-0.1.0 direction (unscoped, priority-ordered draft)
+
 0.2: Crafting & processing (materials → gear/food), group system + XP share, tools-as-items.
 0.3: Duels (1v1), drop-trading, daily board quests, first dungeon (Ember Vault).
 0.4+: more zones/isles, day/night & weather gameplay hooks (night spawns, storm events), housing?.
 Never (per spec): open-world PvP, guilds/guild wars, raids, BDO-style enhancing, mounts.
 
 ## Working agreements (apply to every phase)
+
 - A phase is **done when its DoD is checked**, demoed on the VPS, CHANGELOG updated, docs touched
   by the phase updated, and the next phase re-planned against reality.
 - Feel-critical phases (P3, P4, P5, P6, P12) end with an explicit owner signoff session.

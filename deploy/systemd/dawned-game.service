@@ -1,0 +1,40 @@
+[Unit]
+Description=Dawned MMORPG game server
+Documentation=https://github.com/EinPallux/Dawned
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dawned
+Group=dawned
+WorkingDirectory=/opt/dawned/game/packages/server
+EnvironmentFile=/etc/dawned/game.env
+ExecStart=/usr/bin/node --enable-source-maps dist/index.js
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Hardening (docs/tech/SECURITY.md §5)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/dawned
+
+# The game server is the priority process on a 1-core box.
+LimitNOFILE=16384
+OOMScoreAdjust=-500
+MemoryHigh=900M
+MemoryMax=1200M
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dawned-game
+
+[Install]
+WantedBy=multi-user.target

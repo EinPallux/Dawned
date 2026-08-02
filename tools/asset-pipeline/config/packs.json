@@ -1,0 +1,97 @@
+{
+  "$comment": "License ledger — the source of truth for attribution. Every served asset must belong to a pack listed here, and every pack must carry license + source. The build fails on unattributed files (docs/tech/ASSET_PIPELINE.md §1). Licenses marked \"verify\" are Phase 0 checklist items before those packs may ship.",
+  "packs": {
+    "kaykit-forest": {
+      "name": "KayKit Forest Nature Pack 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://kaylousberg.itch.io/",
+      "root": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE"
+    },
+    "kaykit-weapons": {
+      "name": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://kaylousberg.itch.io/",
+      "root": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE"
+    },
+    "kaykit-tools": {
+      "name": "KayKit RPG Tools Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://kaylousberg.itch.io/",
+      "root": "assets/items/KayKit_RPGToolsBits_1.0_FREE"
+    },
+    "kaykit-skeletons": {
+      "name": "KayKit Skeletons 1.1 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://kaylousberg.itch.io/",
+      "root": "assets/enemy_models/KayKit_Skeletons_1.1_FREE"
+    },
+    "quaternius-monsters": {
+      "name": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/enemy_models/Quaternius Monster Bundle"
+    }
+  },
+  "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land — the pipeline itself does not change.",
+  "selection": [
+    {
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Tree_*.gltf",
+      "limit": 4
+    },
+    {
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Rock_*.gltf",
+      "limit": 3
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/sword_*.gltf",
+      "limit": 3
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/staff_*.gltf",
+      "limit": 2
+    },
+    {
+      "pack": "kaykit-tools",
+      "category": "items/tools",
+      "glob": "Assets/gltf/pickaxe.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "kaykit-tools",
+      "category": "items/tools",
+      "glob": "Assets/gltf/axe.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Mushnub.glb",
+      "limit": 1
+    },
+    { "pack": "quaternius-monsters", "category": "enemies", "glob": "Glub.glb", "limit": 1 },
+    {
+      "pack": "kaykit-skeletons",
+      "category": "enemies",
+      "glob": "characters/gltf/Skeleton_Minion.glb",
+      "limit": 1
+    }
+  ]
+}

@@ -4,13 +4,15 @@ Guidance for Claude Code (and mirrored for other agents in AGENTS.md) when worki
 repository. Read this first, every session.
 
 ## What this project is
+
 **Dawned** — a low-poly, vibrant, browser-based 3D **action-combat sandbox MMORPG** for a private
 community (5–20 players), deployed to a 4 GB / 1-core Ubuntu 24.04 VPS at `play.pathlands.cc`.
-Version target: **0.1.0 = a complete Early Access MMORPG**, explicitly *not* an MVP/prototype.
+Version target: **0.1.0 = a complete Early Access MMORPG**, explicitly _not_ an MVP/prototype.
 The companion repo **Dawned-Admin** (separate repository) is the web editor/ops panel that edits
-*everything* (map, quests, database content, live ops).
+_everything_ (map, quests, database content, live ops).
 
 ## Non-negotiable project rules
+
 1. **No cheap shortcuts.** Features ship vertically complete (anim + VFX + sound hook + UI +
    server validation + editor support) or not at all. No placeholder-forever, no "temp" hacks
    without a tracked replacement task.
@@ -31,6 +33,7 @@ The companion repo **Dawned-Admin** (separate repository) is the web editor/ops 
    recommendation if an answer is pending and the phase demands progress; note it).
 
 ## Repository map (planned layout — Phase 0 creates it)
+
 ```
 packages/shared   @dawned/shared — protocol, formulas, drizzle schema, zod content schemas, constants
 packages/server   game server (Node 22, Fastify REST + ws WSS, 20 Hz sim)
@@ -40,10 +43,12 @@ deploy/           DEPLOY.sh / UPDATE.sh / BACKUP.sh / ROLLBACK.sh, Caddyfile, sy
 assets/           raw source packs (never served) · assets_baked/ committed pipeline outputs
 docs/             design/ + tech/ + inventory/content plans — THE source of truth
 ```
+
 Docs index: start at README.md. Key entry points: ROADMAP.md (what to build now),
 docs/design/GAME_DESIGN.md (what the game is), docs/tech/ARCHITECTURE.md (how it fits together).
 
 ## Engineering conventions
+
 - TypeScript strict everywhere; no `any` (use `unknown` + narrowing); zod at every boundary
   (REST, protocol JSON envelopes, content rows, env).
 - Client and server import **only** `@dawned/shared` from each other's world. Shared formulas
@@ -64,12 +69,31 @@ docs/design/GAME_DESIGN.md (what the game is), docs/tech/ARCHITECTURE.md (how it
   (`[P4]`) when applicable.
 
 ## Working with the owner
+
 The owner (solo, plays with friends) will edit content via Dawned-Admin and expects to extend the
 game for years: optimize for **readable, editable, documented** over clever. When touching a
 design doc's territory, update the doc in the same change. German-speaking owner — player-facing
 text is English-only (decided), docs/comments English.
 
 ## Current state
-**Planning complete; all 16 initial owner decisions answered and folded** (2026-08-02 — decision
-log in USER_QUESTIONS.md). No code yet. Next milestone: **P0 Foundations** (see ROADMAP.md) —
-ready to start.
+
+**Phase P0 (foundations & walking skeleton) is code-complete and verified locally**: the monorepo,
+shared protocol/formulas, 20 Hz authoritative server, three.js client with prediction, asset
+pipeline v1 and the deploy scripts all exist, and `pnpm check` is green. Two automated smoke tests
+prove the walking skeleton (`tools/smoke/two-client-sync.mjs`, `tools/smoke/browser-sync.mjs`).
+
+**P0's one open item:** running `deploy/DEPLOY.sh` on the real VPS and re-running the browser check
+against `https://play.pathlands.cc` — that needs SSH access to the box.
+
+All 16 initial owner decisions are answered and folded (2026-08-02 — decision log in
+USER_QUESTIONS.md). Next milestone after the VPS run: **P1 Accounts, Characters & Menus**.
+
+### Running it locally
+
+```bash
+pnpm install && pnpm build
+pnpm --filter @dawned/server start     # game server on :8081
+pnpm --filter @dawned/client dev       # client on :5173 (proxies /api and /game)
+node tools/smoke/two-client-sync.mjs   # headless protocol check
+node tools/smoke/browser-sync.mjs      # two real browsers (needs the client dev server running)
+```

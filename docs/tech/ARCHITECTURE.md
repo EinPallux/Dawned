@@ -77,6 +77,7 @@ src/
 ```
 
 **Main loop (20 Hz fixed tick, `setTimeout`-drift-corrected):**
+
 1. drain & validate client inputs (movement intents, ability requests, interacts)
 2. movement integrate + validate (speed/slope/teleport caps) → position history push (rewind buffer 32 ticks)
 3. AI decisions (staggered ~1/2 of brains per tick @10 Hz effective) → AI movement
@@ -125,6 +126,7 @@ budgets per TECH_STACK.md. Player/NPC animation via three AnimationMixer with a 
 library (UAL retargeted once at pipeline time, not runtime).
 
 ## 5. Admin Panel Touchpoints (contract summary — full spec in Dawned-Admin repo)
+
 - **Same Postgres**, writing only `content_*` draft tables + operational tables it owns; it never
   writes live gameplay rows (characters etc.) except through explicit admin actions logged in audit.
 - **Publish pipeline:** draft → validate (zod, referential checks) → version bump → bake artifacts
@@ -136,6 +138,7 @@ library (UAL retargeted once at pipeline time, not runtime).
   on next login/zone-load without redeploys.
 
 ## 6. Cross-cutting Conventions
+
 - **IDs:** content ids are human string slugs (`enemy_mushroom_king`, `item_weapon_sword_emberbrand`) —
   editor-friendly, greppable, stable. Runtime entity ids are u32 sequence per boot.
 - **Time:** server ticks are the clock; client syncs offset via ping/pong (see NETWORKING.md).

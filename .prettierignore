@@ -1,0 +1,10 @@
+dist/
+dist-types/
+node_modules/
+assets/
+assets_baked/
+packages/client/public/assets/
+pnpm-lock.yaml
+*.tsbuildinfo
+CHANGELOG.md
+CREDITS.md
