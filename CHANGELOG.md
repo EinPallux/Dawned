@@ -41,6 +41,20 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   migrations; the §7-P1 security checklist was run and recorded (timing-oracle measurement,
   token/session-fixation review); per-IP registration limit set to 10/day.
 
+### Fixed — P1 VPS deploy
+- **Registration/login failed on the VPS with a raw SQL error on screen.** Root cause: the
+  deploy scripts ran `pnpm db:migrate` without `DATABASE_URL` (the `dawned` user cannot read
+  `/etc/dawned/game.env`), the migrator fell back to the dev-default URL and failed password
+  auth, and an `|| echo "(no migrations to run)"` swallowed the failure — so the server came
+  up against a database with no tables. Three-layer fix:
+  - DEPLOY.sh/UPDATE.sh now read `DATABASE_URL` (as root) and inject it into the migration
+    step, which **aborts the deploy on failure** instead of pretending nothing happened;
+  - the server refuses to boot when the schema is missing ("accounts" table probe) with a
+    message pointing at the migration step — no more healthy-looking broken deploys;
+  - a Fastify error handler stops internal errors from reaching the client at all: the VPS
+    error body contained the failed SQL and its parameters, including the freshly computed
+    password hash. Clients now get a generic message; the real error goes to the server log.
+
 ### Added — Phase P0: foundations & walking skeleton
 - **Monorepo**: pnpm workspaces (`packages/shared`, `packages/server`, `packages/client`,
   `tools`), TypeScript strict everywhere, ESLint 9 + Prettier, Vitest, a single `pnpm check`

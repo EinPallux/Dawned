@@ -169,7 +169,12 @@ EOSU
 fi
 
 log "Database migrations"
-sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU || echo "  (no migrations yet — they arrive in P1)"
+# The dawned user cannot read /etc/dawned/*.env — inject DATABASE_URL explicitly
+# (read here, as root). A failure aborts the deploy; a server without its tables
+# would boot but reject every registration/login.
+DATABASE_URL_VALUE="$(grep '^DATABASE_URL=' "$ETC_DIR/game.env" | cut -d= -f2-)"
+sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 DATABASE_URL="$DATABASE_URL_VALUE" \
+  bash -euo pipefail <<EOSU
   cd "$APP_DIR/game"
   pnpm db:migrate
 EOSU

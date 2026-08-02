@@ -55,3 +55,21 @@ export const assertDbReachable = async (handle: DbHandle): Promise<void> => {
     );
   }
 };
+
+/**
+ * Boot-time schema probe: a reachable database with no tables means migrations
+ * never ran — refuse to start with a clear message instead of coming up
+ * "healthy" and failing every registration/login at runtime.
+ */
+export const assertSchemaPresent = async (handle: DbHandle): Promise<void> => {
+  const result = await handle.pool.query<{ ok: boolean }>(
+    "SELECT to_regclass('public.accounts') IS NOT NULL AS ok",
+  );
+  if (!result.rows[0]?.ok) {
+    throw new Error(
+      'Database is reachable but the schema is missing (no "accounts" table). ' +
+        'Run migrations first: pnpm db:migrate (deploy/UPDATE.sh does this — ' +
+        'if you see this on the VPS, the migration step failed; check its output).',
+    );
+  }
+};

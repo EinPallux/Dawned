@@ -50,7 +50,7 @@ announce() {
 }
 
 update_repo() {
-  local dir="$1" service="$2" label="$3"
+  local dir="$1" service="$2" label="$3" envfile="$4"
   [[ -d "$dir/.git" ]] || { warn "$label: $dir is not a git clone — skipping"; return 0; }
 
   log "$label: pulling"
@@ -67,11 +67,26 @@ update_repo() {
     pnpm build
 EOSU
 
-  log "$label: migrations"
-  sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU || echo "  (no migrations to run)"
+  # Migrations run as the dawned user, which cannot read /etc/dawned/*.env —
+  # inject DATABASE_URL explicitly (read here, as root). A migration failure must
+  # ABORT the update: restarting the service onto missing tables would take the
+  # whole login flow down while /api/health still looks green.
+  if grep -q '"db:migrate"' "$dir/package.json"; then
+    log "$label: migrations"
+    local database_url
+    database_url="$(grep '^DATABASE_URL=' "$ETC_DIR/$envfile" 2>/dev/null | cut -d= -f2- || true)"
+    if [[ -z "$database_url" ]]; then
+      warn "$label: no DATABASE_URL in $ETC_DIR/$envfile — cannot migrate. Aborting."
+      exit 1
+    fi
+    sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 DATABASE_URL="$database_url" \
+      bash -euo pipefail <<EOSU
     cd "$dir"
     pnpm db:migrate
 EOSU
+  else
+    log "$label: migrations — repo has no db:migrate script, skipping"
+  fi
 
   log "$label: restarting $service"
   systemctl restart "$service"
@@ -90,11 +105,11 @@ bash "$SCRIPT_DIR/BACKUP.sh" --quick || warn "backup failed — continuing (see 
 announce
 
 case "$TARGET" in
-  game)  update_repo "$APP_DIR/game"  dawned-game  "game" ;;
-  admin) update_repo "$APP_DIR/admin" dawned-admin "admin" ;;
+  game)  update_repo "$APP_DIR/game"  dawned-game  "game"  game.env ;;
+  admin) update_repo "$APP_DIR/admin" dawned-admin "admin" admin.env ;;
   all)
-    update_repo "$APP_DIR/game" dawned-game "game"
-    [[ -f "$APP_DIR/admin/package.json" ]] && update_repo "$APP_DIR/admin" dawned-admin "admin"
+    update_repo "$APP_DIR/game" dawned-game "game" game.env
+    [[ -f "$APP_DIR/admin/package.json" ]] && update_repo "$APP_DIR/admin" dawned-admin "admin" admin.env
     ;;
   *) warn "unknown target '$TARGET' (expected game|admin|all)"; exit 2 ;;
 esac

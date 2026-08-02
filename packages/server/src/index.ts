@@ -5,7 +5,7 @@
  * Shutdown is graceful: announce, drain sockets, stop the loop, exit.
  */
 
-import Fastify from 'fastify';
+import Fastify, { type FastifyError, type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import { TICK_RATE } from '@dawned/shared';
 import { loadConfig } from './config.js';
@@ -16,7 +16,7 @@ import { TickLoop } from './world/tick-loop.js';
 import { Gateway } from './net/gateway.js';
 import { registerRoutes } from './http/routes.js';
 import { registerAuthRoutes } from './http/auth-routes.js';
-import { assertDbReachable, createDb } from './db/client.js';
+import { assertDbReachable, assertSchemaPresent, createDb } from './db/client.js';
 import { runMigrations } from './db/migrate.js';
 import { AuthService } from './auth/service.js';
 import { CharacterService } from './characters/service.js';
@@ -33,6 +33,7 @@ if (config.NODE_ENV !== 'production') {
 }
 const dbHandle = createDb(config.DATABASE_URL);
 await assertDbReachable(dbHandle);
+await assertSchemaPresent(dbHandle);
 
 const auth = new AuthService(dbHandle.db, config.INVITE_CODE);
 const characterService = new CharacterService(dbHandle.db);
@@ -45,6 +46,22 @@ const app = Fastify({
   // Per-request logs are dev noise in production — Caddy keeps the access log,
   // and health checks would otherwise spam journald every few seconds.
   disableRequestLogging: config.NODE_ENV === 'production',
+});
+
+// Internal errors must never leak to the client — a failed DB query's message
+// carries the SQL and its params (which for auth include the password hash).
+// Log the real error; answer with a generic envelope. Fastify's own 4xx errors
+// (bad content type, body too large, …) keep their safe client-facing messages.
+app.setErrorHandler((error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
+  const status = typeof error.statusCode === 'number' ? error.statusCode : 500;
+  if (status >= 500) {
+    request.log.error({ err: error }, 'unhandled route error');
+    void reply
+      .code(500)
+      .send({ error: 'internal', message: 'Something went wrong on the server — try again.' });
+    return;
+  }
+  void reply.code(status).send({ error: 'bad_request', message: error.message });
 });
 
 await app.register(cors, {
