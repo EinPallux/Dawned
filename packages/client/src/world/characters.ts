@@ -106,7 +106,12 @@ export interface ComposedCharacter {
   group: THREE.Group;
   mixer: THREE.AnimationMixer;
   /** Play a UAL clip by name with crossfade; returns false when unknown. */
-  play: (clipName: string, options?: { fadeSeconds?: number; loopOnce?: boolean }) => boolean;
+  play: (
+    clipName: string,
+    options?: { fadeSeconds?: number; loopOnce?: boolean; randomizeStart?: boolean },
+  ) => boolean;
+  /** Playback speed of the active clip (foot-slide compensation). */
+  setTimeScale: (scale: number) => void;
   dispose: () => void;
 }
 
@@ -280,8 +285,16 @@ export const composeCharacter = (
     } else {
       next.reset().play();
     }
+    // Desync loops across players so a crowd doesn't idle/jog in lockstep.
+    if (options?.randomizeStart && !options.loopOnce) {
+      next.time = Math.random() * clip.duration;
+    }
     activeAction = next;
     return true;
+  };
+
+  const setTimeScale: ComposedCharacter['setTimeScale'] = (scale) => {
+    if (activeAction) activeAction.timeScale = scale;
   };
 
   const dispose = (): void => {
@@ -294,5 +307,5 @@ export const composeCharacter = (
     });
   };
 
-  return { group, mixer, play, dispose };
+  return { group, mixer, play, setTimeScale, dispose };
 };

@@ -1,14 +1,13 @@
 /**
  * The rendered world.
  *
- * P0 draws the dev island with the same terrain function the simulation walks on,
- * plus a stylized sky, water and simple character capsules. Real terrain streaming
- * lands in P2 and character models in P1 — the structure here (scene owner, per-entity
- * views, camera rig) is what those phases extend.
+ * P0 drew the dev island with the same terrain function the simulation walks on,
+ * plus a stylized sky and water. P1 moved player rendering to composed character
+ * rigs (see character-view.ts); real terrain streaming lands in P2 — the structure
+ * here (scene owner, camera rig) is what those phases extend.
  */
 
 import * as THREE from 'three';
-import { PLAYER_HEIGHT, PLAYER_RADIUS } from '@dawned/shared';
 import {
   PALETTE,
   buildLights,
@@ -16,103 +15,6 @@ import {
   buildTerrainMesh,
   buildWaterMesh,
 } from './environment.js';
-
-const REMOTE_COLORS = ['#d8663a', '#4fa3e8', '#8bc44a', '#efd26e', '#a44fe0', '#3fbf5a'];
-
-export class PlayerView {
-  readonly group = new THREE.Group();
-  private readonly label: THREE.Sprite;
-
-  constructor(name: string, color: THREE.ColorRepresentation, isLocal: boolean) {
-    const material = new THREE.MeshLambertMaterial({ color, flatShading: true });
-    const body = new THREE.Mesh(
-      new THREE.CapsuleGeometry(PLAYER_RADIUS, PLAYER_HEIGHT - PLAYER_RADIUS * 2, 4, 8),
-      material,
-    );
-    body.position.y = PLAYER_HEIGHT / 2;
-    body.castShadow = true;
-    this.group.add(body);
-
-    // A wedge so facing is readable at a glance (stand-in for real characters, P1).
-    const nose = new THREE.Mesh(
-      new THREE.ConeGeometry(0.16, 0.42, 4),
-      new THREE.MeshLambertMaterial({ color: isLocal ? '#ffffff' : '#1e2534', flatShading: true }),
-    );
-    nose.rotation.x = Math.PI / 2;
-    nose.position.set(0, PLAYER_HEIGHT * 0.62, PLAYER_RADIUS + 0.12);
-    this.group.add(nose);
-
-    this.label = makeLabelSprite(name);
-    this.label.position.y = PLAYER_HEIGHT + 0.45;
-    this.group.add(this.label);
-  }
-
-  setPose(x: number, y: number, z: number, yaw: number): void {
-    this.group.position.set(x, y, z);
-    this.group.rotation.y = yaw;
-  }
-
-  dispose(scene: THREE.Scene): void {
-    scene.remove(this.group);
-    this.group.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
-      // `instanceof Mesh` narrows to Mesh<any, any>; name the concrete shape so the
-      // geometry/material accesses stay type-safe.
-      const mesh = object as THREE.Mesh;
-      mesh.geometry.dispose();
-      if (Array.isArray(mesh.material)) {
-        for (const entry of mesh.material) entry.dispose();
-      } else {
-        mesh.material.dispose();
-      }
-    });
-    const labelTexture = this.label.material.map;
-    if (labelTexture) labelTexture.dispose();
-    this.label.material.dispose();
-  }
-}
-
-export const remoteColorFor = (id: number): string =>
-  REMOTE_COLORS[id % REMOTE_COLORS.length] ?? '#ffffff';
-
-const makeLabelSprite = (text: string): THREE.Sprite => {
-  const font = 'bold 30px system-ui, sans-serif';
-  const padding = 16;
-
-  // Measure first: a fixed-width canvas clips long names (16 chars are allowed).
-  const measureCtx = document.createElement('canvas').getContext('2d');
-  let textWidth = text.length * 17;
-  if (measureCtx) {
-    measureCtx.font = font;
-    textWidth = measureCtx.measureText(text).width;
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(textWidth + padding * 2);
-  canvas.height = 64;
-
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.font = font;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = 'rgba(21,26,38,0.92)';
-    ctx.strokeText(text, canvas.width / 2, 34);
-    ctx.fillStyle = '#ede6d4';
-    ctx.fillText(text, canvas.width / 2, 34);
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true }),
-  );
-  // Keep world-space height constant; width follows the name's aspect ratio.
-  const height = 0.55;
-  sprite.scale.set((canvas.width / canvas.height) * height, height, 1);
-  return sprite;
-};
 
 export class GameScene {
   readonly scene = new THREE.Scene();
@@ -198,9 +100,5 @@ export class GameScene {
 
   render(): void {
     this.renderer.render(this.scene, this.camera);
-  }
-
-  get localPlayerColor(): THREE.Color {
-    return PALETTE.localPlayer;
   }
 }

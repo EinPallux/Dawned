@@ -5,10 +5,12 @@
  */
 
 import * as THREE from 'three';
-import { NoticeCode, TICK_MS, maxStaminaFor } from '@dawned/shared';
-import { Connection, type RemoteEntity } from '../net/connection.js';
+import { EntityFlag, NoticeCode, TICK_MS, maxStaminaFor, type Appearance } from '@dawned/shared';
+import { Connection } from '../net/connection.js';
 import { InputController } from '../input/input.js';
-import { GameScene, PlayerView, remoteColorFor } from '../world/scene.js';
+import { GameScene } from '../world/scene.js';
+import { CharacterView } from '../world/character-view.js';
+import { loadCharacterAssets, type CharacterAssets } from '../world/characters.js';
 import { Hud } from '../ui/hud.js';
 
 export interface WorldHandle {
@@ -32,6 +34,7 @@ export const runWorld = (
   token: string,
   characterId: number,
   playerName: string,
+  appearance: Appearance,
   callbacks: WorldCallbacks,
 ): WorldHandle => {
   const canvas = document.createElement('canvas');
@@ -87,10 +90,18 @@ export const runWorld = (
   connection.predicted.stamina = connection.predicted.maxStamina;
   connection.connect(gameSocketUrl(), token, characterId);
 
-  const localView = new PlayerView(playerName, scene.localPlayerColor, true);
+  const localView = new CharacterView(playerName);
   scene.scene.add(localView.group);
 
-  const remoteViews = new Map<number, PlayerView>();
+  const remoteViews = new Map<number, CharacterView>();
+
+  // Rigs swap in whenever the shared assets land; the world never waits on them.
+  let characterAssets: CharacterAssets | null = null;
+  void loadCharacterAssets().then((assets) => {
+    if (disposed || !assets.ok) return;
+    characterAssets = assets;
+    localView.applyAppearance(assets, appearance);
+  });
 
   /** Debug/automation handle (tools/smoke/browser-sync.mjs). Safe: the server owns all state. */
   (window as unknown as { __dawned?: unknown }).__dawned = {
@@ -137,9 +148,14 @@ export const runWorld = (
     connection.update(deltaMs);
 
     // 3. Draw.
+    const dtSeconds = deltaMs / 1000;
     const position = connection.renderPosition();
     localView.setPose(position.x, position.y, position.z, connection.predicted.yaw);
-    syncRemoteViews(connection.remotes, remoteViews, scene);
+    localView.update(dtSeconds, {
+      grounded: connection.predicted.grounded,
+      sprinting: connection.predicted.sprinting,
+    });
+    syncRemoteViews(dtSeconds);
 
     cameraTarget.set(position.x, position.y, position.z);
     scene.updateCamera(cameraTarget, input.yaw, input.pitch);
@@ -162,6 +178,37 @@ export const runWorld = (
     });
   };
 
+  /** Create/advance/remove remote views to mirror the interpolated entity set. */
+  const syncRemoteViews = (dtSeconds: number): void => {
+    for (const [id, remote] of connection.remotes) {
+      let view = remoteViews.get(id);
+      if (!view) {
+        view = new CharacterView(remote.name);
+        remoteViews.set(id, view);
+        scene.scene.add(view.group);
+      }
+      // Appearance and name ride the roster, which can trail the first snapshot —
+      // apply as soon as (and whenever) known. Both calls no-op when unchanged.
+      const entry = connection.rosterEntryFor(id);
+      if (entry) {
+        view.setName(entry.name);
+        if (characterAssets) view.applyAppearance(characterAssets, entry.appearance);
+      }
+
+      view.setPose(remote.render.x, remote.render.y, remote.render.z, remote.render.yaw);
+      view.update(dtSeconds, {
+        grounded: (remote.render.flags & EntityFlag.Grounded) !== 0,
+        sprinting: (remote.render.flags & EntityFlag.Sprinting) !== 0,
+      });
+    }
+    for (const [id, view] of remoteViews) {
+      if (!connection.remotes.has(id)) {
+        view.dispose(scene.scene);
+        remoteViews.delete(id);
+      }
+    }
+  };
+
   requestAnimationFrame(frame);
 
   return {
@@ -171,26 +218,4 @@ export const runWorld = (
       container.replaceChildren();
     },
   };
-};
-
-const syncRemoteViews = (
-  remotes: Map<number, RemoteEntity>,
-  views: Map<number, PlayerView>,
-  scene: GameScene,
-): void => {
-  for (const [id, remote] of remotes) {
-    let view = views.get(id);
-    if (!view) {
-      view = new PlayerView(remote.name, remoteColorFor(id), false);
-      views.set(id, view);
-      scene.scene.add(view.group);
-    }
-    view.setPose(remote.render.x, remote.render.y, remote.render.z, remote.render.yaw);
-  }
-  for (const [id, view] of views) {
-    if (!remotes.has(id)) {
-      view.dispose(scene.scene);
-      views.delete(id);
-    }
-  }
 };

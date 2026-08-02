@@ -26,45 +26,52 @@ export const WorldScreen = (): React.JSX.Element => {
     const container = containerRef.current;
     if (!container || !token || !activeCharacter) return;
 
-    const handle = runWorld(container, token, activeCharacter.id, activeCharacter.name, {
-      onNotice: (code, friendlyText) => {
-        switch (code) {
-          case NoticeCode.ServerShuttingDown:
-            setOverlay({
-              title: 'Restarting',
-              text: 'The world is restarting — reloading in a few seconds…',
-              action: 'none',
-            });
-            setTimeout(() => {
-              location.reload();
-            }, 5000);
-            break;
-          case NoticeCode.AuthFailed:
-            tokenStore.clear();
-            setOverlay({ title: 'Session expired', text: friendlyText, action: 'login' });
-            break;
-          case NoticeCode.ReplacedByNewLogin:
-          case NoticeCode.CharacterUnavailable:
-          case NoticeCode.Kicked:
-          case NoticeCode.ServerFull:
-          case NoticeCode.ProtocolMismatch:
-            setOverlay({ title: 'Disconnected', text: friendlyText, action: 'select' });
-            break;
-          default:
-            setOverlay({ title: 'Disconnected', text: noticeTextFor(code), action: 'select' });
-        }
+    const handle = runWorld(
+      container,
+      token,
+      activeCharacter.id,
+      activeCharacter.name,
+      activeCharacter.appearance,
+      {
+        onNotice: (code, friendlyText) => {
+          switch (code) {
+            case NoticeCode.ServerShuttingDown:
+              setOverlay({
+                title: 'Restarting',
+                text: 'The world is restarting — reloading in a few seconds…',
+                action: 'none',
+              });
+              setTimeout(() => {
+                location.reload();
+              }, 5000);
+              break;
+            case NoticeCode.AuthFailed:
+              tokenStore.clear();
+              setOverlay({ title: 'Session expired', text: friendlyText, action: 'login' });
+              break;
+            case NoticeCode.ReplacedByNewLogin:
+            case NoticeCode.CharacterUnavailable:
+            case NoticeCode.Kicked:
+            case NoticeCode.ServerFull:
+            case NoticeCode.ProtocolMismatch:
+              setOverlay({ title: 'Disconnected', text: friendlyText, action: 'select' });
+              break;
+            default:
+              setOverlay({ title: 'Disconnected', text: noticeTextFor(code), action: 'select' });
+          }
+        },
+        onDisconnected: () => {
+          setOverlay(
+            (current) =>
+              current ?? {
+                title: 'Connection lost',
+                text: 'The connection to the world dropped.',
+                action: 'select',
+              },
+          );
+        },
       },
-      onDisconnected: () => {
-        setOverlay(
-          (current) =>
-            current ?? {
-              title: 'Connection lost',
-              text: 'The connection to the world dropped.',
-              action: 'select',
-            },
-        );
-      },
-    });
+    );
 
     return () => {
       handle.dispose();

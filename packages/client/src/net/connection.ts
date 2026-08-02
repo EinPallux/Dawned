@@ -396,6 +396,11 @@ export class Connection {
     return this.roster.find((entry) => entry.id === id)?.name ?? `Player ${id}`;
   }
 
+  /** Roster data (class, level, appearance) for an entity, once known. */
+  rosterEntryFor(id: number): RosterEntry | undefined {
+    return this.roster.find((entry) => entry.id === id);
+  }
+
   private syncRemotesWithRoster(): void {
     for (const remote of this.remotes.values()) {
       remote.name = this.nameFor(remote.id);
