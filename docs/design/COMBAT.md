@@ -38,6 +38,12 @@
 
 Gamepad: out of scope for 0.1.0 (desktop-first), input layer is abstracted so it can be added.
 
+**Jumping & falling** (decided): jump is free (no stamina cost). Fall damage starts beyond 12 m of
+drop: 6% MaxHP per meter past 12, capped at 95% — a full-HP character survives any fall, a wounded
+one may not. Landing in swimmable water negates it entirely (diving off cliffs into the sea is a
+sanctioned Dawnlands pastime). Drop height and damage are server-computed in the shared movement
+step.
+
 ## 3. Basic Attacks & Combo Chains
 
 Every class has an LMB **combo chain** (3 steps, UAL2 `Sword_Regular_A/B/C` pattern retargeted per

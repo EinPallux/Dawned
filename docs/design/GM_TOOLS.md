@@ -46,6 +46,7 @@ accounts encouraged; see Dawned-Admin for creating them).
 | `/spawn <enemyId> [n] [rank]` at reticle point · `/despawn @target` · `/despawnall <radius> confirm` |
 | `/respawnnodes [zone]` (force resource respawn) · `/resetcamp <campId>` |
 | `/settime <0–24>` (visual clock; inert until P14 day/night, reserved now) |
+| `/weather <state> [zone]` — states: clear, overcast, rain, storm, auto (visual override, lands with P14 weather; `auto` hands control back to the weather director) |
 | `/xprate <mult> [minutes]` (event rate, world-wide, announces itself) |
 
 ### Players & moderation

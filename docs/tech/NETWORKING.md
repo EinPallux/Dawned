@@ -59,6 +59,7 @@ rare; readability wins). Hot path is pure binary.
 | 0x8C | `Pong` | clientTime f64, serverTime f64 |
 | 0x8D | `SystemNotice` | code u16 + JSON params (toasts, errors, announce) |
 | 0x8E | `ContentInvalidate` | new content hash (client refetches bundle lazily) |
+| 0x8F | `WeatherState` | scope u8 (world/zone), zoneIdx u16, weather u8 (clear/overcast/rain/storm/rainbow), transitionMs u16 |
 
 Quantization: entity positions sent as cell-relative i16 (1/64 m precision within AOI cell) — full
 f32 only on ENTER. Bandwidth estimate @20 players clustered worst-case: self 40 B + 25 entities × ~14 B

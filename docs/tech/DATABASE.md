@@ -26,7 +26,7 @@ sessions            id UUID · account_id FK · token_hash BYTEA (sha256 of opaq
 bans                id · account_id FK · by_account FK · reason TEXT · until TIMESTAMPTZ NULL(=perm) · lifted_at NULL
 characters          id BIGSERIAL · account_id FK (max 5 alive per account, partial unique idx on deleted_at NULL count via trigger-less app check)
                     name CITEXT UNIQUE (2–16, letters + one space) · class TEXT ('warrior','mage','rogue','cleric')
-                    body TEXT ('m','f') · outfit TEXT · hair TEXT · hair_color SMALLINT · beard/eyebrows SMALLINT
+                    body TEXT ('m','f') · skin SMALLINT · outfit TEXT · hair TEXT · hair_color SMALLINT · beard/eyebrows SMALLINT
                     level SMALLINT DEFAULT 1 · xp INTEGER DEFAULT 0 · gold INTEGER DEFAULT 25 CHECK >=0
                     stat_str/agi/int/vit/end SMALLINT (allocated points) · unspent_stat_points SMALLINT · unspent_skill_points SMALLINT
                     pos_x/pos_y/pos_z REAL · yaw REAL · zone_id TEXT · bound_shrine TEXT
@@ -68,7 +68,7 @@ content_loot_tables  id · name          content_loot_entries: table_id · ref_k
 content_vendors      id · name · buy_mult · sell_mult     content_vendor_items: vendor_id · item_id · price_override NULL · stock ('inf' 0.1.0) · barter JSONB NULL
 content_quests       id · name · zone_id · suggested_level · giver JSONB · prerequisites JSONB · journal TEXT
 content_quest_steps  quest_id · idx · type · params JSONB · tracker_text · hint_circle JSONB NULL · hooks JSONB
-content_zones        id · name · level_min/max · polygon JSONB · ambience JSONB (fog/light/music/sfx) · safe BOOLEAN · settlement TEXT NULL
+content_zones        id · name · level_min/max · polygon JSONB · ambience JSONB (fog/light/music/sfx/weather weights) · safe BOOLEAN · settlement TEXT NULL
 content_pois         id · zone_id · kind · name · pos · discover_radius · xp_bp · icon
 content_interactables id · kind ('chest','shrine','campfire','sign','portal','quest_prop',…) · zone_id · pos/rot ·
                      params JSONB (loot_table, respawn_s, text…)

@@ -37,6 +37,9 @@
 - **Backgrounds** (`assets/backgrounds/*.png`, user-made): optimized + sized to 1080p/1440p double
   set — used on menu screens as fallbacks/vignettes per UI_UX.md.
 - Kenney particle sheets → packed atlas (`tools/atlas/`) with JSON frames for the VFX system.
+- **Character skin tones:** the base-character palette texture gets 5 generated tone variants
+  (palette-swap pass), selectable at character creation; outfit recolor variants (class accents,
+  zone-tier weapon tints) ride the same mechanism.
 
 ## 4. Icon Pipeline (`tools/icons/`) — every item unique
 1. Curated mapping file `tools/config/icon-map.json`: content id → game-icons.net icon name (+
@@ -51,7 +54,7 @@ Result: the user can later replace any icon by dropping a PNG at the content id 
 `assets/icons_custom/` wins over generated (their stated plan to hand-make icons someday is a
 first-class path).
 
-## 5. Audio Pipeline (`tools/audio/`) — pending source decision (USER_QUESTIONS)
+## 5. Audio Pipeline (`tools/audio/`) — sources per AUDIO.md §3 (CC0-first, decided)
 `assets/audio_src/<bucket>/` → ffmpeg batch: trim silence, loudness normalize (music −16 LUFS,
 SFX −12 dBTP), loop-point metadata (JSON sidecar), OGG Vorbis (music 128k, SFX 96k) →
 `assets/audio/<bucket>/<slug>.<hash>.ogg` + manifest entries with license/source (§1.4 applies).

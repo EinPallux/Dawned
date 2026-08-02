@@ -4,7 +4,7 @@
 community of friends (5–20 players), inspired by the feel of *Farever*, *Guild Wars 2* and
 *Black Desert Online*. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 
-> **Status: 📐 Planning complete — implementation begins at Phase P0.**
+> **Status: 📐 Planning complete, owner decisions folded — ready for Phase P0.**
 > 0.1.0 will be a *complete* Early Access MMORPG (4 animated classes, real action combat, an
 > authored island open world with levels 1–30, professions, quests, loot, chat, GM tools) — not an
 > MVP, not a prototype. The companion repo **[Dawned-Admin](../Dawned-Admin)** is the web panel
@@ -23,7 +23,7 @@ friends optional and welcome.
 | Read… | For… |
 |---|---|
 | [ROADMAP.md](ROADMAP.md) | **The build plan** — 16 phases with Definitions of Done + admin-repo sync |
-| [USER_QUESTIONS.md](USER_QUESTIONS.md) | ❓ Open decisions awaiting the owner (with recommended defaults) |
+| [USER_QUESTIONS.md](USER_QUESTIONS.md) | ❓ Owner question inbox (currently empty) + the decision log |
 | [docs/design/GAME_DESIGN.md](docs/design/GAME_DESIGN.md) | Vision, pillars, loops — start here for design |
 | [docs/design/WORLD.md](docs/design/WORLD.md) · [COMBAT.md](docs/design/COMBAT.md) · [CLASSES.md](docs/design/CLASSES.md) · [PROGRESSION.md](docs/design/PROGRESSION.md) | World & the action-combat core |
 | [docs/design/ITEMS_LOOT.md](docs/design/ITEMS_LOOT.md) · [PROFESSIONS.md](docs/design/PROFESSIONS.md) · [QUESTS_POI.md](docs/design/QUESTS_POI.md) · [NPCS_ENEMIES.md](docs/design/NPCS_ENEMIES.md) | Systems & content design |

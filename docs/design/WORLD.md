@@ -157,6 +157,18 @@ Non-combat critters with wander AI: Bunny, Cat, Chicken, Pigeon, Birb (flight lo
 (Animated Fish Bundle) in shallows; butterflies/fireflies as particles; NPC villagers with tiny
 routines (2–3 waypoints + idle anims: Counter_*, Sitting_*, Farm_* from UAL packs).
 
+### 4.6 Weather (visual, lands in P14 with day/night)
+- A world-level **weather director** rolls per-zone states from each zone's ambience-profile
+  weights (`clear / overcast / rain / storm`, duration 4–10 min per state). Everyone in a zone
+  sees the same sky (server-broadcast `WeatherState`, ~10 s blend transitions).
+- **Rain:** particle sheets + darkened sun/fog tint + ambience crossfades to a rain bed.
+  **Storm:** rain + lightning flashes (directional-light pulses) with distance-delayed thunder.
+  **Rainbow:** 20% chance for ~90 s after daytime rain ends — billboard arc anchored over the sea.
+- Zone flavor: Dawnshore/Weald rain often; Sungraze rarely; Ashcrag storms hard but briefly;
+  the Elder Grove never rains (it shimmers instead).
+- Strictly visual in 0.1.0 — no gameplay modifiers. Gameplay hooks (storm events, night spawns)
+  are 0.4+ candidates. GM override: `/weather` (GM_TOOLS.md).
+
 ## 5. World Map & Minimap
 - **World map (M):** stylized top-down render of the archipelago (baked from actual terrain at map
   publish, palette-graded to look hand-drawn like the Farever reference). Fog-of-unknowing: zones

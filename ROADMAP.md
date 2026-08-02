@@ -47,8 +47,8 @@ packs reviewed (ASSET_INVENTORY §9).
 **Scope:** Postgres+Drizzle live; accounts/sessions/bans tables; register/login REST (argon2id,
 rate limits, invite-code toggle, reserved names); login/register screen (3D dawn vignette, UI
 design system v1: fonts, palette, panels, motion tokens); character CRUD (5 slots, soft delete);
-**character create** (class carousel with posed rigs, body/outfit/hair/colors — full pipeline
-character bundles); character select dioramas; session resume; disconnect overlay. Security
+**character create** (class carousel with posed rigs, body/skin tone/outfit/hair/colors — full
+pipeline character bundles); character select dioramas; session resume; disconnect overlay. Security
 checklist §7-P1.
 **DoD:** a friend can register, create all 4 class characters (looks correct, animated), relog,
 delete one — on the VPS, on 1080p and 1440p, with zero placeholder UI.
@@ -192,7 +192,9 @@ attribution.
 **Goal:** from "feature-complete" to "feels finished".
 **Scope:** audio full pass (all AUDIO.md buckets sourced/processed/mixed; music director; ambience
 emitters); settings final (graphics presets incl. foliage/FX density, rebinding UI, a11y toggles);
-day/night visual cycle (subtle, zone-tinted) + `/settime`; juice sweep (screen-edge vignettes, loot
+day/night visual cycle (subtle, zone-tinted) + **weather system** (zone-profiled rain &
+thunderstorms with distance-delayed thunder, post-rain rainbows — visual only, per WORLD.md §4.6)
++ `/settime` & `/weather`; juice sweep (screen-edge vignettes, loot
 stingers, level fanfare, idle emotes, ambient critter density); performance closure (client
 worst-vista list @60 FPS, server 25-bot soak 24 h, memory leak watch); security closure
 (SECURITY §7 re-run, cheatbot regression, dependency audit, backup **restore drill**); onboarding
@@ -228,7 +230,7 @@ launch-day monitoring (dashboard watch, backup verified); post-launch hotfix win
 ## Post-0.1.0 direction (unscoped, priority-ordered draft)
 0.2: Crafting & processing (materials → gear/food), group system + XP share, tools-as-items.
 0.3: Duels (1v1), drop-trading, daily board quests, first dungeon (Ember Vault).
-0.4+: more zones/isles, day/night gameplay hooks (night spawns), housing?, weather.
+0.4+: more zones/isles, day/night & weather gameplay hooks (night spawns, storm events), housing?.
 Never (per spec): open-world PvP, guilds/guild wars, raids, BDO-style enhancing, mounts.
 
 ## Working agreements (apply to every phase)

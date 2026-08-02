@@ -70,8 +70,9 @@ character; post-0.1.0 systems (crafting, duels, groups) extend from here.
 
 ### World loop — the server (persistent)
 Resource nodes deplete and respawn on schedules → enemy camps repopulate → day/night tint shifts
-(visual, phase 14) → players cross paths, chat globally and locally → GMs run events by spawning
-enemies and broadcasting.
+and weather passes over the isles (rain, thunderstorms, post-rain rainbows — visual, phase 14) →
+players cross paths, chat globally and locally → GMs run events by spawning enemies and
+broadcasting.
 
 ## 4. Feature Summary for 0.1.0 (contract)
 
@@ -87,7 +88,7 @@ These ship in 0.1.0, fully working — see [ROADMAP.md](../../ROADMAP.md) for ph
 | Progression | Level cap 30, XP curve, 3 stat points/level, class skill tree (1 point/level), ability unlocks |
 | Items | Inventory, equipment slots, rarities, tooltips, loot tables, world drops, gold, vendors, consumables, unique icons per item |
 | Professions | Woodcutting, Mining, Herbalism, Fishing (with minigame) — own levels 1–30, tiered nodes per zone |
-| World | Hand-built island archipelago (6 zones, level 1–30), zone system, POIs, discovery, interactables, world map + minimap |
+| World | Hand-built island archipelago (6 zones, level 1–30), zone system, POIs, discovery, interactables, world map + minimap, visual day/night & weather (rain, thunder, rainbows) |
 | Quests | ~25–30 side quests scattered in the world (kill/collect/deliver/explore/interact), dialogue UI, quest log/tracker |
 | Movement | WASD + camera, jump, stamina-based sprint (stamina grows with END/level), swim (surface) |
 | Social | Chat (global/local/whisper/system), player nameplates; no grouping yet |
