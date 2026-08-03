@@ -1,5 +1,5 @@
 {
-  "$comment": "Curated icon mapping (docs/tech/ASSET_PIPELINE.md §4): content id → game-icons.net icon as author/name (the path inside the game-icons/icons repo, CC BY 3.0). `pnpm assets:icons --fetch` downloads sources into assets_vendor/game-icons/; the bake recolors them for the HUD (background dropped, glyph kept for CSS masking). Abilities may share an icon (basic steps); each unique icon bakes once.",
+  "$comment": "Curated icon mapping (docs/tech/ASSET_PIPELINE.md \u00a74): content id \u2192 game-icons.net icon as author/name (the path inside the game-icons/icons repo, CC BY 3.0). `pnpm assets:icons --fetch` downloads sources into assets_vendor/game-icons/; the bake recolors them for the HUD (background dropped, glyph kept for CSS masking). Abilities may share an icon (basic steps); each unique icon bakes once.",
   "abilities": {
     "ability_warrior_basic_1": "lorc/broadsword",
     "ability_warrior_basic_2": "lorc/broadsword",
@@ -28,6 +28,22 @@
     "ability_mage_basic_3": "lorc/energy-arrow",
     "ability_cleric_basic_1": "lorc/holy-symbol",
     "ability_cleric_basic_2": "lorc/holy-symbol",
-    "ability_cleric_basic_3": "lorc/holy-symbol"
+    "ability_cleric_basic_3": "lorc/holy-symbol",
+    "ability_mage_fireball": "lorc/fireball",
+    "ability_mage_ice_lance": "lorc/ice-spear",
+    "ability_mage_frost_nova": "lorc/frozen-orb",
+    "ability_mage_blink": "lorc/teleport",
+    "ability_mage_ember_wave": "lorc/fire-wave",
+    "ability_mage_mana_shield": "lorc/magic-shield",
+    "ability_mage_arcane_barrage": "lorc/missile-swarm",
+    "ability_mage_meteor": "lorc/meteor-impact",
+    "ability_cleric_holy_smite": "lorc/sunbeams",
+    "ability_cleric_mend": "lorc/glowing-hands",
+    "ability_cleric_hammer_of_wrath": "delapouite/warhammer",
+    "ability_cleric_radiant_burst": "lorc/beams-aura",
+    "ability_cleric_sanctuary": "lorc/aura",
+    "ability_cleric_purify": "lorc/star-swirl",
+    "ability_cleric_aegis": "lorc/bolt-shield",
+    "ability_cleric_dawnlight": "delapouite/sunrise"
   }
 }

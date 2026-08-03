@@ -9,7 +9,6 @@ const groundDef = (overrides: Record<string, unknown> = {}): Record<string, unkn
   name: 'Test Meteor',
   cost: { type: 'mana', amount: 50 },
   cooldownMs: 60000,
-  castMs: 800,
   targeting: { kind: 'ground_aoe', radius: 5, maxRange: 25, telegraphMs: 1500 },
   effects: [{ kind: 'damage', coef: 3.2, school: 'magic', staggerBonus: 40 }],
   anim: { clip: 'Spell_Double', clipSeconds: 1.2, durationMs: 800, contactFraction: 0.6 },

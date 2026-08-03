@@ -395,6 +395,14 @@ export const abilityDefSchema = z
         message: 'zone effects need ground_aoe targeting (the zone spawns at the ground point)',
       });
     }
+    if (def.targeting.kind === 'ground_aoe' && (def.castMs > 0 || def.channel !== null)) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'ground_aoe abilities are instants in 0.1.0 (the press-time ground point would go ' +
+          'stale under a cast bar — use telegraphMs for the delay)',
+      });
+    }
     if (def.channel !== null && def.castMs > 0) {
       ctx.addIssue({ code: 'custom', message: 'an ability is a cast OR a channel, not both' });
     }
