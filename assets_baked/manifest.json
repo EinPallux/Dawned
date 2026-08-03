@@ -1117,9 +1117,9 @@
     "characters_ual1": {
       "id": "characters_ual1",
       "category": "characters",
-      "file": "assets_baked/characters/ual1.8adcdae8.glb",
-      "bytes": 1609460,
-      "sourceHash": "c954109fe1c1b851ca9f4ef70c56ec35b70453d224086f6e9112c964db7ed0d7",
+      "file": "assets_baked/characters/ual1.22644ead.glb",
+      "bytes": 1820784,
+      "sourceHash": "faf0a0bba311948363ba17b569057f99ff0b916fabe6458adb889e6864acbf14",
       "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
       "pack": "quaternius-ual1",
       "packName": "Quaternius Universal Animation Library 1 (PRO)",
@@ -1130,6 +1130,7 @@
       "triangles": 0,
       "bounds": null,
       "animations": [
+        "Counter_Angry",
         "Death01",
         "Hit_Chest",
         "Hit_Head",
@@ -1158,6 +1159,9 @@
         "Sprint_Loop",
         "Swim_Fwd_Loop",
         "Swim_Idle_Loop",
+        "Sword_Attack",
+        "Sword_Attack_Standing",
+        "Sword_Enter",
         "Sword_Idle",
         "Walk_Loop"
       ]
@@ -1165,9 +1169,9 @@
     "characters_ual2_standard": {
       "id": "characters_ual2_standard",
       "category": "characters",
-      "file": "assets_baked/characters/ual2_standard.3b62e3b7.glb",
-      "bytes": 291140,
-      "sourceHash": "ecf3043f7418892443840d1a2ae753d44b5e0a3110ec4d7f657d729c2e8f21b0",
+      "file": "assets_baked/characters/ual2_standard.56b3b900.glb",
+      "bytes": 718816,
+      "sourceHash": "808aff5306804b80fe943068465209fe5136b1f44cba0299984f41e9ac62655c",
       "source": "assets/player_characters/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
       "pack": "quaternius-ual2",
       "packName": "Quaternius Universal Animation Library 2 (Standard)",
@@ -1179,7 +1183,14 @@
       "bounds": null,
       "animations": [
         "Hit_Knockback",
+        "Idle_Shield_Loop",
+        "Melee_Hook",
+        "OverhandThrow",
+        "Shield_Dash",
+        "Shield_OneShot",
         "Sword_Block",
+        "Sword_Dash",
+        "Sword_Heavy_Combo",
         "Sword_Regular_A",
         "Sword_Regular_B",
         "Sword_Regular_C"
