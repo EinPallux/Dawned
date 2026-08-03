@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { PLAYER_HEIGHT, PLAYER_RADIUS, type Appearance } from '@dawned/shared';
+import { headingFromVelocity, wrapAngle } from './anim-math.js';
 import { composeCharacter, type CharacterAssets, type ComposedCharacter } from './characters.js';
 
 /**
@@ -69,6 +70,7 @@ export class CharacterView {
   private yawRate = 0; // smoothed rad/s, drives the sprint lean
   private leanSide: -1 | 0 | 1 = 0;
   private headingSector = 0; // sticky 8-way sector (stickySector)
+  private intentHeading: number | null = null; // local player: keys > velocity
 
   private airborneSeconds = 0;
   private wasGrounded = true;
@@ -136,6 +138,20 @@ export class CharacterView {
     this.group.position.set(x, y, z);
     this.group.rotation.y = yaw;
     this.yaw = yaw;
+  }
+
+  /**
+   * LOCAL player only (remotes never call this): the 8-way heading follows the
+   * held movement keys instead of measured velocity. The local rig faces the
+   * LIVE mouse yaw while its rendered velocity trails the 20 Hz intents by
+   * ~100 ms — under a fast camera flick a velocity heading sweeps through
+   * neighboring sectors and flashes strafe/backpedal clips mid-turn. The keys
+   * are camera-relative, hence yaw-invariant: W is exactly "forward" at any
+   * turn speed (anim-math.ts). Pass null when no direction is held — the
+   * velocity fallback then covers decel tails and future external pushes.
+   */
+  setIntentHeading(heading: number | null): void {
+    this.intentHeading = heading;
   }
 
   /** Advance animation: derive velocity from pose history, pick a clip, mix. */
@@ -214,12 +230,11 @@ export class CharacterView {
       return;
     }
 
-    // Heading in character-local space (rig faces +Z under a Y-up yaw).
-    const sin = Math.sin(-this.yaw);
-    const cos = Math.cos(-this.yaw);
-    const localX = this.velocity.x * cos - this.velocity.z * sin;
-    const localZ = this.velocity.x * sin + this.velocity.z * cos;
-    const heading = Math.atan2(localX, localZ); // 0 = fwd, ±π = bwd
+    // Heading in character-local space (rig faces +Z under a Y-up yaw): the
+    // held keys when the local player gives them, measured velocity otherwise
+    // (remotes, decel tails) — see setIntentHeading and anim-math.ts for why.
+    const heading =
+      this.intentHeading ?? headingFromVelocity(this.velocity.x, this.velocity.z, this.yaw);
     const sector = this.stickySector(heading);
     const forward = sector === 0;
 
@@ -391,14 +406,6 @@ const GAIT_CLIPS = new Set([
 
 /** Clips whose start phase is randomized (desynced crowds, no lockstep idling). */
 const IDLE_CLIPS = new Set(['Idle_Loop', 'Swim_Idle_Loop']);
-
-/** Shortest-path angle wrap into (−π, π] — yaw deltas must not jump at ±π. */
-const wrapAngle = (angle: number): number => {
-  let a = angle % (Math.PI * 2);
-  if (a > Math.PI) a -= Math.PI * 2;
-  if (a < -Math.PI) a += Math.PI * 2;
-  return a;
-};
 
 /**
  * Canvas-drawn chat bubble in the "Cut Facets" language (UI_UX.md §2): dark

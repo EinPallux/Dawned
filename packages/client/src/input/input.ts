@@ -125,6 +125,20 @@ export class InputController {
     this.pitch = clamp(this.pitch + event.movementY * this.sensitivity, PITCH_MIN, PITCH_MAX);
   };
 
+  /**
+   * Live movement axes from HELD keys, for the per-frame animation layer
+   * (forward = W−S, strafe = D−A, camera-relative). Deliberately ignores the
+   * tap latch — taps are a tick concern (sampleIntent); a sub-frame tap must
+   * not flash a strafe clip. Reads only, so it is safe at render rate.
+   */
+  moveAxes(): { forward: number; strafe: number } {
+    if (this.textEntryActive) return { forward: 0, strafe: 0 };
+    return {
+      forward: (this.held.has('KeyW') ? 1 : 0) - (this.held.has('KeyS') ? 1 : 0),
+      strafe: (this.held.has('KeyD') ? 1 : 0) - (this.held.has('KeyA') ? 1 : 0),
+    };
+  }
+
   /** Build this tick's intent in world space (the server never sees camera space). */
   sampleIntent(): MovementIntent {
     if (this.textEntryActive) {

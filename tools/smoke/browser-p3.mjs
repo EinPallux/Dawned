@@ -316,6 +316,53 @@ const run = async (browser, token, character) => {
     fail(`sprint turn never leaned (stuck on "${lean.local}")`);
   }
   ok(`sprint turns bank into the lean clips (${lean.local})`);
+  await sleep(400);
+
+  // --- Action-camera stability: spinning the camera while holding W must
+  // never leave the forward clip family. Velocity trails the live yaw, and the
+  // shipped P3 transform even read headings as 2·yaw — both filled the
+  // playtest with strafe/backpedal flashes mid-turn ("animations switch
+  // around when walking"). The 8-way heading now follows the held keys
+  // (anim-math.ts), so a spin at any rate stays Fwd-family (lean included);
+  // only a wrong SECTOR fails — idle/walk beats from EMA dips are fine.
+  await page.keyboard.down('w');
+  const spinClips = await page.evaluate(async () => {
+    const seen = new Set();
+    const spin = setInterval(() => {
+      window.__dawned.input.yaw += 0.35; // ≈2.3 rad/s — a hard mouselook turn
+    }, 150);
+    const sampleUntil = async (deadline) => {
+      while (performance.now() < deadline) {
+        seen.add(window.__dawned.animState().local);
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
+    };
+    await sampleUntil(performance.now() + 3000);
+    clearInterval(spin);
+    // Hard 180° flick: rendered velocity points backward for ~100 ms while
+    // the keys still say forward — the clip must not dip into the backpedal
+    // sector while the prediction turns around.
+    window.__dawned.input.yaw += Math.PI;
+    await sampleUntil(performance.now() + 900);
+    return [...seen];
+  });
+  await page.keyboard.up('w');
+  const WRONG_SECTORS = [
+    'Jog_Fwd_R_Loop',
+    'Jog_Right_Loop',
+    'Jog_Bwd_R_Loop',
+    'Jog_Bwd_Loop',
+    'Jog_Bwd_L_Loop',
+    'Jog_Left_Loop',
+    'Jog_Fwd_L_Loop',
+  ];
+  const churned = spinClips.filter((clip) => WRONG_SECTORS.includes(clip));
+  if (churned.length > 0) {
+    fail(
+      `camera spin with W held churned into ${churned.join(', ')} (saw: ${spinClips.join(', ')})`,
+    );
+  }
+  ok(`camera spin + 180° flick hold the forward sector (saw: ${spinClips.join(', ')})`);
 
   if (errors.length > 0) fail(`console errors:\n  ${errors.slice(0, 5).join('\n  ')}`);
   ok('no console errors');

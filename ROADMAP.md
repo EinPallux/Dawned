@@ -167,6 +167,16 @@ at that load, prediction-mismatch test suite green.
       shared step (grounded-state flicker + animation spam on every slope — protocol v5),
       viewer-named L/R locomotion clips mapped correctly, deploy scripts bootstrap the admin
       panel and consume shared from the sibling checkout (no tokens).
+- [x] **Playtest fix round 4** (2026-08-03, "animations switch around when walking"): the
+      velocity→model-space transform double-negated yaw, reading headings as 2·yaw — every
+      camera turn cycled the 8-way clips twice per revolution (invisible at yaw 0/π, which is
+      all the old asserts swept). Fixed in `anim-math.ts` (unit-tested at arbitrary yaws), and
+      the LOCAL player's 8-way heading now follows the held keys (yaw-invariant) instead of
+      velocity, so even hard flicks can't churn sectors while the rendered velocity turns.
+      Browser smoke gained a camera-spin + 180°-flick stability assert (verified to fail
+      against the old code). Also fixed alongside: the `/admin` panel's blank page (Caddy
+      `handle` kept the prefix the panel expects stripped — now `handle_path`, pinned by
+      `packages/server/src/deploy-contract.test.ts` together with the CSP/caching contracts).
 - [ ] **Owner signoff on real hardware:** group sprint-jump session at `/netsim 100 20` —
       LAN-like feel, no rubber-banding on slopes, bubbles/reconnect behave. Then P3 closes.
 

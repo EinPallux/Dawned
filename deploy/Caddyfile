@@ -18,7 +18,13 @@
 	# --- admin panel (Dawned-Admin, phase A0+) -------------------------------
 	# Decision 2026-08-02: /admin path, IP allowlist off. To restrict later,
 	# uncomment the matcher below and list your addresses.
-	handle /admin* {
+	#
+	# handle_path, not handle: the panel is built against stripped paths
+	# (assets at /assets/*, API at /api/* — Dawned-Admin vite.config.ts).
+	# With plain `handle` the service's SPA fallback answers the un-stripped
+	# /admin/assets/*.js requests with index.html (text/html), the browser
+	# refuses the module on MIME, and the panel renders a blank page.
+	handle_path /admin* {
 		# @blocked not remote_ip 203.0.113.4 198.51.100.0/24
 		# respond @blocked "Not authorised" 403
 		reverse_proxy 127.0.0.1:8082
@@ -59,7 +65,10 @@
 		# fetch()ing blob: URLs, and fetch answers to connect-src (not img-src) —
 		# without it every texture is silently blocked and the world renders
 		# untextured white (found in the first production playtest).
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		# font-src is declared (not left to default-src) because the admin panel
+		# serves its own font files; both apps ship fonts as same-origin files,
+		# never data: URIs (the admin build disables asset inlining for this).
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ws: wss: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"

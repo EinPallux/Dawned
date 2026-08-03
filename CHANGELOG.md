@@ -5,6 +5,38 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — production playtest round 4 (2026-08-03)
+
+- **Animations no longer switch around while walking with the action camera.**
+  Two layered causes: (1) the velocity→model-space transform double-negated
+  yaw, so the 8-way heading read as 2·yaw − direction — running forward with
+  the camera at 90° played the backpedal clip, and every camera turn cycled
+  the sector clips twice per revolution (yaw 0/π were the only correct angles,
+  and the only ones the old tests swept). (2) Even with correct math, the
+  local player's measured velocity trails the live mouse yaw by ~100 ms
+  (20 Hz intents + smoothing), so hard flicks swept the heading across sector
+  borders mid-turn. The transform is fixed and unit-tested at arbitrary yaws
+  (`anim-math.ts`), and the local player's 8-way heading now follows the held
+  movement keys — camera-relative, hence turn-rate-invariant — with velocity
+  as the fallback for decel tails; remotes keep the (now sign-correct)
+  velocity heading, since their yaw and velocity arrive coherently in
+  snapshots. The browser smoke now spins the camera and snaps it 180° while
+  holding W and fails on any non-forward sector clip (verified to catch the
+  old behavior).
+- **The admin panel at `/admin` no longer serves a blank page.** Caddy proxied
+  the panel with `handle` (prefix kept) while the panel is built against
+  stripped paths (`handle_path` — its documented contract): the SPA fallback
+  answered `/admin/assets/*.js` with `index.html`, which browsers refuse on
+  MIME, leaving `#root` empty. Fixed to `handle_path /admin*`; the CSP also
+  gained an explicit `font-src 'self'` (the panel's fonts now ship as files —
+  its build stopped inlining them as `data:` URIs the CSP refused). A new
+  vitest (`packages/server/src/deploy-contract.test.ts`) pins the Caddyfile's
+  production contracts — admin prefix strip, `connect-src blob:`, font-src,
+  and the manifest/index no-cache rules — so these serving bugs fail the
+  build instead of a playtest. Deploy: merge both repos to `main`, run
+  `sudo bash /opt/dawned/game/deploy/UPDATE.sh` (it reinstalls the Caddyfile
+  and rebuilds the panel), then hard-refresh.
+
 ### Fixed — production playtest round 3 (2026-08-03)
 
 - **Grounded/airborne flicker while walking (protocol v5)**: on any downhill
