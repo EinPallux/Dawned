@@ -5,6 +5,32 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — production playtest round 2 (2026-08-03)
+
+- **The untextured white world**: the production Content-Security-Policy blocked
+  every model texture. three.js loads GLB-embedded textures by `fetch()`ing
+  `blob:` URLs, which answers to `connect-src` (not `img-src`) — the Caddy
+  header now allows `blob:` there. Verified by A/B-serving the production build
+  with both headers: 38 blocked texture fetches before, zero after. (Dev never
+  showed it — the Vite server sends no CSP.)
+- **Shoreline/water rubber-banding**: P3's walkgrid rebake changed map data
+  under the unchanged `dev-1` version, so returning browsers kept predicting
+  with the stale cached walkgrid (IndexedDB + immutable HTTP) — the client
+  refused to enter water the server happily swam through. The map now ships as
+  **`dev-2`** (byte-identical terrain, new cache keys), and worldgen documents
+  the rule: map data change ⇒ version bump. The mutable `manifest.json` is also
+  excluded from the immutable-cache header it was wrongly under.
+- **`/admin` unreachable after UPDATE.sh**: the updater only touched the admin
+  panel if `package.json` already existed — but that file only arrives WITH the
+  first pull (and the panel repo had no `main` branch to clone at first deploy).
+  UPDATE.sh now clones the panel when missing (deriving the URL + token from
+  the game clone's remote), checks for code AFTER pulling, and enables the
+  service. It also re-execs from a temp copy first — it updates the very repo
+  it runs from, and bash reads scripts lazily.
+- **Missed jump taps**: intents sample at 20 Hz; a key pressed and released
+  between two samples (a quick Space tap at high fps) vanished entirely. Taps
+  now latch until the next intent sample.
+
 ### Fixed — movement feel rework (owner playtest feedback, 2026-08-02)
 
 - **A/D were swapped** — the camera-relative strafe math used the wrong sign for

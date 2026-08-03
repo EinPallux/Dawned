@@ -35,9 +35,15 @@
 	handle {
 		root * /opt/dawned/game/packages/client/dist
 
-		# Content-hashed assets can be cached forever.
+		# Content-hashed assets and versioned map directories can be cached forever.
 		@immutable path /assets/*
 		header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+		# ...EXCEPT the manifest: stable name, new hashes inside after every bake.
+		# An immutable-cached manifest resolves assets that no longer exist —
+		# declared after the blanket rule so this later directive wins for it.
+		@manifest path /assets/manifest.json
+		header @manifest Cache-Control "no-cache"
 
 		# index.html must never be cached, or players get stale bundles after a deploy.
 		@html path / /index.html
@@ -49,7 +55,11 @@
 
 	header {
 		# The client is self-contained: no third-party scripts, fonts or images.
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		# connect-src needs blob:! three.js loads GLB-embedded textures by
+		# fetch()ing blob: URLs, and fetch answers to connect-src (not img-src) —
+		# without it every texture is silently blocked and the world renders
+		# untextured white (found in the first production playtest).
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
