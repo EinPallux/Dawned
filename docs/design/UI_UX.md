@@ -78,6 +78,11 @@ gemstone and timber, not glassmorphism pills.
   ≤30 m or in combat; NPCs per NPCS_ENEMIES.md §6. Scale-with-distance, occlusion-fade.
 - **Reticle:** small diamond dot; expands slightly on valid soft-target; turns gold over
   interactables with `F` prompt + radial hold-progress for gathers.
+- **Micro menu** (owner-requested, P4 round 6): slim faceted icon strip anchored bottom-right
+  above the XP bar — one glyph per screen (C/I/K/M/L/J + Settings), hover = name + keybind,
+  badge dots for attention states (unspent points, new items, completed quest). Mouse path to
+  every screen the keyboard already opens; lands with P7 (the first phase with several screens
+  live), grows icons as later phases add theirs.
 
 ## 4. Screens (full inventory of surfaces)
 
