@@ -10,7 +10,7 @@
  * invalidation bugs).
  */
 
-import type { AbilityEffectMods } from '@dawned/shared';
+import { MOVEMENT_CATEGORIES, type AbilityEffectMods, type EffectCategory } from '@dawned/shared';
 
 export interface ActiveEffect {
   effectId: string;
@@ -25,8 +25,14 @@ export interface ActiveEffect {
   nextTickAtMs: number;
   /** Damage each periodic tick deals PER STACK (precomputed at apply). */
   tickDamage: number;
+  /** Heal each periodic tick restores PER STACK (HoTs — Sanctuary/Overflow). */
+  tickHeal: number;
   tickSchool: 'physical' | 'magic';
   harmful: boolean;
+  /** Status family (P6): cleanse filters, DR lanes, bonusVs checks. */
+  category: EffectCategory;
+  /** Absorb pool remaining (P6 shields, Aegis) — 0 = not a shield. */
+  shieldPool: number;
   /** Mark rider: extra % damage taken from casterId only. */
   markPct: number;
   onKillEnergy: number;
@@ -48,8 +54,13 @@ export interface ApplyEffectInput {
   harmful: boolean;
   /** Precomputed damage per periodic tick per stack (0 = none). */
   tickDamage?: number | undefined;
+  /** Precomputed heal per periodic tick per stack (0 = none). */
+  tickHeal?: number | undefined;
   tickSchool?: 'physical' | 'magic' | undefined;
   tickEveryMs?: number | undefined;
+  category?: EffectCategory | undefined;
+  /** Absorb pool for shield effects (recast replaces the pool). */
+  shieldPool?: number | undefined;
   markPct?: number | undefined;
   onKillEnergy?: number | undefined;
   onKillResetAbility?: string | null | undefined;
@@ -58,7 +69,8 @@ export interface ApplyEffectInput {
 /**
  * Apply or stack an effect. Same effectId FROM THE SAME CASTER stacks up to
  * stacksMax and refreshes the duration (poison model); different casters keep
- * separate instances (two rogues' poisons both tick).
+ * separate instances (two rogues' poisons both tick). Reapplied shields
+ * REPLACE their pool (Aegis recast = fresh absorb, never additive).
  */
 export const applyEffect = (host: EffectHost, input: ApplyEffectInput, nowMs: number): void => {
   const existing = host.effects.find(
@@ -67,6 +79,7 @@ export const applyEffect = (host: EffectHost, input: ApplyEffectInput, nowMs: nu
   if (existing) {
     existing.stacks = Math.min(existing.stacksMax, existing.stacks + 1);
     existing.expiresAtMs = nowMs + input.durationMs;
+    if (input.shieldPool !== undefined) existing.shieldPool = input.shieldPool;
     host.effectsDirty = true;
     return;
   }
@@ -80,8 +93,11 @@ export const applyEffect = (host: EffectHost, input: ApplyEffectInput, nowMs: nu
     mods: input.mods,
     nextTickAtMs: input.tickEveryMs ? nowMs + input.tickEveryMs : 0,
     tickDamage: input.tickDamage ?? 0,
+    tickHeal: input.tickHeal ?? 0,
     tickSchool: input.tickSchool ?? 'physical',
     harmful: input.harmful,
+    category: input.category ?? 'buff',
+    shieldPool: input.shieldPool ?? 0,
     markPct: input.markPct ?? 0,
     onKillEnergy: input.onKillEnergy ?? 0,
     onKillResetAbility: input.onKillResetAbility ?? null,
@@ -106,13 +122,15 @@ export const clearAllEffects = (host: EffectHost): void => {
 
 export interface PeriodicTick {
   effect: ActiveEffect;
-  /** Damage for this tick (stacks folded in). */
+  /** Damage for this tick (stacks folded in; 0 for heal ticks). */
   damage: number;
+  /** Heal for this tick (stacks folded in; 0 for damage ticks). */
+  heal: number;
 }
 
 /**
  * Advance expiry + collect due periodic ticks (caller runs them through the
- * real damage pipeline so mitigation/threat/death stay in one place).
+ * real damage/heal pipelines so mitigation/threat/death stay in one place).
  */
 export const tickEffects = (host: EffectHost, nowMs: number, out: PeriodicTick[]): void => {
   let changed = false;
@@ -126,8 +144,12 @@ export const tickEffects = (host: EffectHost, nowMs: number, out: PeriodicTick[]
     if (effect.nextTickAtMs > 0 && nowMs >= effect.nextTickAtMs) {
       // One tick per frame at most (50 ms sim never falls a full interval behind).
       effect.nextTickAtMs += tickIntervalOf(effect);
-      if (effect.tickDamage > 0) {
-        out.push({ effect, damage: effect.tickDamage * effect.stacks });
+      if (effect.tickDamage > 0 || effect.tickHeal > 0) {
+        out.push({
+          effect,
+          damage: effect.tickDamage * effect.stacks,
+          heal: effect.tickHeal * effect.stacks,
+        });
       }
     }
   }
@@ -222,4 +244,89 @@ export const collectOnKillRiders = (
     if (effect.onKillResetAbility) resetAbilities.push(effect.onKillResetAbility);
   }
   return { energy, resetAbilities };
+};
+
+// ---------------------------------------------------------------------------
+// P6 status system: categories, cleanse, absorbs
+// ---------------------------------------------------------------------------
+
+/** Does the host carry any effect of these categories? (Ice Lance bonusVs.) */
+export const hasCategory = (host: EffectHost, categories: readonly EffectCategory[]): boolean =>
+  host.effects.some((effect) => categories.includes(effect.category));
+
+/**
+ * Strip effects (Purify / Blink / Dawnlight). `filter: movement` removes only
+ * root/slow/chill; 'any' removes harmful effects of every category. Newest
+ * first — cleansing pops what just landed on you. Returns how many left.
+ */
+export const cleanseEffects = (
+  host: EffectHost,
+  filter: 'any' | 'movement',
+  count: number,
+  all: boolean,
+): number => {
+  let removed = 0;
+  for (let i = host.effects.length - 1; i >= 0; i--) {
+    if (!all && removed >= count) break;
+    const effect = host.effects[i]!;
+    if (!effect.harmful) continue;
+    if (filter === 'movement' && !MOVEMENT_CATEGORIES.includes(effect.category)) continue;
+    host.effects.splice(i, 1);
+    removed += 1;
+  }
+  if (removed > 0) host.effectsDirty = true;
+  return removed;
+};
+
+/**
+ * Drain absorb shields for incoming damage, oldest shield first. Returns how
+ * much was absorbed; a shield whose pool ran dry drops off the bar
+ * immediately. (Mana Shield drains MANA, not a pool — the damage path handles
+ * it separately via {@link manaShieldRateOf}.)
+ */
+export const absorbFromShields = (host: EffectHost, amount: number): number => {
+  let remaining = amount;
+  let changed = false;
+  const spent: ActiveEffect[] = [];
+  for (const effect of host.effects) {
+    if (remaining <= 0) break;
+    if (effect.shieldPool <= 0) continue;
+    const absorbed = Math.min(effect.shieldPool, remaining);
+    effect.shieldPool -= absorbed;
+    remaining -= absorbed;
+    changed = true;
+    if (effect.shieldPool <= 0) spent.push(effect);
+  }
+  if (spent.length > 0) {
+    host.effects = host.effects.filter((effect) => !spent.includes(effect));
+  }
+  if (changed) host.effectsDirty = true;
+  return amount - remaining;
+};
+
+/** Mana Shield rate if one is up (Mage): mana drained per damage point. */
+export const manaShieldRateOf = (host: EffectHost): number | null => {
+  for (const effect of host.effects) {
+    if (effect.mods.manaShieldPerPoint !== undefined) return effect.mods.manaShieldPerPoint;
+  }
+  return null;
+};
+
+/** Drop the mana-shield buff (its pool ran dry). */
+export const dropManaShield = (host: EffectHost): void => {
+  const before = host.effects.length;
+  host.effects = host.effects.filter((effect) => effect.mods.manaShieldPerPoint === undefined);
+  if (host.effects.length !== before) host.effectsDirty = true;
+};
+
+export const isUntargetable = (host: EffectHost): boolean =>
+  host.effects.some((effect) => effect.mods.untargetable === true);
+
+/** Aggregate dodge stamina delta from effects (Evasive-style buffs). */
+export const dodgeCostDeltaOf = (host: EffectHost): number => {
+  let delta = 0;
+  for (const effect of host.effects) {
+    if (effect.mods.dodgeCostDelta) delta += effect.mods.dodgeCostDelta;
+  }
+  return delta;
 };

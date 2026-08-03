@@ -53,7 +53,7 @@ import {
   type CombatEvent,
   type ServerProjectile,
 } from './combat.js';
-import { handleSlotRequest, tickPlayerAbilities } from './abilities.js';
+import { handleSlotRequest, tickPlayerAbilities, tickZones, type GroundZone } from './abilities.js';
 import { moveSpeedMultOf, tickEffects, type PeriodicTick } from './effects.js';
 import { CORPSE_LINGER_MS, decide, enterCombat, move, type AiContext } from './enemy-ai.js';
 
@@ -86,6 +86,8 @@ export class World {
   private readonly players = new Map<number, ServerPlayer>();
   readonly enemies = new Map<number, ServerEnemy>();
   private readonly projectiles: ServerProjectile[] = [];
+  /** Live ground zones (P6 Sanctuary) — ticked in step, culled on expiry. */
+  private readonly zones: GroundZone[] = [];
   private readonly tickets: RespawnTicket[] = [];
   private readonly campIndex = new Map<string, ServerEnemy[]>();
   private nextEntityId = 1;
@@ -397,6 +399,7 @@ export class World {
             request.aimYaw,
             request.aimPitch,
             request.targetId,
+            request.groundAim,
             this.content,
             this.enemies,
             this.terrain,
@@ -424,6 +427,10 @@ export class World {
           rng: this.rng,
           nowMs,
           events,
+          terrain: this.terrain,
+          projectiles: this.projectiles,
+          nextProjectileId: () => this.nextProjectileId++,
+          zones: this.zones,
         }
       : null;
     for (const player of this.players.values()) {
@@ -449,6 +456,7 @@ export class World {
       this.rng,
       events,
     );
+    if (abilityDeps) tickZones(this.zones, abilityDeps);
 
     // 3. Enemy AI: decisions at 10 Hz (id parity vs tick parity), motion at 20 Hz.
     for (const enemy of this.enemies.values()) {
@@ -701,7 +709,7 @@ export class World {
           y: m.y,
           z: m.z,
           yaw: m.yaw,
-          flags: player.flags,
+          flags: player.flagsAt(Date.now()),
           hpFraction: player.maxHp > 0 ? player.hp / player.maxHp : 0,
           distSq,
           isPlayer: true,
@@ -718,6 +726,7 @@ export class World {
         let flags = 0;
         if (enemy.state === 'combat') flags |= EntityFlag.InCombat;
         if (Date.now() < enemy.stunnedUntilMs) flags |= EntityFlag.Staggered;
+        if (Date.now() < enemy.rootedUntilMs) flags |= EntityFlag.Rooted;
         if (enemy.state === 'dead') flags |= EntityFlag.Dead;
         if (enemy.state === 'return') flags |= EntityFlag.Leashing;
         if (Math.abs(enemy.vx) > 0.05 || Math.abs(enemy.vz) > 0.05) flags |= EntityFlag.Moving;

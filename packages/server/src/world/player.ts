@@ -9,6 +9,7 @@ import {
   EntityFlag,
   InputButton,
   createAbilityMachine,
+  createCcDrState,
   createMovementState,
   createResourceState,
   isDodgeInvulnerable,
@@ -21,7 +22,7 @@ import {
   type MovementState,
   type ResourceState,
 } from '@dawned/shared';
-import type { ActiveEffect } from './effects.js';
+import { isUntargetable, type ActiveEffect } from './effects.js';
 
 /** A committed instant ability waiting for its contact frame. */
 export interface PendingAbility {
@@ -34,6 +35,9 @@ export interface PendingAbility {
   comboPointsSpent: number;
   /** PBAoE pulse train remaining (Whirlwind ×2); 1 for single resolves. */
   pulsesLeft: number;
+  /** Ground-aim point for ground_aoe resolves (v8); null otherwise. */
+  groundX: number | null;
+  groundZ: number | null;
 }
 import { PositionHistory } from './history.js';
 
@@ -62,6 +66,8 @@ export interface QueuedAttack {
   aimPitch: number;
   /** Soft-target at press (0 = none) — slot abilities only (v7). */
   targetId: number;
+  /** Ground-aim world point for ground_aoe presses (v8); null otherwise. */
+  groundAim: { x: number; z: number } | null;
 }
 
 /** A committed combo step waiting for its contact moment. */
@@ -97,6 +103,13 @@ export class ServerPlayer {
   effectsDirty = false;
   /** Ambusher CP-on-crit internal cooldown marker (CLASSES.md §3). */
   ambusherCpReadyAtMs = 0;
+  /** Mage Attunement: landed basic bolts toward the every-3rd refund (P6). */
+  attunementCount = 0;
+  /** Hard CC on this player (P6) — the movement step reads these. */
+  stunnedUntilMs = 0;
+  rootedUntilMs = 0;
+  /** CC diminishing-returns lanes (COMBAT.md §6.4: full → half → immune). */
+  readonly ccDr = createCcDrState();
   /** RMB stance (P5): shield up (Warrior/Cleric) this tick. */
   blocking = false;
   /** When the shield came up — the perfect-block window reference. */
@@ -227,8 +240,18 @@ export class ServerPlayer {
     return intents;
   }
 
+  /** True while stunned (world.step folds it into movement modifiers). */
+  isStunned(nowMs: number): boolean {
+    return nowMs < this.stunnedUntilMs;
+  }
+
+  /** True while rooted OR stunned (stun implies rooted feet). */
+  isRooted(nowMs: number): boolean {
+    return nowMs < this.rootedUntilMs || this.isStunned(nowMs);
+  }
+
   /** Snapshot flag bitfield for this player's current state. */
-  get flags(): number {
+  flagsAt(nowMs: number): number {
     const m = this.movement;
     let flags = 0;
     if (m.grounded) flags |= EntityFlag.Grounded;
@@ -238,6 +261,9 @@ export class ServerPlayer {
     if (m.rollTimeLeft > 0) flags |= EntityFlag.Dodging;
     if (this.blocking) flags |= EntityFlag.Blocking;
     if (this.dead) flags |= EntityFlag.Dead;
+    if (this.isStunned(nowMs)) flags |= EntityFlag.Stunned;
+    else if (this.isRooted(nowMs)) flags |= EntityFlag.Rooted;
+    if (isUntargetable(this)) flags |= EntityFlag.Untargetable;
     return flags;
   }
 

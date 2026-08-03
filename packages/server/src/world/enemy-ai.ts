@@ -320,7 +320,9 @@ export const move = (
     );
   }
 
-  if (ctx.nowMs < enemy.stunnedUntilMs || enemy.swing) {
+  if (ctx.nowMs < enemy.stunnedUntilMs || ctx.nowMs < enemy.rootedUntilMs || enemy.swing) {
+    // Stun/root/wind-up all pin the feet; a root still lets the FSM above
+    // pick attacks and turn — only the walk is denied (P6, Frost Nova).
     enemy.vx = 0;
     enemy.vz = 0;
     settleOnGround(enemy, ctx);

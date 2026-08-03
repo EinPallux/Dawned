@@ -217,6 +217,9 @@ export const EVASIVE_MOVE_SPEED_PCT = 10;
 export const EVASIVE_DODGE_DISCOUNT = 10;
 export const EVASIVE_ENERGY_PER_S = 3;
 
+/** Cleric Grace passive (CLASSES.md §4): self-healing bonus percent. */
+export const GRACE_SELF_HEAL_PCT = 15;
+
 /** Rogue Ambusher passive: rear arc and crit bonus (CLASSES.md §3). */
 export const AMBUSHER_REAR_ARC_DEG = 120;
 export const AMBUSHER_REAR_CRIT_PCT = 15;

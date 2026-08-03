@@ -35,6 +35,7 @@ import {
   addStagger,
   gainComboPoints,
   gainResource,
+  payResource,
   arcHits,
   baseWeaponDamage,
   isDodgeInvulnerable,
@@ -48,7 +49,13 @@ import {
   type Rng,
   type TerrainSampler,
 } from '@dawned/shared';
-import { damageDealtMultOf, damageTakenMultOf } from './effects.js';
+import {
+  absorbFromShields,
+  damageDealtMultOf,
+  damageTakenMultOf,
+  dropManaShield,
+  manaShieldRateOf,
+} from './effects.js';
 import type { ServerPlayer } from './player.js';
 import type { ServerEnemy } from './enemy.js';
 
@@ -126,6 +133,12 @@ export interface ServerProjectile {
   attackerLevel: number;
   damageDealtMult: number;
   stagger: number;
+  /** Homing bolts (P6 Barrage) steer toward this entity; 0 = straight. */
+  homingTargetId: number;
+  /** Slot-ability bolts carry their def id — impact applies on-hit riders. */
+  abilityId: string | null;
+  /** Basic-combo bolt (Mage Attunement counts these on land). */
+  fromBasic: boolean;
 }
 
 /** Rewind offset for an attacker: their half-RTT + interp, in whole ticks. */
@@ -281,6 +294,9 @@ export const advancePlayerContact = (
       attackerLevel: player.level,
       damageDealtMult: dealtMult,
       stagger: stepDef.stagger,
+      homingTargetId: 0,
+      abilityId: null,
+      fromBasic: true,
     };
     projectiles.push(projectile);
     events.push({
@@ -672,14 +688,34 @@ const applyEnemyHitToPlayer = (
     },
     rng,
   );
-  player.hp = Math.max(0, player.hp - amount);
+  // Absorbs intercept before HP (P6): pooled shields (Aegis) drain first,
+  // then Mana Shield converts what's left at its mana-per-point rate. A
+  // shield hit still counts as combat (regen gating) but never flinches.
+  let remaining = amount;
+  const shielded = absorbFromShields(player, remaining);
+  remaining -= shielded;
+  if (remaining > 0) {
+    const manaRate = manaShieldRateOf(player);
+    if (manaRate !== null && player.resource.type === 'mana') {
+      const absorbable = Math.floor(player.resource.value / manaRate);
+      const manaAbsorb = Math.min(remaining, absorbable);
+      if (manaAbsorb > 0) {
+        payResource(player.resource, manaAbsorb * manaRate);
+        remaining -= manaAbsorb;
+      }
+      if (player.resource.value < manaRate) dropManaShield(player); // ran dry
+    }
+  }
+  const absorbed = amount - remaining;
+
+  player.hp = Math.max(0, player.hp - remaining);
   player.lastCombatAtMs = nowMs;
   if (player.classId === 'warrior' && player.hp > 0) {
     gainResource(player.resource, RAGE_ON_DAMAGED, true);
   }
   if (player.hp <= 0) {
     events.push({ type: 'player-died', playerId: player.id, killerEnemyId: enemy.id });
-  } else {
+  } else if (remaining > 0) {
     events.push({
       type: 'entity-event',
       entityId: player.id,
@@ -689,7 +725,10 @@ const applyEnemyHitToPlayer = (
       c: 0,
     });
   }
-  return { targetId: player.id, amount, flags: player.hp <= 0 ? HitFlag.Killed : 0 };
+  let flags = 0;
+  if (player.hp <= 0) flags |= HitFlag.Killed;
+  if (absorbed > 0) flags |= HitFlag.Absorbed;
+  return { targetId: player.id, amount: remaining, flags };
 };
 
 /**
@@ -756,6 +795,9 @@ export const resolveEnemySwing = (
       attackerLevel: enemy.level,
       damageDealtMult: damageDealtMultOf(enemy),
       stagger: 0,
+      homingTargetId: 0,
+      abilityId: null,
+      fromBasic: false,
     };
     projectiles.push(projectile);
     events.push({
