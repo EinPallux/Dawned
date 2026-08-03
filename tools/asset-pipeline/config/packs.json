@@ -64,6 +64,14 @@
       "verified": true,
       "source": "https://quaternius.com/",
       "root": "assets/player_characters/Universal Animation Library 1[PRO]"
+    },
+    "quaternius-ual2": {
+      "name": "Quaternius Universal Animation Library 2 (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/player_characters/Universal Animation Library 2[Standard]"
     }
   },
   "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land — the pipeline itself does not change.",
@@ -179,7 +187,7 @@
       }
     },
     {
-      "$comment": "Animation library — only the clips a shipped phase uses are kept (menus: class poses; world: locomotion). Extend animationKeep as phases land; UAL2 joins when combat/professions need it.",
+      "$comment": "Animation library — only the clips a shipped phase uses are kept (menus: class poses; world: locomotion; P4: dodge, hit reacts, deaths, spell bolt).",
       "pack": "quaternius-ual1",
       "category": "characters",
       "glob": "Unreal-Godot/UAL1.glb",
@@ -206,7 +214,29 @@
         "Jump_Loop",
         "Jump_Land",
         "Swim_Idle_Loop",
-        "Swim_Fwd_Loop"
+        "Swim_Fwd_Loop",
+        "Roll",
+        "Death01",
+        "Hit_Chest",
+        "Hit_Head",
+        "Hit_Stomach",
+        "Hit_Shoulder_L",
+        "Hit_Shoulder_R",
+        "Spell_Simple_Shoot"
+      ]
+    },
+    {
+      "$comment": "P4 combat set — the sword combo chain COMBAT.md §3 is built on, plus block and knockback. Heavy/dash clips join at P5 with the ability kits.",
+      "pack": "quaternius-ual2",
+      "category": "characters",
+      "glob": "Unreal-Godot/UAL2_Standard.glb",
+      "animationsOnly": true,
+      "animationKeep": [
+        "Sword_Regular_A",
+        "Sword_Regular_B",
+        "Sword_Regular_C",
+        "Sword_Block",
+        "Hit_Knockback"
       ]
     }
   ]

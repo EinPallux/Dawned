@@ -76,6 +76,66 @@ export const FALL_DAMAGE_PER_METRE = 0.06;
 /** Hard cap on fall damage as a fraction of max HP — a full-HP fall is survivable. */
 export const FALL_DAMAGE_MAX_FRACTION = 0.95;
 
+// ---------------------------------------------------------------------------
+// Dodge roll (docs/design/COMBAT.md §7 — "the single most important button")
+// ---------------------------------------------------------------------------
+
+/** Roll duration in seconds. */
+export const DODGE_DURATION_S = 0.55;
+/** Ground covered by a full roll in metres (speed = distance / duration). */
+export const DODGE_DISTANCE_M = 4.2;
+/** Invulnerability window inside the roll, seconds from roll start. */
+export const DODGE_IFRAME_START_S = 0.05;
+export const DODGE_IFRAME_END_S = 0.35;
+/** Flat stamina cost per roll. */
+export const DODGE_STAMINA_COST = 25;
+/** Internal cooldown between rolls, from roll START, in ms. */
+export const DODGE_COOLDOWN_MS = 500;
+
+// ---------------------------------------------------------------------------
+// Combat (docs/design/COMBAT.md §3–§7; numbers admin-editable from P5/A1)
+// ---------------------------------------------------------------------------
+
+/** Global cooldown between ability activations in ms (COMBAT.md §12). */
+export const GCD_MS = 400;
+/** A broken combo chain resets this long after the last step ended, in ms. */
+export const COMBO_RESET_MS = 600;
+/** Link window: pressing LMB inside the last fraction of a step chains the next. */
+export const COMBO_LINK_WINDOW_FRACTION = 0.4;
+/** Melee-arc hits affect at most this many targets (COMBAT.md §5 default cap). */
+export const MELEE_TARGET_CAP = 5;
+/** Vertical tolerance for hit shapes — capsule overlap beyond this is a miss. */
+export const HIT_VERTICAL_TOLERANCE_M = 2.5;
+/** Soft-target projectile magnetism cap in degrees (COMBAT.md §1). */
+export const PROJECTILE_MAGNETISM_DEG = 4;
+
+/** Enemy stagger meter threshold (COMBAT.md §6.4). */
+export const STAGGER_THRESHOLD = 100;
+/** Full-body HitReact stun when the meter fills, in ms. */
+export const STAGGER_STUN_MS = 1200;
+/** Extra damage taken while recently staggered (the payoff window). */
+export const STAGGER_VULNERABILITY = 0.1;
+/** Vulnerability window length from stagger trigger, in ms (covers the stun + a beat). */
+export const STAGGER_VULNERABILITY_MS = 2500;
+/** Meter decay per second once gains have paused (see stagger.ts note). */
+export const STAGGER_DECAY_PER_S = 15;
+/** Gap without stagger gain before decay starts, in ms. */
+export const STAGGER_DECAY_DELAY_MS = 2500;
+
+/** Out-of-combat threshold: no damage given or taken for this long (COMBAT.md §6.6). */
+export const OOC_AFTER_MS = 5000;
+/** Out-of-combat HP regeneration, fraction of max per second. */
+export const OOC_HP_REGEN_PER_S = 0.08;
+
+/** Death penalty: the "Dawned" debuff (COMBAT.md §10). */
+export const DAWNED_DAMAGE_PENALTY = 0.15;
+export const DAWNED_DURATION_MS = 30_000;
+
+/** Crit multiplier (PROGRESSION.md §2 CritDmg 150%). */
+export const CRIT_MULTIPLIER = 1.5;
+/** Damage/heal variance, ± fraction, uniform (COMBAT.md §6.2 anti-metronome). */
+export const DAMAGE_VARIANCE = 0.05;
+
 /**
  * Tolerance multiplier applied to the server's per-tick displacement cap before a
  * movement request is treated as anomalous (docs/tech/SECURITY.md §2).

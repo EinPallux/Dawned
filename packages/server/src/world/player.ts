@@ -9,11 +9,15 @@ import {
   EntityFlag,
   InputButton,
   createMovementState,
+  isDodgeInvulnerable,
+  playerStats,
   type Appearance,
   type ClassId,
+  type CombatStats,
   type MovementIntent,
   type MovementState,
 } from '@dawned/shared';
+import { PositionHistory } from './history.js';
 
 /** Inputs buffered beyond this are dropped — bounds jitter and input hoarding. */
 const MAX_QUEUED_INPUTS = 10;
@@ -32,8 +36,47 @@ export interface QueuedInput extends MovementIntent {
   seq: number;
 }
 
+/** A basic-attack press waiting to enter the tick pipeline. */
+export interface QueuedAttack {
+  seq: number;
+  action: number;
+  aimYaw: number;
+  aimPitch: number;
+}
+
+/** A committed combo step waiting for its contact moment. */
+export interface PendingContact {
+  step: number;
+  atMs: number;
+  aimYaw: number;
+  aimPitch: number;
+}
+
+/** Attack requests buffered beyond this are dropped (spam guard). */
+const MAX_QUEUED_ATTACKS = 4;
+
 export class ServerPlayer {
   readonly movement: MovementState;
+
+  // --- combat (P4) ---------------------------------------------------------
+  readonly stats: CombatStats;
+  /** Float internally for smooth regen; rounded at the wire. */
+  hp: number;
+  readonly maxHp: number;
+  dead = false;
+  /** Combo chain: current step (−1 = none) and when it started. */
+  comboStep = -1;
+  comboStartedAtMs = 0;
+  gcdUntilMs = 0;
+  pendingContact: PendingContact | null = null;
+  /** "Dawned" respawn debuff (−15% damage dealt) until this ms. */
+  dawnedUntilMs = 0;
+  /** Last damage given or taken — drives out-of-combat regen (COMBAT.md §6.6). */
+  lastCombatAtMs = 0;
+  /** Server-measured round trip (ping echo) — feeds the rewind window. */
+  rttMs = 0;
+  readonly history = new PositionHistory();
+  private readonly attackQueue: QueuedAttack[] = [];
 
   private readonly inputQueue: QueuedInput[] = [];
   private lastIntent: MovementIntent = { ...NEUTRAL_INTENT };
@@ -66,9 +109,29 @@ export class ServerPlayer {
     spawnY: number,
     spawnZ: number,
     yaw: number,
+    /** Persisted HP; null = full (fresh character or post-respawn save). */
+    persistedHp: number | null = null,
   ) {
-    this.movement = createMovementState(spawnX, spawnY, spawnZ);
+    this.stats = playerStats(classId, level);
+    this.maxHp = this.stats.maxHp;
+    this.hp = persistedHp !== null ? Math.min(Math.max(persistedHp, 1), this.maxHp) : this.maxHp;
+    this.movement = createMovementState(spawnX, spawnY, spawnZ, this.stats.maxStamina);
     this.movement.yaw = yaw;
+  }
+
+  /** Buffer a basic-attack/respawn request from the gateway. */
+  queueAttack(request: QueuedAttack): void {
+    if (this.attackQueue.length >= MAX_QUEUED_ATTACKS) {
+      this.violations++;
+      return;
+    }
+    this.attackQueue.push(request);
+  }
+
+  /** Drain queued attack requests for this tick (world.step consumes). */
+  takeAttackRequests(): QueuedAttack[] {
+    if (this.attackQueue.length === 0) return this.attackQueue;
+    return this.attackQueue.splice(0, this.attackQueue.length);
   }
 
   /** Buffer a validated intent from the client. */
@@ -133,6 +196,14 @@ export class ServerPlayer {
     if (m.sprinting) flags |= EntityFlag.Sprinting;
     if (Math.abs(m.vx) > 0.1 || Math.abs(m.vz) > 0.1) flags |= EntityFlag.Moving;
     if (m.swimming) flags |= EntityFlag.Swimming;
+    if (m.rollTimeLeft > 0) flags |= EntityFlag.Dodging;
+    if (this.dead) flags |= EntityFlag.Dead;
     return flags;
+  }
+
+  /** Record this tick's post-step position + i-frame state for lag rewind. */
+  recordHistory(): void {
+    const m = this.movement;
+    this.history.record(m.x, m.y, m.z, isDodgeInvulnerable(m));
   }
 }

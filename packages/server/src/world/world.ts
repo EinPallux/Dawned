@@ -1,30 +1,58 @@
 /**
  * The authoritative world.
  *
- * P0 scope: players moving on the dev terrain. AOI/interest management arrives in
- * P3, combat entities in P4 — the tick order below already reserves their slots so
- * the shape doesn't churn later (docs/tech/ARCHITECTURE.md §3).
+ * P4 tick order (docs/tech/ARCHITECTURE.md §3): player movement + history →
+ * ability pipeline + projectiles → enemy AI (10 Hz staggered) + enemy motion →
+ * spawner tickets/corpses → player vitals (regen, death) — the gateway then
+ * snapshots. Every combat mutation happens here; packets only queue requests.
  */
 
 import {
+  ActionId,
+  AbilityRejectReason,
+  DAWNED_DURATION_MS,
+  EntityEventKind,
+  EntityFlag,
   EntityKind,
+  OOC_AFTER_MS,
+  OOC_HP_REGEN_PER_S,
   TICK_DT,
   WORLD_BOUNDS,
   devTerrain,
   stepMovement,
   type Appearance,
   type ClassId,
+  type EnemyDef,
   type MovementStepResult,
+  type Rng,
   type RosterEntry,
   type SnapshotEntity,
+  type SpawnerDef,
   type TerrainSampler,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
+import { ServerEnemy } from './enemy.js';
+import type { GameContent } from '../content/loader.js';
+import {
+  advancePlayerContact,
+  cancelComboOnDodge,
+  handleAttackRequest,
+  stepProjectiles,
+  type CombatEvent,
+  type ServerProjectile,
+} from './combat.js';
+import { CORPSE_LINGER_MS, decide, enterCombat, move, type AiContext } from './enemy-ai.js';
 
 /** AOI radii (docs/tech/NETWORKING.md §5): 3×3 of 64 m cells ≈ 96 m, +8 m leave margin. */
 const AOI_ENTER_SQ = 96 * 96;
 const AOI_LEAVE_SQ = 104 * 104;
 const AOI_ENTITY_CAP = 80;
+/** Respawn ticket jitter (NPCS_ENEMIES.md §3): ±20%. */
+const RESPAWN_JITTER = 0.2;
+/** No face-spawns: a pop pauses while a player stands this close (§3). */
+const SPAWN_CLEAR_RADIUS = 8;
+/** A paused pop retries this often. */
+const SPAWN_RETRY_MS = 5000;
 
 export interface SpawnPoint {
   x: number;
@@ -33,29 +61,38 @@ export interface SpawnPoint {
   yaw: number;
 }
 
-export interface WorldEvent {
-  type: 'fall-damage';
-  playerId: number;
-  fraction: number;
-  distance: number;
+interface RespawnTicket {
+  spawner: SpawnerDef;
+  enemyDef: EnemyDef;
+  level: number;
+  atMs: number;
 }
 
 export class World {
   private readonly players = new Map<number, ServerPlayer>();
+  readonly enemies = new Map<number, ServerEnemy>();
+  private readonly projectiles: ServerProjectile[] = [];
+  private readonly tickets: RespawnTicket[] = [];
+  private readonly campIndex = new Map<string, ServerEnemy[]>();
   private nextEntityId = 1;
+  private nextProjectileId = 1;
+  private tickCounter = 0;
 
   constructor(
     private readonly terrain: TerrainSampler = devTerrain,
     private readonly spawn: SpawnPoint = { x: 0, y: 0, z: 0, yaw: 0 },
-  ) {}
+    private readonly content: GameContent | null = null,
+    private readonly rng: Rng = Math.random,
+  ) {
+    if (content) this.populateFromSpawners();
+  }
 
   get playerCount(): number {
     return this.players.size;
   }
 
   get entityCount(): number {
-    // Players only in P0; enemies/props join this count from P4/P9.
-    return this.players.size;
+    return this.players.size + this.enemies.size;
   }
 
   allPlayers(): IterableIterator<ServerPlayer> {
@@ -82,8 +119,81 @@ export class World {
     return undefined;
   }
 
+  // -------------------------------------------------------------------------
+  // Enemies + spawners
+  // -------------------------------------------------------------------------
+
+  private populateFromSpawners(): void {
+    if (!this.content) return;
+    for (const spawner of this.content.spawners) {
+      for (const entry of spawner.entries) {
+        const def = this.content.enemies.get(entry.enemyId);
+        if (!def) continue; // loader validated; belt and suspenders
+        for (let i = 0; i < entry.count; i++) {
+          this.spawnEnemy(spawner, def, this.rollLevel(def, entry.level));
+        }
+      }
+    }
+  }
+
+  private rollLevel(def: EnemyDef, fixed: number | null): number {
+    if (fixed !== null) return fixed;
+    const span = def.levelMax - def.levelMin;
+    return def.levelMin + Math.floor(this.rng() * (span + 1));
+  }
+
+  /** Pick a walkable point inside the spawner's radius (8 tries, then center). */
+  private spawnPosition(spawner: SpawnerDef): { x: number; z: number } {
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const angle = this.rng() * Math.PI * 2;
+      const r = spawner.kind === 'point' ? 0 : Math.sqrt(this.rng()) * spawner.radius;
+      const x = spawner.x + Math.cos(angle) * r;
+      const z = spawner.z + Math.sin(angle) * r;
+      if (!this.terrain.walkableAt || this.terrain.walkableAt(x, z)) return { x, z };
+    }
+    return { x: spawner.x, z: spawner.z };
+  }
+
+  private spawnEnemy(spawner: SpawnerDef, def: EnemyDef, level: number): ServerEnemy {
+    const { x, z } = this.spawnPosition(spawner);
+    const enemy = new ServerEnemy(
+      this.nextEntityId++,
+      def,
+      level,
+      spawner.id,
+      spawner.campTag ?? def.socialTag,
+      x,
+      this.terrain.heightAt(x, z),
+      z,
+    );
+    enemy.yaw = this.rng() * Math.PI * 2;
+    this.enemies.set(enemy.id, enemy);
+    if (enemy.campTag) {
+      const camp = this.campIndex.get(enemy.campTag) ?? [];
+      camp.push(enemy);
+      this.campIndex.set(enemy.campTag, camp);
+    }
+    return enemy;
+  }
+
+  private removeEnemy(enemy: ServerEnemy): void {
+    this.enemies.delete(enemy.id);
+    if (enemy.campTag) {
+      const camp = this.campIndex.get(enemy.campTag);
+      if (camp) {
+        const index = camp.indexOf(enemy);
+        if (index >= 0) camp.splice(index, 1);
+      }
+    }
+    for (const player of this.players.values()) player.visible.delete(enemy.id);
+  }
+
+  // -------------------------------------------------------------------------
+  // Players
+  // -------------------------------------------------------------------------
+
   /** Spawn ring around the map's spawn point so players don't stack on login. */
-  private spawnPosition(): SpawnPoint {
+  private playerSpawnPoint(): SpawnPoint {
     const angle = (this.nextEntityId * 2.399963) % (Math.PI * 2); // golden-angle spread
     const radius = 4 + (this.nextEntityId % 5) * 2.5;
     const x = this.spawn.x + Math.cos(angle) * radius;
@@ -110,13 +220,15 @@ export class World {
     appearance: Appearance;
     /** Persisted position; null = first spawn (server picks the ring). */
     position: { x: number; y: number; z: number; yaw: number } | null;
+    /** Persisted HP; null/undefined = spawn at full. */
+    hp?: number | null;
   }): ServerPlayer {
     const id = this.nextEntityId++;
     // A stale persisted position (map changed underneath it — e.g. the P1 flat
     // world became the P2 island) relocates to spawn instead of stranding the
     // character in deep water or inside a cliff.
     const persisted = spec.position && this.isValidPersisted(spec.position) ? spec.position : null;
-    const spawn = persisted ?? this.spawnPosition();
+    const spawn = persisted ?? this.playerSpawnPoint();
     // Re-ground a persisted position: the terrain may have changed since the
     // last save (map edits), and standing inside a hill helps nobody.
     const groundY = this.terrain.heightAt(spawn.x, spawn.z);
@@ -134,6 +246,7 @@ export class World {
       y,
       spawn.z,
       spawn.yaw,
+      spec.hp ?? null,
     );
     this.players.set(id, player);
     return player;
@@ -144,83 +257,370 @@ export class World {
     // Nobody keeps interest in a despawned entity (ids are never reused, but
     // the visibility sets should not grow without bound).
     for (const player of this.players.values()) player.visible.delete(id);
+    // Enemy threat tables must not chase a ghost.
+    for (const enemy of this.enemies.values()) enemy.threat.delete(id);
   }
 
-  /** Advance the world one tick. Returns events the gateway should broadcast. */
-  step(): WorldEvent[] {
-    const events: WorldEvent[] = [];
+  // -------------------------------------------------------------------------
+  // The tick
+  // -------------------------------------------------------------------------
 
-    // 1. Movement — re-simulated from client intents with the shared step function.
+  /** Advance the world one tick. Returns combat events for the gateway. */
+  step(): CombatEvent[] {
+    const events: CombatEvent[] = [];
+    const nowMs = Date.now();
+    this.tickCounter++;
+
+    const aiCtx: AiContext = {
+      players: this.players,
+      terrain: this.terrain,
+      nowMs,
+      dt: TICK_DT,
+      rng: this.rng,
+      events,
+      enemiesByCamp: (tag) => this.campIndex.get(tag) ?? [],
+    };
+
+    // 1. Player movement — re-simulated from client intents with the shared step.
     for (const player of this.players.values()) {
       const intents = player.takeInputsForTick();
       for (const intent of intents) {
+        // Death locks controls: the body stays put until respawn (§10).
+        if (player.dead) {
+          player.movement.vx = 0;
+          player.movement.vz = 0;
+          continue;
+        }
         const result: MovementStepResult = stepMovement(
           player.movement,
           intent,
           TICK_DT,
           this.terrain,
         );
+        if (result.dodged) cancelComboOnDodge(player);
         if (result.fallDamageFraction > 0) {
+          player.hp = Math.max(0, player.hp - player.maxHp * result.fallDamageFraction);
+          player.lastCombatAtMs = nowMs;
+          if (player.hp <= 0) {
+            events.push({ type: 'player-died', playerId: player.id, killerEnemyId: null });
+          }
+        }
+      }
+      player.recordHistory();
+
+      // 1b. Queued combat requests enter the pipeline after movement.
+      for (const request of player.takeAttackRequests()) {
+        if (request.action === (ActionId.BasicAttack as number)) {
+          handleAttackRequest(player, request.seq, request.aimYaw, request.aimPitch, nowMs, events);
+        } else if (request.action === (ActionId.Respawn as number)) {
+          this.handleRespawn(player, request.seq, nowMs, events);
+        } else {
           events.push({
-            type: 'fall-damage',
+            type: 'ability-reject',
             playerId: player.id,
-            fraction: result.fallDamageFraction,
-            distance: result.fallDistance,
+            seq: request.seq,
+            action: request.action,
+            reason: AbilityRejectReason.BadState,
           });
         }
       }
     }
 
-    // 2. [P4] ability pipeline, projectiles, effect ticks.
-    // 3. [P9] AI decisions and enemy movement.
-    // 4. [P8/P10] loot bags, resource node timers.
-    // 5. [P3] AOI update — until then every player sees every other player.
+    // 2. Ability pipeline: pending contacts resolve, projectiles fly.
+    for (const player of this.players.values()) {
+      advancePlayerContact(
+        player,
+        this.enemies,
+        nowMs,
+        this.rng,
+        () => this.nextProjectileId++,
+        this.projectiles,
+        events,
+      );
+    }
+    stepProjectiles(
+      this.projectiles,
+      this.enemies,
+      this.players,
+      this.terrain,
+      TICK_DT,
+      nowMs,
+      this.rng,
+      events,
+    );
+
+    // 3. Enemy AI: decisions at 10 Hz (id parity vs tick parity), motion at 20 Hz.
+    for (const enemy of this.enemies.values()) {
+      if (enemy.state === 'dead') continue;
+      // Damage aggros regardless of perception — a sniped enemy fights back
+      // (and pulls its camp) even when the shooter is outside its senses.
+      if (
+        enemy.def.archetype !== 'dummy' &&
+        (enemy.state === 'idle' || enemy.state === 'alert') &&
+        enemy.threat.size > 0
+      ) {
+        const top = enemy.topThreat();
+        if (top !== null) enterCombat(enemy, top, aiCtx);
+      }
+      if ((enemy.id & 1) === (this.tickCounter & 1)) decide(enemy, aiCtx);
+      const neighbors = enemy.campTag ? (this.campIndex.get(enemy.campTag) ?? []) : [];
+      move(enemy, neighbors, aiCtx);
+      enemy.history.record(enemy.x, enemy.y, enemy.z, false);
+    }
+
+    // 3b. Deaths recorded during this tick (attacks + swings + falls).
+    for (const event of events) {
+      if (event.type === 'enemy-died') this.onEnemyDeath(event.enemy, nowMs, events);
+      else if (event.type === 'player-died') this.onPlayerDeath(event.playerId, events);
+    }
+
+    // 4. Spawner tickets + corpse cleanup.
+    this.sweepCorpsesAndTickets(nowMs, events);
+
+    // 5. Player vitals: out-of-combat regen (COMBAT.md §6.6).
+    for (const player of this.players.values()) {
+      if (
+        !player.dead &&
+        player.hp < player.maxHp &&
+        nowMs - player.lastCombatAtMs > OOC_AFTER_MS
+      ) {
+        player.hp = Math.min(player.maxHp, player.hp + player.maxHp * OOC_HP_REGEN_PER_S * TICK_DT);
+      }
+    }
 
     return events;
   }
 
+  private onEnemyDeath(enemy: ServerEnemy, nowMs: number, events: CombatEvent[]): void {
+    if (enemy.state === 'dead') return; // one death per enemy
+    enemy.enterState('dead', nowMs);
+    enemy.despawnAtMs = nowMs + CORPSE_LINGER_MS;
+    enemy.swing = null;
+    enemy.vx = 0;
+    enemy.vz = 0;
+    events.push({
+      type: 'entity-event',
+      entityId: enemy.id,
+      event: EntityEventKind.Death,
+      a: CORPSE_LINGER_MS,
+      b: 0,
+      c: 0,
+    });
+    // Respawn ticket with ±20% jitter (NPCS_ENEMIES.md §3).
+    const spawner = this.content?.spawners.find((s) => s.id === enemy.spawnerId);
+    if (spawner) {
+      const jitter = 1 + (this.rng() * 2 - 1) * RESPAWN_JITTER;
+      this.tickets.push({
+        spawner,
+        enemyDef: enemy.def,
+        level: this.rollLevel(enemy.def, null),
+        atMs: nowMs + spawner.respawnMs * jitter,
+      });
+    }
+  }
+
+  private onPlayerDeath(playerId: number, events: CombatEvent[]): void {
+    const player = this.players.get(playerId);
+    if (!player || player.dead) return;
+    player.dead = true;
+    player.hp = 0;
+    player.pendingContact = null;
+    player.comboStep = -1;
+    player.movement.vx = 0;
+    player.movement.vz = 0;
+    events.push({
+      type: 'entity-event',
+      entityId: player.id,
+      event: EntityEventKind.Death,
+      a: 0,
+      b: 0,
+      c: 0,
+    });
+    // The dead drop off every threat table; camps stand down naturally.
+    for (const enemy of this.enemies.values()) enemy.threat.delete(player.id);
+  }
+
+  /** Soul-screen respawn: back to the shrine (spawn ring), full HP, Dawned. */
+  private handleRespawn(
+    player: ServerPlayer,
+    seq: number,
+    nowMs: number,
+    events: CombatEvent[],
+  ): void {
+    if (!player.dead) {
+      events.push({
+        type: 'ability-reject',
+        playerId: player.id,
+        seq,
+        action: ActionId.Respawn,
+        reason: AbilityRejectReason.BadState,
+      });
+      return;
+    }
+    const spawn = this.playerSpawnPoint();
+    const m = player.movement;
+    m.x = spawn.x;
+    m.y = spawn.y;
+    m.z = spawn.z;
+    m.vx = 0;
+    m.vy = 0;
+    m.vz = 0;
+    m.grounded = true;
+    m.swimming = false;
+    m.fallPeakY = spawn.y;
+    m.stamina = m.maxStamina;
+    player.dead = false;
+    player.hp = player.maxHp;
+    player.dawnedUntilMs = nowMs + DAWNED_DURATION_MS;
+    player.lastCombatAtMs = 0;
+    events.push({
+      type: 'entity-event',
+      entityId: player.id,
+      event: EntityEventKind.Respawn,
+      a: 0,
+      b: 0,
+      c: 0,
+    });
+    events.push({
+      type: 'entity-event',
+      entityId: player.id,
+      event: EntityEventKind.Dawned,
+      a: DAWNED_DURATION_MS,
+      b: 0,
+      c: 0,
+    });
+  }
+
+  private sweepCorpsesAndTickets(nowMs: number, events: CombatEvent[]): void {
+    for (const enemy of [...this.enemies.values()]) {
+      if (enemy.state === 'dead' && nowMs >= enemy.despawnAtMs) this.removeEnemy(enemy);
+    }
+    for (let i = this.tickets.length - 1; i >= 0; i--) {
+      const ticket = this.tickets[i]!;
+      if (nowMs < ticket.atMs) continue;
+      // No face-spawns: hold the pop while someone stands on the spawner.
+      let blocked = false;
+      for (const player of this.players.values()) {
+        const dx = player.movement.x - ticket.spawner.x;
+        const dz = player.movement.z - ticket.spawner.z;
+        if (dx * dx + dz * dz < SPAWN_CLEAR_RADIUS * SPAWN_CLEAR_RADIUS) {
+          blocked = true;
+          break;
+        }
+      }
+      if (blocked) {
+        ticket.atMs = nowMs + SPAWN_RETRY_MS;
+        continue;
+      }
+      this.tickets.splice(i, 1);
+      const enemy = this.spawnEnemy(ticket.spawner, ticket.enemyDef, ticket.level);
+      events.push({
+        type: 'entity-event',
+        entityId: enemy.id,
+        event: EntityEventKind.Respawn,
+        a: 0,
+        b: 0,
+        c: 0,
+      });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Snapshots / AOI
+  // -------------------------------------------------------------------------
+
   /**
-   * Interest management (docs/tech/NETWORKING.md §5): entities within ~96 m
-   * enter the viewer's set, and only leave past 104 m (+8 m hysteresis, no
-   * border flicker). Per-viewer cap of 80, nearest first.
-   *
-   * The scan is a direct O(players²) distance pass — at ≤50 players that is
-   * ~2.5k squared-distance checks per tick. The spatial hash grid slots in
-   * here when P9's enemies raise entity counts an order of magnitude.
+   * Interest management (docs/tech/NETWORKING.md §5): players AND enemies
+   * within ~96 m enter the viewer's set, leaving past 104 m. Per-viewer cap
+   * 80, nearest first, players prioritized over enemies at the cap.
    */
   entitiesFor(viewer: ServerPlayer, out: SnapshotEntity[]): SnapshotEntity[] {
     out.length = 0;
     const vm = viewer.movement;
-    const candidates: { player: ServerPlayer; distSq: number }[] = [];
+    const candidates: {
+      id: number;
+      kind: number;
+      x: number;
+      y: number;
+      z: number;
+      yaw: number;
+      flags: number;
+      hpFraction: number;
+      distSq: number;
+      isPlayer: boolean;
+    }[] = [];
+
     for (const player of this.players.values()) {
       if (player.id === viewer.id) continue;
       const m = player.movement;
       const distSq = (m.x - vm.x) ** 2 + (m.z - vm.z) ** 2;
       const wasVisible = viewer.visible.has(player.id);
-      const limit = wasVisible ? AOI_LEAVE_SQ : AOI_ENTER_SQ;
-      if (distSq <= limit) {
-        candidates.push({ player, distSq });
+      if (distSq <= (wasVisible ? AOI_LEAVE_SQ : AOI_ENTER_SQ)) {
+        candidates.push({
+          id: player.id,
+          kind: EntityKind.Player,
+          x: m.x,
+          y: m.y,
+          z: m.z,
+          yaw: m.yaw,
+          flags: player.flags,
+          hpFraction: player.maxHp > 0 ? player.hp / player.maxHp : 0,
+          distSq,
+          isPlayer: true,
+        });
       } else if (wasVisible) {
         viewer.visible.delete(player.id);
       }
     }
-    if (candidates.length > AOI_ENTITY_CAP) {
-      candidates.sort((a, b) => a.distSq - b.distSq);
-      for (const dropped of candidates.splice(AOI_ENTITY_CAP)) {
-        viewer.visible.delete(dropped.player.id);
+
+    for (const enemy of this.enemies.values()) {
+      const distSq = (enemy.x - vm.x) ** 2 + (enemy.z - vm.z) ** 2;
+      const wasVisible = viewer.visible.has(enemy.id);
+      if (distSq <= (wasVisible ? AOI_LEAVE_SQ : AOI_ENTER_SQ)) {
+        let flags = 0;
+        if (enemy.state === 'combat') flags |= EntityFlag.InCombat;
+        if (Date.now() < enemy.stunnedUntilMs) flags |= EntityFlag.Staggered;
+        if (enemy.state === 'dead') flags |= EntityFlag.Dead;
+        if (enemy.state === 'return') flags |= EntityFlag.Leashing;
+        if (Math.abs(enemy.vx) > 0.05 || Math.abs(enemy.vz) > 0.05) flags |= EntityFlag.Moving;
+        flags |= EntityFlag.Grounded;
+        candidates.push({
+          id: enemy.id,
+          kind: EntityKind.Enemy,
+          x: enemy.x,
+          y: enemy.y,
+          z: enemy.z,
+          yaw: enemy.yaw,
+          flags,
+          hpFraction: enemy.maxHp > 0 ? enemy.hp / enemy.maxHp : 0,
+          distSq,
+          isPlayer: false,
+        });
+      } else if (wasVisible) {
+        viewer.visible.delete(enemy.id);
       }
     }
-    for (const { player } of candidates) {
-      viewer.visible.add(player.id);
-      const m = player.movement;
+
+    if (candidates.length > AOI_ENTITY_CAP) {
+      // Players first, then nearest — the cap must never hide a friend.
+      candidates.sort((a, b) =>
+        a.isPlayer !== b.isPlayer ? (a.isPlayer ? -1 : 1) : a.distSq - b.distSq,
+      );
+      for (const dropped of candidates.splice(AOI_ENTITY_CAP)) {
+        viewer.visible.delete(dropped.id);
+      }
+    }
+    for (const candidate of candidates) {
+      viewer.visible.add(candidate.id);
       out.push({
-        id: player.id,
-        kind: EntityKind.Player,
-        x: m.x,
-        y: m.y,
-        z: m.z,
-        yaw: m.yaw,
-        flags: player.flags,
+        id: candidate.id,
+        kind: candidate.kind,
+        x: candidate.x,
+        y: candidate.y,
+        z: candidate.z,
+        yaw: candidate.yaw,
+        flags: candidate.flags,
+        hpFraction: candidate.hpFraction,
       });
     }
     return out;
@@ -228,7 +628,7 @@ export class World {
 
   /** `/stuck` and future GM recalls: back to the spawn ring, cleanly grounded. */
   teleportToSpawn(player: ServerPlayer): void {
-    const spawn = this.spawnPosition();
+    const spawn = this.playerSpawnPoint();
     const m = player.movement;
     m.x = spawn.x;
     m.y = spawn.y;

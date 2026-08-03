@@ -14,18 +14,28 @@ import {
   PROTOCOL_VERSION,
   ProtocolError,
   TICK_RATE,
+  decodeAbilityRequest,
   decodeHello,
   decodeInputIntent,
   decodeJsonEnvelope,
   decodePing,
+  encodeAbilityReject,
+  encodeAbilityResolve,
+  encodeAbilityStart,
   encodeChatBroadcast,
+  encodeEnemyMeta,
+  encodeEntityEvent,
   encodePong,
+  encodeProjectileEnd,
+  encodeProjectileSpawn,
   encodeRoster,
   encodeSnapshot,
   encodeSystemNotice,
+  encodeTelegraph,
   encodeWelcome,
   peekOpcode,
   type ChatMessage,
+  type EnemyMetaEntry,
   type SnapshotEntity,
 } from '@dawned/shared';
 import type { Logger } from '../logger.js';
@@ -36,6 +46,7 @@ import type { ServerPlayer } from '../world/player.js';
 import type { AuthService } from '../auth/service.js';
 import { CharacterService, toAppearance } from '../characters/service.js';
 import { Session } from './session.js';
+import type { CombatEvent } from '../world/combat.js';
 
 const MAX_CHAT_LENGTH = 200;
 /** Position write-behind cadence (docs/tech/DATABASE.md §2). */
@@ -161,6 +172,9 @@ export class Gateway {
       case ClientOp.InputIntent:
         this.handleInput(session, reader);
         return;
+      case ClientOp.AbilityRequest:
+        this.handleAbilityRequest(session, reader);
+        return;
       case ClientOp.Ping:
         this.handlePing(session, reader);
         return;
@@ -170,6 +184,23 @@ export class Gateway {
       default:
         throw new ProtocolError(`unknown opcode 0x${opcode.toString(16)}`);
     }
+  }
+
+  /** Combat requests only queue here — the world validates inside the tick. */
+  private handleAbilityRequest(session: Session, reader: BinaryReader): void {
+    const player = session.player;
+    if (session.state !== 'playing' || !player) return;
+    if (!session.allowGeneric()) {
+      player.violations++;
+      return;
+    }
+    const request = decodeAbilityRequest(reader);
+    player.queueAttack({
+      seq: request.seq,
+      action: request.action,
+      aimYaw: request.aimYaw,
+      aimPitch: request.aimPitch,
+    });
   }
 
   /**
@@ -251,6 +282,7 @@ export class Gateway {
           character.posX !== null && character.posY !== null && character.posZ !== null
             ? { x: character.posX, y: character.posY, z: character.posZ, yaw: character.yaw }
             : null,
+        hp: character.hp,
       });
     }
     session.player = player;
@@ -312,7 +344,17 @@ export class Gateway {
   private handlePing(session: Session, reader: BinaryReader): void {
     if (!session.allowGeneric()) return;
     const ping = decodePing(reader);
-    session.send(encodePong({ clientTimeMs: ping.clientTimeMs, serverTimeMs: Date.now() }));
+    const now = Date.now();
+    // Server-side RTT from the pong echo (v6): feeds the lag-comp rewind.
+    // A liar can only inflate their own rewind inside the 250 ms clamp.
+    if (ping.echoServerTimeMs > 0 && session.player) {
+      const rtt = now - (ping.echoServerTimeMs + ping.echoAgeMs);
+      if (rtt >= 0 && rtt < 5000) {
+        const prev = session.player.rttMs;
+        session.player.rttMs = prev === 0 ? rtt : prev * 0.7 + rtt * 0.3;
+      }
+    }
+    session.send(encodePong({ clientTimeMs: ping.clientTimeMs, serverTimeMs: now }));
   }
 
   private handleChat(session: Session, reader: BinaryReader): void {
@@ -380,6 +422,9 @@ export class Gateway {
       // Under soft backpressure, halve the snapshot rate for this client only.
       if (session.backpressured && (tick & 1) === 1) continue;
 
+      const entities = this.world.entitiesFor(player, this.entityScratch);
+      this.announceNewEnemies(session, entities);
+
       const m = player.movement;
       session.send(
         encodeSnapshot(
@@ -397,12 +442,160 @@ export class Gateway {
               yaw: m.yaw,
               stamina: m.stamina,
               flags: player.flags,
+              hp: Math.round(player.hp),
+              maxHp: player.maxHp,
             },
-            entities: this.world.entitiesFor(player, this.entityScratch),
+            entities,
           },
           session.writer,
         ),
       );
+    }
+  }
+
+  /**
+   * Enemy identity rides a one-time EnemyMeta per session (the snapshot then
+   * carries only dynamic state). Sent BEFORE the snapshot that first includes
+   * the entity, so the client always has the meta when the id appears.
+   */
+  private announceNewEnemies(session: Session, entities: readonly SnapshotEntity[]): void {
+    let batch: EnemyMetaEntry[] | null = null;
+    for (const entity of entities) {
+      if (entity.kind !== 1 || session.knownEnemies.has(entity.id)) continue;
+      const enemy = this.world.enemies.get(entity.id);
+      if (!enemy) continue;
+      session.knownEnemies.add(entity.id);
+      (batch ??= []).push({
+        id: enemy.id,
+        typeId: enemy.def.id,
+        name: enemy.def.name,
+        level: enemy.level,
+        rank: enemy.def.rank,
+        modelRef: enemy.def.modelRef,
+        scale: enemy.def.scale,
+      });
+    }
+    if (batch) session.send(encodeEnemyMeta({ enemies: batch }));
+  }
+
+  /**
+   * Fan combat events out to interested clients: the actor always hears about
+   * itself; bystanders hear about entities inside their interest set (the
+   * visible sets refreshed by the previous snapshot — the AOI hysteresis
+   * absorbs the one-tick staleness).
+   */
+  broadcastCombatEvents(events: readonly CombatEvent[]): void {
+    for (const event of events) {
+      switch (event.type) {
+        case 'ability-reject': {
+          const target = this.findSessionByPlayer(event.playerId);
+          target?.send(
+            encodeAbilityReject({ seq: event.seq, action: event.action, reason: event.reason }),
+          );
+          break;
+        }
+        case 'ability-start':
+          this.sendToInterested(event.entityId, (session) => {
+            session.send(
+              encodeAbilityStart({
+                entityId: event.entityId,
+                action: event.action,
+                step: event.step,
+                durationMs: event.durationMs,
+                yaw: event.yaw,
+              }),
+            );
+          });
+          break;
+        case 'ability-resolve':
+          this.sendToInterested(event.attackerId, (session) => {
+            session.send(
+              encodeAbilityResolve({
+                attackerId: event.attackerId,
+                action: event.action,
+                step: event.step,
+                hits: event.hits,
+              }),
+            );
+          });
+          break;
+        case 'entity-event':
+          this.sendToInterested(event.entityId, (session) => {
+            session.send(
+              encodeEntityEvent({
+                entityId: event.entityId,
+                event: event.event,
+                a: event.a,
+                b: event.b,
+                c: event.c,
+              }),
+            );
+          });
+          break;
+        case 'telegraph':
+          this.sendToInterested(event.casterId, (session) => {
+            session.send(
+              encodeTelegraph({
+                casterId: event.casterId,
+                shape: event.shape,
+                x: event.x,
+                z: event.z,
+                yaw: event.yaw,
+                size: event.size,
+                spread: event.spread,
+                impactInMs: event.impactInMs,
+              }),
+            );
+          });
+          break;
+        case 'projectile-spawn':
+          this.sendToInterested(event.ownerId, (session) => {
+            session.send(
+              encodeProjectileSpawn({
+                projectileId: event.projectileId,
+                ownerId: event.ownerId,
+                x: event.x,
+                y: event.y,
+                z: event.z,
+                dirX: event.dirX,
+                dirY: event.dirY,
+                dirZ: event.dirZ,
+                speed: event.speed,
+                visual: event.visual,
+              }),
+            );
+          });
+          break;
+        case 'projectile-end':
+          // Everyone in earshot of the flight got the spawn; ends are tiny —
+          // broadcast to all playing sessions (they drop unknown ids).
+          for (const session of this.sessions.values()) {
+            if (session.state !== 'playing') continue;
+            session.send(
+              encodeProjectileEnd({
+                projectileId: event.projectileId,
+                hit: event.hit,
+                x: event.x,
+                y: event.y,
+                z: event.z,
+              }),
+            );
+          }
+          break;
+        case 'player-died':
+        case 'enemy-died':
+          // World-internal bookkeeping; clients learn via Death entity-events.
+          break;
+      }
+    }
+  }
+
+  /** Send to the entity itself (if a player) and everyone whose AOI holds it. */
+  private sendToInterested(entityId: number, send: (session: Session) => void): void {
+    for (const session of this.sessions.values()) {
+      const viewer = session.player;
+      if (session.state !== 'playing' || !viewer) continue;
+      if (viewer.id === entityId || viewer.visible.has(entityId)) send(session);
     }
   }
 
@@ -496,7 +689,7 @@ export class Gateway {
     }
   }
 
-  /** Write one player's position + accrued playtime (write-behind flush). */
+  /** Write one player's position + vitals + accrued playtime (write-behind flush). */
   private async persistPlayer(player: ServerPlayer): Promise<void> {
     const now = Date.now();
     const playtimeDelta = (now - player.lastPersistedAt) / 1000;
@@ -506,6 +699,8 @@ export class Gateway {
       player.characterId,
       { x: m.x, y: m.y, z: m.z, yaw: m.yaw },
       playtimeDelta,
+      // A death mid-save persists as 1 HP — logins never resume dead (§10).
+      player.dead ? 1 : player.hp,
     );
   }
 

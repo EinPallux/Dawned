@@ -3,6 +3,7 @@ import {
   cloneMovementState,
   createMovementState,
   flatTerrain,
+  isDodgeInvulnerable,
   maxHorizontalStep,
   maxStaminaFor,
   stepMovement,
@@ -12,6 +13,10 @@ import {
 } from './movement.js';
 import {
   BASE_STAMINA,
+  DODGE_COOLDOWN_MS,
+  DODGE_DISTANCE_M,
+  DODGE_DURATION_S,
+  DODGE_STAMINA_COST,
   FALL_DAMAGE_MAX_FRACTION,
   MOVE_SPEED,
   SPRINT_MULTIPLIER,
@@ -258,7 +263,10 @@ describe('client/server prediction parity', () => {
         moveX: rand() * 2 - 1,
         moveZ: rand() * 2 - 1,
         yaw: rand() * Math.PI * 2,
-        buttons: (rand() > 0.5 ? InputButton.Sprint : 0) | (rand() > 0.95 ? InputButton.Jump : 0),
+        buttons:
+          (rand() > 0.5 ? InputButton.Sprint : 0) |
+          (rand() > 0.95 ? InputButton.Jump : 0) |
+          (rand() > 0.9 ? InputButton.Dodge : 0),
       });
     }
 
@@ -296,5 +304,120 @@ describe('client/server prediction parity', () => {
     for (const intent of intents.slice(5)) stepMovement(replayed, intent, TICK_DT, ground);
 
     expect(replayed).toEqual(continuous);
+  });
+});
+
+describe('stepMovement — dodge roll (COMBAT.md §7)', () => {
+  const dodgeForward: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: InputButton.Dodge };
+
+  it('covers the spec distance in the spec duration, then hands back control', () => {
+    const state = createMovementState();
+    const ticksInRoll = Math.round(DODGE_DURATION_S / TICK_DT);
+    const first = stepMovement(state, dodgeForward, TICK_DT, ground);
+    expect(first.dodged).toBe(true);
+    // Keep only the roll's own motion: release input after the start tick.
+    simulate(state, idle, ticksInRoll - 1);
+    expect(state.z).toBeCloseTo(DODGE_DISTANCE_M, 3);
+    expect(state.rollTimeLeft).toBe(0);
+  });
+
+  it('locks the direction at start — steering mid-roll is ignored', () => {
+    const state = createMovementState();
+    stepMovement(state, dodgeForward, TICK_DT, ground);
+    simulate(state, { moveX: 1, moveZ: 0, yaw: 0, buttons: 0 }, 6);
+    // Still travelling +Z; the sideways input has not bent the path.
+    expect(Math.abs(state.x)).toBeLessThan(0.2);
+    expect(state.vz).toBeGreaterThan(state.vx);
+  });
+
+  it('rolls toward the facing when no movement is held', () => {
+    const state = createMovementState();
+    const yaw = Math.PI / 2; // facing +X
+    stepMovement(state, { moveX: 0, moveZ: 0, yaw, buttons: InputButton.Dodge }, TICK_DT, ground);
+    simulate(state, { moveX: 0, moveZ: 0, yaw, buttons: 0 }, 10);
+    expect(state.x).toBeGreaterThan(3.5);
+    expect(Math.abs(state.z)).toBeLessThan(0.01);
+  });
+
+  it('spends stamina per roll; held button chains at the duration cadence', () => {
+    // The 0.5 s internal cooldown expires INSIDE the 0.55 s roll, so a held
+    // button re-rolls the tick after a roll ends — never during one. Two full
+    // roll cycles fit in 2 × duration worth of ticks.
+    const state = createMovementState();
+    const held: MovementIntent = { ...dodgeForward };
+    const ticksPerRoll = Math.round(DODGE_DURATION_S / TICK_DT);
+    let dodges = 0;
+    for (let i = 0; i < ticksPerRoll * 2; i++) {
+      if (stepMovement(state, held, TICK_DT, ground).dodged) dodges++;
+    }
+    expect(dodges).toBe(2);
+    expect(state.stamina).toBeCloseTo(BASE_STAMINA - DODGE_STAMINA_COST * 2, 1);
+    // A double-tap inside one roll is refused by the cooldown+rolling gates.
+    expect(DODGE_COOLDOWN_MS / 1000).toBeLessThan(DODGE_DURATION_S * 2);
+  });
+
+  it('refuses without stamina and while airborne', () => {
+    const broke = createMovementState();
+    broke.stamina = DODGE_STAMINA_COST - 1;
+    expect(stepMovement(broke, dodgeForward, TICK_DT, ground).dodged).toBe(false);
+
+    const airborne = createMovementState();
+    stepMovement(airborne, { ...dodgeForward, buttons: InputButton.Jump }, TICK_DT, ground);
+    expect(airborne.grounded).toBe(false);
+    const midair = stepMovement(airborne, dodgeForward, TICK_DT, ground);
+    expect(midair.dodged).toBe(false);
+  });
+
+  it('exposes the i-frame window at 0.05–0.35 s of the roll', () => {
+    const state = createMovementState();
+    const windows: boolean[] = [];
+    stepMovement(state, dodgeForward, TICK_DT, ground);
+    windows.push(isDodgeInvulnerable(state));
+    for (let i = 0; i < 11; i++) {
+      simulate(state, idle, 1);
+      windows.push(isDodgeInvulnerable(state));
+    }
+    // Post-tick states: ticks 1–7 (elapsed 0.05–0.35 s) are invulnerable,
+    // the tail of the roll and the recovery are not.
+    expect(windows).toEqual([
+      true, // elapsed 0.05
+      true,
+      true,
+      true,
+      true,
+      true,
+      true, // elapsed 0.35
+      false, // elapsed 0.40 — vulnerable recovery
+      false,
+      false,
+      false, // roll over
+      false,
+    ]);
+  });
+
+  it('suppresses sprint and jump while rolling', () => {
+    const state = createMovementState();
+    stepMovement(state, dodgeForward, TICK_DT, ground);
+    const result = stepMovement(
+      state,
+      { moveX: 0, moveZ: 1, yaw: 0, buttons: InputButton.Sprint | InputButton.Jump },
+      TICK_DT,
+      ground,
+    );
+    expect(result.jumped).toBe(false);
+    expect(state.sprinting).toBe(false);
+    expect(state.grounded).toBe(true);
+  });
+
+  it('a roll into deep water becomes a swim and the roll ends', () => {
+    const shoreline: TerrainSampler = {
+      heightAt: (_x, z) => (z < 2 ? 0 : -4),
+      waterLevelAt: (_x, z) => (z < 2 ? null : 0.5),
+    };
+    const state = createMovementState();
+    stepMovement(state, dodgeForward, TICK_DT, shoreline);
+    simulate(state, idle, 12, shoreline);
+    expect(state.swimming).toBe(true);
+    expect(state.rollTimeLeft).toBe(0);
   });
 });

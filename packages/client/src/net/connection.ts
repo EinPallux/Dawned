@@ -134,6 +134,9 @@ export class Connection {
   /** Clock sync: serverTime ≈ performance.now() + clockOffsetMs. Diagnostics only. */
   private clockOffsetMs = 0;
   rttMs = 0;
+  /** Last pong's server stamp + local receipt time — echoed in pings (v6). */
+  private lastPongServerTimeMs = 0;
+  private lastPongAtMs = 0;
   private clockInitialized = false;
   /**
    * Ping runs on its own interval timer, NOT the render loop: browsers stop
@@ -439,6 +442,10 @@ export class Connection {
         const pong = decodePong(reader);
         const now = performance.now();
         this.rttMs = now - pong.clientTimeMs;
+        // Remember the pong for the next ping's echo — the server derives its
+        // OWN rtt measurement from it for the lag-comp rewind (protocol v6).
+        this.lastPongServerTimeMs = pong.serverTimeMs;
+        this.lastPongAtMs = now;
         // Server time at the moment we receive this ≈ its stamp + half the trip back.
         const estimated = pong.serverTimeMs + this.rttMs / 2;
         const offset = estimated - now;
@@ -745,7 +752,15 @@ export class Connection {
   }
 
   private sendPing(): void {
-    if (this.isOpen) this.sendRaw(encodePing({ clientTimeMs: performance.now() }));
+    if (!this.isOpen) return;
+    const now = performance.now();
+    this.sendRaw(
+      encodePing({
+        clientTimeMs: now,
+        echoServerTimeMs: this.lastPongServerTimeMs,
+        echoAgeMs: this.lastPongServerTimeMs > 0 ? now - this.lastPongAtMs : 0,
+      }),
+    );
   }
 }
 

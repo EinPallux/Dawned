@@ -1,25 +1,52 @@
 import { describe, expect, it } from 'vitest';
 import { BinaryReader, BinaryWriter } from './codec.js';
 import {
+  HitFlag,
+  decodeAbilityReject,
+  decodeAbilityRequest,
+  decodeAbilityResolve,
+  decodeAbilityStart,
+  decodeEntityEvent,
   decodeHello,
   decodeInputIntent,
   decodeJsonEnvelope,
   decodePing,
   decodePong,
+  decodeProjectileEnd,
+  decodeProjectileSpawn,
   decodeSnapshot,
   decodeSystemNotice,
+  decodeTelegraph,
+  encodeAbilityReject,
+  encodeAbilityRequest,
+  encodeAbilityResolve,
+  encodeAbilityStart,
   encodeChatBroadcast,
+  encodeEnemyMeta,
+  encodeEntityEvent,
   encodeHello,
   encodeInputIntent,
   encodePing,
   encodePong,
+  encodeProjectileEnd,
+  encodeProjectileSpawn,
   encodeSnapshot,
   encodeSystemNotice,
+  encodeTelegraph,
   peekOpcode,
   type ChatBroadcastMessage,
   type SnapshotMessage,
 } from './messages.js';
-import { ClientOp, InputButton, NoticeCode, PROTOCOL_VERSION, ServerOp } from './opcodes.js';
+import {
+  AbilityRejectReason,
+  ClientOp,
+  EntityEventKind,
+  InputButton,
+  NoticeCode,
+  PROTOCOL_VERSION,
+  ServerOp,
+  TelegraphShape,
+} from './opcodes.js';
 
 /** Strip the opcode byte and hand back a reader positioned at the payload. */
 const body = (packet: Uint8Array): BinaryReader => {
@@ -72,7 +99,12 @@ describe('handshake and input messages', () => {
 
   it('round-trips Ping/Pong timestamps at full f64 precision', () => {
     const now = 1_754_100_123_456.789;
-    expect(decodePing(body(encodePing({ clientTimeMs: now }))).clientTimeMs).toBe(now);
+    const ping = decodePing(
+      body(encodePing({ clientTimeMs: now, echoServerTimeMs: now - 50, echoAgeMs: 1980.5 })),
+    );
+    expect(ping.clientTimeMs).toBe(now);
+    expect(ping.echoServerTimeMs).toBe(now - 50);
+    expect(ping.echoAgeMs).toBe(1980.5);
     const pong = decodePong(body(encodePong({ clientTimeMs: now, serverTimeMs: now + 12.5 })));
     expect(pong.clientTimeMs).toBe(now);
     expect(pong.serverTimeMs).toBe(now + 12.5);
@@ -93,16 +125,19 @@ describe('snapshots', () => {
       vz: 0,
       yaw: 1.75,
       stamina: 87.5,
-      flags: 0b101,
+      flags: 0b1_0000_0101, // exercises the v6 u16 width (Leashing bit)
+      hp: 217,
+      maxHp: 236,
     },
     entities: Array.from({ length: entityCount }, (_, i) => ({
       id: i + 1,
-      kind: 0,
+      kind: i % 2,
       x: i * 2,
       y: 0,
       z: -i,
       yaw: (i % 6) * 1.04,
-      flags: i % 4,
+      flags: (i % 4) | (i % 3 === 0 ? 0b1_0000_0000 : 0),
+      hpFraction: (i % 5) / 4,
     })),
   });
 
@@ -118,6 +153,8 @@ describe('snapshots', () => {
     expect(decoded.self.vx).toBe(snapshot.self.vx);
     expect(decoded.self.stamina).toBe(snapshot.self.stamina);
     expect(decoded.self.flags).toBe(snapshot.self.flags);
+    expect(decoded.self.hp).toBe(snapshot.self.hp);
+    expect(decoded.self.maxHp).toBe(snapshot.self.maxHp);
     expect(decoded.self.yaw).toBeCloseTo(snapshot.self.yaw, 3);
   });
 
@@ -134,6 +171,7 @@ describe('snapshots', () => {
       expect(target.z).toBe(source.z);
       expect(target.flags).toBe(source.flags);
       expect(target.yaw).toBeCloseTo(source.yaw, 3);
+      expect(target.hpFraction).toBeCloseTo(source.hpFraction, 2);
     }
   });
 
@@ -179,5 +217,111 @@ describe('system notices', () => {
   it('omits empty detail so the client uses its own mapped text', () => {
     const decoded = decodeSystemNotice(body(encodeSystemNotice({ code: NoticeCode.ServerFull })));
     expect(decoded).toEqual({ code: NoticeCode.ServerFull });
+  });
+});
+
+describe('combat messages (protocol v6)', () => {
+  it('round-trips an AbilityRequest with quantized aim', () => {
+    const packet = encodeAbilityRequest({ seq: 77, action: 0, aimYaw: -2.4, aimPitch: 0.3 });
+    expect(peekOpcode(packet)).toBe(ClientOp.AbilityRequest);
+    const decoded = decodeAbilityRequest(body(packet));
+    expect(decoded.seq).toBe(77);
+    expect(decoded.action).toBe(0);
+    expect(Math.cos(decoded.aimYaw)).toBeCloseTo(Math.cos(-2.4), 3);
+    expect(Math.sin(decoded.aimYaw)).toBeCloseTo(Math.sin(-2.4), 3);
+    expect(decoded.aimPitch).toBeCloseTo(0.3, 1);
+  });
+
+  it('round-trips AbilityStart', () => {
+    const message = { entityId: 900, action: 0, step: 2, durationMs: 750, yaw: 1.1 };
+    const decoded = decodeAbilityStart(body(encodeAbilityStart(message)));
+    expect(decoded.entityId).toBe(900);
+    expect(decoded.step).toBe(2);
+    expect(decoded.durationMs).toBe(750);
+    expect(decoded.yaw).toBeCloseTo(1.1, 3);
+  });
+
+  it('round-trips AbilityResolve with mixed hit flags', () => {
+    const message = {
+      attackerId: 3,
+      action: 0,
+      step: 1,
+      hits: [
+        { targetId: 41, amount: 133, flags: HitFlag.Crit },
+        { targetId: 42, amount: 20, flags: HitFlag.Killed | HitFlag.Staggered },
+        { targetId: 43, amount: 1, flags: 0 },
+      ],
+    };
+    expect(decodeAbilityResolve(body(encodeAbilityResolve(message)))).toEqual(message);
+  });
+
+  it('round-trips AbilityReject', () => {
+    const message = { seq: 12, action: 0, reason: AbilityRejectReason.NoStamina };
+    expect(decodeAbilityReject(body(encodeAbilityReject(message)))).toEqual(message);
+  });
+
+  it('round-trips EntityEvent params', () => {
+    const message = { entityId: 55, event: EntityEventKind.Knockback, a: -3.5, b: 2.25, c: 240 };
+    expect(decodeEntityEvent(body(encodeEntityEvent(message)))).toEqual(message);
+  });
+
+  it('round-trips a cone Telegraph', () => {
+    // f32 payload — values chosen exactly representable in single precision.
+    const message = {
+      casterId: 12,
+      shape: TelegraphShape.Cone,
+      x: -150.5,
+      z: 42.25,
+      yaw: 0.8,
+      size: 3.5,
+      spread: 1.5,
+      impactInMs: 800,
+    };
+    const decoded = decodeTelegraph(body(encodeTelegraph(message)));
+    expect(decoded.casterId).toBe(12);
+    expect(decoded.shape).toBe(TelegraphShape.Cone);
+    expect(decoded.x).toBe(-150.5);
+    expect(decoded.size).toBe(3.5);
+    expect(decoded.spread).toBe(1.5);
+    expect(decoded.impactInMs).toBe(800);
+    expect(decoded.yaw).toBeCloseTo(0.8, 3);
+  });
+
+  it('round-trips projectile spawn and end', () => {
+    // f32 payloads — exactly representable values keep toEqual honest.
+    const spawn = {
+      projectileId: 71,
+      ownerId: 3,
+      x: 1,
+      y: 1.5,
+      z: 2,
+      dirX: 0.5,
+      dirY: 0,
+      dirZ: 0.75,
+      speed: 28,
+      visual: 2,
+    };
+    expect(decodeProjectileSpawn(body(encodeProjectileSpawn(spawn)))).toEqual(spawn);
+    const end = { projectileId: 71, hit: true, x: 9, y: 1.25, z: 12 };
+    expect(decodeProjectileEnd(body(encodeProjectileEnd(end)))).toEqual(end);
+  });
+
+  it('carries enemy metadata through the JSON envelope', () => {
+    const message = {
+      enemies: [
+        {
+          id: 501,
+          typeId: 'enemy_shore_glub',
+          name: 'Shore Glub',
+          level: 2,
+          rank: 'normal',
+          modelRef: 'enemies_glub',
+          scale: 1,
+        },
+      ],
+    };
+    const packet = encodeEnemyMeta(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.EnemyMeta);
+    expect(decodeJsonEnvelope(body(packet))).toEqual(message);
   });
 });

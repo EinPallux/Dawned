@@ -206,9 +206,46 @@ export const contentWorldSettings = pgTable(
   (table) => [primaryKey({ columns: [table.key, table.status] })],
 );
 
+// ---------------------------------------------------------------------------
+// Content: enemies + spawners (DATABASE.md §3, P4). Same draft/published
+// row-status contract as world settings. The definition lives in one `def`
+// jsonb validated by the shared zod schemas (content/enemies.ts, spawners.ts)
+// at publish time and again at game-server boot — the admin editors (A1)
+// generate their forms from those same schemas, so shapes cannot drift.
+// ---------------------------------------------------------------------------
+
+export const contentEnemies = pgTable(
+  'content_enemies',
+  {
+    /** Content slug (`enemy_shore_glub`). */
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** EnemyDef (shared/src/content/enemies.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
+export const contentSpawners = pgTable(
+  'content_spawners',
+  {
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** SpawnerDef (shared/src/content/spawners.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
 export type AccountRow = typeof accounts.$inferSelect;
 export type SessionRow = typeof sessions.$inferSelect;
 export type CharacterRow = typeof characters.$inferSelect;
 export type BanRow = typeof bans.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
 export type ContentWorldSettingsRow = typeof contentWorldSettings.$inferSelect;
+export type ContentEnemyRow = typeof contentEnemies.$inferSelect;
+export type ContentSpawnerRow = typeof contentSpawners.$inferSelect;

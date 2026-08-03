@@ -1117,9 +1117,9 @@
     "characters_ual1": {
       "id": "characters_ual1",
       "category": "characters",
-      "file": "assets_baked/characters/ual1.6faadc32.glb",
-      "bytes": 1180168,
-      "sourceHash": "6e7984eb4035bf1196afe2e02ce4e351a06f513c80fb53e53d65437f3aa0d42a",
+      "file": "assets_baked/characters/ual1.8adcdae8.glb",
+      "bytes": 1609460,
+      "sourceHash": "c954109fe1c1b851ca9f4ef70c56ec35b70453d224086f6e9112c964db7ed0d7",
       "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
       "pack": "quaternius-ual1",
       "packName": "Quaternius Universal Animation Library 1 (PRO)",
@@ -1130,6 +1130,12 @@
       "triangles": 0,
       "bounds": null,
       "animations": [
+        "Death01",
+        "Hit_Chest",
+        "Hit_Head",
+        "Hit_Shoulder_L",
+        "Hit_Shoulder_R",
+        "Hit_Stomach",
         "Idle_LookAround_Loop",
         "Idle_Loop",
         "Jog_Bwd_L_Loop",
@@ -1145,13 +1151,38 @@
         "Jump_Land",
         "Jump_Loop",
         "Jump_Start",
+        "Roll",
         "Spell_Double_Idle_Loop",
         "Spell_Simple_Idle_Loop",
+        "Spell_Simple_Shoot",
         "Sprint_Loop",
         "Swim_Fwd_Loop",
         "Swim_Idle_Loop",
         "Sword_Idle",
         "Walk_Loop"
+      ]
+    },
+    "characters_ual2_standard": {
+      "id": "characters_ual2_standard",
+      "category": "characters",
+      "file": "assets_baked/characters/ual2_standard.3b62e3b7.glb",
+      "bytes": 291140,
+      "sourceHash": "ecf3043f7418892443840d1a2ae753d44b5e0a3110ec4d7f657d729c2e8f21b0",
+      "source": "assets/player_characters/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
+      "pack": "quaternius-ual2",
+      "packName": "Quaternius Universal Animation Library 2 (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [
+        "Hit_Knockback",
+        "Sword_Block",
+        "Sword_Regular_A",
+        "Sword_Regular_B",
+        "Sword_Regular_C"
       ]
     }
   }
