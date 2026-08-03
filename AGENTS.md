@@ -21,17 +21,16 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0-P4 complete (owner-verified). P5 (Classes I: ability framework, Warrior &
-  Rogue, protocol v7) built and verified in dev 2026-08-03 alongside A1's abilities editor +
-  publish v1: shared ability machine both sides run, Rage/Energy+CP resources, server slot
-  executor + buffs/DoTs + RMB stances, 28 kit rows authored via the admin editor and
-  published (hot reload; live-tune proven), predicted client hotbar + combat HUD cluster +
-  VFX v1, basics from content rows, enemy projectile volleys + kiting AI, Spore Ridge ranged
-  camp, migration 0005 deploy seeds + 0006 presentation repair (never edit an applied
-  migration — drizzle skips it silently). Owner playtest fix rounds 6–8 folded: ability
-  icons, anim retiming, HUD state/refusal readability, impact pass, cd-0 cast-once brick,
-  un-mirrored VFX fans, upper-body swing overlays while moving, dodge-roll priority.
-  browser-p5 (22 asserts) + all earlier smokes green in one session, 166 tests, tick p95
-  1.21 ms under ability fights. Owner items open: P5 DoD demo runs (both kits, both camps,
-  /netsim 100 20) + §9 kit checklist + HUD look check; non-blocking: P3 real-hardware group
-  session, A0 /admin login check.
+- **State:** P0–P5 complete (owner-verified 2026-08-03; P5 closed after fix rounds 7–8).
+  P5 shipped (protocol v7, alongside A1's abilities editor + publish v1): shared ability
+  machine both sides run, Rage/Energy+CP resources, server slot executor + buffs/DoTs + RMB
+  stances, 28 kit rows authored via the admin editor and published (hot reload; live-tune
+  proven), predicted client hotbar + combat HUD cluster + VFX v1, basics from content rows,
+  enemy projectile volleys + kiting AI, Spore Ridge ranged camp, migration 0005 deploy
+  seeds + 0006 presentation repair (never edit an applied migration — drizzle skips it
+  silently). Fix rounds 6–8 folded: ability icons, anim retiming, HUD state/refusal
+  readability, impact pass, cd-0 cast-once brick, un-mirrored VFX fans, upper-body swing
+  overlays while moving, dodge-roll priority. browser-p5 (22 asserts) + all earlier smokes
+  green in one session, 166 tests, tick p95 1.21 ms under ability fights. **Current phase:
+  P6 — Classes II (Mage, Cleric & status system).** Owner item open (non-blocking): the A0
+  /admin login check.

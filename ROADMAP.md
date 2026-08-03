@@ -13,9 +13,9 @@
 | P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
 | P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
 | P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
-| P3    | Movement, Netcode Core & Chat v1         | L    | 🟨 built — owner signoff  |
+| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)      |
 | P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
-| P5    | Classes I — Framework, Warrior, Rogue    | L    | 🟨 built — owner signoff  |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)      |
 | P6    | Classes II — Mage, Cleric, Status System | L    | 🔲                        |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                        |
 | P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                        |
@@ -139,7 +139,7 @@ tools (latency/jitter injection, netgraph overlay); chat v1 (global/system + bub
 injected RTT (signoff checklist: no rubber-banding on slopes, dodge-free baseline), tick p95 <15 ms
 at that load, prediction-mismatch test suite green.
 
-**Status (2026-08-02): built and verified in dev — protocol v4.**
+**Status: ✅ complete (owner-verified 2026-08-03) — protocol v4.**
 
 - [x] Swimming in the shared movement step (deep >1.2 m, ×0.55 speed, swim-sprint stamina,
       fall-damage negation), water sampling via per-chunk levels, walkgrid `Water` semantics —
@@ -183,8 +183,8 @@ at that load, prediction-mismatch test suite green.
       names are character-perspective (settled by the owner watching the rig). Mapping back
       to identity, leans flipped to match, and the browser smoke now pins exact L/R clip
       names for strafes, the S+D diagonal and the left-turn lean.
-- [ ] **Owner signoff on real hardware:** group sprint-jump session at `/netsim 100 20` —
-      LAN-like feel, no rubber-banding on slopes, bubbles/reconnect behave. Then P3 closes.
+- [x] **Owner signoff on real hardware** (2026-08-03): group session verified — LAN-like
+      feel at `/netsim 100 20`, no slope rubber-banding, bubbles/reconnect behave. P3 closed.
 
 ## P4 — Combat Foundation (XL) — _the make-or-break phase_
 
@@ -202,7 +202,7 @@ now, final at P14).
 and it passes the COMBAT.md §9 checklist reviewed line-by-line; feel signoff from the owner
 (explicitly: does it feel like Farever-smooth action combat? iterate until yes).
 
-**Status (2026-08-03, protocol v6): built and verified in dev — owner signoff items open.**
+**Status: ✅ complete (owner-verified 2026-08-03 via the 10-minute demo) — protocol v6.**
 
 - [x] Shared combat core (P4-A): class stat spreads + HP/weapon curves, the full damage
       formula (crit, variance, armor/resist mitigation, level mod, stagger-vuln and Dawned
@@ -279,7 +279,7 @@ Kenney atlas, mesh trails, decals).
 every ability passes the juice checklist; ability numbers live-tunable from admin panel without
 restart.
 
-**Status (2026-08-03, protocol v7): built and verified in dev — owner signoff items open.**
+**Status: ✅ complete (owner-verified 2026-08-03, after fix rounds 7–8) — protocol v7.**
 
 - [x] Shared ability core (P5-A): `content_abilities` zod schema (bindings slot/basic/rmb, costs,
       cooldowns/charges, casts/channels, 9 targeting kinds, ordered effect vocabulary incl.
@@ -345,11 +345,11 @@ NOTHING` — a panel-retuned live row is never reverted by a redeploy).
       roll preempts action locks at a readable 2.0× instead of losing its slot to long
       swings. Smokes hardened off three reproduced failure modes (role-committed bleed
       choreography, press-time cost re-checks, relative Evasive-drain windows).
-- [ ] **Owner: DoD demo runs** — clear the Glub camp AND the Spore Ridge with the full
-      Warrior kit, then the full Rogue kit, at `/netsim 100 20`; §9 juice checklist re-read
-      against the kits; feel verdict per ability (iterate until yes).
-- [ ] **Owner: hotbar/HUD look check** — the Cut Facets combat cluster (globes, radials,
-      pips, buff chips) on the real monitor; call out anything that reads wrong.
+- [x] **Owner: DoD demo runs** (2026-08-03, after fix round 8 — "works perfectly"): both
+      camps cleared with the full Warrior and Rogue kits at `/netsim 100 20`; §9 checklist
+      verdict positive.
+- [x] **Owner: hotbar/HUD look check** (2026-08-03): the Cut Facets combat cluster reads
+      right on the real monitor after the round-7 state/icon overhaul. P5 closed.
 
 ## P6 — Classes II: Mage, Cleric & Status System (L)
 

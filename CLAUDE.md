@@ -84,9 +84,9 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 18 owner decisions to date are answered and folded (decision log in USER_QUESTIONS.md).
-**P0–P4 are ✅ complete (owner-verified; P4 closed 2026-08-03 after the 10-minute demo).
-P5 — Classes I (ability framework, Warrior & Rogue) is built and verified in dev
-(2026-08-03, protocol v7), with A1's abilities editor + publish v1 shipped in parallel.**
+**P0–P5 are ✅ complete (owner-verified; P3 and P5 closed 2026-08-03 after fix round 8 —
+"works perfectly"). P5 shipped with A1's abilities editor + publish v1 in parallel; the
+current phase is P6 — Classes II (Mage, Cleric & status system).**
 P5 shipped: the `content_abilities` schema + deterministic ability machine (evaluate →
 commit → tick) that BOTH sides run, class resources (Rage/Energy+CP/Mana), the server slot
 executor with lag-rewound targeting + buff/debuff runtime + RMB stances (Block with
@@ -104,10 +104,8 @@ cast-once brick, un-mirrored VFX fans, bone-masked upper-body swing overlays whi
 (no more gliding LMB spam), and dodge-roll priority (CHANGELOG has details). Verification:
 `tools/smoke/browser-p5.mjs` (22 asserts across Warrior/Rogue/ranged-camp phases), all P0–P4
 smokes green in the same server session, 166 unit tests, tick p95 1.21 ms under ability
-fights (<15 ms gate). **Owner items open (ROADMAP status blocks): the P5 DoD demo runs
-(clear Glub camp + Spore Ridge with each full kit at `/netsim 100 20`) + §9 checklist against
-the kits + HUD look check; plus the P3 real-hardware group session and the A0 /admin login
-check (both non-blocking).** Deploys to production happen only when the owner merges to
+fights (<15 ms gate). **Owner items open: only the A0 /admin login check at
+play.pathlands.cc/admin (non-blocking).** Deploys to production happen only when the owner merges to
 `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is strict since the P1
 deploy fix; it now also bridges the GitHub PAT so the admin panel's pinned `@dawned/shared`
 git dependency installs on the private repos).
