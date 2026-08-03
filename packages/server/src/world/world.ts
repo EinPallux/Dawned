@@ -345,12 +345,20 @@ export class World {
         if (evasive) payResource(player.resource, EVASIVE_ENERGY_PER_S * TICK_DT);
         player.focusing = secondaryHeld && player.classId === 'mage';
         const whirlMult = player.pendingAbility?.def.anim.moveSpeedMult ?? 1;
+        // A fractional castWhileMoving is the walk-speed multiplier while its
+        // cast/channel runs (schema contract) — the client folds the same def.
+        const activeCastId =
+          player.abilityMachine.cast?.abilityId ?? player.abilityMachine.channel?.abilityId ?? null;
+        const castMoveRaw =
+          activeCastId === null ? true : this.content?.abilities.get(activeCastId)?.castWhileMoving;
+        const castMult = typeof castMoveRaw === 'number' ? castMoveRaw : 1;
         const modifiers = {
           speedMult:
             moveSpeedMultOf(player) *
             (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) *
             (player.focusing ? FOCUS_MOVE_SPEED_MULT : 1) *
-            whirlMult,
+            whirlMult *
+            castMult,
           dodgeCostDelta: (evasive ? -EVASIVE_DODGE_DISCOUNT : 0) + dodgeCostDeltaOf(player),
           // Hard CC (P6): stun locks everything, root pins the feet — the
           // SHARED step enforces both so prediction agrees to the centimeter.
@@ -366,8 +374,9 @@ export class World {
         );
         if (result.dodged) {
           cancelComboOnDodge(player);
-          // A roll cancels an active cast for HALF the cost back (§4.5).
-          const casting = player.abilityMachine.cast;
+          // A roll cancels an active cast OR channel for HALF the cost back
+          // (§4.5) — the client mirrors this in its predicted step.
+          const casting = player.abilityMachine.cast ?? player.abilityMachine.channel;
           if (casting) {
             const castDef = this.content?.abilities.get(casting.abilityId);
             const interrupted = interruptCast(

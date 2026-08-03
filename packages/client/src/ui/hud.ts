@@ -30,6 +30,8 @@ export interface HudEffect {
   stacks: number;
   remainingMs: number;
   harmful: boolean;
+  /** Absorb pool left on shield effects (P6) — rendered on the chip. */
+  shieldRemaining?: number;
 }
 
 export interface HudStats {
@@ -57,6 +59,8 @@ export interface HudStats {
   dawnedRemainingMs: number;
   /** Soft-target under the reticle, when any (COMBAT.md §1). */
   target: { name: string; level: number; hpFraction: number } | null;
+  /** Ally plate (P6, Q20): green frame — the heal's would-be recipient. */
+  targetFriendly: boolean;
   grounded: boolean;
   sprinting: boolean;
   swimming: boolean;
@@ -65,14 +69,26 @@ export interface HudStats {
   resource: HudResource;
   /** Hotbar slots 1..8, polled from the connection's shared machine. */
   slots: SlotView[];
-  /** Active cast (null = bar hidden; P5 kits are instants). */
-  cast: { name: string; fraction: number } | null;
+  /** Active cast or channel bar (null = hidden). Channels drain + show pips. */
+  cast: {
+    kind: 'cast' | 'channel';
+    name: string;
+    fraction: number;
+    ticks: number;
+    ticksDone: number;
+  } | null;
   selfEffects: readonly HudEffect[];
   targetEffects: readonly HudEffect[];
   /** Stamina covers a dodge right now — the V tile's lit state. */
   dodgeReady: boolean;
   /** RMB stance currently held (shield glyph tint). */
   stanceHeld: boolean;
+  /** Mage Focus held — the reticle tightens (P6). */
+  focusHeld: boolean;
+  /** Hard CC on self (P6) — the center ribbon says why input is dead. */
+  ccState: 'stunned' | 'rooted' | null;
+  /** Mage Attunement pips 0–2 (null = not a mage). */
+  attunement: number | null;
 }
 
 export class Hud {
@@ -97,6 +113,10 @@ export class Hud {
   private readonly castEl: HTMLElement;
   private readonly castFill: HTMLElement;
   private readonly castName: HTMLElement;
+  private readonly castTicksEl: HTMLElement;
+  private readonly ccEl: HTMLElement;
+  private readonly reticleEl: HTMLElement;
+  private readonly attuneEl: HTMLElement;
   private readonly hotbarEl: HTMLElement;
   private readonly resourceGlobeEl: HTMLElement;
   private readonly resourceFill: HTMLElement;
@@ -122,6 +142,11 @@ export class Hud {
   private effectsKey = '';
   private targetEffectsKey = '';
   private resourceType = '';
+  /** Channel pip row cache (rebuild only when the tick count changes). */
+  private castTicksCount = -1;
+  /** Interrupted flash: the bar stays up in its red state until this time. */
+  private interruptedUntilMs = 0;
+  private attunementShown = -2; // -1 = hidden (non-mage)
   /** game-icons slug → baked SVG url (masked; states tint them). */
   private iconUrls = new Map<string, string>();
   /** effectId → icon slug of the ability that applies it (buff chips). */
@@ -158,6 +183,7 @@ export class Hud {
         <div data-roster class="hud-roster"></div>
       </div>
       <div class="hud-banner" data-banner hidden></div>
+      <div class="hud-cc" data-cc hidden></div>
       <div class="hud-reticle" data-reticle></div>
       <div class="hud-target" data-target hidden>
         <span class="hud-target-name" data-target-name></span>
@@ -174,6 +200,7 @@ export class Hud {
         <div class="hud-dawned" data-dawned hidden>DAWNED <span data-dawned-s></span></div>
         <div class="hud-cast" data-cast hidden>
           <div class="hud-cast-fill" data-cast-fill></div>
+          <div class="hud-cast-ticks" data-cast-ticks></div>
           <span class="hud-cast-name" data-cast-name></span>
         </div>
         <div class="hud-cluster">
@@ -187,6 +214,7 @@ export class Hud {
           </div>
           <div class="hud-globe is-resource" data-resource-globe>
             <div class="hud-cp" data-cp hidden></div>
+            <div class="hud-attune" data-attune hidden></div>
             <div class="hud-globe-fill" data-resource></div>
             <span class="hud-globe-text" data-resource-text></span>
           </div>
@@ -221,6 +249,10 @@ export class Hud {
     this.castEl = this.query('[data-cast]');
     this.castFill = this.query('[data-cast-fill]');
     this.castName = this.query('[data-cast-name]');
+    this.castTicksEl = this.query('[data-cast-ticks]');
+    this.ccEl = this.query('[data-cc]');
+    this.reticleEl = this.query('[data-reticle]');
+    this.attuneEl = this.query('[data-attune]');
     this.hotbarEl = this.query('[data-hotbar]');
     this.resourceGlobeEl = this.query('[data-resource-globe]');
     this.resourceFill = this.query('[data-resource]');
@@ -450,6 +482,11 @@ export class Hud {
     }, 900);
   }
 
+  /** The cast bar flashes red for a beat when a stun broke the cast (P6). */
+  flashInterrupted(): void {
+    this.interruptedUntilMs = performance.now() + 650;
+  }
+
   /** Red seam pulse on a refused press (local evaluate or server reject). */
   pulseSlot(slot: number): void {
     const els = this.slotEls.get(slot);
@@ -466,7 +503,10 @@ export class Hud {
     keyField: 'effectsKey' | 'targetEffectsKey',
   ): void {
     const key = effects
-      .map((e) => `${e.effectId}:${e.stacks}:${Math.ceil(e.remainingMs / 1000)}:${e.harmful}`)
+      .map(
+        (e) =>
+          `${e.effectId}:${e.stacks}:${Math.ceil(e.remainingMs / 1000)}:${e.harmful}:${e.shieldRemaining ?? 0}`,
+      )
       .join('|');
     if (key === this[keyField]) return;
     this[keyField] = key;
@@ -478,9 +518,15 @@ export class Hud {
         const glyph =
           icon ||
           `<span class="hud-effect-glyph">${escapeHtml(monogram(effect.effectId.replace(/^(buff|debuff|bleed|poison|slow)_/, '')))}</span>`;
+        // Shield chips wear the absorb pool left instead of the clock — the
+        // number IS the state (the duration still bounds it server-side).
+        const meter =
+          effect.shieldRemaining !== undefined && effect.shieldRemaining > 0
+            ? `<span class="hud-effect-s is-shield">${effect.shieldRemaining}</span>`
+            : `<span class="hud-effect-s">${seconds}s</span>`;
         return `<div class="hud-effect${effect.harmful ? ' is-harmful' : ''}" title="${escapeHtml(effect.effectId)}">
           ${glyph}${stacks ? `<span class="hud-effect-stacks">${stacks}</span>` : ''}
-          <span class="hud-effect-s">${seconds}s</span>
+          ${meter}
         </div>`;
       })
       .join('');
@@ -559,13 +605,71 @@ export class Hud {
     this.updateSlots(stats.slots, resource.comboPoints);
     if (this.dodgeTile) this.dodgeTile.dataset.state = stats.dodgeReady ? 'ready' : 'poor';
 
-    // Cast bar (above the hotbar; P5 kits are instants so usually hidden).
-    if (stats.cast) {
+    // Cast/channel bar above the hotbar (P6): casts fill toward release,
+    // channels drain toward their end with a pip per fired bolt. A stun's
+    // Interrupted flash briefly outlives the (already-cleared) cast.
+    const interrupted = now < this.interruptedUntilMs;
+    if (stats.cast && !interrupted) {
       this.castEl.hidden = false;
-      this.castFill.style.width = `${(stats.cast.fraction * 100).toFixed(1)}%`;
+      this.castEl.dataset.kind = stats.cast.kind;
+      this.castEl.classList.remove('is-interrupted');
+      const fillFraction =
+        stats.cast.kind === 'channel' ? 1 - stats.cast.fraction : stats.cast.fraction;
+      this.castFill.style.width = `${(fillFraction * 100).toFixed(1)}%`;
       this.castName.textContent = stats.cast.name;
+      if (stats.cast.ticks !== this.castTicksCount) {
+        this.castTicksCount = stats.cast.ticks;
+        this.castTicksEl.innerHTML = Array.from(
+          { length: Math.max(0, stats.cast.ticks - 1) },
+          (_, i) =>
+            `<span class="hud-cast-tick" style="left:${(((i + 1) / stats.cast!.ticks) * 100).toFixed(1)}%"></span>`,
+        ).join('');
+      }
+      const pips = this.castTicksEl.children;
+      for (let i = 0; i < pips.length; i++) {
+        (pips[i] as HTMLElement).dataset.done = i < stats.cast.ticksDone ? 'true' : 'false';
+      }
+    } else if (interrupted) {
+      this.castEl.hidden = false;
+      this.castEl.classList.add('is-interrupted');
+      this.castFill.style.width = '100%';
+      this.castName.textContent = 'INTERRUPTED';
     } else {
       this.castEl.hidden = true;
+      this.castEl.classList.remove('is-interrupted');
+      if (this.castTicksCount !== 0) {
+        this.castTicksCount = 0;
+        this.castTicksEl.innerHTML = '';
+      }
+    }
+
+    // Hard-CC ribbon (P6): the one moment input deadness must explain itself.
+    const cc = stats.ccState;
+    this.ccEl.hidden = cc === null;
+    if (cc !== null) {
+      const label = cc === 'stunned' ? 'STUNNED' : 'ROOTED';
+      if (this.ccEl.textContent !== label) this.ccEl.textContent = label;
+      this.ccEl.dataset.cc = cc;
+    }
+
+    // Focus stance: the reticle tightens while the mage slow-strafes (P6).
+    this.reticleEl.dataset.focus = stats.focusHeld ? 'true' : 'false';
+
+    // Attunement pips (mage): every third landed bolt refunds mana (P6).
+    const attunement = stats.attunement ?? -1;
+    if (attunement !== this.attunementShown) {
+      this.attunementShown = attunement;
+      this.attuneEl.hidden = attunement < 0;
+      if (attunement >= 0 && this.attuneEl.childElementCount === 0) {
+        this.attuneEl.innerHTML = Array.from(
+          { length: 2 },
+          () => `<span class="hud-attune-pip"></span>`,
+        ).join('');
+      }
+      const pips = this.attuneEl.children;
+      for (let i = 0; i < pips.length; i++) {
+        (pips[i] as HTMLElement).dataset.lit = i < attunement ? 'true' : 'false';
+      }
     }
 
     // Buff/debuff rows.
@@ -580,6 +684,7 @@ export class Hud {
 
     if (stats.target) {
       this.targetEl.hidden = false;
+      this.targetEl.dataset.friendly = stats.targetFriendly ? 'true' : 'false';
       this.targetNameEl.textContent = `${stats.target.name} · ${stats.target.level}`;
       this.targetHpFill.style.width = `${(stats.target.hpFraction * 100).toFixed(1)}%`;
       this.renderEffects(this.targetEffectsEl, stats.targetEffects, 'targetEffectsKey');

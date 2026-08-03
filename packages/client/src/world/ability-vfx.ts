@@ -10,6 +10,7 @@
  */
 
 import * as THREE from 'three';
+import type { AbilityDef } from '@dawned/shared';
 import { coneGeometry } from './telegraphs.js';
 
 const MAX_PARTICLES = 512;
@@ -338,8 +339,41 @@ export class AbilityVfxManager {
   }
 }
 
-/** School/class palette for ability VFX (physical ember vs magic arcane). */
-export const abilityVfxColor = (classId: string, school: 'physical' | 'magic'): number => {
-  if (school === 'magic') return 0x7ea8ff;
-  return classId === 'rogue' ? 0xb9f06a : 0xffc76a;
+/** The P6 school palettes — fire/frost/arcane/holy + the P5 class accents. */
+export const VFX_PALETTE = {
+  fire: 0xff8a4d,
+  frost: 0x8fd8ff,
+  arcane: 0xb08aff,
+  holy: 0xffdf8a,
+  magic: 0x7ea8ff,
+  rogue: 0xb9f06a,
+  ember: 0xffc76a,
+} as const;
+
+/**
+ * Ability VFX color, derived from the def's CONTENT, never its id (panel-made
+ * abilities inherit sensible colors for free): burn riders paint fire,
+ * chill/root frost, everything Cleric holy gold, remaining Mage magic arcane;
+ * physical keeps the P5 class accents.
+ */
+export const abilityVfxColor = (def: AbilityDef): number => {
+  if (def.classId === 'cleric') return VFX_PALETTE.holy;
+  let frost = false;
+  for (const effect of def.effects) {
+    if (effect.kind === 'root') frost = true;
+    if (effect.kind === 'apply_effect' || effect.kind === 'refresh') {
+      if (effect.category === 'burn') return VFX_PALETTE.fire;
+      if (effect.category === 'chill' || effect.category === 'root') frost = true;
+    }
+    if (effect.kind === 'damage' && effect.bonusVs?.categories.includes('chill')) frost = true;
+  }
+  if (frost) return VFX_PALETTE.frost;
+  // No damage effect on a mage def (Blink, Mana Shield) still reads arcane.
+  const school =
+    def.effects.find((e) => e.kind === 'damage')?.school ??
+    (def.classId === 'mage' ? 'magic' : 'physical');
+  if (school === 'magic') {
+    return def.classId === 'mage' ? VFX_PALETTE.arcane : VFX_PALETTE.magic;
+  }
+  return def.classId === 'rogue' ? VFX_PALETTE.rogue : VFX_PALETTE.ember;
 };

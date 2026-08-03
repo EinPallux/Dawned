@@ -15,12 +15,12 @@ interface ActiveTelegraph {
 }
 
 /** Diagonal-hatch texture so shape reads without color vision. */
-const makeHatchTexture = (): THREE.CanvasTexture => {
+const makeHatchTexture = (fill: string): THREE.CanvasTexture => {
   const canvas = document.createElement('canvas');
   canvas.width = 64;
   canvas.height = 64;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = 'rgba(220, 60, 40, 0.35)';
+  ctx.fillStyle = fill;
   ctx.fillRect(0, 0, 64, 64);
   ctx.strokeStyle = 'rgba(255, 235, 220, 0.5)';
   ctx.lineWidth = 5;
@@ -65,14 +65,16 @@ export const rectGeometry = (length: number, width: number): THREE.BufferGeometr
 
 export class TelegraphManager {
   private readonly active: ActiveTelegraph[] = [];
-  private readonly hatch = makeHatchTexture();
+  private readonly hatch = makeHatchTexture('rgba(220, 60, 40, 0.35)');
+  /** Player-cast decals (P6 Meteor/Sanctuary) — gold, never enemy-red. */
+  private readonly hatchFriendly = makeHatchTexture('rgba(201, 163, 78, 0.32)');
 
   constructor(
     private readonly scene: THREE.Scene,
     private readonly terrain: TerrainSampler,
   ) {}
 
-  show(message: TelegraphMessage): void {
+  show(message: TelegraphMessage, friendly = false): void {
     const geometry =
       message.shape === (TelegraphShape.Circle as number)
         ? circleGeometry(message.size)
@@ -85,7 +87,7 @@ export class TelegraphManager {
     const border = new THREE.Mesh(
       geometry,
       new THREE.MeshBasicMaterial({
-        color: '#e0402a',
+        color: friendly ? '#c9a34e' : '#e0402a',
         transparent: true,
         opacity: 0.28,
         depthWrite: false,
@@ -96,7 +98,7 @@ export class TelegraphManager {
     const fill = new THREE.Mesh(
       geometry.clone(),
       new THREE.MeshBasicMaterial({
-        map: this.hatch,
+        map: friendly ? this.hatchFriendly : this.hatch,
         transparent: true,
         depthWrite: false,
         side: THREE.DoubleSide,

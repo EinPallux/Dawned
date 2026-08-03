@@ -190,6 +190,14 @@ export const runWorld = (
           const def = connection.abilityDefFor(classId, slot);
           const view = remoteViews.get(message.entityId);
           if (def && view) {
+            if (def.castMs > 0 || def.channel !== null) {
+              // Their bar is running: gather loop for its duration; the
+              // release shows through the bolt/impact stream, not a swing.
+              view.setCasting(castLoopClip(def), message.durationMs);
+              const p = view.group.position;
+              vfx.burst(p.x, p.y + 1.3, p.z, abilityVfxColor(def), 8, 1.2, 0.4);
+              return;
+            }
             view.playAttack(def.anim.clip, def.anim.clipSeconds, message.durationMs, {
               fullBody: fullBodyAnim(def),
             });
@@ -274,12 +282,28 @@ export const runWorld = (
           case EntityEventKind.Death:
             if (message.entityId === connection.selfId) sfx.play('death');
             break;
+          case EntityEventKind.Interrupted:
+            // A stun broke a cast (P6). The connection already stopped the
+            // local machine; this is the presentation half.
+            if (message.entityId === connection.selfId) {
+              localView.setCasting(null);
+              hud.flashInterrupted();
+              sfx.play('deny', 0.9);
+            } else {
+              remoteViews.get(message.entityId)?.setCasting(null);
+            }
+            break;
           default:
             break;
         }
       },
       onTelegraph: (message) => {
-        telegraphs.show(message);
+        // Player-cast decals (Meteor, Sanctuary) read gold, enemies red.
+        telegraphs.show(
+          message,
+          message.casterId === connection.selfId ||
+            connection.remotes.get(message.casterId)?.kind === EntityKind.Player,
+        );
       },
       onProjectileSpawn: (message) => {
         projectiles.spawn(message);
@@ -385,12 +409,14 @@ export const runWorld = (
 
   /**
    * Abilities whose anim must stay full-body even while moving: the movement
-   * IS the ability (dash lunge, blink) — an upper-body overlay over a jog
+   * IS the ability (dash lunge, blinks) — an upper-body overlay over a jog
    * would erase their read. Everything else swings on the overlay layer when
    * the caster is moving (character-view.ts playAttack).
    */
   const fullBodyAnim = (def: AbilityDef): boolean =>
-    def.targeting.kind === 'dash' || def.targeting.kind === 'blink_behind';
+    def.targeting.kind === 'dash' ||
+    def.targeting.kind === 'blink_behind' ||
+    def.targeting.kind === 'teleport';
 
   /** Commit-moment VFX for an ability, at any caster (self or remote). */
   const abilityCommitVfx = (
@@ -400,8 +426,7 @@ export const runWorld = (
     z: number,
     yaw: number,
   ): void => {
-    const school = def.effects.find((e) => e.kind === 'damage')?.school ?? 'physical';
-    const color = abilityVfxColor(def.classId, school);
+    const color = abilityVfxColor(def);
     switch (def.targeting.kind) {
       case 'melee_arc':
         vfx.trail(x, y, z, yaw, def.targeting.reach, color);
@@ -417,14 +442,32 @@ export const runWorld = (
         vfx.spray(x, y + 0.5, z, yaw + Math.PI, 0.7, color, 10, 4, 0.35);
         break;
       case 'blink_behind':
+      case 'teleport':
         vfx.burst(x, y + 1.0, z, 0x8a7ce8, 16, 2.2, 0.4);
         break;
+      case 'projectile':
+        // The bolt itself arrives via ProjectileSpawn; a hand flash sells the
+        // release moment (crucial for channel ticks).
+        vfx.flash(x + Math.sin(yaw) * 0.5, y + 1.35, z + Math.cos(yaw) * 0.5, color, 1.1);
+        break;
       default:
-        // Self buffs and the rest: an upward gold sparkle at the caster.
-        vfx.burst(x, y + 1.2, z, 0xf0c46b, 10, 1.6, 0.5);
+        // Self buffs, heals and the rest: an upward sparkle in palette color.
+        vfx.burst(x, y + 1.2, z, color, 10, 1.6, 0.5);
         break;
     }
   };
+
+  /**
+   * The casting-loop clip for a def (P6 rule, client-side by design): casts
+   * gather in the one-hand pose, channels stream in the two-hand pose. The
+   * release clip stays def.anim (played when the machine releases).
+   */
+  const castLoopClip = (def: AbilityDef): string =>
+    def.channel !== null
+      ? 'Spell_Double_Shoot_Loop'
+      : def.anim.clip.startsWith('Spell_Double')
+        ? 'Spell_Double_Idle_Loop'
+        : 'Spell_Simple_Idle_Loop';
 
   /** Refusal reason → player words (the red seam alone went unseen, round 7). */
   const refusalText = (reason: number, def: AbilityDef | null): string | null => {
@@ -449,18 +492,114 @@ export const runWorld = (
   };
 
   /**
-   * One hotbar press: predicted evaluate → commit through the shared machine
-   * (connection), then the §9 presentation — anim, sfx slot, commit VFX. A
-   * local refusal answers in words + red seam immediately (no round trip).
+   * Q19 ground quick-cast: the terrain point under the crosshair, clamped
+   * onto the cast-range circle. Marches the camera ray to its heightfield
+   * crossing (bisected clean); aiming at sky falls back to max range along
+   * the aim yaw — the press always casts, never dead-hands.
    */
-  const performSlotPress = (slot: number): void => {
-    const target = softTarget();
+  const groundAimFor = (maxRange: number): { x: number; z: number } => {
+    const self = connection.renderPosition();
+    const origin = scene.camera.position;
+    const dir = new THREE.Vector3();
+    scene.camera.getWorldDirection(dir);
+    let point: { x: number; z: number } | null = null;
+    let prevT = 0;
+    let prevAbove = origin.y - terrain.sampler.heightAt(origin.x, origin.z);
+    for (let t = 1; t <= 90 && point === null; t += 1) {
+      const px = origin.x + dir.x * t;
+      const pz = origin.z + dir.z * t;
+      const above = origin.y + dir.y * t - terrain.sampler.heightAt(px, pz);
+      if (above <= 0 && prevAbove > 0) {
+        // Bisect the crossing between prevT and t for a stable point.
+        let lo = prevT;
+        let hi = t;
+        for (let i = 0; i < 5; i++) {
+          const mid = (lo + hi) / 2;
+          const mx = origin.x + dir.x * mid;
+          const mz = origin.z + dir.z * mid;
+          if (origin.y + dir.y * mid - terrain.sampler.heightAt(mx, mz) > 0) lo = mid;
+          else hi = mid;
+        }
+        point = { x: origin.x + dir.x * hi, z: origin.z + dir.z * hi };
+      }
+      prevT = t;
+      prevAbove = above;
+    }
+    if (!point) {
+      point = {
+        x: self.x + Math.sin(input.yaw) * maxRange,
+        z: self.z + Math.cos(input.yaw) * maxRange,
+      };
+    }
+    const dx = point.x - self.x;
+    const dz = point.z - self.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > maxRange) {
+      point = {
+        x: self.x + (dx / dist) * maxRange,
+        z: self.z + (dz / dist) * maxRange,
+      };
+    }
+    return point;
+  };
+
+  /**
+   * Q20 ally soft-target: the best living PLAYER near the reticle line, for
+   * heal/shield casts. The id is a hint — the server re-picks by its own
+   * rules (targeted → most injured in range → self), so a stale aim can
+   * never misfire a heal.
+   */
+  const allyTarget = (range: number): { id: number; hpFraction: number } | null => {
+    const self = connection.renderPosition();
+    let best: { id: number; hpFraction: number } | null = null;
+    let bestScore = Infinity;
+    for (const remote of connection.remotes.values()) {
+      if (remote.kind !== EntityKind.Player) continue;
+      if ((remote.render.flags & EntityFlag.Dead) !== 0) continue;
+      const dx = remote.render.x - self.x;
+      const dz = remote.render.z - self.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > range) continue;
+      const off = Math.abs(angleDelta(input.yaw, Math.atan2(dx, dz)));
+      if (off > 0.4) continue;
+      const score = off * 8 + dist * 0.1;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { id: remote.id, hpFraction: remote.render.hpFraction };
+      }
+    }
+    return best;
+  };
+
+  /**
+   * One hotbar press: predicted evaluate → commit through the shared machine
+   * (connection), then the §9 presentation — instants swing now, casts and
+   * channels raise the gather loop and release via machine events. A local
+   * refusal answers in words + red seam immediately (no round trip).
+   */
+  const performSlotPress = (slot: number, groundOverride?: { x: number; z: number }): void => {
+    const def = connection.slotView(slot).def;
     const before = connection.renderPosition();
+    // Targeting inputs by kind: heals sweep allies, ground casts need their
+    // point, everything else aims at the enemy soft-target.
+    let target: { id: number; radius: number } | null = null;
+    if (def?.targeting.kind === 'ally_soft') {
+      const ally = allyTarget(def.targeting.range);
+      if (ally) target = { id: ally.id, radius: 0.5 };
+    } else {
+      const enemy = softTarget();
+      if (enemy) target = { id: enemy.id, radius: enemy.radius };
+    }
+    const ground =
+      def?.targeting.kind === 'ground_aoe'
+        ? (groundOverride ?? groundAimFor(def.targeting.maxRange))
+        : null;
     const result = connection.requestSlotAbility(
       slot,
       input.yaw,
       -input.pitch * 0.35,
-      target ? { id: target.id, radius: target.radius } : null,
+      target,
+      ground,
     );
     if (!result.ok) {
       if (result.reason !== null) {
@@ -471,16 +610,37 @@ export const runWorld = (
       }
       return;
     }
-    const def = result.def;
-    localView.playAttack(def.anim.clip, def.anim.clipSeconds, def.anim.durationMs, {
-      fullBody: fullBodyAnim(def),
+
+    if (result.phase !== 'instant') {
+      // Cast/channel: the gather loop runs while the bar does; the release
+      // anim/VFX fire from the machine-event drain when it completes.
+      localView.setCasting(castLoopClip(result.def));
+      vfx.burst(before.x, before.y + 1.3, before.z, abilityVfxColor(result.def), 8, 1.2, 0.4);
+      sfx.play('whoosh', 0.5);
+      return;
+    }
+
+    const def2 = result.def;
+    localView.playAttack(def2.anim.clip, def2.anim.clipSeconds, def2.anim.durationMs, {
+      fullBody: fullBodyAnim(def2),
     });
-    sfx.play(sfxSlotOf(def.sfx));
-    abilityCommitVfx(def, before.x, before.y, before.z, input.yaw);
+    sfx.play(sfxSlotOf(def2.sfx));
+    abilityCommitVfx(def2, before.x, before.y, before.z, input.yaw);
     // Big self-centered moments shake the camera at commit (§9).
-    if (def.targeting.kind === 'pbaoe') scene.addShake(0.8);
-    // Shadowstep lands elsewhere — flash out, flash in.
-    if (def.targeting.kind === 'blink_behind') {
+    if (def2.targeting.kind === 'pbaoe') scene.addShake(0.8);
+    // Ground casts acknowledge the point instantly — the server's telegraph
+    // (with the true impact clock) draws the real decal an RTT later.
+    if (ground) {
+      vfx.ring(
+        ground.x,
+        terrain.sampler.heightAt(ground.x, ground.z),
+        ground.z,
+        def2.targeting.kind === 'ground_aoe' ? def2.targeting.radius : 2,
+        abilityVfxColor(def2),
+      );
+    }
+    // Blinks land elsewhere — flash out, flash in.
+    if (def2.targeting.kind === 'blink_behind' || def2.targeting.kind === 'teleport') {
       vfx.flash(before.x, before.y + 1.0, before.z, 0x8a7ce8, 1.8);
       const after = connection.renderPosition();
       vfx.flash(after.x, after.y + 1.0, after.z, 0x8a7ce8, 1.8);
@@ -534,6 +694,14 @@ export const runWorld = (
     pressSlot: (slot: number): void => {
       performSlotPress(slot);
     },
+    /** Ground quick-cast with an explicit point (headless cameras can't aim). */
+    pressSlotGround: (slot: number, x: number, z: number): void => {
+      performSlotPress(slot, { x, z });
+    },
+    /** Cast/channel bar truth (P6 smoke asserts). */
+    castState: (): ReturnType<Connection['castView']> => connection.castView(),
+    /** Attunement pip mirror (P6 smoke asserts). */
+    attunement: (): number => connection.attunementCount,
     /** Ability layer truth for the P5 smoke asserts. */
     abilityState: (): {
       defsLoaded: number;
@@ -679,12 +847,53 @@ export const runWorld = (
     // 2. Per-frame networking housekeeping (corrections, interpolation).
     connection.update(deltaMs);
 
+    // 2b. Machine happenings (P6): cast releases swing + fire NOW, channel
+    // ticks flash the hand, cancels drop the gather loop with the reason.
+    for (const event of connection.takeMachineEvents()) {
+      const pos = connection.renderPosition();
+      switch (event.kind) {
+        case 'released':
+          localView.setCasting(null);
+          if (event.def) {
+            localView.playAttack(
+              event.def.anim.clip,
+              event.def.anim.clipSeconds,
+              event.def.anim.durationMs,
+            );
+            sfx.play(sfxSlotOf(event.def.sfx));
+            abilityCommitVfx(event.def, pos.x, pos.y, pos.z, input.yaw);
+          }
+          break;
+        case 'channel-tick':
+          if (event.def) abilityCommitVfx(event.def, pos.x, pos.y, pos.z, input.yaw);
+          sfx.play('bolt', 0.5);
+          break;
+        case 'channel-ended':
+          localView.setCasting(null);
+          break;
+        case 'move-canceled':
+          localView.setCasting(null);
+          hud.showRefusal('Interrupted — you moved');
+          sfx.play('deny', 0.6);
+          break;
+      }
+    }
+
     // 3. Draw. The local player renders extrapolated by the accumulator's
     // sub-tick remainder (smooth at any fps over the 20 Hz sim) and faces the
-    // LIVE mouse yaw — tick-quantized facing reads as input lag.
+    // LIVE mouse yaw — tick-quantized facing reads as input lag. Stunned
+    // freezes the rig's facing at the shared step's frozen yaw (server rule);
+    // the camera itself stays free.
     const dtSeconds = deltaMs / 1000;
     const position = connection.renderPosition(simulationReady ? accumulatorMs : 0);
-    localView.setPose(position.x, position.y, position.z, input.yaw);
+    const selfStunned = (connection.selfFlags & EntityFlag.Stunned) !== 0;
+    const selfRooted = selfStunned || (connection.selfFlags & EntityFlag.Rooted) !== 0;
+    localView.setPose(
+      position.x,
+      position.y,
+      position.z,
+      selfStunned ? connection.predicted.yaw : input.yaw,
+    );
     localView.setDead(connection.selfDead);
     // Death beat (COMBAT.md §10): let the Death clip play under a slow camera
     // orbit before the soul screen takes over — an instant overlay was "there
@@ -704,6 +913,10 @@ export const runWorld = (
       input.secondaryHeld &&
         !connection.selfDead &&
         (connection.classId === 'warrior' || connection.classId === 'cleric'),
+    );
+    // Absorb shields shimmer on whoever holds one (chip carries the number).
+    localView.setShielded(
+      connection.effectsFor(connection.selfId).some((effect) => (effect.shieldRemaining ?? 0) > 0),
     );
     localView.update(localDt, {
       grounded: connection.predicted.grounded,
@@ -735,6 +948,29 @@ export const runWorld = (
     scene.render();
 
     const target = softTarget();
+    // No enemy under the reticle: healers see the ally their heal would take
+    // instead (green plate). The sweep range is the longest ally cast on the
+    // own bar, so non-healers never grow an ally plate.
+    let allyPlate: { name: string; level: number; hpFraction: number } | null = null;
+    let allyPlateId = 0;
+    if (!target) {
+      let allyRange = 0;
+      for (const def of connection.slotDefs.values()) {
+        if (def.targeting.kind === 'ally_soft') {
+          allyRange = Math.max(allyRange, def.targeting.range);
+        }
+      }
+      const ally = allyRange > 0 ? allyTarget(allyRange) : null;
+      if (ally) {
+        const entry = connection.rosterEntryFor(ally.id);
+        allyPlate = {
+          name: entry?.name ?? connection.remotes.get(ally.id)?.name ?? '',
+          level: entry?.level ?? 1,
+          hpFraction: ally.hpFraction,
+        };
+        allyPlateId = ally.id;
+      }
+    }
     const cast = connection.castView();
     hud.update({
       fps,
@@ -756,7 +992,8 @@ export const runWorld = (
       hp: connection.selfHp,
       maxHp: connection.selfMaxHp || playerStats(connection.classId, 1).maxHp,
       dawnedRemainingMs: Math.max(0, connection.dawnedUntilMs - now),
-      target,
+      target: target ?? allyPlate,
+      targetFriendly: allyPlate !== null,
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
       swimming: connection.predicted.swimming,
@@ -769,11 +1006,18 @@ export const runWorld = (
         showComboPoints: connection.classId === 'rogue',
       },
       slots: HOTBAR_SLOTS.map((slot) => connection.slotView(slot)),
-      cast: cast ? { name: cast.name, fraction: cast.fraction } : null,
+      cast,
       selfEffects: connection.effectsFor(connection.selfId),
-      targetEffects: target ? connection.effectsFor(target.id) : [],
+      targetEffects: target
+        ? connection.effectsFor(target.id)
+        : allyPlateId > 0
+          ? connection.effectsFor(allyPlateId)
+          : [],
       dodgeReady: connection.dodgeReady(input.secondaryHeld),
       stanceHeld: input.secondaryHeld && !connection.selfDead,
+      focusHeld: input.secondaryHeld && !connection.selfDead && connection.classId === 'mage',
+      ccState: selfStunned ? 'stunned' : selfRooted ? 'rooted' : null,
+      attunement: connection.classId === 'mage' ? connection.attunementCount : null,
     });
   };
 
@@ -816,6 +1060,9 @@ export const runWorld = (
       view.setPose(remote.render.x, remote.render.y, remote.render.z, remote.render.yaw);
       view.setDead((remote.render.flags & EntityFlag.Dead) !== 0);
       view.setBlocking((remote.render.flags & EntityFlag.Blocking) !== 0);
+      view.setShielded(
+        connection.effectsFor(id).some((effect) => (effect.shieldRemaining ?? 0) > 0),
+      );
       view.update(dtSeconds, {
         grounded: (remote.render.flags & EntityFlag.Grounded) !== 0,
         sprinting: (remote.render.flags & EntityFlag.Sprinting) !== 0,
