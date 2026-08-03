@@ -421,3 +421,43 @@ describe('stepMovement — dodge roll (COMBAT.md §7)', () => {
     expect(state.rollTimeLeft).toBe(0);
   });
 });
+
+describe('movement modifiers (P5 stances/effects)', () => {
+  it('speedMult scales ground speed on both sides of 1', () => {
+    const slow = createMovementState();
+    const fast = createMovementState();
+    const plain = createMovementState();
+    for (let i = 0; i < 40; i++) {
+      stepMovement(slow, forward, TICK_DT, ground, { speedMult: 0.6 });
+      stepMovement(fast, forward, TICK_DT, ground, { speedMult: 1.1 });
+      stepMovement(plain, forward, TICK_DT, ground);
+    }
+    expect(slow.z).toBeLessThan(plain.z * 0.7);
+    expect(fast.z).toBeGreaterThan(plain.z * 1.05);
+  });
+
+  it('dodgeCostDelta discounts the roll and gates on the discounted price', () => {
+    const dodge: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: InputButton.Dodge };
+    // 20 stamina: a plain roll (25) is unaffordable, Evasive (-10 → 15) rolls.
+    const plain = createMovementState();
+    plain.stamina = 20;
+    stepMovement(plain, dodge, TICK_DT, ground);
+    expect(plain.rollTimeLeft).toBe(0);
+
+    const evasive = createMovementState();
+    evasive.stamina = 20;
+    stepMovement(evasive, dodge, TICK_DT, ground, { dodgeCostDelta: -10 });
+    expect(evasive.rollTimeLeft).toBeGreaterThan(0);
+    expect(evasive.stamina).toBe(5);
+  });
+
+  it('modifiers leave the neutral path bit-identical (anti-desync)', () => {
+    const withMods = createMovementState();
+    const without = createMovementState();
+    for (let i = 0; i < 60; i++) {
+      stepMovement(withMods, forwardSprint, TICK_DT, ground, { speedMult: 1, dodgeCostDelta: 0 });
+      stepMovement(without, forwardSprint, TICK_DT, ground);
+    }
+    expect(withMods).toEqual(without);
+  });
+});

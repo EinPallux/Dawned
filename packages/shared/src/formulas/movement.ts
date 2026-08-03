@@ -173,11 +173,24 @@ export const cloneMovementState = (src: Readonly<MovementState>): MovementState 
  *
  * Step order is part of the contract — client and server must not diverge here.
  */
+/**
+ * External movement modifiers (P5): stance/effect-driven, computed by EACH
+ * side from state it already knows (class + held RMB + synced effects), so
+ * prediction and authority keep agreeing. Absent = neutral.
+ */
+export interface MovementModifiers {
+  /** Multiplies ground/swim target speed (slows <1, Evasive/Smoke Veil >1). */
+  speedMult?: number;
+  /** Added to the dodge stamina cost (Evasive Stance −10). Never below 0. */
+  dodgeCostDelta?: number;
+}
+
 export function stepMovement(
   state: MovementState,
   intent: Readonly<MovementIntent>,
   dt: number,
   terrain: TerrainSampler,
+  modifiers?: Readonly<MovementModifiers>,
 ): MovementStepResult {
   const result: MovementStepResult = {
     fallDamageFraction: 0,
@@ -206,17 +219,18 @@ export function stepMovement(
   // from roll START so spam can never queue back-to-back rolls.
   state.rollCooldownMs = Math.max(0, state.rollCooldownMs - dt * 1000);
   const rollingBefore = state.rollTimeLeft > 0;
+  const dodgeCost = Math.max(0, DODGE_STAMINA_COST + (modifiers?.dodgeCostDelta ?? 0));
   if (
     !rollingBefore &&
     state.grounded &&
     !state.swimming &&
     (intent.buttons & InputButton.Dodge) !== 0 &&
     state.rollCooldownMs <= 0 &&
-    state.stamina >= DODGE_STAMINA_COST
+    state.stamina >= dodgeCost
   ) {
     state.rollTimeLeft = DODGE_DURATION_S;
     state.rollCooldownMs = DODGE_COOLDOWN_MS;
-    state.stamina -= DODGE_STAMINA_COST;
+    state.stamina -= dodgeCost;
     state.staminaIdleMs = 0;
     if (wantsMove) {
       state.rollDirX = dirX;
@@ -251,7 +265,10 @@ export function stepMovement(
     state.vz = state.rollDirZ * rollSpeed;
   } else {
     const speed =
-      MOVE_SPEED * (state.swimming ? SWIM_SPEED_FACTOR : 1) * (sprinting ? SPRINT_MULTIPLIER : 1);
+      MOVE_SPEED *
+      (state.swimming ? SWIM_SPEED_FACTOR : 1) *
+      (sprinting ? SPRINT_MULTIPLIER : 1) *
+      clamp(modifiers?.speedMult ?? 1, 0.1, 2);
     const targetVx = dirX * speed;
     const targetVz = dirZ * speed;
     const baseRate = wantsMove ? MOVE_ACCEL : MOVE_DECEL;
