@@ -5,6 +5,19 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — production playtest round 5 (2026-08-03)
+
+- **Left/right locomotion clips are no longer mirrored** (A played the D
+  strafe; camera-turn leans banked the wrong way). Round 3 had swapped the
+  L/R clip assignment on the theory that the UAL pack names sides from the
+  viewer's perspective — an inference that could only be settled by watching
+  the rendered rig, and the owner's eyes now have: the names are
+  **character-perspective**, so the mapping is back to identity (left motion →
+  "L"-named clips, left turn → LeanL). The browser smoke now pins exact clip
+  names on both sides (W+A → `Jog_Fwd_L_Loop`, W+D → `Jog_Fwd_R_Loop`,
+  S+D → `Jog_Bwd_R_Loop`, left-turn lean → `Jog_Fwd_LeanL_Loop`) so the
+  assignment can never silently flip again.
+
 ### Fixed — production playtest round 4 (2026-08-03)
 
 - **Animations no longer switch around while walking with the action camera.**

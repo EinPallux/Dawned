@@ -165,8 +165,9 @@ at that load, prediction-mismatch test suite green.
       (blob: in connect-src — the untextured-white-world bug), map re-versioned dev-2 (stale
       cached walkgrid vs new server = shoreline rubber-banding), downhill ground snap in the
       shared step (grounded-state flicker + animation spam on every slope — protocol v5),
-      viewer-named L/R locomotion clips mapped correctly, deploy scripts bootstrap the admin
-      panel and consume shared from the sibling checkout (no tokens).
+      an L/R clip-naming theory applied (viewer-perspective — later disproved on screen,
+      round 5), deploy scripts bootstrap the admin panel and consume shared from the sibling
+      checkout (no tokens).
 - [x] **Playtest fix round 4** (2026-08-03, "animations switch around when walking"): the
       velocity→model-space transform double-negated yaw, reading headings as 2·yaw — every
       camera turn cycled the 8-way clips twice per revolution (invisible at yaw 0/π, which is
@@ -177,6 +178,11 @@ at that load, prediction-mismatch test suite green.
       against the old code). Also fixed alongside: the `/admin` panel's blank page (Caddy
       `handle` kept the prefix the panel expects stripped — now `handle_path`, pinned by
       `packages/server/src/deploy-contract.test.ts` together with the CSP/caching contracts).
+- [x] **Playtest fix round 5** (2026-08-03, owner-verified rounds 1–4 otherwise good): L/R
+      clips were mirrored — the round-3 viewer-perspective naming theory was wrong; the UAL
+      names are character-perspective (settled by the owner watching the rig). Mapping back
+      to identity, leans flipped to match, and the browser smoke now pins exact L/R clip
+      names for strafes, the S+D diagonal and the left-turn lean.
 - [ ] **Owner signoff on real hardware:** group sprint-jump session at `/netsim 100 20` —
       LAN-like feel, no rubber-banding on slopes, bubbles/reconnect behave. Then P3 closes.
 

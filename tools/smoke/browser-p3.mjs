@@ -275,6 +275,7 @@ const run = async (browser, token, character) => {
 
   // Hold the diagonal and wait for the jog to engage — right after the recall
   // the spawn chunks may still be streaming in, and movement (correctly) waits.
+  // Exact clip name: S+D is backward-RIGHT and must play the "R"-named clip.
   await page.keyboard.down('s');
   await page.keyboard.down('d');
   let diagonal = { local: '' };
@@ -287,13 +288,43 @@ const run = async (browser, token, character) => {
     await page.keyboard.up('s');
     await page.keyboard.up('d');
   }
-  if (!diagonal.local.startsWith('Jog_Bwd_')) {
-    fail(`backward-diagonal input plays "${diagonal.local}" (want a Jog_Bwd_* clip)`);
+  if (diagonal.local !== 'Jog_Bwd_R_Loop') {
+    fail(`S+D (backward-right) plays "${diagonal.local}" (want Jog_Bwd_R_Loop)`);
   }
   ok(`8-way locomotion picks diagonal clips (${diagonal.local})`);
+  await sleep(300);
+
+  // --- L/R mapping, pinned to the owner's on-screen verification (round 5):
+  // the UAL clip names are CHARACTER-perspective — A-side motion plays the
+  // "L"-named clips, D-side the "R"-named. A silent re-swap mirrors every
+  // strafe and lean (A visibly played the D animation); exact names guard it.
+  for (const [key, expected] of [
+    ['a', 'Jog_Fwd_L_Loop'],
+    ['d', 'Jog_Fwd_R_Loop'],
+  ]) {
+    await page.keyboard.down('w');
+    await page.keyboard.down(key);
+    let clip = '';
+    try {
+      await page.waitForFunction((want) => window.__dawned.animState().local === want, expected, {
+        timeout: 25000,
+      });
+      clip = expected;
+    } catch {
+      clip = (await anim(page)).local;
+    } finally {
+      await page.keyboard.up(key);
+      await page.keyboard.up('w');
+    }
+    if (clip !== expected) fail(`W+${key.toUpperCase()} plays "${clip}" (want ${expected})`);
+    await sleep(300);
+  }
+  ok('strafe sides play character-perspective clips (W+A → _L_, W+D → _R_)');
 
   // --- Sprint lean: sustained turning at sprint speed banks into the turn.
-  // Yaw is driven directly (public field) — pointer lock is unreliable headless.
+  // Yaw is driven directly (public field) — pointer lock is unreliable
+  // headless. Rising yaw = turning character-LEFT, so the bank must be the
+  // exact "L" lean (character-perspective names, same round-5 pin as above).
   await page.keyboard.down('Shift');
   await page.keyboard.down('w');
   await page.evaluate(() => {
@@ -312,10 +343,10 @@ const run = async (browser, token, character) => {
     await page.keyboard.up('w');
     await page.keyboard.up('Shift');
   }
-  if (!lean.local.startsWith('Jog_Fwd_Lean')) {
-    fail(`sprint turn never leaned (stuck on "${lean.local}")`);
+  if (lean.local !== 'Jog_Fwd_LeanL_Loop') {
+    fail(`left-turn sprint banks with "${lean.local}" (want Jog_Fwd_LeanL_Loop)`);
   }
-  ok(`sprint turns bank into the lean clips (${lean.local})`);
+  ok(`sprint turns bank into the matching lean (${lean.local})`);
   await sleep(400);
 
   // --- Action-camera stability: spinning the camera while holding W must
