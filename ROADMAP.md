@@ -161,6 +161,12 @@ at that load, prediction-mismatch test suite green.
       tick-stepped drawing), live-yaw model facing, gait retune to the clips' natural speeds
       (run = sprint cycle ~1.06×, walk band, jog for strafes — kills the skating), foot-phase
       carry across gait changes, sticky 8-way sectors, sprint FOV push.
+- [x] **Playtest fix rounds 2–3** (2026-08-03): production CSP unblocked for GLB textures
+      (blob: in connect-src — the untextured-white-world bug), map re-versioned dev-2 (stale
+      cached walkgrid vs new server = shoreline rubber-banding), downhill ground snap in the
+      shared step (grounded-state flicker + animation spam on every slope — protocol v5),
+      viewer-named L/R locomotion clips mapped correctly, deploy scripts bootstrap the admin
+      panel and consume shared from the sibling checkout (no tokens).
 - [ ] **Owner signoff on real hardware:** group sprint-jump session at `/netsim 100 20` —
       LAN-like feel, no rubber-banding on slopes, bubbles/reconnect behave. Then P3 closes.
 

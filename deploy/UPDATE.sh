@@ -61,19 +61,22 @@ announce() {
   fi
 }
 
-# The admin repo pins @dawned/shared as a GitHub git dependency, which pnpm
-# fetches as a codeload.github.com tarball — a private repo needs the PAT for
-# that fetch. Reuse the token already embedded in the clone's origin remote
-# (FIRST_DEPLOY.md) by writing it into the dawned user's ~/.npmrc before the
-# install. No-op when the remote carries no token (public repos).
-write_npmrc_for_git_deps() {
-  local dir="$1"
-  local token
-  token="$(git -C "$dir" remote get-url origin 2>/dev/null \
-    | sed -n 's|https://[^:/@]*:\([^@]*\)@github.com/.*|\1|p')"
-  if [[ -n "$token" ]]; then
-    sudo -u dawned -H bash -c \
-      "umask 077; printf '//codeload.github.com/:_authToken=%s\n' '$token' > ~/.npmrc"
+# The admin panel consumes @dawned/shared as `file:../Dawned/packages/shared` —
+# the SIBLING game checkout, no network fetch, no tokens. On the VPS the game
+# clone lives at $APP_DIR/game, so a `Dawned` symlink provides the expected
+# sibling name, and the shared package must be BUILT (dist/) before the panel
+# installs — the game update normally guarantees that; this guard covers
+# admin-only runs on a fresh box.
+prepare_admin_shared_link() {
+  ln -sfn "$APP_DIR/game" "$APP_DIR/Dawned"
+  chown -h dawned:dawned "$APP_DIR/Dawned" 2>/dev/null || true
+  if [[ ! -d "$APP_DIR/game/packages/shared/dist" ]]; then
+    log "admin: building @dawned/shared first (game repo)"
+    sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU
+      cd "$APP_DIR/game"
+      pnpm install --frozen-lockfile
+      pnpm --filter @dawned/shared build
+EOSU
   fi
 }
 
@@ -99,7 +102,7 @@ update_repo() {
   local dir="$1" service="$2" label="$3" envfile="$4"
   [[ -d "$dir/.git" ]] || { warn "$label: $dir is not a git clone — skipping"; return 0; }
 
-  [[ "$label" == "admin" ]] && write_npmrc_for_git_deps "$dir"
+  [[ "$label" == "admin" ]] && prepare_admin_shared_link
 
   log "$label: pulling"
   sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU

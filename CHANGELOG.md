@@ -5,6 +5,27 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — production playtest round 3 (2026-08-03)
+
+- **Grounded/airborne flicker while walking (protocol v5)**: on any downhill
+  tick the simulation briefly went "airborne", fell one gravity step and
+  re-landed — the HUD state flapped and walk animations kept restarting into
+  jump/land. The shared step now GLUES a grounded character to the slope for
+  drops up to 0.5 m per tick (covers the steepest walkable grade at sprint);
+  bigger drops and jumps still leave the ground properly. Pinned by new unit
+  tests (100-tick downhill run stays grounded, cliffs still fall) and a
+  browser assert sampling the live state during a sloped run.
+- **Left/right locomotion clips were mirrored**: the animation pack names its
+  strafe/lean clips from the VIEWER's side, not the character's (masked until
+  now by the old inverted A/D input). Character-left motion plays the
+  "R"-named clips throughout — strafes, diagonals and turn-leans now match the
+  actual movement direction.
+- **`/admin` deploys deterministically**: the panel now consumes
+  `@dawned/shared` from the sibling game checkout (`file:` dependency; the
+  deploy scripts provide a `Dawned → game` symlink) instead of a GitHub
+  tarball fetch that private repos can't serve credential-less. No tokens, no
+  network — the previous npmrc bridge is removed.
+
 ### Fixed — production playtest round 2 (2026-08-03)
 
 - **The untextured white world**: the production Content-Security-Policy blocked

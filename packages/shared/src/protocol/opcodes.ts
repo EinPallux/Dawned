@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 4; // v4 (P3): swimming (movement + entity flag)
+export const PROTOCOL_VERSION = 5; // v5 (P3 fix): downhill ground snap in the shared step
 
 /** Client → server opcodes. */
 export const ClientOp = {
