@@ -37,12 +37,32 @@ export interface ActiveCast {
   movingForMs: number;
 }
 
+/**
+ * A running channel (P6, Arcane Barrage): fires a release per tick instead of
+ * one at the end. Aim/target captured at commit like casts; movement rules
+ * come from castWhileMoving exactly the same way.
+ */
+export interface ActiveChannel {
+  abilityId: string;
+  startedAtMs: number;
+  durationMs: number;
+  tickEveryMs: number;
+  /** Machine time the next tick fires. */
+  nextTickAtMs: number;
+  aimYaw: number;
+  aimPitch: number;
+  targetId: number;
+  cancelOnMove: boolean;
+  movingForMs: number;
+}
+
 export interface AbilityMachine {
   /** Machine-local clock (ms). Advanced only by tickAbilityMachine. */
   nowMs: number;
   gcdUntilMs: number;
   slots: Map<string, SlotRuntime>;
   cast: ActiveCast | null;
+  channel: ActiveChannel | null;
 }
 
 export const createAbilityMachine = (): AbilityMachine => ({
@@ -50,6 +70,7 @@ export const createAbilityMachine = (): AbilityMachine => ({
   gcdUntilMs: 0,
   slots: new Map(),
   cast: null,
+  channel: null,
 });
 
 const slotFor = (machine: AbilityMachine, def: AbilityDef): SlotRuntime => {
@@ -71,16 +92,32 @@ export interface CastRelease {
   targetId: number;
 }
 
+export interface AbilityTickResult {
+  /** A finished cast this tick (caller resolves effects/anim release). */
+  released: CastRelease | null;
+  /** Channel ticks that fired this tick, oldest first (one bolt each). */
+  channelTicks: CastRelease[];
+  /** True when the channel completed its full duration this tick. */
+  channelEnded: boolean;
+  moveCanceled: boolean;
+}
+
 /**
- * Advance the clock; refill charges; complete casts. Returns the released
- * cast when its bar filled this tick (caller resolves effects/anim release).
+ * Advance the clock; refill charges; complete casts; fire channel ticks.
+ * Returns everything that released this tick.
  */
 export const tickAbilityMachine = (
   machine: AbilityMachine,
   dtMs: number,
   moving: boolean,
-): { released: CastRelease | null; moveCanceled: boolean } => {
+): AbilityTickResult => {
   machine.nowMs += dtMs;
+  const result: AbilityTickResult = {
+    released: null,
+    channelTicks: [],
+    channelEnded: false,
+    moveCanceled: false,
+  };
 
   for (const [, slot] of machine.slots) {
     if (slot.rechargeAtMs > 0 && machine.nowMs >= slot.rechargeAtMs) {
@@ -89,30 +126,56 @@ export const tickAbilityMachine = (
     }
   }
 
+  const channel = machine.channel;
+  if (channel) {
+    if (channel.cancelOnMove) {
+      channel.movingForMs = moving ? channel.movingForMs + dtMs : 0;
+      if (channel.movingForMs > CAST_MOVE_GRACE_MS) {
+        machine.channel = null;
+        result.moveCanceled = true;
+        return result;
+      }
+    }
+    const endAtMs = channel.startedAtMs + channel.durationMs;
+    // Fire every tick the clock passed this step (a big dt catches up); ticks
+    // never fire past the channel's end.
+    while (channel.nextTickAtMs <= machine.nowMs && channel.nextTickAtMs <= endAtMs) {
+      result.channelTicks.push({
+        abilityId: channel.abilityId,
+        aimYaw: channel.aimYaw,
+        aimPitch: channel.aimPitch,
+        targetId: channel.targetId,
+      });
+      channel.nextTickAtMs += channel.tickEveryMs;
+    }
+    if (machine.nowMs >= endAtMs) {
+      machine.channel = null;
+      result.channelEnded = true;
+    }
+  }
+
   const cast = machine.cast;
-  if (!cast) return { released: null, moveCanceled: false };
+  if (!cast) return result;
 
   if (cast.cancelOnMove) {
     cast.movingForMs = moving ? cast.movingForMs + dtMs : 0;
     if (cast.movingForMs > CAST_MOVE_GRACE_MS) {
       machine.cast = null;
-      return { released: null, moveCanceled: true };
+      result.moveCanceled = true;
+      return result;
     }
   }
 
   if (machine.nowMs - cast.startedAtMs >= cast.castMs) {
     machine.cast = null;
-    return {
-      released: {
-        abilityId: cast.abilityId,
-        aimYaw: cast.aimYaw,
-        aimPitch: cast.aimPitch,
-        targetId: cast.targetId,
-      },
-      moveCanceled: false,
+    result.released = {
+      abilityId: cast.abilityId,
+      aimYaw: cast.aimYaw,
+      aimPitch: cast.aimPitch,
+      targetId: cast.targetId,
     };
   }
-  return { released: null, moveCanceled: false };
+  return result;
 };
 
 export interface UseContext {
@@ -131,7 +194,9 @@ export const evaluateUse = (
 ): { ok: true } | { ok: false; reason: AbilityRejectReason } => {
   if (!ctx.alive) return { ok: false, reason: AbilityRejectReason.Dead };
   if (ctx.level < def.unlockLevel) return { ok: false, reason: AbilityRejectReason.Locked };
-  if (machine.cast !== null) return { ok: false, reason: AbilityRejectReason.AlreadyCasting };
+  if (machine.cast !== null || machine.channel !== null) {
+    return { ok: false, reason: AbilityRejectReason.AlreadyCasting };
+  }
   if (def.onGcd && machine.nowMs < machine.gcdUntilMs) {
     return { ok: false, reason: AbilityRejectReason.OnGcd };
   }
@@ -150,8 +215,9 @@ export const evaluateUse = (
 };
 
 export interface CommitResult {
-  /** 'instant' resolves after the anim contact delay; 'cast' after the bar. */
-  phase: 'instant' | 'cast';
+  /** 'instant' resolves after the anim contact delay; 'cast' after the bar;
+   * 'channel' fires a release per tick until its duration ends. */
+  phase: 'instant' | 'cast' | 'channel';
   /** For instants: ms until the contact point (anim-driven). */
   contactDelayMs: number;
 }
@@ -183,6 +249,22 @@ export const commitUse = (
   }
   if (def.onGcd) machine.gcdUntilMs = machine.nowMs + GCD_MS;
 
+  if (def.channel !== null) {
+    machine.channel = {
+      abilityId: def.id,
+      startedAtMs: machine.nowMs,
+      durationMs: def.channel.durationMs,
+      tickEveryMs: def.channel.tickEveryMs,
+      // First bolt after one full tick interval — the press is the wind-up.
+      nextTickAtMs: machine.nowMs + def.channel.tickEveryMs,
+      aimYaw: aim.yaw,
+      aimPitch: aim.pitch,
+      targetId: aim.targetId,
+      cancelOnMove: def.castWhileMoving === false,
+      movingForMs: 0,
+    };
+    return { phase: 'channel', contactDelayMs: def.channel.tickEveryMs };
+  }
   if (def.castMs > 0) {
     machine.cast = {
       abilityId: def.id,
@@ -203,17 +285,18 @@ export const commitUse = (
 };
 
 /**
- * Cancel the active cast (COMBAT.md §4.5). Dodge cancels refund 50% of the
- * cost; stun/death/move cancels lose it all. Returns the refund in resource
- * units (caller credits it — needs the def for the cost type).
+ * Cancel the active cast OR channel (COMBAT.md §4.5). Dodge cancels refund
+ * 50% of the cost; stun/death/move cancels lose it all. Returns the refund in
+ * resource units (caller credits it — needs the def for the cost type).
  */
 export const interruptCast = (
   machine: AbilityMachine,
   reason: 'dodge' | 'stun' | 'move' | 'death',
   costAmount: number,
 ): { hadCast: boolean; refund: number } => {
-  if (!machine.cast) return { hadCast: false, refund: 0 };
+  if (!machine.cast && !machine.channel) return { hadCast: false, refund: 0 };
   machine.cast = null;
+  machine.channel = null;
   return { hadCast: true, refund: reason === 'dodge' ? Math.floor(costAmount / 2) : 0 };
 };
 

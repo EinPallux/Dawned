@@ -518,3 +518,54 @@ describe('ability dash (P5 Charge)', () => {
     expect(state.dashTimeLeft).toBe(0);
   });
 });
+
+describe('hard CC on players (P6, COMBAT.md §6.4)', () => {
+  it('root pins the feet but leaves turning free; stun freezes facing too', () => {
+    const rooted = simulate(createMovementState(), forward, 20);
+    const speedBefore = Math.hypot(rooted.vx, rooted.vz);
+    expect(speedBefore).toBeGreaterThan(0);
+    for (let i = 0; i < 20; i++) {
+      stepMovement(rooted, { ...forward, yaw: 1.2 }, TICK_DT, ground, { rooted: true });
+    }
+    expect(Math.hypot(rooted.vx, rooted.vz)).toBe(0);
+    expect(rooted.yaw).toBe(1.2); // turning stays free under root
+
+    const stunned = createMovementState();
+    stunned.yaw = 0.4;
+    for (let i = 0; i < 10; i++) {
+      stepMovement(stunned, { ...forward, yaw: 2.0 }, TICK_DT, ground, { controlsLocked: true });
+    }
+    expect(Math.hypot(stunned.vx, stunned.vz)).toBe(0);
+    expect(stunned.yaw).toBe(0.4); // stun freezes facing
+  });
+
+  it('root and stun block dodge and jump but never suppress gravity', () => {
+    const state = createMovementState();
+    const dodgeIntent: MovementIntent = { ...forward, buttons: InputButton.Dodge };
+    stepMovement(state, dodgeIntent, TICK_DT, ground, { rooted: true });
+    expect(state.rollTimeLeft).toBe(0);
+    expect(state.stamina).toBe(BASE_STAMINA);
+
+    const jumper = createMovementState();
+    stepMovement(jumper, { ...idle, buttons: InputButton.Jump }, TICK_DT, ground, {
+      controlsLocked: true,
+    });
+    expect(jumper.grounded).toBe(true); // never left the ground
+
+    // Gravity still applies: a stunned body in the air keeps falling.
+    const falling = createMovementState();
+    falling.y = 5;
+    falling.grounded = false;
+    stepMovement(falling, idle, TICK_DT, ground, { controlsLocked: true });
+    expect(falling.y).toBeLessThan(5);
+  });
+
+  it('an in-flight roll finishes even if a root lands mid-roll', () => {
+    const state = createMovementState();
+    stepMovement(state, { ...forward, buttons: InputButton.Dodge }, TICK_DT, ground);
+    expect(state.rollTimeLeft).toBeGreaterThan(0);
+    stepMovement(state, idle, TICK_DT, ground, { rooted: true });
+    // The roll still owns the velocity — CC never teleports/halts a committed roll.
+    expect(Math.hypot(state.vx, state.vz)).toBeCloseTo(DODGE_DISTANCE_M / DODGE_DURATION_S, 4);
+  });
+});

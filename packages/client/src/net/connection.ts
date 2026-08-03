@@ -782,6 +782,7 @@ export class Connection {
           aimYaw,
           aimPitch,
           targetId: 0,
+          groundAim: null,
         }),
       );
     }
@@ -857,7 +858,7 @@ export class Connection {
     aimPitch: number,
     target: { id: number; radius: number } | null,
   ):
-    | { ok: true; def: AbilityDef; phase: 'instant' | 'cast'; contactDelayMs: number }
+    | { ok: true; def: AbilityDef; phase: 'instant' | 'cast' | 'channel'; contactDelayMs: number }
     | { ok: false; reason: AbilityRejectReason | null } {
     const def = this.slotDefs.get(slot);
     if (!def) return { ok: false, reason: null };
@@ -925,6 +926,7 @@ export class Connection {
           aimYaw,
           aimPitch,
           targetId,
+          groundAim: null, // ground_aoe aim wiring lands with the P6-D reticle
         }),
       );
     }
@@ -1059,6 +1061,7 @@ export class Connection {
         aimYaw: 0,
         aimPitch: 0,
         targetId: 0,
+        groundAim: null,
       }),
     );
   }

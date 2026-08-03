@@ -202,6 +202,68 @@ describe('ability machine', () => {
     expect(evaluateUse(fresh, def, readyContext())).toEqual({ ok: true });
   });
 
+  it('channels: commit starts it, ticks fire on schedule, ends after duration', () => {
+    const machine = createAbilityMachine();
+    const barrage = makeDef({
+      id: 'ability_warrior_channely',
+      channel: { durationMs: 2400, tickEveryMs: 400 },
+      castWhileMoving: 0.4,
+    });
+    const ctx = readyContext();
+    const commit = commitUse(machine, barrage, ctx.resource, { yaw: 0.7, pitch: 0, targetId: 9 });
+    expect(commit.phase).toBe('channel');
+    // Channeling blocks other presses like a cast does.
+    expect(evaluateUse(machine, makeDef({ id: 'ability_warrior_other2' }), ctx)).toEqual({
+      ok: false,
+      reason: AbilityRejectReason.AlreadyCasting,
+    });
+    // 6 ticks at 400 ms across the 2400 ms duration (first after one interval).
+    let ticks = 0;
+    for (let step = 0; step < 6; step++) {
+      const result = tickAbilityMachine(machine, 400, false);
+      ticks += result.channelTicks.length;
+      expect(result.channelTicks.every((t) => t.abilityId === barrage.id && t.targetId === 9)).toBe(
+        true,
+      );
+    }
+    expect(ticks).toBe(6);
+    expect(machine.channel).toBeNull();
+    // A slow frame catches up multiple ticks at once.
+    const machine2 = createAbilityMachine();
+    commitUse(machine2, barrage, readyContext().resource, { yaw: 0, pitch: 0, targetId: 0 });
+    const bigStep = tickAbilityMachine(machine2, 1000, false);
+    expect(bigStep.channelTicks.length).toBe(2);
+  });
+
+  it('channels: moving cancels only when castWhileMoving is false; dodge interrupts', () => {
+    const machine = createAbilityMachine();
+    const mobile = makeDef({
+      id: 'ability_warrior_mobile_channel',
+      channel: { durationMs: 1200, tickEveryMs: 400 },
+      castWhileMoving: 0.4,
+    });
+    commitUse(machine, mobile, readyContext().resource, { yaw: 0, pitch: 0, targetId: 0 });
+    expect(tickAbilityMachine(machine, 800, true).moveCanceled).toBe(false);
+    expect(machine.channel).not.toBeNull();
+
+    const rooted = makeDef({
+      id: 'ability_warrior_rooted_channel',
+      channel: { durationMs: 1200, tickEveryMs: 400 },
+      castWhileMoving: false,
+    });
+    const machine3 = createAbilityMachine();
+    commitUse(machine3, rooted, readyContext().resource, { yaw: 0, pitch: 0, targetId: 0 });
+    tickAbilityMachine(machine3, CAST_MOVE_GRACE_MS, true);
+    expect(tickAbilityMachine(machine3, 1, true).moveCanceled).toBe(true);
+    expect(machine3.channel).toBeNull();
+
+    // Dodge interrupt clears the channel and refunds half the cost.
+    const machine4 = createAbilityMachine();
+    commitUse(machine4, mobile, readyContext().resource, { yaw: 0, pitch: 0, targetId: 0 });
+    expect(interruptCast(machine4, 'dodge', 30)).toEqual({ hadCast: true, refund: 15 });
+    expect(machine4.channel).toBeNull();
+  });
+
   it('zero-cooldown abilities never consume charges — spammable past the GCD', () => {
     // Regression (round 7): commit burned the only charge but a cd-0 def never
     // arms a recharge timer, bricking every spender after ONE use — on both
