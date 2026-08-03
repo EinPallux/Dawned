@@ -523,7 +523,7 @@ export const build = async ({ force = false, verbose = true } = {}) => {
 };
 
 /** Regenerate the generated section of CREDITS.md from manifest provenance. */
-const writeCreditsLedger = async (manifest) => {
+export const writeCreditsLedger = async (manifest) => {
   const creditsPath = path.join(REPO_ROOT, 'CREDITS.md');
   const marker =
     '<!-- GENERATED LEDGER BELOW — do not edit by hand; `pnpm assets:build` rewrites it -->';
@@ -550,7 +550,9 @@ const writeCreditsLedger = async (manifest) => {
     );
     lines.push('');
     for (const file of files.sort((a, b) => a.id.localeCompare(b.id))) {
-      lines.push(`- \`${file.id}\` — ${file.source}`);
+      // Mixed-author packs (game-icons): CC BY wants every author NAMED here.
+      const authorNote = file.author !== info.author ? ` · ${file.author}` : '';
+      lines.push(`- \`${file.id}\` — ${file.source}${authorNote}`);
     }
     lines.push('');
   }

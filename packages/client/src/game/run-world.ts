@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import {
+  AbilityRejectReason,
   ActionId,
   BASIC_COMBOS,
   EntityEventKind,
@@ -42,6 +43,7 @@ import { AbilityVfxManager, abilityVfxColor } from '../world/ability-vfx.js';
 import { CombatSfx, sfxSlotOf } from '../audio/combat-sfx.js';
 import { loadEnemyDefs } from '../content/enemy-defs.js';
 import { loadAbilityDefs } from '../content/ability-defs.js';
+import { loadIconUrls } from '../content/icon-urls.js';
 import type { AbilityDef, EnemyDef } from '@dawned/shared';
 
 export interface WorldHandle {
@@ -196,48 +198,58 @@ export const runWorld = (
       },
       onAbilityResolve: (message) => {
         const mine = message.attackerId === connection.selfId;
+        const fromSlotAbility = slotForAction(message.action) !== null;
         for (const hit of message.hits) {
           const crit = (hit.flags & HitFlag.Crit) !== 0;
+          const killed = (hit.flags & HitFlag.Killed) !== 0;
           const anchor = fctAnchor(hit.targetId);
           if (anchor) {
             const kind =
               hit.targetId === connection.selfId ? 'incoming' : crit ? 'outgoing-crit' : 'outgoing';
             combatText.spawn(kind, hit.amount, anchor.x, anchor.y, anchor.z);
-            // Impact burst at the wound point (§9 VFX v1) — crits pop harder.
+            // Impact reads (§9 VFX v1, beefed up in round 7): a bright flash
+            // AT the wound plus a spray — crits and kills pop hardest.
             if (hit.targetId !== connection.selfId) {
+              const color = crit ? 0xf0c46b : 0xffa75e;
+              vfx.flash(anchor.x, anchor.y - 0.5, anchor.z, color, crit ? 2.2 : 1.5);
               vfx.burst(
                 anchor.x,
                 anchor.y - 0.5,
                 anchor.z,
-                crit ? 0xf0c46b : 0xffa75e,
-                crit ? 18 : 8,
-                crit ? 4 : 2.6,
-                0.35,
+                color,
+                crit ? 26 : 14,
+                crit ? 5 : 3.4,
+                0.4,
               );
+              if (killed) {
+                vfx.flash(anchor.x, anchor.y - 0.6, anchor.z, 0xffffff, 2.8);
+                vfx.burst(anchor.x, anchor.y - 0.6, anchor.z, 0xffe9b8, 30, 5.5, 0.55);
+              }
             }
           }
           enemyViews.get(hit.targetId)?.flash();
-          if ((hit.flags & HitFlag.Killed) !== 0) sfx.play('death');
+          if (killed) sfx.play('death');
         }
         if (mine && message.hits.length > 0) {
           // Contact confirmed: hit-stop + directional kick + impact layer (§9).
-          hitStopUntilMs = performance.now() + 60;
-          scene.addKick(
-            input.yaw,
-            message.hits.some((h) => (h.flags & HitFlag.Crit) !== 0) ? 1.4 : 1,
-          );
-          sfx.play(
-            message.hits.some((h) => (h.flags & HitFlag.Crit) !== 0) ? 'impact_crit' : 'impact',
-          );
+          // Slot abilities hit noticeably harder than basics — 90 ms freeze
+          // and a stronger kick so "did that connect?" never needs the log.
+          const crit = message.hits.some((h) => (h.flags & HitFlag.Crit) !== 0);
+          hitStopUntilMs = performance.now() + (fromSlotAbility ? 90 : 60);
+          scene.addKick(input.yaw, (fromSlotAbility ? 1.3 : 1) * (crit ? 1.4 : 1));
+          if (fromSlotAbility) scene.addShake(crit ? 1.2 : 0.7);
+          sfx.play(crit ? 'impact_crit' : fromSlotAbility ? 'impact_heavy' : 'impact');
         }
       },
-      onAbilityReject: (action) => {
+      onAbilityReject: (action, reason) => {
         // The server refused a predicted slot press (real divergence): the
-        // rolled-back slot pulses so the player knows the cast didn't happen.
+        // rolled-back slot pulses + says why, so the miss never reads silent.
         const slot = slotForAction(action);
         if (slot !== null) {
           hud.pulseSlot(slot);
           sfx.play('deny', 0.8);
+          const text = refusalText(reason, connection.slotView(slot).def);
+          if (text) hud.showRefusal(text);
         }
       },
       onEntityEvent: (message) => {
@@ -332,9 +344,23 @@ export const runWorld = (
   void loadEnemyDefs().then((defs) => {
     if (!disposed) enemyDefs = defs;
   });
-  // Published ability defs → the prediction layer (hotbar, chains, costs).
-  void loadAbilityDefs().then((defs) => {
-    if (!disposed) connection.setAbilityContent(defs);
+  // Published ability defs → the prediction layer (hotbar, chains, costs),
+  // plus the icon wiring: baked game-icons urls and the effectId → icon map
+  // (buff chips wear the icon of the ability that applied them).
+  void Promise.all([loadAbilityDefs(), loadIconUrls()]).then(([defs, iconUrls]) => {
+    if (disposed) return;
+    connection.setAbilityContent(defs);
+    const effectIcons = new Map<string, string>();
+    for (const def of defs) {
+      if (!def.icon) continue;
+      for (const effect of def.effects) {
+        if (effect.kind === 'apply_effect') {
+          effectIcons.set(effect.effectId, def.icon);
+          if (effect.mods.onHitApply) effectIcons.set(effect.mods.onHitApply.effectId, def.icon);
+        }
+      }
+    }
+    hud.setIcons(iconUrls, effectIcons);
   });
   /** Attacker anim runs at 0.1× until this time — the §9 hit-stop. */
   let hitStopUntilMs = 0;
@@ -389,10 +415,32 @@ export const runWorld = (
     }
   };
 
+  /** Refusal reason → player words (the red seam alone went unseen, round 7). */
+  const refusalText = (reason: number, def: AbilityDef | null): string | null => {
+    switch (reason) {
+      case AbilityRejectReason.NoResource: {
+        const type = def?.cost.type ?? 'resource';
+        return `Not enough ${type === 'none' ? 'resource' : type[0]!.toUpperCase() + type.slice(1)}`;
+      }
+      case AbilityRejectReason.OnCooldown:
+        return 'Not ready yet';
+      case AbilityRejectReason.Locked:
+        return def ? `Locked — reach level ${def.unlockLevel}` : 'Locked';
+      case AbilityRejectReason.NoComboPoints:
+        return 'Needs combo points';
+      case AbilityRejectReason.NoTarget:
+        return 'No target';
+      case AbilityRejectReason.AlreadyCasting:
+        return 'Already casting';
+      default:
+        return null; // GCD/BadState: the seam pulse is enough — words would spam
+    }
+  };
+
   /**
    * One hotbar press: predicted evaluate → commit through the shared machine
    * (connection), then the §9 presentation — anim, sfx slot, commit VFX. A
-   * local refusal pulses the slot immediately (no round trip).
+   * local refusal answers in words + red seam immediately (no round trip).
    */
   const performSlotPress = (slot: number): void => {
     const target = softTarget();
@@ -407,6 +455,8 @@ export const runWorld = (
       if (result.reason !== null) {
         hud.pulseSlot(slot);
         sfx.play('deny', 0.8);
+        const text = refusalText(result.reason, connection.slotView(slot).def);
+        if (text) hud.showRefusal(text);
       }
       return;
     }
@@ -414,9 +464,13 @@ export const runWorld = (
     localView.playAttack(def.anim.clip, def.anim.clipSeconds, def.anim.durationMs);
     sfx.play(sfxSlotOf(def.sfx));
     abilityCommitVfx(def, before.x, before.y, before.z, input.yaw);
-    // Shadowstep lands elsewhere — a second burst where we arrived.
+    // Big self-centered moments shake the camera at commit (§9).
+    if (def.targeting.kind === 'pbaoe') scene.addShake(0.8);
+    // Shadowstep lands elsewhere — flash out, flash in.
     if (def.targeting.kind === 'blink_behind') {
+      vfx.flash(before.x, before.y + 1.0, before.z, 0x8a7ce8, 1.8);
       const after = connection.renderPosition();
+      vfx.flash(after.x, after.y + 1.0, after.z, 0x8a7ce8, 1.8);
       vfx.burst(after.x, after.y + 1.0, after.z, 0x8a7ce8, 16, 2.2, 0.4);
     }
   };

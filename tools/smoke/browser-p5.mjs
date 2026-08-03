@@ -70,6 +70,7 @@ const enterWorld = async (page, characterName, errors) => {
     await page.waitForSelector('.hud', { timeout: 90000 });
     await page.waitForFunction(
       () => document.querySelector('.hud-status')?.textContent?.includes('in world'),
+      undefined,
       { timeout: 90000 },
     );
   } catch (error) {
@@ -105,13 +106,19 @@ const aimAtNearestDummy = (page) =>
     return bestD;
   });
 
-/** Aim at the nearest living dummy and close to melee range if needed. */
+/** Aim at the nearest living dummy and close to melee range if needed.
+ * With every dummy momentarily dead, STAND STILL — they respawn in 15 s and
+ * walking blind marches the character off the training line. */
 const closeOnDummy = async (page, maxDist = 2.2) => {
   const dist = await aimAtNearestDummy(page);
   if (dist <= maxDist) return true;
-  await page.keyboard.down('KeyW');
-  await sleep(180);
-  await page.keyboard.up('KeyW');
+  if (dist < 1e8) {
+    await page.keyboard.down('KeyW');
+    await sleep(180);
+    await page.keyboard.up('KeyW');
+  } else {
+    await sleep(400);
+  }
   return false;
 };
 
@@ -124,6 +131,7 @@ const acquireDummy = async (page) => {
       }
       return false;
     },
+    undefined,
     { timeout: 30000 },
   );
   await waitFor(
@@ -211,7 +219,14 @@ const runWarrior = async (browser, token) => {
     () => document.querySelectorAll('.hud-hotbar .hud-slot:not(.is-dodge)').length,
   );
   if (slotCount !== 8) fail(`hotbar DOM has ${slotCount} slots, want 8`);
-  ok('hotbar renders 8 slots from published content');
+  // Round 7: every slot wears its baked game-icons icon (masked SVG tile).
+  await waitFor(
+    'ability icons on the tiles',
+    () => page.evaluate(() => document.querySelectorAll('.hud-hotbar .hud-slot-icon').length >= 8),
+    10000,
+    200,
+  );
+  ok('hotbar renders 8 slots from published content, all with icons');
 
   // 2. Rage starts empty: Crushing Blow (25 Rage) refuses LOCALLY — no
   //    request, no cooldown, red seam pulse on the slot.
@@ -220,14 +235,20 @@ const runWarrior = async (browser, token) => {
     fail(`fresh warrior should sit at 0 rage (got ${state.resource.type} ${state.resource.value})`);
   }
   await pressSlot(page, 1);
-  const refused = await page.evaluate(
-    () =>
+  const refusal = await page.evaluate(() => ({
+    seam:
       document.querySelector('.hud-slot[data-slot="1"]')?.classList.contains('is-refused') ?? false,
-  );
+    text: document.querySelector('.hud-refusal')?.textContent ?? '',
+    tileState: document.querySelector('.hud-slot[data-slot="1"]')?.getAttribute('data-state'),
+  }));
   state = await abilityState(page);
   if (state.hotbar[0].cooldownMs > 0) fail('refused press must not start a cooldown');
-  if (!refused) fail('refused press should pulse the red seam on slot 1');
-  ok('insufficient Rage refuses locally (red seam, no request)');
+  if (!refusal.seam) fail('refused press should pulse the red seam on slot 1');
+  if (!refusal.text.includes('Rage')) fail(`refusal should say why (got "${refusal.text}")`);
+  if (refusal.tileState !== 'poor') {
+    fail(`0-Rage slot should read data-state=poor (got ${refusal.tileState})`);
+  }
+  ok('insufficient Rage refuses IN WORDS (floating reason + red seam + dark tile)');
 
   // 3. Landed basics build Rage (+4 rider per hit, snapshot-rebased).
   await waitFor(
@@ -344,9 +365,13 @@ const runWarrior = async (browser, token) => {
       return { dist: bestD, hpFraction: bestHp };
     });
     if (status.dist > 2.2) {
-      await page.keyboard.down('KeyW');
-      await sleep(180);
-      await page.keyboard.up('KeyW');
+      if (status.dist < 1e8) {
+        await page.keyboard.down('KeyW');
+        await sleep(180);
+        await page.keyboard.up('KeyW');
+      } else {
+        await sleep(400); // line wiped — wait where we stand for the respawn
+      }
       return null;
     }
     return status;
@@ -369,7 +394,7 @@ const runWarrior = async (browser, token) => {
       await sleep(400);
       return false;
     },
-    40000,
+    60000,
     100,
   );
   // DoT proof: damage numbers keep coming with NO further presses. At level
@@ -471,6 +496,7 @@ const runRogue = async (browser, token) => {
       const t = window.__dawned.terrainStats();
       return t.resident > 0 && t.pending === 0;
     },
+    undefined,
     { timeout: 90000 },
   );
   //     Sink energy first (Fan of Knives, 30) so the pool can't hit its cap
@@ -522,6 +548,7 @@ const runRangedCamp = async (browser, token) => {
       }
       return count >= 3;
     },
+    undefined,
     { timeout: 30000 },
   );
   const dry = await page.evaluate(() => {

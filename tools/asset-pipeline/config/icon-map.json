@@ -1,0 +1,33 @@
+{
+  "$comment": "Curated icon mapping (docs/tech/ASSET_PIPELINE.md §4): content id → game-icons.net icon as author/name (the path inside the game-icons/icons repo, CC BY 3.0). `pnpm assets:icons --fetch` downloads sources into assets_vendor/game-icons/; the bake recolors them for the HUD (background dropped, glyph kept for CSS masking). Abilities may share an icon (basic steps); each unique icon bakes once.",
+  "abilities": {
+    "ability_warrior_basic_1": "lorc/broadsword",
+    "ability_warrior_basic_2": "lorc/broadsword",
+    "ability_warrior_basic_3": "lorc/broadsword",
+    "ability_warrior_crushing_blow": "lorc/hammer-drop",
+    "ability_warrior_shield_bash": "delapouite/shield-bash",
+    "ability_warrior_charge": "delapouite/charging-bull",
+    "ability_warrior_rending_slash": "lorc/bleeding-wound",
+    "ability_warrior_taunting_shout": "lorc/shouting",
+    "ability_warrior_whirlwind": "lorc/whirlwind",
+    "ability_warrior_shield_wall": "lorc/edged-shield",
+    "ability_warrior_earthshatter": "lorc/quake-stomp",
+    "ability_rogue_basic_1": "lorc/plain-dagger",
+    "ability_rogue_basic_2": "lorc/plain-dagger",
+    "ability_rogue_basic_3": "lorc/plain-dagger",
+    "ability_rogue_twin_strike": "lorc/crossed-swords",
+    "ability_rogue_shadowstep": "lorc/shadow-follower",
+    "ability_rogue_eviscerate": "lorc/bloody-sword",
+    "ability_rogue_fan_of_knives": "lorc/thrown-daggers",
+    "ability_rogue_crippling_strike": "lorc/broken-bone",
+    "ability_rogue_poisoned_blades": "lorc/dripping-knife",
+    "ability_rogue_smoke_veil": "darkzaitzev/smoke-bomb",
+    "ability_rogue_death_mark": "lorc/targeting",
+    "ability_mage_basic_1": "lorc/energy-arrow",
+    "ability_mage_basic_2": "lorc/energy-arrow",
+    "ability_mage_basic_3": "lorc/energy-arrow",
+    "ability_cleric_basic_1": "lorc/holy-symbol",
+    "ability_cleric_basic_2": "lorc/holy-symbol",
+    "ability_cleric_basic_3": "lorc/holy-symbol"
+  }
+}

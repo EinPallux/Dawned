@@ -38,6 +38,30 @@ from these games are used.
 
 ## Per-file ledger
 
+### Game-icons.net
+Pack id `game-icons` · author **DarkZaitzev (game-icons.net)** · license **CC-BY-3.0** · https://creativecommons.org/licenses/by/3.0/
+
+- `icon_darkzaitzev__smoke-bomb` — assets_vendor/game-icons/darkzaitzev/smoke-bomb.svg
+- `icon_delapouite__charging-bull` — assets_vendor/game-icons/delapouite/charging-bull.svg · Delapouite (game-icons.net)
+- `icon_delapouite__shield-bash` — assets_vendor/game-icons/delapouite/shield-bash.svg · Delapouite (game-icons.net)
+- `icon_lorc__bleeding-wound` — assets_vendor/game-icons/lorc/bleeding-wound.svg · Lorc (game-icons.net)
+- `icon_lorc__bloody-sword` — assets_vendor/game-icons/lorc/bloody-sword.svg · Lorc (game-icons.net)
+- `icon_lorc__broadsword` — assets_vendor/game-icons/lorc/broadsword.svg · Lorc (game-icons.net)
+- `icon_lorc__broken-bone` — assets_vendor/game-icons/lorc/broken-bone.svg · Lorc (game-icons.net)
+- `icon_lorc__crossed-swords` — assets_vendor/game-icons/lorc/crossed-swords.svg · Lorc (game-icons.net)
+- `icon_lorc__dripping-knife` — assets_vendor/game-icons/lorc/dripping-knife.svg · Lorc (game-icons.net)
+- `icon_lorc__edged-shield` — assets_vendor/game-icons/lorc/edged-shield.svg · Lorc (game-icons.net)
+- `icon_lorc__energy-arrow` — assets_vendor/game-icons/lorc/energy-arrow.svg · Lorc (game-icons.net)
+- `icon_lorc__hammer-drop` — assets_vendor/game-icons/lorc/hammer-drop.svg · Lorc (game-icons.net)
+- `icon_lorc__holy-symbol` — assets_vendor/game-icons/lorc/holy-symbol.svg · Lorc (game-icons.net)
+- `icon_lorc__plain-dagger` — assets_vendor/game-icons/lorc/plain-dagger.svg · Lorc (game-icons.net)
+- `icon_lorc__quake-stomp` — assets_vendor/game-icons/lorc/quake-stomp.svg · Lorc (game-icons.net)
+- `icon_lorc__shadow-follower` — assets_vendor/game-icons/lorc/shadow-follower.svg · Lorc (game-icons.net)
+- `icon_lorc__shouting` — assets_vendor/game-icons/lorc/shouting.svg · Lorc (game-icons.net)
+- `icon_lorc__targeting` — assets_vendor/game-icons/lorc/targeting.svg · Lorc (game-icons.net)
+- `icon_lorc__thrown-daggers` — assets_vendor/game-icons/lorc/thrown-daggers.svg · Lorc (game-icons.net)
+- `icon_lorc__whirlwind` — assets_vendor/game-icons/lorc/whirlwind.svg · Lorc (game-icons.net)
+
 ### KayKit Forest Nature Pack 1.0 FREE
 Pack id `kaykit-forest` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
 

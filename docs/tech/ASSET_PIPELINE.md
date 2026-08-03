@@ -71,6 +71,18 @@
    `assets/icons_custom/` wins over generated (their stated plan to hand-make icons someday is a
    first-class path).
 
+> **As built (P5 fix round 7):** steps 1–2 and 4 are live under
+> `tools/asset-pipeline` — `config/icon-map.json` maps ability ids to
+> `author/name` slugs, `pnpm assets:icons --fetch` vendors the SVGs into
+> `assets_vendor/game-icons/` (committed) and the bake strips each icon's
+> background rect into `assets_baked/icons/*.svg` with per-icon authors in
+> the manifest + CREDITS ledger. Step 3 deviates by design: instead of
+> pre-tinted PNG atlases, the HUD renders the white-glyph SVGs as **CSS
+> masks**, so ready/insufficient/locked/cooling states are pure CSS tints —
+> one asset per icon, every state free. PNG atlases + rarity accents revisit
+> at P8 when item icon counts jump. All 28 ability rows carry icons; the
+> transform/validation extras in step 1 arrive with the item curation pass.
+
 ## 5. Audio Pipeline (`tools/audio/`) — sources per AUDIO.md §3 (CC0-first, decided)
 
 `assets/audio_src/<bucket>/` → ffmpeg batch: trim silence, loudness normalize (music −16 LUFS,

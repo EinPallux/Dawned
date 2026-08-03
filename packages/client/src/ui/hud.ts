@@ -112,6 +112,7 @@ export class Hud {
       cdText: HTMLElement;
       gcd: HTMLElement;
       cost: HTMLElement;
+      lock: HTMLElement;
     }
   >();
   private dodgeTile: HTMLElement | null = null;
@@ -121,6 +122,13 @@ export class Hud {
   private effectsKey = '';
   private targetEffectsKey = '';
   private resourceType = '';
+  /** game-icons slug → baked SVG url (masked; states tint them). */
+  private iconUrls = new Map<string, string>();
+  /** effectId → icon slug of the ability that applies it (buff chips). */
+  private effectIcons = new Map<string, string>();
+  /** Floating refusal label + its hide timer. */
+  private refusalEl: HTMLElement | null = null;
+  private refusalTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pingCanvas: HTMLCanvasElement;
   private readonly correctionCanvas: HTMLCanvasElement;
   private readonly pingHistory: number[] = [];
@@ -294,6 +302,25 @@ export class Hud {
   }
 
   /**
+   * Baked icon urls + effectId → icon mapping. Arrives once the manifest and
+   * ability defs load; the hotbar rebuilds so tiles pick their icons up.
+   */
+  setIcons(iconUrls: Map<string, string>, effectIcons: Map<string, string>): void {
+    this.iconUrls = iconUrls;
+    this.effectIcons = effectIcons;
+    this.slotsKey = '';
+    this.effectsKey = '';
+    this.targetEffectsKey = '';
+  }
+
+  /** Masked-icon markup for a slug, or empty when the icon isn't baked. */
+  private iconMarkup(slug: string | undefined, className: string): string {
+    const url = slug ? this.iconUrls.get(slug) : undefined;
+    if (!url) return '';
+    return `<span class="${className}" style="--icon:url('${url}')"></span>`;
+  }
+
+  /**
    * (Re)build the hotbar DOM when the slot defs change (content load, class,
    * publish hot-reload). Per-frame state rides updateSlots — this only builds.
    */
@@ -305,10 +332,12 @@ export class Hud {
       root.className = 'hud-slot';
       root.dataset.slot = String(view.slot);
       const def = view.def;
+      const icon = def ? this.iconMarkup(def.icon, 'hud-slot-icon') : '';
       root.innerHTML = `
         <span class="hud-slot-key">${view.slot}</span>
-        <span class="hud-slot-glyph">${def ? escapeHtml(monogram(def.name)) : ''}</span>
+        ${icon || `<span class="hud-slot-glyph">${def ? escapeHtml(monogram(def.name)) : ''}</span>`}
         <span class="hud-slot-cost"></span>
+        <span class="hud-slot-lock" hidden></span>
         <div class="hud-slot-gcd"></div>
         <div class="hud-slot-cd" hidden><span class="hud-slot-cd-s"></span></div>
         <div class="hud-slot-seam"></div>
@@ -318,11 +347,12 @@ export class Hud {
       this.hotbarEl.appendChild(root);
       this.slotEls.set(view.slot, {
         root,
-        glyph: root.querySelector('.hud-slot-glyph') as HTMLElement,
+        glyph: root.querySelector('.hud-slot-glyph, .hud-slot-icon') as HTMLElement,
         cd: root.querySelector('.hud-slot-cd') as HTMLElement,
         cdText: root.querySelector('.hud-slot-cd-s') as HTMLElement,
         gcd: root.querySelector('.hud-slot-gcd') as HTMLElement,
         cost: root.querySelector('.hud-slot-cost') as HTMLElement,
+        lock: root.querySelector('.hud-slot-lock') as HTMLElement,
       });
     }
     // The V dodge tile closes the row (UI_UX.md §3: shows stamina-ready state).
@@ -348,19 +378,25 @@ export class Hud {
 
       if (view.lockedUntilLevel > 0) {
         els.root.dataset.state = 'locked';
-        els.cost.textContent = `Lv ${view.lockedUntilLevel}`;
+        els.lock.hidden = false;
+        els.lock.textContent = `Lv ${view.lockedUntilLevel}`;
+        els.cost.textContent = '';
         els.cd.hidden = true;
         els.gcd.style.height = '0%';
         continue;
       }
+      els.lock.hidden = true;
 
-      // Cooldown radial (conic wipe) + seconds readout above 1 s.
-      if (view.cooldownMs > 0 && view.cooldownTotalMs > 0) {
+      // Cooldown radial (conic wipe) + a seconds readout the whole way down.
+      const cooling = view.cooldownMs > 0 && view.cooldownTotalMs > 0;
+      if (cooling) {
         els.cd.hidden = false;
         const fraction = view.cooldownMs / view.cooldownTotalMs;
         els.cd.style.setProperty('--cd', `${(fraction * 360).toFixed(1)}deg`);
         els.cdText.textContent =
-          view.cooldownMs >= 950 ? `${Math.ceil(view.cooldownMs / 1000)}` : '';
+          view.cooldownMs >= 9950
+            ? `${Math.ceil(view.cooldownMs / 1000)}`
+            : (view.cooldownMs / 1000).toFixed(1);
       } else {
         if (!els.cd.hidden) {
           els.cd.hidden = true;
@@ -377,9 +413,10 @@ export class Hud {
           ? `${Math.min(100, (view.gcdMs / 400) * 100)}%`
           : '0%';
 
-      // Cost tag + affordability desaturate.
+      // Cost tag + a three-way state the whole TILE wears (not just the icon):
+      // ready = lit, cooling = shaded with the timer, poor = dark + red cost.
       els.cost.textContent = def.cost.amount > 0 ? String(def.cost.amount) : '';
-      els.root.dataset.state = view.affordable ? 'ready' : 'poor';
+      els.root.dataset.state = cooling ? 'cooling' : view.affordable ? 'ready' : 'poor';
 
       // Proc glow: a finisher at full pips is the "press me" moment.
       els.root.classList.toggle(
@@ -388,6 +425,29 @@ export class Hud {
       );
     }
     if (this.dodgeTile) this.dodgeTile.dataset.state = 'ready';
+  }
+
+  /**
+   * Why a press was refused, in words, floating above the hotbar (§3 — the
+   * red seam alone was invisible in the playtest). One label, re-triggered.
+   */
+  showRefusal(text: string): void {
+    if (!this.refusalEl) {
+      this.refusalEl = document.createElement('div');
+      this.refusalEl.className = 'hud-refusal';
+      this.query('[data-cast]').parentElement?.insertBefore(
+        this.refusalEl,
+        this.query('[data-cast]'),
+      );
+    }
+    this.refusalEl.textContent = text;
+    this.refusalEl.classList.remove('is-live');
+    void this.refusalEl.offsetWidth;
+    this.refusalEl.classList.add('is-live');
+    if (this.refusalTimer) clearTimeout(this.refusalTimer);
+    this.refusalTimer = setTimeout(() => {
+      this.refusalEl?.classList.remove('is-live');
+    }, 900);
   }
 
   /** Red seam pulse on a refused press (local evaluate or server reject). */
@@ -414,8 +474,12 @@ export class Hud {
       .map((effect) => {
         const seconds = Math.ceil(effect.remainingMs / 1000);
         const stacks = effect.stacks > 1 ? `<b>${effect.stacks}</b>` : '';
+        const icon = this.iconMarkup(this.effectIcons.get(effect.effectId), 'hud-effect-icon');
+        const glyph =
+          icon ||
+          `<span class="hud-effect-glyph">${escapeHtml(monogram(effect.effectId.replace(/^(buff|debuff|bleed|poison|slow)_/, '')))}</span>`;
         return `<div class="hud-effect${effect.harmful ? ' is-harmful' : ''}" title="${escapeHtml(effect.effectId)}">
-          <span class="hud-effect-glyph">${escapeHtml(monogram(effect.effectId.replace(/^(buff|debuff|bleed|poison)_/, '')))}${stacks}</span>
+          ${glyph}${stacks ? `<span class="hud-effect-stacks">${stacks}</span>` : ''}
           <span class="hud-effect-s">${seconds}s</span>
         </div>`;
       })
