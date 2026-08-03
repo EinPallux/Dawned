@@ -5,6 +5,46 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — P4 playtest round 6 (2026-08-03)
+
+- **Combat animations no longer freeze — swings, dodge and death all play
+  under fire.** Root cause: incoming light hits routed their flinch through
+  the rig's BASE animation layer, replacing whatever played and re-locking
+  the rig 0.3 s per hit. Against a camp (a hit every ~250 ms) that lock was
+  continuous, and repeated/finished one-shot actions were reused without a
+  reset — three.js then renders them as one static frame at weight 0. Net
+  effect: the character stood bolt upright through entire fights, swings and
+  dodge rolls never visibly played, and dying mid-barrage skipped the death
+  clip. Flinches are now blended OVERLAYS on top of the base layer (per
+  COMBAT.md §6.4: light hits never take control), one-shot actions always
+  reset before replay, and crossfades never source from a finished action
+  (they cut + fade instead — a finished action can't drive a weight ramp).
+  Enemy swing clips got the same lifecycle fixes and now stretch across
+  wind-up AND recover, so glubs no longer freeze mid-lunge after contact.
+  New mixer-truth asserts in `browser-p4.mjs` pin all of it — including
+  "swing plays WHILE the camp is hitting you", which is exactly the case
+  the playtest caught and the dummy-only smoke missed.
+- **Enemy telegraph cones now point at you, not out the enemy's back.** The
+  decal sector was centered on the wrong pole of the circle geometry, so
+  every cone rendered 180° behind the caster — the ground warning and the
+  actual server hit shape disagreed, breaking the "what you see is what
+  hits you" rule. Unit tests now pin the orientation of all three decal
+  shapes (`telegraphs.test.ts`).
+- **The crosshair no longer drills into your character's back.** The camera
+  aims over the right shoulder now (aim point raised and offset screen-right,
+  BDO-style), so the reticle floats beside the head and the character sits
+  just left of center — aim mechanics unchanged (attacks still fire along
+  the camera yaw; the offset's angular error is inside the soft-target
+  magnetism at combat ranges).
+- **Dying got its beat (COMBAT.md §10).** The death clip plays while the
+  camera drifts slowly around the body for ~1.8 s, then the soul screen
+  fades in — it used to slam over the corpse the same frame. Mouse yaw is
+  untouched during the drift, so control returns exactly where you left it
+  on respawn.
+- Owner-confirmed this round: combat at `/netsim 100 20` stays smooth; Q17
+  (stagger decay default) and Q18 (mushroom training dummies) accepted —
+  moved to the USER_QUESTIONS decision log.
+
 ### Added — P4 Combat Foundation (2026-08-03, protocol v6)
 
 - **Enemies are in the world.** Shore Glub camps (3 camps on the western

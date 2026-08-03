@@ -112,7 +112,14 @@ export class GameScene {
     this.shakeStrength = Math.min(0.09, 0.05 * strength) * this.juiceIntensity;
   }
 
-  /** Third-person orbit camera behind the player (mouselook, Q1 decision). */
+  /**
+   * Third-person orbit camera behind the player (mouselook, Q1 decision),
+   * offset over the RIGHT shoulder: the whole rig — eye and aim point — shifts
+   * screen-right and up, so the center-screen reticle floats beside the head
+   * instead of drilling into the character's back (owner playtest round 6).
+   * Attacks aim by yaw (parallel to the camera axis); at combat ranges the
+   * offset's angular error is inside the soft-target magnetism.
+   */
   updateCamera(
     target: { x: number; y: number; z: number },
     yaw: number,
@@ -124,12 +131,18 @@ export class GameScene {
     this.sun.position.set(target.x + 60, target.y + 90, target.z + 40);
     this.sun.target.position.set(target.x, target.y, target.z);
 
+    // Screen-right at this yaw is (−cos yaw, sin yaw) — see input.ts.
+    const shoulder = 0.45;
+    const aimX = target.x + -Math.cos(yaw) * shoulder;
+    const aimZ = target.z + Math.sin(yaw) * shoulder;
+    const aimY = target.y + 1.5;
+
     const distance = 6.5;
     const horizontal = Math.cos(pitch) * distance;
     this.camera.position.set(
-      target.x - Math.sin(yaw) * horizontal,
+      aimX - Math.sin(yaw) * horizontal,
       target.y + 1.6 + Math.sin(pitch) * distance,
-      target.z - Math.cos(yaw) * horizontal,
+      aimZ - Math.cos(yaw) * horizontal,
     );
 
     // Decay the kick fast; the shake is jittered noise inside its window.
@@ -147,7 +160,7 @@ export class GameScene {
     this.camera.position.x += this.kick.x + shakeX;
     this.camera.position.y += this.kick.y + shakeY;
 
-    this.camera.lookAt(target.x, target.y + 1.35, target.z);
+    this.camera.lookAt(aimX, aimY, aimZ);
     this.sky.position.copy(this.camera.position);
   }
 

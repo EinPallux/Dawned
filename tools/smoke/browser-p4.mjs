@@ -173,6 +173,44 @@ const runFighter = async (browser, token) => {
   const texts = await combatState(page);
   if (texts.fctTotal === 0) fail('no floating combat text spawned');
   ok(`floating combat text spawns on resolve (${texts.fctTotal} so far)`);
+
+  // MIXER TRUTH: the swing must actually PLAY on the rig — a clip can be
+  // requested yet never move a bone (weight 0 / finished-action reuse; the
+  // "everything is static" playtest). Assert the action runs with real weight.
+  await page.evaluate(() => window.__dawned.attack());
+  await page.waitForFunction(
+    () => {
+      const local = window.__dawned.animDebug().local;
+      return (
+        local !== null &&
+        local.clip.startsWith('Sword_Regular') &&
+        local.running &&
+        local.weight > 0.5
+      );
+    },
+    { timeout: 5000 },
+  );
+  ok('swing clip RUNS on the mixer (weight > 0.5, not just requested)');
+
+  // Dodge: the roll must move the character ~4 m AND play the Roll clip.
+  const dodgeFrom = await page.evaluate(() => window.__dawned.connection.renderPosition());
+  let sawRollClip = false;
+  await page.keyboard.down('v');
+  for (let i = 0; i < 14 && !sawRollClip; i++) {
+    sawRollClip = await page.evaluate(() => {
+      const d = window.__dawned.animDebug();
+      const local = d.local;
+      return d.rollTimeLeft > 0 && local !== null && local.clip === 'Roll' && local.weight > 0.4;
+    });
+    await sleep(80);
+  }
+  await page.keyboard.up('v');
+  if (!sawRollClip) fail('Roll never played on the mixer during the dodge');
+  await sleep(700);
+  const dodgeTo = await page.evaluate(() => window.__dawned.connection.renderPosition());
+  const rolled = Math.hypot(dodgeTo.x - dodgeFrom.x, dodgeTo.z - dodgeFrom.z);
+  if (rolled < 2.5) fail(`dodge displaced only ${rolled.toFixed(2)} m`);
+  ok(`dodge rolls with the Roll clip playing (${rolled.toFixed(1)} m)`);
   await shoot(page, 'p4-dummy-fight.png');
 
   // March to the glub camp, pick the fight by damage, expect a telegraph +
@@ -225,6 +263,37 @@ const runFighter = async (browser, token) => {
   });
   ok(`glubs fight back (hp ${hpBefore} → ${(await combatState(page)).hp})`);
 
+  // Enemy swings must RUN on their mixers (windup + recover flow, not a
+  // clamped freeze) — watch the camp until an ability clip is live.
+  await page.waitForFunction(
+    () => {
+      for (const enemy of Object.values(window.__dawned.animDebug().enemies)) {
+        const clip = enemy.clip.replace('CharacterArmature|', '');
+        if ((clip === 'Headbutt' || clip === 'Punch') && enemy.running) return true;
+      }
+      return false;
+    },
+    { timeout: 45000 },
+  );
+  ok('enemy ability clips run on their mixers (windups animate)');
+
+  // THE round-6 regression: swinging while the camp wails on you. Incoming
+  // flinches must overlay, never preempt — the swing action keeps running.
+  await page.waitForFunction(
+    () => {
+      window.__dawned.attack();
+      const local = window.__dawned.animDebug().local;
+      return (
+        local !== null &&
+        local.clip.startsWith('Sword_Regular') &&
+        local.running &&
+        local.weight > 0.5
+      );
+    },
+    { timeout: 20000 },
+  );
+  ok('swings still play WHILE taking camp fire (flinches overlay, not replace)');
+
   await page.waitForFunction(() => window.__dawned.combatState().telegraphs > 0, {
     timeout: 45000,
   });
@@ -252,10 +321,20 @@ const runDoomed = async (browser, token) => {
   await enterWorld(page, 'Arenadoom', errors);
   ok('doomed character resumes inside the west camp');
 
-  // The camp finishes it → soul screen.
+  // The camp finishes it → the death clip PLAYS (round 6: dying used to leave
+  // the rig standing bolt upright) → then the soul screen fades in.
   await page.waitForFunction(() => window.__dawned.combatState().dead, { timeout: 90000 });
+  await page.waitForFunction(
+    () => {
+      const local = window.__dawned.animDebug().local;
+      return local !== null && local.clip === 'Death01' && local.weight > 0.5;
+    },
+    { timeout: 5000 },
+  );
+  ok('death clip plays on the rig (Death01, real weight)');
+  await shoot(page, 'p4-death-beat.png');
   await page.waitForSelector('.hud-death:not([hidden])', { timeout: 15000 });
-  ok('death: soul screen up, controls parked');
+  ok('death: soul screen up after the beat, controls parked');
   await shoot(page, 'p4-soul-screen.png');
 
   await page.click('.hud-death-button');

@@ -245,6 +245,17 @@ and it passes the COMBAT.md §9 checklist reviewed line-by-line; feel signoff fr
       the v6 stack (browser-p3 21 asserts, two-client-sync, browser-sync, predict-lag →
       corrections p95 56 mm / 0 hard snaps at 100 ms ± 20 ms); tick perf **with a live camp
       fight**: p50 0.14 / p95 1.17 / max 4.5 ms (<15 ms gate), RSS 129 MB.
+- [x] **Playtest fix round 6** (2026-08-03, first owner combat session): flinches moved to
+      overlay blending — routing them through the base layer had frozen the whole rig under
+      camp fire ("combat has no animations at all"), and one-shot actions now reset before
+      replay / never source crossfades from finished actions; enemy swings stretch across
+      wind-up + recover (no more mid-lunge freeze); telegraph cones un-mirrored (they drew
+      180° behind the caster — geometry now unit-tested); over-the-shoulder camera so the
+      crosshair floats beside the head instead of inside the model; death beat added (death
+      clip + slow camera drift ~1.8 s before the soul screen fades in). New mixer-truth
+      asserts in `browser-p4.mjs` (19 total) pin swings-under-fire, the Roll clip during
+      dodge, enemy wind-up playback and the death clip. **Owner confirmed: `/netsim 100 20`
+      combat stays smooth. Q17/Q18 answered (decision log).**
 - [ ] **Owner: the 10-minute demo** — clear a Glub camp with basic combo + dodge only at
       `/netsim 100 20`, COMBAT.md §9 checklist reviewed line-by-line on screen.
 - [ ] **Owner: feel signoff** — does it feel like Farever-smooth action combat? Iterate

@@ -161,13 +161,18 @@ export class CharacterView {
     this.actionUntil = this.clock + durationS;
   }
 
-  /** Upper-body flinch on taking a light hit (COMBAT.md §6.4). */
+  /**
+   * Light-hit flinch, blended OVER the base layer (COMBAT.md §6.4: no control
+   * loss). Never the main action: a camp wailing on you at 3–4 hits/second
+   * must not preempt your swing/roll/gait — routing flinches through the base
+   * layer froze the whole rig in the first camp playtest ("everything is
+   * static"). Full-body reacts stay reserved for explicit CC (P5/P6).
+   */
   playFlinch(): void {
-    if (this.dead) return;
+    if (this.dead || !this.composed) return;
     const variants = ['Hit_Chest', 'Hit_Head', 'Hit_Stomach', 'Hit_Shoulder_L', 'Hit_Shoulder_R'];
     const clip = variants[Math.floor(Math.random() * variants.length)]!;
-    this.playClip(clip, { once: true, fadeSeconds: 0.05 });
-    this.actionUntil = this.clock + 0.3;
+    this.composed.playOverlay(clip, 0.5, 0.03);
   }
 
   /** Death/respawn presentation — the server owns WHEN (Dead flag/events). */
@@ -372,6 +377,11 @@ export class CharacterView {
     return this.currentClip;
   }
 
+  /** Mixer truth (what is REALLY playing) — smoke tests catch silent no-ops. */
+  get actionState(): { clip: string; time: number; weight: number; running: boolean } | null {
+    return this.composed?.activeState() ?? null;
+  }
+
   /** True while a chat bubble is on screen (smoke-test observability). */
   get hasBubble(): boolean {
     return this.bubble !== null;
@@ -411,7 +421,10 @@ export class CharacterView {
   ): void {
     const composed = this.composed;
     if (!composed) return;
-    if (this.currentClip === name) {
+    // Loops dedupe by name; ONE-SHOTS must always re-trigger — a repeated
+    // combo step or death after a one-shot would otherwise hold a spent,
+    // finished action and render one static frame.
+    if (this.currentClip === name && !options.once) {
       if (options.timeScale !== undefined) composed.setTimeScale(options.timeScale);
       return;
     }

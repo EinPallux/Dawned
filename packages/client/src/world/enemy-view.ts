@@ -155,6 +155,17 @@ export class EnemyView {
     return MODEL_CLIPS[this.meta.modelRef]?.[kind] ?? '';
   }
 
+  /** Active clip + mixer truth (smoke tests catch silently-missing clips). */
+  get animDebug(): { clip: string; time: number; running: boolean; actions: number } {
+    const action = this.actions.get(this.current);
+    return {
+      clip: this.current,
+      time: action?.time ?? -1,
+      running: action?.isRunning() ?? false,
+      actions: this.actions.size,
+    };
+  }
+
   /** Ability ordinal → content clip name (AbilityStart events carry ordinals). */
   clipForAbility(ordinal: number): string {
     const ability = this.def?.abilities[ordinal];
@@ -239,13 +250,20 @@ export class EnemyView {
     if (clip) this.playOnce(clip);
   }
 
-  /** Ability wind-up from AbilityStart: scale the clip to the wind-up time. */
+  /**
+   * Ability swing from AbilityStart. The clip is scaled across wind-up AND
+   * recover (from the content def) so the motion flows through contact and
+   * settles — scaled to the wind-up alone it clamps on its last frame and the
+   * enemy freezes mid-lunge for the whole recover (first camp playtest).
+   */
   playAbility(ordinal: number, durationMs: number): void {
     const name = this.clipForAbility(ordinal);
     const action = this.actions.get(name);
     if (!action) return;
+    const spec = this.def?.abilities[ordinal];
+    const totalMs = spec ? spec.windupMs + spec.recoverMs : durationMs;
     const native = action.getClip().duration;
-    this.playOnce(name, native / Math.max(durationMs / 1000, 0.15));
+    this.playOnce(name, native / Math.max(totalMs / 1000, 0.15));
   }
 
   beginDeath(): void {
@@ -275,15 +293,28 @@ export class EnemyView {
     options: { once?: boolean; timeScale?: number; randomizePhase?: boolean } = {},
   ): void {
     const action = this.actions.get(name);
-    if (!action || this.current === name) return;
-    const previous = this.actions.get(this.current);
+    if (!action) return;
+    // Loops dedupe; one-shots must re-trigger (repeat Headbutts with no idle
+    // interleave held a finished action = a frozen glub).
+    if (this.current === name && !options.once) return;
+    const previous = this.current === name ? null : this.actions.get(this.current);
     action.reset();
+    action.enabled = true;
+    action.setEffectiveWeight(1);
     action.setLoop(options.once ? THREE.LoopOnce : THREE.LoopRepeat, options.once ? 1 : Infinity);
     action.clampWhenFinished = options.once ?? false;
     action.timeScale = options.timeScale ?? 1;
     if (options.randomizePhase) action.time = Math.random() * action.getClip().duration;
-    action.play();
-    if (previous) previous.crossFadeTo(action, 0.15, false);
+    if (previous && previous.isRunning()) {
+      // Live source → real crossfade.
+      action.play();
+      previous.crossFadeTo(action, 0.15, false);
+    } else {
+      // Finished one-shots can't drive a fade (weight ramp never runs — the
+      // rig freezes); cut them and fade the new clip in.
+      previous?.stop();
+      action.fadeIn(0.1).play();
+    }
     this.current = name;
   }
 

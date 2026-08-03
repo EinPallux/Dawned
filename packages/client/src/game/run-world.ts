@@ -294,6 +294,10 @@ export const runWorld = (
   });
   /** Attacker anim runs at 0.1× until this time — the §9 hit-stop. */
   let hitStopUntilMs = 0;
+  /** Wall time the current death began (0 = alive) — drives the §10 beat. */
+  let deathStartedMs = 0;
+  /** The soul screen waits for the death clip + camera drift to land. */
+  const DEATH_SOUL_DELAY_MS = 1800;
   /**
    * One LMB press: predicted chain via the shared rules, swing anim NOW, and
    * the request on the wire. Aim pitch leans a fraction of the camera pitch so
@@ -379,6 +383,23 @@ export const runWorld = (
       }
       return { local: localView.clipName, localBubble: localView.hasBubble, remotes };
     },
+    /** Mixer truth: what is REALLY playing (catches silently-unbound clips). */
+    animDebug: (): {
+      local: { clip: string; time: number; weight: number; running: boolean } | null;
+      enemies: Record<string, { clip: string; time: number; running: boolean; actions: number }>;
+      rollTimeLeft: number;
+    } => {
+      const enemies: Record<
+        string,
+        { clip: string; time: number; running: boolean; actions: number }
+      > = {};
+      for (const [id, view] of enemyViews) enemies[String(id)] = view.animDebug;
+      return {
+        local: localView.actionState,
+        enemies,
+        rollTimeLeft: connection.predicted.rollTimeLeft,
+      };
+    },
   };
 
   // --- loop ------------------------------------------------------------------
@@ -440,7 +461,12 @@ export const runWorld = (
     const position = connection.renderPosition(simulationReady ? accumulatorMs : 0);
     localView.setPose(position.x, position.y, position.z, input.yaw);
     localView.setDead(connection.selfDead);
-    hud.showDeath(connection.selfDead);
+    // Death beat (COMBAT.md §10): let the Death clip play under a slow camera
+    // orbit before the soul screen takes over — an instant overlay was "there
+    // is no death animation" (round 6).
+    if (connection.selfDead && deathStartedMs === 0) deathStartedMs = now;
+    else if (!connection.selfDead) deathStartedMs = 0;
+    hud.showDeath(connection.selfDead && now - deathStartedMs > DEATH_SOUL_DELAY_MS);
     // The 8-way clip follows the held keys, not measured velocity: the rig
     // faces the live yaw while velocity trails the 20 Hz intents, so a camera
     // flick would sweep a velocity heading across sectors (anim-math.ts).
@@ -469,7 +495,11 @@ export const runWorld = (
       connection.predicted.sprinting && !connection.predicted.swimming,
       dtSeconds,
     );
-    scene.updateCamera(cameraTarget, input.yaw, input.pitch, dtSeconds);
+    // Dead: the camera drifts around the body (input.yaw itself stays put, so
+    // control returns exactly where the player left it on respawn).
+    const cameraYaw =
+      deathStartedMs > 0 ? input.yaw + ((now - deathStartedMs) / 1000) * 0.45 : input.yaw;
+    scene.updateCamera(cameraTarget, cameraYaw, input.pitch, dtSeconds);
     scene.render();
 
     hud.update({

@@ -118,6 +118,10 @@ export interface ComposedCharacter {
   ) => boolean;
   /** Playback speed of the active clip (foot-slide compensation). */
   setTimeScale: (scale: number) => void;
+  /** One-shot blended OVER the base layer (flinches) — no control loss. */
+  playOverlay: (clipName: string, weight: number, fadeSeconds: number) => boolean;
+  /** Mixer truth for smokes/diagnostics: what is actually playing right now. */
+  activeState: () => { clip: string; time: number; weight: number; running: boolean } | null;
   dispose: () => void;
 }
 
@@ -277,12 +281,6 @@ export const composeCharacter = (
     const clip = assets.clips.get(clipName);
     if (!clip) return false;
     const next = mixer.clipAction(clip);
-    if (options?.loopOnce) {
-      next.setLoop(THREE.LoopOnce, 1);
-      next.clampWhenFinished = true;
-    } else {
-      next.setLoop(THREE.LoopRepeat, Infinity);
-    }
     // Carrying the gait phase into the next cycle keeps feet mid-stride through
     // direction/gait changes — measured before the fade replaces activeAction.
     let phase = -1;
@@ -292,13 +290,28 @@ export const composeCharacter = (
         phase = (activeAction.time % previousClip.duration) / previousClip.duration;
       }
     }
-    if (activeAction && activeAction !== next) {
-      next
-        .reset()
-        .crossFadeFrom(activeAction, options?.fadeSeconds ?? 0.18, false)
-        .play();
+    const previous = activeAction;
+    // reset() FIRST, always: clipAction() returns a cached action, and a
+    // finished LoopOnce keeps its spent time/weight — replaying it (combo spam,
+    // repeated flinches) without reset shows one static frame forever.
+    next.reset();
+    next.enabled = true;
+    next.setEffectiveWeight(1);
+    if (options?.loopOnce) {
+      next.setLoop(THREE.LoopOnce, 1);
+      next.clampWhenFinished = true;
     } else {
-      next.reset().play();
+      next.setLoop(THREE.LoopRepeat, Infinity);
+    }
+    if (previous && previous !== next && previous.isRunning()) {
+      // Live source → true crossfade.
+      next.crossFadeFrom(previous, options?.fadeSeconds ?? 0.18, false).play();
+    } else {
+      // No source, same action re-trigger, or a FINISHED one-shot: a finished
+      // action cannot drive a crossfade (its weight ramp never runs — the rig
+      // froze exactly this way in the first camp playtest). Cut it and fade in.
+      if (previous && previous !== next) previous.stop();
+      next.fadeIn(options?.fadeSeconds ?? 0.18).play();
     }
     if (!options?.loopOnce) {
       if (phase >= 0) {
@@ -312,8 +325,38 @@ export const composeCharacter = (
     return true;
   };
 
+  /**
+   * One-shot OVERLAY on top of whatever plays (COMBAT.md §6.4 light-hit
+   * flinches: blended, no control loss). Never touches activeAction, so the
+   * base swing/roll/gait keeps running underneath — a mob wailing on you must
+   * not freeze your rig (it did; the "everything is static" playtest).
+   */
+  const playOverlay: ComposedCharacter['playOverlay'] = (clipName, weight, fadeSeconds) => {
+    const clip = assets.clips.get(clipName);
+    if (!clip) return false;
+    const action = mixer.clipAction(clip);
+    if (action === activeAction) return false; // never fight the base layer
+    action.reset();
+    action.enabled = true;
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = false; // influence ends with the clip
+    action.setEffectiveWeight(weight);
+    action.fadeIn(fadeSeconds).play();
+    return true;
+  };
+
   const setTimeScale: ComposedCharacter['setTimeScale'] = (scale) => {
     if (activeAction) activeAction.timeScale = scale;
+  };
+
+  const activeState: ComposedCharacter['activeState'] = () => {
+    if (!activeAction) return null;
+    return {
+      clip: activeAction.getClip().name,
+      time: activeAction.time,
+      weight: activeAction.getEffectiveWeight(),
+      running: activeAction.isRunning(),
+    };
   };
 
   const dispose = (): void => {
@@ -326,5 +369,5 @@ export const composeCharacter = (
     });
   };
 
-  return { group, mixer, play, setTimeScale, dispose };
+  return { group, mixer, play, setTimeScale, playOverlay, activeState, dispose };
 };
