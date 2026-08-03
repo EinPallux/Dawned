@@ -8,6 +8,18 @@
 # first when the server is up, and takes a quick backup before touching anything.
 set -euo pipefail
 
+# Re-exec from a temp copy first: this script pulls the very repo it lives in,
+# and bash reads script files lazily — a mid-run update of the file would splice
+# new bytes into the running execution. The copy is immune; the ORIGINAL
+# location is remembered so sibling scripts (BACKUP.sh) still resolve.
+if [[ -z "${DAWNED_UPDATE_RELOCATED:-}" ]]; then
+  export DAWNED_SCRIPT_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  export DAWNED_UPDATE_RELOCATED=1
+  _tmp="$(mktemp /tmp/dawned-update.XXXXXX.sh)"
+  cp "${BASH_SOURCE[0]}" "$_tmp"
+  exec bash "$_tmp" "$@"
+fi
+
 TARGET="${1:-all}"
 REF=""
 ANNOUNCE=1
@@ -24,7 +36,7 @@ done
 
 APP_DIR=/opt/dawned
 ETC_DIR=/etc/dawned
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="${DAWNED_SCRIPT_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
 log() { printf '\n\033[1;33m▶ %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;31m! %s\033[0m\n' "$*"; }
@@ -65,6 +77,24 @@ write_npmrc_for_git_deps() {
   fi
 }
 
+# The admin repo may be missing entirely: its first deploy predated any code, so
+# DEPLOY.sh's clone of the (then nonexistent) main branch failed and was skipped.
+# Derive its URL from the game clone's origin (same host/owner/token) and clone
+# main — falling back to the remote's default branch until main exists.
+ensure_admin_clone() {
+  local dir="$1"
+  [[ -d "$dir/.git" ]] && return 0
+  local admin_url
+  admin_url="$(git -C "$APP_DIR/game" remote get-url origin | sed 's|/Dawned\(\.git\)\?$|/Dawned-Admin.git|')"
+  log "admin: cloning $dir"
+  sudo -u dawned -H bash -euo pipefail <<EOSU
+    if ! git clone -b main "$admin_url" "$dir" 2>/dev/null; then
+      echo "  (no main branch yet — cloning the default branch; create main when ready)"
+      git clone "$admin_url" "$dir"
+    fi
+EOSU
+}
+
 update_repo() {
   local dir="$1" service="$2" label="$3" envfile="$4"
   [[ -d "$dir/.git" ]] || { warn "$label: $dir is not a git clone — skipping"; return 0; }
@@ -81,6 +111,18 @@ update_repo() {
     else
       git pull --ff-only
     fi
+EOSU
+
+  # Check AFTER the pull: the first admin update is exactly the pull that brings
+  # package.json into a docs-only clone (the old pre-check deadlocked on that).
+  if [[ ! -f "$dir/package.json" ]]; then
+    warn "$label: no package.json on this branch — nothing to build, skipping"
+    return 0
+  fi
+
+  log "$label: build"
+  sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU
+    cd "$dir"
     pnpm install --frozen-lockfile
     pnpm build
 EOSU
@@ -107,6 +149,8 @@ EOSU
   fi
 
   log "$label: restarting $service"
+  # enable: the admin unit ships installed-but-disabled until its first build.
+  systemctl enable "$service" >/dev/null 2>&1 || true
   systemctl restart "$service"
   sleep 2
   if systemctl is-active --quiet "$service"; then
@@ -124,10 +168,14 @@ announce
 
 case "$TARGET" in
   game)  update_repo "$APP_DIR/game"  dawned-game  "game"  game.env ;;
-  admin) update_repo "$APP_DIR/admin" dawned-admin "admin" admin.env ;;
+  admin)
+    ensure_admin_clone "$APP_DIR/admin"
+    update_repo "$APP_DIR/admin" dawned-admin "admin" admin.env
+    ;;
   all)
     update_repo "$APP_DIR/game" dawned-game "game" game.env
-    [[ -f "$APP_DIR/admin/package.json" ]] && update_repo "$APP_DIR/admin" dawned-admin "admin" admin.env
+    ensure_admin_clone "$APP_DIR/admin"
+    update_repo "$APP_DIR/admin" dawned-admin "admin" admin.env
     ;;
   *) warn "unknown target '$TARGET' (expected game|admin|all)"; exit 2 ;;
 esac

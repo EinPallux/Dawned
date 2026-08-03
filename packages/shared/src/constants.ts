@@ -95,7 +95,7 @@ export const SWIM_SURFACE_OFFSET = 0.55;
  * from /assets/map/<version>/). Becomes dynamic when the admin publish
  * pipeline lands (A2) — until then both sides agree through this constant.
  */
-export const MAP_VERSION = 'dev-1';
+export const MAP_VERSION = 'dev-2';
 
 /** Player capsule radius in metres. */
 export const PLAYER_RADIUS = 0.35;

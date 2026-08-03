@@ -117,7 +117,8 @@ log "Cloning repositories"
 sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU
   [ -d "$APP_DIR/game" ]  || git clone -b "$BRANCH" "$REPO_GAME"  "$APP_DIR/game"
   [ -d "$APP_DIR/admin" ] || git clone -b "$BRANCH" "$REPO_ADMIN" "$APP_DIR/admin" || \
-    echo "  (admin repo not available yet — skipping; it lands in phase A0)"
+    git clone "$REPO_ADMIN" "$APP_DIR/admin" || \
+    echo "  (admin repo not available — skipping; UPDATE.sh clones it once it exists)"
 EOSU
 
 log "Environment files"

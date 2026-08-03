@@ -350,7 +350,15 @@ const renderWorldmap = (seed) => {
 
 // --- entry ------------------------------------------------------------------
 
-export const generate = async ({ seed = 7, version = 'dev-1' } = {}) => {
+/**
+ * RULE: any change to the map's DATA (chunks, walkgrid, zones — even a
+ * semantics-only walkgrid rebake) must ship under a NEW version string. The
+ * version keys the client's IndexedDB cache and the immutable HTTP paths — a
+ * changed file under an old version leaves every returning browser predicting
+ * against stale data while the server uses the new (learned the hard way when
+ * dev-1's walkgrid changed in P3-A and shorelines rubber-banded in production).
+ */
+export const generate = async ({ seed = 7, version = 'dev-2' } = {}) => {
   const outDir = path.join(REPO_ROOT, 'assets_baked/map', version);
   await rm(outDir, { recursive: true, force: true });
   await mkdir(path.join(outDir, 'minimap_tiles'), { recursive: true });

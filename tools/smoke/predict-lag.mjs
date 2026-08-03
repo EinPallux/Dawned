@@ -26,6 +26,7 @@ import {
   ChunkTerrain,
   EntityFlag,
   InputButton,
+  MAP_VERSION,
   PROTOCOL_VERSION,
   ServerOp,
   TICK_DT,
@@ -64,7 +65,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // --- terrain: the same committed artifacts the server loads -----------------
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const mapDir = path.join(repoRoot, 'assets_baked/map/dev-1');
+const mapDir = path.join(repoRoot, 'assets_baked/map', MAP_VERSION);
 const terrain = new ChunkTerrain();
 for (const file of fs.readdirSync(mapDir).filter((name) => name.startsWith('chunk_'))) {
   terrain.addChunk(decodeChunk(new Uint8Array(fs.readFileSync(path.join(mapDir, file)))));

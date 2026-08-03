@@ -38,6 +38,12 @@ export const cameraRelativeMove = (
 
 export class InputController {
   private readonly held = new Set<string>();
+  /**
+   * Keys pressed since the last intent sample. Intents sample at 20 Hz while
+   * frames run at 60–240 Hz — a quick tap (jump!) can press AND release inside
+   * one tick window and vanish. A tap latches here until the next sample.
+   */
+  private readonly tapped = new Set<string>();
   private pointerLocked = false;
   /** True while the cursor is freed by holding Alt — releasing Alt re-locks. */
   private altReleased = false;
@@ -58,6 +64,7 @@ export class InputController {
     window.addEventListener('keyup', this.handleKeyUp);
     window.addEventListener('blur', () => {
       this.held.clear();
+      this.tapped.clear();
       // An alt-tab while the cursor was Alt-freed must not re-lock on return.
       this.altReleased = false;
     });
@@ -95,6 +102,7 @@ export class InputController {
     // Space would scroll the page; the game owns it.
     if (event.code === 'Space') event.preventDefault();
     this.held.add(event.code);
+    this.tapped.add(event.code);
   };
 
   private handleKeyUp = (event: KeyboardEvent): void => {
@@ -120,18 +128,24 @@ export class InputController {
   /** Build this tick's intent in world space (the server never sees camera space). */
   sampleIntent(): MovementIntent {
     if (this.textEntryActive) {
+      this.tapped.clear();
       return { moveX: 0, moveZ: 0, yaw: this.yaw, buttons: 0 };
     }
 
-    const forward = (this.held.has('KeyW') ? 1 : 0) - (this.held.has('KeyS') ? 1 : 0);
-    const strafe = (this.held.has('KeyD') ? 1 : 0) - (this.held.has('KeyA') ? 1 : 0);
+    // held ∪ tapped: a key that was pressed-and-released between two 20 Hz
+    // samples still counts for this tick (jump taps must never whiff).
+    const active = (code: string): boolean => this.held.has(code) || this.tapped.has(code);
+
+    const forward = (active('KeyW') ? 1 : 0) - (active('KeyS') ? 1 : 0);
+    const strafe = (active('KeyD') ? 1 : 0) - (active('KeyA') ? 1 : 0);
     const { moveX, moveZ } = cameraRelativeMove(forward, strafe, this.yaw);
 
     let buttons = 0;
-    if (this.held.has('ShiftLeft') || this.held.has('ShiftRight')) buttons |= InputButton.Sprint;
-    if (this.held.has('Space')) buttons |= InputButton.Jump;
-    if (this.held.has('KeyV')) buttons |= InputButton.Dodge;
+    if (active('ShiftLeft') || active('ShiftRight')) buttons |= InputButton.Sprint;
+    if (active('Space')) buttons |= InputButton.Jump;
+    if (active('KeyV')) buttons |= InputButton.Dodge;
 
+    this.tapped.clear();
     return { moveX, moveZ, yaw: this.yaw, buttons };
   }
 }
