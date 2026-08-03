@@ -290,7 +290,8 @@ cleric heals) plays clean at lag-lab settings.
 **Goal:** kills mean something: 1→30 exists end-to-end.
 **Scope:** XP sources + curve + level-ups (juice per PROGRESSION.md §1.3); stat points UI/server +
 derived stats application; skill trees ×4 (server validation + lattice UI + respec at Mirror of
-Dawn); ability unlock flow + toasts; `content_xp_curve`/nodes editable via A1 editors; dev
+Dawn); ability unlock flow + toasts; HUD **micro menu** (UI_UX.md §3 — mouse path to every
+screen, grows with later phases); `content_xp_curve`/nodes editable via A1 editors; dev
 `/setlevel` (pre-GM-suite, gated).
 **DoD:** grind a character 1→10 legitimately on test camps; trees allocate/respec correctly incl.
 all Warrior/Rogue/Mage/Cleric node effects verified by targeted tests; unspent-point UX per design.
