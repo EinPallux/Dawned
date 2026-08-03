@@ -22,6 +22,17 @@ import {
   stepMovement,
   type Appearance,
   type ClassId,
+  BASIC_COMBOS,
+  EVASIVE_DODGE_DISCOUNT,
+  EVASIVE_ENERGY_PER_S,
+  EVASIVE_MOVE_SPEED_PCT,
+  InputButton,
+  TICK_MS,
+  gainResource,
+  interruptCast,
+  payResource,
+  slotForAction,
+  tickResource,
   type EnemyDef,
   type MovementStepResult,
   type Rng,
@@ -35,12 +46,15 @@ import { ServerEnemy } from './enemy.js';
 import type { GameContent } from '../content/loader.js';
 import {
   advancePlayerContact,
+  applyDamageToEnemy,
   cancelComboOnDodge,
   handleAttackRequest,
   stepProjectiles,
   type CombatEvent,
   type ServerProjectile,
 } from './combat.js';
+import { handleSlotRequest, tickPlayerAbilities } from './abilities.js';
+import { moveSpeedMultOf, tickEffects, type PeriodicTick } from './effects.js';
 import { CORPSE_LINGER_MS, decide, enterCombat, move, type AiContext } from './enemy-ai.js';
 
 /** AOI radii (docs/tech/NETWORKING.md §5): 3×3 of 64 m cells ≈ 96 m, +8 m leave margin. */
@@ -76,12 +90,14 @@ export class World {
   private readonly campIndex = new Map<string, ServerEnemy[]>();
   private nextEntityId = 1;
   private nextProjectileId = 1;
+  /** Reused per tick for effect periodic collection (zero-alloc steady state). */
+  private readonly periodicScratch: PeriodicTick[] = [];
   private tickCounter = 0;
 
   constructor(
     private readonly terrain: TerrainSampler = devTerrain,
     private readonly spawn: SpawnPoint = { x: 0, y: 0, z: 0, yaw: 0 },
-    private readonly content: GameContent | null = null,
+    private content: GameContent | null = null,
     private readonly rng: Rng = Math.random,
   ) {
     if (content) this.populateFromSpawners();
@@ -266,6 +282,22 @@ export class World {
   // -------------------------------------------------------------------------
 
   /** Advance the world one tick. Returns combat events for the gateway. */
+  /**
+   * Hot-swap published content between ticks (admin publish → /ops/reload).
+   * Ability defs and slot bindings apply to every FUTURE use immediately;
+   * live enemies keep their def object until leash-reset or respawn (new
+   * spawns read the new defs). Spawner layout changes need a restart —
+   * the caller reports that honestly (docs/tech/ARCHITECTURE.md content cache).
+   */
+  applyContent(next: GameContent): { abilities: number; enemies: number; spawners: number } {
+    this.content = next;
+    return {
+      abilities: next.abilities.size,
+      enemies: next.enemies.size,
+      spawners: next.spawners.length,
+    };
+  }
+
   step(): CombatEvent[] {
     const events: CombatEvent[] = [];
     const nowMs = Date.now();
@@ -279,6 +311,8 @@ export class World {
       rng: this.rng,
       events,
       enemiesByCamp: (tag) => this.campIndex.get(tag) ?? [],
+      projectiles: this.projectiles,
+      nextProjectileId: () => this.nextProjectileId++,
     };
 
     // 1. Player movement — re-simulated from client intents with the shared step.
@@ -291,13 +325,46 @@ export class World {
           player.movement.vz = 0;
           continue;
         }
+        // RMB stances (P5, CLASSES.md): shield up for Warrior/Cleric with the
+        // perfect-block window stamped on the raise EDGE; Evasive for Rogues
+        // (speed + dodge discount, 3 Energy/s while held and affordable).
+        const secondaryHeld = (intent.buttons & InputButton.SecondaryAction) !== 0;
+        const blockClass = player.classId === 'warrior' || player.classId === 'cleric';
+        if (blockClass) {
+          if (secondaryHeld && !player.blocking) player.blockRaisedAtMs = nowMs;
+          player.blocking = secondaryHeld;
+        } else {
+          player.blocking = false;
+        }
+        const evasive = secondaryHeld && player.classId === 'rogue' && player.resource.value >= 1;
+        if (evasive) payResource(player.resource, EVASIVE_ENERGY_PER_S * TICK_DT);
+        const whirlMult = player.pendingAbility?.def.anim.moveSpeedMult ?? 1;
+        const modifiers = {
+          speedMult:
+            moveSpeedMultOf(player) * (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) * whirlMult,
+          dodgeCostDelta: evasive ? -EVASIVE_DODGE_DISCOUNT : 0,
+        };
         const result: MovementStepResult = stepMovement(
           player.movement,
           intent,
           TICK_DT,
           this.terrain,
+          modifiers,
         );
-        if (result.dodged) cancelComboOnDodge(player);
+        if (result.dodged) {
+          cancelComboOnDodge(player);
+          // A roll cancels an active cast for HALF the cost back (§4.5).
+          const casting = player.abilityMachine.cast;
+          if (casting) {
+            const castDef = this.content?.abilities.get(casting.abilityId);
+            const interrupted = interruptCast(
+              player.abilityMachine,
+              'dodge',
+              castDef?.cost.amount ?? 0,
+            );
+            if (interrupted.refund > 0) gainResource(player.resource, interrupted.refund, true);
+          }
+        }
         if (result.fallDamageFraction > 0) {
           player.hp = Math.max(0, player.hp - player.maxHp * result.fallDamageFraction);
           player.lastCombatAtMs = nowMs;
@@ -311,9 +378,31 @@ export class World {
       // 1b. Queued combat requests enter the pipeline after movement.
       for (const request of player.takeAttackRequests()) {
         if (request.action === (ActionId.BasicAttack as number)) {
-          handleAttackRequest(player, request.seq, request.aimYaw, request.aimPitch, nowMs, events);
+          handleAttackRequest(
+            player,
+            request.seq,
+            request.aimYaw,
+            request.aimPitch,
+            this.content?.basicChains ?? BASIC_COMBOS,
+            nowMs,
+            events,
+          );
         } else if (request.action === (ActionId.Respawn as number)) {
           this.handleRespawn(player, request.seq, nowMs, events);
+        } else if (slotForAction(request.action) !== null && this.content !== null) {
+          handleSlotRequest(
+            player,
+            request.seq,
+            request.action,
+            request.aimYaw,
+            request.aimPitch,
+            request.targetId,
+            this.content,
+            this.enemies,
+            this.terrain,
+            nowMs,
+            events,
+          );
         } else {
           events.push({
             type: 'ability-reject',
@@ -327,10 +416,22 @@ export class World {
     }
 
     // 2. Ability pipeline: pending contacts resolve, projectiles fly.
+    const abilityDeps = this.content
+      ? {
+          enemies: this.enemies,
+          players: this.players,
+          content: this.content,
+          rng: this.rng,
+          nowMs,
+          events,
+        }
+      : null;
     for (const player of this.players.values()) {
+      if (abilityDeps && !player.dead) tickPlayerAbilities(player, TICK_MS, abilityDeps);
       advancePlayerContact(
         player,
         this.enemies,
+        this.content?.basicChains ?? BASIC_COMBOS,
         nowMs,
         this.rng,
         () => this.nextProjectileId++,
@@ -377,15 +478,52 @@ export class World {
     // 4. Spawner tickets + corpse cleanup.
     this.sweepCorpsesAndTickets(nowMs, events);
 
-    // 5. Player vitals: out-of-combat regen (COMBAT.md §6.6).
+    // 5. Player vitals: out-of-combat regen (COMBAT.md §6.6) + resources +
+    // effect expiry (P5).
     for (const player of this.players.values()) {
-      if (
-        !player.dead &&
-        player.hp < player.maxHp &&
-        nowMs - player.lastCombatAtMs > OOC_AFTER_MS
-      ) {
+      const inCombat = nowMs - player.lastCombatAtMs <= OOC_AFTER_MS;
+      if (!player.dead && player.hp < player.maxHp && !inCombat) {
         player.hp = Math.min(player.maxHp, player.hp + player.maxHp * OOC_HP_REGEN_PER_S * TICK_DT);
       }
+      tickResource(player.resource, TICK_MS, inCombat);
+      this.periodicScratch.length = 0;
+      tickEffects(player, nowMs, this.periodicScratch);
+      // No hostile DoTs on players in P5 content — expiry/dirty only.
+    }
+
+    // 5b. Enemy effects: bleeds/poisons tick through the real damage path
+    // (threat, kill credit, death events all in one place).
+    for (const enemy of this.enemies.values()) {
+      if (enemy.tauntedById !== null && nowMs >= enemy.tauntedUntilMs) {
+        enemy.tauntedById = null;
+      }
+      if (enemy.state === 'dead') continue;
+      this.periodicScratch.length = 0;
+      tickEffects(enemy, nowMs, this.periodicScratch);
+      for (const tick of this.periodicScratch) {
+        const caster = this.players.get(tick.effect.casterId) ?? null;
+        const hit = applyDamageToEnemy(
+          enemy,
+          tick.effect.casterId,
+          caster,
+          tick.damage,
+          false,
+          0,
+          nowMs,
+          events,
+        );
+        // DoT ticks surface as tiny resolves so combat text shows the drain.
+        events.push({
+          type: 'ability-resolve',
+          attackerId: tick.effect.casterId,
+          action: 0,
+          step: 0,
+          hits: [hit],
+        });
+      }
+    }
+    for (const event of events) {
+      if (event.type === 'enemy-died') this.onEnemyDeath(event.enemy, nowMs, events);
     }
 
     return events;

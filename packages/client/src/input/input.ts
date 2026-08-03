@@ -74,8 +74,13 @@ export class InputController {
         if (!this.textEntryActive) void canvas.requestPointerLock();
         return;
       }
-      // Locked = combat verbs (COMBAT.md §2): LMB basic attack; Mouse4 dodge.
+      // Locked = combat verbs (COMBAT.md §2): LMB basic attack; RMB held =
+      // the class stance (Block / Evasive, P5); Mouse4 dodge.
       if (event.button === 0) this.attackPresses++;
+      if (event.button === 2) {
+        event.preventDefault();
+        this.held.add('Mouse2');
+      }
       if (event.button === 3) {
         event.preventDefault();
         this.held.add('Mouse4');
@@ -83,7 +88,12 @@ export class InputController {
       }
     });
     canvas.addEventListener('mouseup', (event) => {
+      if (event.button === 2) this.held.delete('Mouse2');
       if (event.button === 3) this.held.delete('Mouse4');
+    });
+    // The stance lives on RMB — the browser menu would eat the hold.
+    canvas.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === canvas;
@@ -93,12 +103,37 @@ export class InputController {
 
   /** LMB presses since last drained — run-world turns them into attack requests. */
   private attackPresses = 0;
+  /** Hotbar keys (1–8) pressed since last drained, in press order. */
+  private slotPresses: number[] = [];
 
   /** Drain buffered attack presses (called once per frame). */
   takeAttackPresses(): number {
     const presses = this.attackPresses;
     this.attackPresses = 0;
     return presses;
+  }
+
+  /** Drain buffered hotbar presses (called once per frame). */
+  takeSlotPresses(): number[] {
+    if (this.slotPresses.length === 0) return this.slotPresses;
+    const presses = this.slotPresses;
+    this.slotPresses = [];
+    return presses;
+  }
+
+  /** RMB (or the class-stance key) held right now — stance state for HUD/anim. */
+  get secondaryHeld(): boolean {
+    return !this.textEntryActive && this.held.has('Mouse2');
+  }
+
+  /**
+   * Smoke-test hook: hold/release the stance button without pointer lock
+   * (headless browsers can't). Exactly equivalent to a real RMB hold — the
+   * bit rides the next intents and the server engages the stance for real.
+   */
+  debugSetSecondary(held: boolean): void {
+    if (held) this.held.add('Mouse2');
+    else this.held.delete('Mouse2');
   }
 
   get isPointerLocked(): boolean {
@@ -124,6 +159,10 @@ export class InputController {
     }
     // Space would scroll the page; the game owns it.
     if (event.code === 'Space') event.preventDefault();
+    // Hotbar 1–8 buffer like LMB: presses are edge events, not held state
+    // (repeat guard — a held key must not machine-gun requests).
+    const digit = /^Digit([1-8])$/.exec(event.code);
+    if (digit && !event.repeat) this.slotPresses.push(Number(digit[1]));
     this.held.add(event.code);
     this.tapped.add(event.code);
   };
@@ -181,6 +220,8 @@ export class InputController {
     if (active('ShiftLeft') || active('ShiftRight')) buttons |= InputButton.Sprint;
     if (active('Space')) buttons |= InputButton.Jump;
     if (active('KeyV') || active('Mouse4')) buttons |= InputButton.Dodge;
+    // Stance is HELD state (no tap latch): the server folds it per intent.
+    if (this.held.has('Mouse2')) buttons |= InputButton.SecondaryAction;
 
     this.tapped.clear();
     return { moveX, moveZ, yaw: this.yaw, buttons };

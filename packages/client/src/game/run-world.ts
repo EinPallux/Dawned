@@ -19,6 +19,7 @@ import {
   angleDelta,
   maxStaminaFor,
   playerStats,
+  slotForAction,
   type Appearance,
 } from '@dawned/shared';
 import { Connection } from '../net/connection.js';
@@ -37,9 +38,11 @@ import { EnemyView, loadEnemyAssets, type EnemyAssets } from '../world/enemy-vie
 import { TelegraphManager } from '../world/telegraphs.js';
 import { CombatTextManager } from '../world/combat-text.js';
 import { ProjectileManager } from '../world/projectiles.js';
-import { CombatSfx } from '../audio/combat-sfx.js';
+import { AbilityVfxManager, abilityVfxColor } from '../world/ability-vfx.js';
+import { CombatSfx, sfxSlotOf } from '../audio/combat-sfx.js';
 import { loadEnemyDefs } from '../content/enemy-defs.js';
-import type { EnemyDef } from '@dawned/shared';
+import { loadAbilityDefs } from '../content/ability-defs.js';
+import type { AbilityDef, EnemyDef } from '@dawned/shared';
 
 export interface WorldHandle {
   dispose: () => void;
@@ -56,6 +59,8 @@ const gameSocketUrl = (): string => {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${location.host}/game`;
 };
+
+const HOTBAR_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export const runWorld = (
   container: HTMLElement,
@@ -174,6 +179,19 @@ export const runWorld = (
               .get(message.entityId)
               ?.playAttack(step.clip, step.clipSeconds, message.durationMs);
           }
+          return;
+        }
+        // Remote player slot ability: def by their class + slot (v7).
+        const slot = slotForAction(message.action);
+        if (slot !== null) {
+          const classId = connection.rosterEntryFor(message.entityId)?.classId ?? 'warrior';
+          const def = connection.abilityDefFor(classId, slot);
+          const view = remoteViews.get(message.entityId);
+          if (def && view) {
+            view.playAttack(def.anim.clip, def.anim.clipSeconds, message.durationMs);
+            const p = view.group.position;
+            abilityCommitVfx(def, p.x, p.y, p.z, message.yaw);
+          }
         }
       },
       onAbilityResolve: (message) => {
@@ -185,6 +203,18 @@ export const runWorld = (
             const kind =
               hit.targetId === connection.selfId ? 'incoming' : crit ? 'outgoing-crit' : 'outgoing';
             combatText.spawn(kind, hit.amount, anchor.x, anchor.y, anchor.z);
+            // Impact burst at the wound point (§9 VFX v1) — crits pop harder.
+            if (hit.targetId !== connection.selfId) {
+              vfx.burst(
+                anchor.x,
+                anchor.y - 0.5,
+                anchor.z,
+                crit ? 0xf0c46b : 0xffa75e,
+                crit ? 18 : 8,
+                crit ? 4 : 2.6,
+                0.35,
+              );
+            }
           }
           enemyViews.get(hit.targetId)?.flash();
           if ((hit.flags & HitFlag.Killed) !== 0) sfx.play('death');
@@ -199,6 +229,15 @@ export const runWorld = (
           sfx.play(
             message.hits.some((h) => (h.flags & HitFlag.Crit) !== 0) ? 'impact_crit' : 'impact',
           );
+        }
+      },
+      onAbilityReject: (action) => {
+        // The server refused a predicted slot press (real divergence): the
+        // rolled-back slot pulses so the player knows the cast didn't happen.
+        const slot = slotForAction(action);
+        if (slot !== null) {
+          hud.pulseSlot(slot);
+          sfx.play('deny', 0.8);
         }
       },
       onEntityEvent: (message) => {
@@ -280,6 +319,7 @@ export const runWorld = (
   const telegraphs = new TelegraphManager(scene.scene, terrain.sampler);
   const combatText = new CombatTextManager(scene.scene);
   const projectiles = new ProjectileManager(scene.scene);
+  const vfx = new AbilityVfxManager(scene.scene);
   const sfx = new CombatSfx();
   canvas.addEventListener('mousedown', () => {
     sfx.unlock();
@@ -291,6 +331,10 @@ export const runWorld = (
   let enemyDefs = new Map<string, EnemyDef>();
   void loadEnemyDefs().then((defs) => {
     if (!disposed) enemyDefs = defs;
+  });
+  // Published ability defs → the prediction layer (hotbar, chains, costs).
+  void loadAbilityDefs().then((defs) => {
+    if (!disposed) connection.setAbilityContent(defs);
   });
   /** Attacker anim runs at 0.1× until this time — the §9 hit-stop. */
   let hitStopUntilMs = 0;
@@ -309,6 +353,72 @@ export const runWorld = (
     localView.playAttack(accepted.def.clip, accepted.def.clipSeconds, accepted.def.durationMs);
     sfx.play('whoosh');
     return true;
+  };
+
+  /** Commit-moment VFX for an ability, at any caster (self or remote). */
+  const abilityCommitVfx = (
+    def: AbilityDef,
+    x: number,
+    y: number,
+    z: number,
+    yaw: number,
+  ): void => {
+    const school = def.effects.find((e) => e.kind === 'damage')?.school ?? 'physical';
+    const color = abilityVfxColor(def.classId, school);
+    switch (def.targeting.kind) {
+      case 'melee_arc':
+        vfx.trail(x, y, z, yaw, def.targeting.reach, color);
+        break;
+      case 'cone':
+        vfx.trail(x, y, z, yaw, def.targeting.reach * 0.7, color);
+        vfx.spray(x, y + 1.1, z, yaw, (def.targeting.angleDeg * Math.PI) / 180, color, 12, 7, 0.3);
+        break;
+      case 'pbaoe':
+        vfx.ring(x, y, z, def.targeting.radius, color);
+        break;
+      case 'dash':
+        vfx.spray(x, y + 0.5, z, yaw + Math.PI, 0.7, color, 10, 4, 0.35);
+        break;
+      case 'blink_behind':
+        vfx.burst(x, y + 1.0, z, 0x8a7ce8, 16, 2.2, 0.4);
+        break;
+      default:
+        // Self buffs and the rest: an upward gold sparkle at the caster.
+        vfx.burst(x, y + 1.2, z, 0xf0c46b, 10, 1.6, 0.5);
+        break;
+    }
+  };
+
+  /**
+   * One hotbar press: predicted evaluate → commit through the shared machine
+   * (connection), then the §9 presentation — anim, sfx slot, commit VFX. A
+   * local refusal pulses the slot immediately (no round trip).
+   */
+  const performSlotPress = (slot: number): void => {
+    const target = softTarget();
+    const before = connection.renderPosition();
+    const result = connection.requestSlotAbility(
+      slot,
+      input.yaw,
+      -input.pitch * 0.35,
+      target ? { id: target.id, radius: target.radius } : null,
+    );
+    if (!result.ok) {
+      if (result.reason !== null) {
+        hud.pulseSlot(slot);
+        sfx.play('deny', 0.8);
+      }
+      return;
+    }
+    const def = result.def;
+    localView.playAttack(def.anim.clip, def.anim.clipSeconds, def.anim.durationMs);
+    sfx.play(sfxSlotOf(def.sfx));
+    abilityCommitVfx(def, before.x, before.y, before.z, input.yaw);
+    // Shadowstep lands elsewhere — a second burst where we arrived.
+    if (def.targeting.kind === 'blink_behind') {
+      const after = connection.renderPosition();
+      vfx.burst(after.x, after.y + 1.0, after.z, 0x8a7ce8, 16, 2.2, 0.4);
+    }
   };
   /** Where FCT for a target entity should appear. */
   const fctAnchor = (entityId: number): { x: number; y: number; z: number } | null => {
@@ -353,6 +463,48 @@ export const runWorld = (
     },
     /** Full attack-press path for smokes (pointer lock is unreliable headless). */
     attack: (): boolean => performAttackPress(),
+    /** Full hotbar-press path for smokes — identical to a 1–8 key press. */
+    pressSlot: (slot: number): void => {
+      performSlotPress(slot);
+    },
+    /** Ability layer truth for the P5 smoke asserts. */
+    abilityState: (): {
+      defsLoaded: number;
+      hotbar: { slot: number; id: string | null; cooldownMs: number; affordable: boolean }[];
+      resource: { type: string; value: number; max: number; comboPoints: number };
+      selfEffects: string[];
+      targetEffects: string[];
+      blocking: boolean;
+      selfFlags: number;
+    } => {
+      const target = softTarget();
+      return {
+        defsLoaded: HOTBAR_SLOTS.filter((s) => connection.slotView(s).def !== null).length,
+        hotbar: HOTBAR_SLOTS.map((slot) => {
+          const view = connection.slotView(slot);
+          return {
+            slot,
+            id: view.def?.id ?? null,
+            cooldownMs: view.cooldownMs,
+            affordable: view.affordable,
+          };
+        }),
+        resource: {
+          type: connection.resource.type,
+          value: Math.floor(connection.resource.value),
+          max: connection.resource.max,
+          comboPoints: connection.resource.comboPoints,
+        },
+        selfEffects: connection.effectsFor(connection.selfId).map((e) => e.effectId),
+        targetEffects: target ? connection.effectsFor(target.id).map((e) => e.effectId) : [],
+        blocking: input.secondaryHeld,
+        selfFlags: connection.selfFlags,
+      };
+    },
+    /** Smoke hook: hold/release the RMB stance without pointer lock. */
+    setStance: (held: boolean): void => {
+      input.debugSetSecondary(held);
+    },
     combatState: (): {
       hp: number;
       maxHp: number;
@@ -449,6 +601,10 @@ export const runWorld = (
     for (let presses = input.takeAttackPresses(); presses > 0; presses--) {
       performAttackPress();
     }
+    // 1c. Hotbar presses → predicted slot abilities (P5).
+    for (const slot of input.takeSlotPresses()) {
+      performSlotPress(slot);
+    }
     if (connection.predicted.rollTimeLeft > 0.5) sfx.play('dodge', 0.6);
 
     // 2. Per-frame networking housekeeping (corrections, interpolation).
@@ -474,6 +630,12 @@ export const runWorld = (
     localView.setIntentHeading(headingFromInput(axes.forward, axes.strafe));
     // Hit-stop (§9): the attacker's rig freezes for a beat on confirmed contact.
     const localDt = performance.now() < hitStopUntilMs ? dtSeconds * 0.1 : dtSeconds;
+    // RMB stance: shield-up overlay for the block classes, instant from input.
+    localView.setBlocking(
+      input.secondaryHeld &&
+        !connection.selfDead &&
+        (connection.classId === 'warrior' || connection.classId === 'cleric'),
+    );
     localView.update(localDt, {
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
@@ -484,6 +646,7 @@ export const runWorld = (
     telegraphs.update();
     combatText.update(dtSeconds);
     projectiles.update(dtSeconds);
+    vfx.update(dtSeconds);
 
     ambience?.update(dtSeconds, position.x, position.z);
     updateWaterTime(now / 1000);
@@ -502,6 +665,8 @@ export const runWorld = (
     scene.updateCamera(cameraTarget, cameraYaw, input.pitch, dtSeconds);
     scene.render();
 
+    const target = softTarget();
+    const cast = connection.castView();
     hud.update({
       fps,
       ping: connection.rttMs,
@@ -522,11 +687,24 @@ export const runWorld = (
       hp: connection.selfHp,
       maxHp: connection.selfMaxHp || playerStats(connection.classId, 1).maxHp,
       dawnedRemainingMs: Math.max(0, connection.dawnedUntilMs - now),
-      target: softTarget(),
+      target,
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
       swimming: connection.predicted.swimming,
       players: connection.remotes.size + 1,
+      resource: {
+        type: connection.resource.type,
+        value: connection.resource.value,
+        max: connection.resource.max,
+        comboPoints: connection.resource.comboPoints,
+        showComboPoints: connection.classId === 'rogue',
+      },
+      slots: HOTBAR_SLOTS.map((slot) => connection.slotView(slot)),
+      cast: cast ? { name: cast.name, fraction: cast.fraction } : null,
+      selfEffects: connection.effectsFor(connection.selfId),
+      targetEffects: target ? connection.effectsFor(target.id) : [],
+      dodgeReady: connection.dodgeReady(input.secondaryHeld),
+      stanceHeld: input.secondaryHeld && !connection.selfDead,
     });
   };
 
@@ -568,6 +746,7 @@ export const runWorld = (
 
       view.setPose(remote.render.x, remote.render.y, remote.render.z, remote.render.yaw);
       view.setDead((remote.render.flags & EntityFlag.Dead) !== 0);
+      view.setBlocking((remote.render.flags & EntityFlag.Blocking) !== 0);
       view.update(dtSeconds, {
         grounded: (remote.render.flags & EntityFlag.Grounded) !== 0,
         sprinting: (remote.render.flags & EntityFlag.Sprinting) !== 0,
@@ -590,10 +769,18 @@ export const runWorld = (
     }
   };
 
-  /** Soft-target (COMBAT.md §1): the best living enemy near the reticle line. */
-  const softTarget = (): { name: string; level: number; hpFraction: number } | null => {
+  /** Soft-target (COMBAT.md §1): the best living enemy near the reticle line.
+   * Carries the entity id + hit radius so ability requests can aim at it. */
+  interface SoftTarget {
+    id: number;
+    name: string;
+    level: number;
+    hpFraction: number;
+    radius: number;
+  }
+  const softTarget = (): SoftTarget | null => {
     const self = connection.renderPosition();
-    let best: { name: string; level: number; hpFraction: number } | null = null;
+    let best: SoftTarget | null = null;
     let bestScore = Infinity;
     for (const remote of connection.remotes.values()) {
       if (remote.kind !== EntityKind.Enemy || !remote.enemyMeta) continue;
@@ -608,9 +795,11 @@ export const runWorld = (
       if (score < bestScore) {
         bestScore = score;
         best = {
+          id: remote.id,
           name: remote.enemyMeta.name,
           level: remote.enemyMeta.level,
           hpFraction: remote.render.hpFraction,
+          radius: enemyDefs.get(remote.enemyMeta.typeId)?.hitRadius ?? 0.5,
         };
       }
     }
@@ -623,6 +812,7 @@ export const runWorld = (
     dispose: () => {
       disposed = true;
       connection.disconnect();
+      vfx.dispose();
       terrain.dispose();
       container.replaceChildren();
     },

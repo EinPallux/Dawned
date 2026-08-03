@@ -8,15 +8,33 @@
 import {
   EntityFlag,
   InputButton,
+  createAbilityMachine,
   createMovementState,
+  createResourceState,
   isDodgeInvulnerable,
   playerStats,
+  type AbilityDef,
   type Appearance,
   type ClassId,
   type CombatStats,
   type MovementIntent,
   type MovementState,
+  type ResourceState,
 } from '@dawned/shared';
+import type { ActiveEffect } from './effects.js';
+
+/** A committed instant ability waiting for its contact frame. */
+export interface PendingAbility {
+  def: AbilityDef;
+  action: number;
+  atMs: number;
+  aimYaw: number;
+  aimPitch: number;
+  targetId: number;
+  comboPointsSpent: number;
+  /** PBAoE pulse train remaining (Whirlwind ×2); 1 for single resolves. */
+  pulsesLeft: number;
+}
 import { PositionHistory } from './history.js';
 
 /** Inputs buffered beyond this are dropped — bounds jitter and input hoarding. */
@@ -42,6 +60,8 @@ export interface QueuedAttack {
   action: number;
   aimYaw: number;
   aimPitch: number;
+  /** Soft-target at press (0 = none) — slot abilities only (v7). */
+  targetId: number;
 }
 
 /** A committed combo step waiting for its contact moment. */
@@ -63,6 +83,24 @@ export class ServerPlayer {
   /** Float internally for smooth regen; rounded at the wire. */
   hp: number;
   readonly maxHp: number;
+  /** Class resource + combo points (P5) — ticked by the ability system. */
+  readonly resource: ResourceState;
+  /** Slot-ability timing/validation (P5) — same machine the client predicts. */
+  readonly abilityMachine = createAbilityMachine();
+  /** Committed instant awaiting its contact frame (and PBAoE pulse train). */
+  pendingAbility: PendingAbility | null = null;
+  /** Dash origin (Charge sweep resolves start → current position). */
+  dashStartX = 0;
+  dashStartZ = 0;
+  /** Live buffs/debuffs (EffectHost contract — world/effects.ts). */
+  effects: ActiveEffect[] = [];
+  effectsDirty = false;
+  /** Ambusher CP-on-crit internal cooldown marker (CLASSES.md §3). */
+  ambusherCpReadyAtMs = 0;
+  /** RMB stance (P5): shield up (Warrior/Cleric) this tick. */
+  blocking = false;
+  /** When the shield came up — the perfect-block window reference. */
+  blockRaisedAtMs = 0;
   dead = false;
   /** Combo chain: current step (−1 = none) and when it started. */
   comboStep = -1;
@@ -115,6 +153,7 @@ export class ServerPlayer {
     this.stats = playerStats(classId, level);
     this.maxHp = this.stats.maxHp;
     this.hp = persistedHp !== null ? Math.min(Math.max(persistedHp, 1), this.maxHp) : this.maxHp;
+    this.resource = createResourceState(classId, this.stats.int);
     this.movement = createMovementState(spawnX, spawnY, spawnZ, this.stats.maxStamina);
     this.movement.yaw = yaw;
   }
@@ -197,6 +236,7 @@ export class ServerPlayer {
     if (Math.abs(m.vx) > 0.1 || Math.abs(m.vz) > 0.1) flags |= EntityFlag.Moving;
     if (m.swimming) flags |= EntityFlag.Swimming;
     if (m.rollTimeLeft > 0) flags |= EntityFlag.Dodging;
+    if (this.blocking) flags |= EntityFlag.Blocking;
     if (this.dead) flags |= EntityFlag.Dead;
     return flags;
   }

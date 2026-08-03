@@ -27,6 +27,9 @@ export interface ComboStep {
   /** UAL clip and its native length in seconds (timeScale = native/duration). */
   clip: string;
   clipSeconds: number;
+  /** Resource riders on a landed hit (CLASSES.md §0: Warrior +4 Rage etc.). */
+  rageGain: number;
+  comboPointGain: number;
 }
 
 export interface ComboChain {
@@ -58,6 +61,8 @@ const sword = (
   stagger,
   clip,
   clipSeconds,
+  rageGain: 4, // Warrior basics build Rage per hit (CLASSES.md §1)
+  comboPointGain: 0,
 });
 
 const bolt = (coef: number, durationMs: number, stagger: number): ComboStep => ({
@@ -67,6 +72,8 @@ const bolt = (coef: number, durationMs: number, stagger: number): ComboStep => (
   stagger,
   clip: 'Spell_Simple_Shoot',
   clipSeconds: 0.5,
+  rageGain: 0,
+  comboPointGain: 0,
 });
 
 /**
@@ -97,9 +104,9 @@ export const BASIC_COMBOS: Record<ClassId, ComboChain> = {
     projectile: null,
     moveSpeedMult: 0.65,
     steps: [
-      sword(0.45, 380, 6, 'Sword_Regular_A', 0.433),
-      sword(0.45, 420, 6, 'Sword_Regular_B', 0.533),
-      sword(0.7, 620, 20, 'Sword_Regular_C', 2.0),
+      { ...sword(0.45, 380, 6, 'Sword_Regular_A', 0.433), rageGain: 0 },
+      { ...sword(0.45, 420, 6, 'Sword_Regular_B', 0.533), rageGain: 0 },
+      { ...sword(0.7, 620, 20, 'Sword_Regular_C', 2.0), rageGain: 0, comboPointGain: 1 },
     ],
   },
   mage: {
@@ -140,4 +147,76 @@ export const comboWindow = (
   if (sinceStepStartMs < linkOpensAt) return 'too_early';
   if (sinceStepStartMs <= step.durationMs + resetMs) return 'link';
   return 'expired';
+};
+
+/**
+ * Build the executor chain table from PUBLISHED content rows (P5 migration:
+ * COMBAT.md §3 as-built — basics are content). Returns null when any class is
+ * missing any of its three steps; the caller falls back to BASIC_COMBOS and
+ * warns — migration 0005 seeds the rows, after which the fallback never runs.
+ */
+export const buildBasicChains = (
+  defs: readonly {
+    classId: ClassId;
+    binding: { kind: string; step?: number };
+    targeting: Record<string, unknown>;
+    effects: readonly Record<string, unknown>[];
+    anim: {
+      clip: string;
+      clipSeconds: number;
+      durationMs: number;
+      contactFraction: number;
+      moveSpeedMult: number;
+    };
+  }[],
+): Record<ClassId, ComboChain> | null => {
+  const out: Partial<Record<ClassId, ComboChain>> = {};
+  for (const classId of ['warrior', 'mage', 'rogue', 'cleric'] as const) {
+    const rows = defs
+      .filter((def) => def.classId === classId && def.binding.kind === 'basic')
+      .sort((a, b) => (a.binding.step ?? 0) - (b.binding.step ?? 0));
+    if (rows.length !== 3) return null;
+
+    const steps = rows.map((row) => {
+      const damage = row.effects.find((effect) => effect['kind'] === 'damage');
+      const resource = row.effects.find((effect) => effect['kind'] === 'resource');
+      return {
+        coef: typeof damage?.['coef'] === 'number' ? damage['coef'] : 0.5,
+        durationMs: row.anim.durationMs,
+        contactFraction: row.anim.contactFraction,
+        stagger: typeof damage?.['staggerBonus'] === 'number' ? damage['staggerBonus'] : 0,
+        clip: row.anim.clip,
+        clipSeconds: row.anim.clipSeconds,
+        rageGain:
+          resource?.['resource'] === 'rage' && typeof resource['amount'] === 'number'
+            ? resource['amount']
+            : 0,
+        comboPointGain: typeof resource?.['comboPoints'] === 'number' ? resource['comboPoints'] : 0,
+      } satisfies ComboStep;
+    }) as [ComboStep, ComboStep, ComboStep];
+
+    const first = rows[0]!.targeting;
+    const last = rows[2]!.targeting;
+    const isProjectile = first['kind'] === 'projectile';
+    out[classId] = {
+      school: classId === 'mage' || classId === 'cleric' ? 'magic' : 'physical',
+      delivery: isProjectile ? 'projectile' : 'melee_arc',
+      reach: typeof first['reach'] === 'number' ? first['reach'] : 0,
+      angleDeg: typeof first['angleDeg'] === 'number' ? first['angleDeg'] : 0,
+      finisherAngleDeg:
+        typeof last['angleDeg'] === 'number' && last['angleDeg'] !== first['angleDeg']
+          ? last['angleDeg']
+          : null,
+      projectile: isProjectile
+        ? {
+            speed: typeof first['speed'] === 'number' ? first['speed'] : 28,
+            radius: typeof first['radius'] === 'number' ? first['radius'] : 0.25,
+            maxRange: typeof first['maxRange'] === 'number' ? first['maxRange'] : 30,
+          }
+        : null,
+      moveSpeedMult: BASIC_COMBOS[classId].moveSpeedMult,
+      steps,
+    };
+  }
+  return out as Record<ClassId, ComboChain>;
 };

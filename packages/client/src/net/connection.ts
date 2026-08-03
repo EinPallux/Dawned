@@ -7,9 +7,33 @@
  */
 
 import {
+  AbilityRejectReason,
   ActionId,
   BASIC_COMBOS,
   BinaryReader,
+  DODGE_STAMINA_COST,
+  EVASIVE_DODGE_DISCOUNT,
+  EVASIVE_ENERGY_PER_S,
+  EVASIVE_MOVE_SPEED_PCT,
+  InputButton,
+  OOC_AFTER_MS,
+  actionForSlot,
+  beginDash,
+  buildBasicChains,
+  canAfford,
+  commitUse,
+  cooldownRemainingMs,
+  createAbilityMachine,
+  createResourceState,
+  evaluateUse,
+  gainResource,
+  importCooldowns,
+  interruptCast,
+  playerStats,
+  slotForAction,
+  spendComboPoints,
+  tickAbilityMachine,
+  tickResource,
   COMBO_LINK_WINDOW_FRACTION,
   COMBO_RESET_MS,
   EntityFlag,
@@ -42,8 +66,14 @@ import {
   noticeTextFor,
   peekOpcode,
   stepMovement,
+  type AbilityDef,
   type AbilityResolveMessage,
   type AbilityStartMessage,
+  type AbilityStateMessage,
+  type ComboChain,
+  type EffectSyncEntry,
+  type EffectSyncMessage,
+  type ResourceState,
   type ChatBroadcastMessage,
   type ClassId,
   type ComboStep,
@@ -51,6 +81,7 @@ import {
   type EnemyMetaMessage,
   type EntityEventMessage,
   type MovementIntent,
+  type MovementModifiers,
   type MovementState,
   type ProjectileEndMessage,
   type ProjectileSpawnMessage,
@@ -133,6 +164,27 @@ export interface ConnectionEvents {
 interface PendingInput {
   seq: number;
   intent: MovementIntent;
+  /**
+   * The movement modifiers active when this input was predicted. Replay must
+   * step with the SAME modifiers or a buffed/slowed player would diverge from
+   * the server on every snapshot (modifiers are time-dependent state, not a
+   * pure function of the intent).
+   */
+  modifiers: MovementModifiers;
+}
+
+/** What a hotbar slot needs to render (polled per frame by the HUD). */
+export interface SlotView {
+  slot: number;
+  def: AbilityDef | null;
+  /** Remaining cooldown ms (0 = ready). */
+  cooldownMs: number;
+  cooldownTotalMs: number;
+  /** Remaining GCD ms if the def rides the GCD (0 = free). */
+  gcdMs: number;
+  affordable: boolean;
+  /** selfLevel below unlockLevel — rendered locked with the level number. */
+  lockedUntilLevel: number;
 }
 
 export class Connection {
@@ -176,6 +228,52 @@ export class Connection {
   private comboStartedAtMs = 0;
   private gcdUntilMs = 0;
   private attackSeq = 1;
+
+  // --- slot abilities (protocol v7) ----------------------------------------
+  /** Published ability defs (fetched from /api/content/abilities). */
+  private abilityDefs = new Map<string, AbilityDef>();
+  /** Own hotbar: slot → def, rebuilt when defs or class change. */
+  readonly slotDefs = new Map<number, AbilityDef>();
+  /** Basic chains from content (falls back to the shared table). */
+  private basicChains: Record<ClassId, ComboChain> = BASIC_COMBOS;
+  /** The SAME timing machine the server validates with (anti-desync). */
+  readonly abilityMachine = createAbilityMachine();
+  /** Predicted resource: re-based on every snapshot, debited on commit. */
+  readonly resource: ResourceState = createResourceState('warrior', 0);
+  /** Authoritative buff/debuff lists (EffectSync) by entity id. */
+  private readonly effectLists = new Map<number, EffectSyncEntry[]>();
+  /** Predicted Whirlwind-style move slow until this performance.now() ms. */
+  private abilityMoveMultUntilMs = 0;
+  private abilityMoveMult = 1;
+  /** Own character level (Welcome) — unlock gating mirrors the server. */
+  selfLevel = 1;
+  /**
+   * Corrections are held (not adopted) until this time after a predicted dash
+   * or blink: those are ability-initiated movement the input replay can't
+   * re-trigger, so for one RTT the replayed path lags the predicted one by the
+   * whole displacement. Holding keeps the lunge clean; any REAL divergence
+   * left after the window resolves through the normal correct/snap path.
+   */
+  private correctionHoldUntilMs = 0;
+  /** effectId → self move-speed % (built from defs; prediction parity). */
+  private readonly effectSpeedPct = new Map<string, number>();
+  /** effectId → dodge stamina discount (Evasive-style buffs). */
+  private readonly effectDodgeDelta = new Map<string, number>();
+  /**
+   * Client mirror of the server's combat clock (drives Rage decay vs build
+   * and mana regen rate). Marked by resolves/flinches that involve us — an
+   * approximation the per-snapshot resource re-base keeps honest.
+   */
+  private lastCombatAtMs = 0;
+  /**
+   * Until this time, snapshots that still show MORE resource/CP than we
+   * predict are ignored: a commit debits instantly, but for one round trip
+   * the server hasn't consumed the request and its snapshots would bounce
+   * the globe back up (75 → 100 → 75 flicker at real RTT). Downward values
+   * (the spend confirmed, or something bigger) always adopt; rejects fully
+   * correct through AbilityState.
+   */
+  private resourceHoldUntilMs = 0;
   /** Enemy identity by entity id — arrives once per enemy via EnemyMeta. */
   private readonly enemyMetas = new Map<number, EnemyMetaEntry>();
   /** Last authoritative state received from the server. */
@@ -255,6 +353,16 @@ export class Connection {
     this.dawnedUntilMs = 0;
     this.stats.lastSnapshotAtMs = 0;
     this.stats.snapshotIntervalMs = 0;
+    // Ability prediction restarts from truth: the gateway sends an
+    // AbilityState (cooldowns + resource) right after Welcome on any resume.
+    this.abilityMachine.slots.clear();
+    this.abilityMachine.gcdUntilMs = 0;
+    this.abilityMachine.cast = null;
+    this.effectLists.clear();
+    this.abilityMoveMultUntilMs = 0;
+    this.abilityMoveMult = 1;
+    this.correctionHoldUntilMs = 0;
+    this.resourceHoldUntilMs = 0;
   }
 
   /**
@@ -474,6 +582,13 @@ export class Connection {
         const selfEntry = welcome.players.find((p) => p.id === welcome.selfId);
         this.playerName = selfEntry?.name ?? '';
         this.classId = selfEntry?.classId ?? 'warrior';
+        this.selfLevel = selfEntry?.level ?? 1;
+        // Resource pool sized like the server sizes it (class + INT at level).
+        Object.assign(
+          this.resource,
+          createResourceState(this.classId, playerStats(this.classId, this.selfLevel).int),
+        );
+        this.rebuildSlotDefs();
         this.predicted.x = welcome.spawn.x;
         this.predicted.y = welcome.spawn.y;
         this.predicted.z = welcome.spawn.z;
@@ -548,15 +663,36 @@ export class Connection {
       case ServerOp.AbilityStart:
         this.events.onAbilityStart?.(decodeAbilityStart(reader));
         return;
-      case ServerOp.AbilityResolve:
-        this.events.onAbilityResolve?.(decodeAbilityResolve(reader));
+      case ServerOp.AbilityResolve: {
+        const resolve = decodeAbilityResolve(reader);
+        if (
+          (resolve.attackerId === this.selfId && resolve.hits.length > 0) ||
+          resolve.hits.some((hit) => hit.targetId === this.selfId)
+        ) {
+          this.lastCombatAtMs = performance.now();
+        }
+        this.events.onAbilityResolve?.(resolve);
         return;
+      }
       case ServerOp.AbilityReject: {
         const reject = decodeAbilityReject(reader);
-        // The server refused what we predicted — drop the predicted chain so
+        // The server refused what we predicted — roll the prediction back so
         // the next press starts honest. Rare on healthy clients.
-        this.comboStep = -1;
-        this.comboStartedAtMs = 0;
+        if (reject.action === (ActionId.BasicAttack as number)) {
+          this.comboStep = -1;
+          this.comboStartedAtMs = 0;
+        } else {
+          // Slot reject: optimistically restore the charge/GCD we predicted
+          // away. The AbilityState correction in the same flush then adopts
+          // the server's cooldowns wholesale, so a legitimately-cooling slot
+          // never stays wrongly ready.
+          const slot = slotForAction(reject.action);
+          const def = slot === null ? undefined : this.slotDefs.get(slot);
+          if (def) {
+            this.abilityMachine.slots.delete(def.id);
+            this.abilityMachine.gcdUntilMs = 0;
+          }
+        }
         this.events.onAbilityReject?.(reject.action, reject.reason);
         return;
       }
@@ -566,8 +702,31 @@ export class Connection {
           if (message.event === 7 /* Dawned */) {
             this.dawnedUntilMs = performance.now() + message.a;
           }
+          if (message.event === 8 /* Flinch */) {
+            this.lastCombatAtMs = performance.now();
+          }
         }
         this.events.onEntityEvent?.(message);
+        return;
+      }
+      case ServerOp.EffectSync: {
+        const message = decodeJsonEnvelope<EffectSyncMessage>(reader);
+        if (message.effects.length === 0) this.effectLists.delete(message.entityId);
+        else this.effectLists.set(message.entityId, message.effects);
+        return;
+      }
+      case ServerOp.AbilityState: {
+        // Authoritative correction after a slot reject (or resume): adopt
+        // cooldowns + resource wholesale — prediction re-bases from truth.
+        // Clearing first matters: a cooldown we predicted that the server
+        // does NOT have would otherwise survive (import only overwrites ids
+        // present in the payload).
+        const message = decodeJsonEnvelope<AbilityStateMessage>(reader);
+        this.abilityMachine.slots.clear();
+        importCooldowns(this.abilityMachine, message.cooldowns, this.abilityDefs);
+        this.resource.value = message.resource;
+        this.resource.comboPoints = message.comboPoints;
+        this.resourceHoldUntilMs = 0; // authoritative correction — nothing in flight
         return;
       }
       case ServerOp.Telegraph:
@@ -593,7 +752,9 @@ export class Connection {
   requestBasicAttack(aimYaw: number, aimPitch: number): { step: number; def: ComboStep } | null {
     if (this.status !== 'playing' || this.selfDead) return null;
     if (this.predicted.rollTimeLeft > 0 || this.predicted.swimming) return null;
-    const combo = BASIC_COMBOS[this.classId];
+    // Content-sourced chain (P5): the SAME rows the server validates with —
+    // panel-tuned step timing stays predicted correctly.
+    const combo = this.basicChains[this.classId];
     const now = performance.now();
     let step = 0;
     if (this.comboStep >= 0 && this.comboStartedAtMs > 0) {
@@ -620,6 +781,7 @@ export class Connection {
           action: ActionId.BasicAttack,
           aimYaw,
           aimPitch,
+          targetId: 0,
         }),
       );
     }
@@ -632,6 +794,260 @@ export class Connection {
     this.comboStartedAtMs = 0;
   }
 
+  // -------------------------------------------------------------------------
+  // Slot abilities (protocol v7) — predicted through the shared machine
+  // -------------------------------------------------------------------------
+
+  /**
+   * Adopt the published ability defs (fetched from /api/content/abilities).
+   * Everything prediction needs derives here: the own-class hotbar, the
+   * content-sourced basic chains, and the effectId → movement-mod index that
+   * keeps a buffed player's prediction in step with the server.
+   */
+  setAbilityContent(defs: readonly AbilityDef[]): void {
+    this.abilityDefs.clear();
+    this.effectSpeedPct.clear();
+    this.effectDodgeDelta.clear();
+    for (const def of defs) {
+      this.abilityDefs.set(def.id, def);
+      for (const effect of def.effects) {
+        if (effect.kind !== 'apply_effect') continue;
+        if (effect.mods.moveSpeedPct !== undefined) {
+          this.effectSpeedPct.set(effect.effectId, effect.mods.moveSpeedPct);
+        }
+        if (effect.mods.dodgeCostDelta !== undefined) {
+          this.effectDodgeDelta.set(effect.effectId, effect.mods.dodgeCostDelta);
+        }
+      }
+    }
+    const chains = buildBasicChains(defs);
+    if (chains) this.basicChains = chains;
+    this.rebuildSlotDefs();
+  }
+
+  /** Own hotbar: slot → published def for the player's class. */
+  private rebuildSlotDefs(): void {
+    this.slotDefs.clear();
+    for (const def of this.abilityDefs.values()) {
+      if (def.classId === this.classId && def.binding.kind === 'slot') {
+        this.slotDefs.set(def.binding.slot, def);
+      }
+    }
+  }
+
+  /** Any class's slot def — remote players' ability anims resolve through this. */
+  abilityDefFor(classId: ClassId, slot: number): AbilityDef | undefined {
+    for (const def of this.abilityDefs.values()) {
+      if (def.classId === classId && def.binding.kind === 'slot' && def.binding.slot === slot) {
+        return def;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Press hotbar key 1–8: the EXACT evaluate → commit the server runs, against
+   * predicted state. Accepted → request on the wire + the def back so the
+   * caller animates NOW; refused → the reject reason for the §3 red-seam pulse
+   * (no round trip — same rules, same verdict).
+   */
+  requestSlotAbility(
+    slot: number,
+    aimYaw: number,
+    aimPitch: number,
+    target: { id: number; radius: number } | null,
+  ):
+    | { ok: true; def: AbilityDef; phase: 'instant' | 'cast'; contactDelayMs: number }
+    | { ok: false; reason: AbilityRejectReason | null } {
+    const def = this.slotDefs.get(slot);
+    if (!def) return { ok: false, reason: null };
+    if (this.status !== 'playing') return { ok: false, reason: null };
+    if (this.predicted.rollTimeLeft > 0 || this.predicted.swimming) {
+      return { ok: false, reason: AbilityRejectReason.BadState };
+    }
+    const targetId = target?.id ?? 0;
+    const verdict = evaluateUse(this.abilityMachine, def, {
+      level: this.selfLevel,
+      alive: !this.selfDead,
+      resource: this.resource,
+      hasTarget: targetId > 0,
+    });
+    if (!verdict.ok) return { ok: false, reason: verdict.reason };
+
+    // Mirror the server's order exactly: finisher CP measured before commit.
+    if (def.comboFinisher) spendComboPoints(this.resource);
+    const commit = commitUse(this.abilityMachine, def, this.resource, {
+      yaw: aimYaw,
+      pitch: aimPitch,
+      targetId,
+    });
+    // Snapshots that predate the server consuming this request must not
+    // bounce the paid cost back onto the globe (one round trip + slack).
+    this.resourceHoldUntilMs = performance.now() + Math.max(120, this.rttMs * 1.5) + 150;
+
+    const now = performance.now();
+    let contactDelayMs = commit.contactDelayMs;
+    if (def.targeting.kind === 'dash') {
+      // Charge: the dash lives in the shared movement state, so prediction
+      // carries the body exactly like the server will. Replay can't re-trigger
+      // it (it's not an input), so corrections hold for the flight.
+      beginDash(
+        this.predicted,
+        Math.sin(aimYaw),
+        Math.cos(aimYaw),
+        def.targeting.distance,
+        def.targeting.speed,
+      );
+      contactDelayMs = this.predicted.dashTimeLeft * 1000;
+      this.correctionHoldUntilMs = now + contactDelayMs + this.rttMs + 150;
+    } else if (def.targeting.kind === 'blink_behind') {
+      this.predictBlink(def.targeting.maxRange, aimYaw, target);
+      this.correctionHoldUntilMs = now + this.rttMs + 150;
+    }
+
+    // Swing-time move slow (Whirlwind-style): the server keeps it up while the
+    // ability is pending — for pulse trains that spans the whole train.
+    if (def.anim.moveSpeedMult < 1 && commit.phase === 'instant') {
+      const pulses =
+        def.targeting.kind === 'pbaoe'
+          ? (def.targeting.ticks.count - 1) * def.targeting.ticks.everyMs
+          : 0;
+      this.abilityMoveMult = def.anim.moveSpeedMult;
+      this.abilityMoveMultUntilMs = now + contactDelayMs + pulses;
+    }
+
+    if (this.isOpen) {
+      this.attackSeq = (this.attackSeq + 1) & 0xffff;
+      this.sendRaw(
+        encodeAbilityRequest({
+          seq: this.attackSeq,
+          action: actionForSlot(slot),
+          aimYaw,
+          aimPitch,
+          targetId,
+        }),
+      );
+    }
+    return { ok: true, def, phase: commit.phase, contactDelayMs };
+  }
+
+  /**
+   * Predict Shadowstep's teleport against the interpolated view of the target
+   * (same fallback rules as the server). The enemy the server sees is up to an
+   * interpolation delay ahead of ours — for our walking-speed grunts that is
+   * centimetres, and the post-blink correction hold absorbs it.
+   */
+  private predictBlink(
+    maxRange: number,
+    aimYaw: number,
+    target: { id: number; radius: number } | null,
+  ): void {
+    const m = this.predicted;
+    let destX = m.x + Math.sin(aimYaw) * Math.min(4, maxRange);
+    let destZ = m.z + Math.cos(aimYaw) * Math.min(4, maxRange);
+    const remote = target ? this.remotes.get(target.id) : undefined;
+    if (remote && target) {
+      const dist = Math.hypot(remote.render.x - m.x, remote.render.z - m.z);
+      if (dist <= maxRange) {
+        const back = target.radius + 0.7;
+        destX = remote.render.x - Math.sin(remote.render.yaw) * back;
+        destZ = remote.render.z - Math.cos(remote.render.yaw) * back;
+      }
+    }
+    if (!this.terrain.walkableAt || this.terrain.walkableAt(destX, destZ)) {
+      m.x = destX;
+      m.z = destZ;
+      m.y = this.terrain.heightAt(destX, destZ);
+      m.vx = 0;
+      m.vz = 0;
+    }
+  }
+
+  /**
+   * The movement modifiers in force right now — the client half of the
+   * server's per-intent computation (effects × Evasive × swing slow). Stored
+   * per pending input so replays step identically.
+   */
+  private modifiersNow(secondaryHeld: boolean): MovementModifiers {
+    const now = performance.now();
+    let speedMult = 1;
+    let dodgeCostDelta = 0;
+    const effects = this.effectLists.get(this.selfId);
+    if (effects) {
+      for (const effect of effects) {
+        const pct = this.effectSpeedPct.get(effect.effectId);
+        if (pct !== undefined) speedMult *= 1 + pct / 100;
+        const delta = this.effectDodgeDelta.get(effect.effectId);
+        if (delta !== undefined) dodgeCostDelta += delta;
+      }
+    }
+    const evasive = secondaryHeld && this.classId === 'rogue' && this.resource.value >= 1;
+    if (evasive) {
+      speedMult *= 1 + EVASIVE_MOVE_SPEED_PCT / 100;
+      dodgeCostDelta -= EVASIVE_DODGE_DISCOUNT;
+    }
+    if (now < this.abilityMoveMultUntilMs) speedMult *= this.abilityMoveMult;
+    return { speedMult, dodgeCostDelta };
+  }
+
+  // --- HUD state (polled per frame) ----------------------------------------
+
+  /** Hotbar slot view-model: def, cooldown, GCD, affordability, lock. */
+  slotView(slot: number): SlotView {
+    const def = this.slotDefs.get(slot) ?? null;
+    if (!def) {
+      return {
+        slot,
+        def: null,
+        cooldownMs: 0,
+        cooldownTotalMs: 0,
+        gcdMs: 0,
+        affordable: false,
+        lockedUntilLevel: 0,
+      };
+    }
+    const machine = this.abilityMachine;
+    return {
+      slot,
+      def,
+      cooldownMs: cooldownRemainingMs(machine, def.id),
+      cooldownTotalMs: def.cooldownMs,
+      gcdMs: def.onGcd ? Math.max(0, machine.gcdUntilMs - machine.nowMs) : 0,
+      affordable:
+        canAfford(this.resource, def.cost.type, def.cost.amount) &&
+        (!def.comboFinisher || this.resource.comboPoints > 0),
+      lockedUntilLevel: this.selfLevel < def.unlockLevel ? def.unlockLevel : 0,
+    };
+  }
+
+  /** Active cast for the bar (null = none; all P5 kits are instants). */
+  castView(): { name: string; fraction: number; remainingMs: number } | null {
+    const cast = this.abilityMachine.cast;
+    if (!cast) return null;
+    const elapsed = this.abilityMachine.nowMs - cast.startedAtMs;
+    return {
+      name: this.abilityDefs.get(cast.abilityId)?.name ?? '',
+      fraction: Math.min(1, elapsed / cast.castMs),
+      remainingMs: Math.max(0, cast.castMs - elapsed),
+    };
+  }
+
+  /** Authoritative buff/debuff list for an entity (self, target plates). */
+  effectsFor(entityId: number): readonly EffectSyncEntry[] {
+    return this.effectLists.get(entityId) ?? [];
+  }
+
+  /** Whether the predicted stamina covers a dodge right now (V indicator). */
+  dodgeReady(secondaryHeld: boolean): boolean {
+    const cost = DODGE_STAMINA_COST + (this.modifiersNow(secondaryHeld).dodgeCostDelta ?? 0);
+    return !this.selfDead && this.predicted.stamina >= cost;
+  }
+
+  /** Client mirror of the server's OOC window (COMBAT.md §6.6). */
+  inCombat(): boolean {
+    return performance.now() - this.lastCombatAtMs <= OOC_AFTER_MS;
+  }
+
   /** Soul-screen button: ask to respawn (valid only while dead). */
   requestRespawn(): void {
     if (!this.isOpen || !this.selfDead) return;
@@ -642,6 +1058,7 @@ export class Connection {
         action: ActionId.Respawn,
         aimYaw: 0,
         aimPitch: 0,
+        targetId: 0,
       }),
     );
   }
@@ -687,6 +1104,21 @@ export class Connection {
     if (deadNow && !this.selfDead) this.cancelPredictedCombo();
     this.selfDead = deadNow;
 
+    // 1b-ii. Resource re-base (v7). The wire carries the floor; adopting it
+    // blindly every 50 ms would discard the fractional regen the prediction
+    // accumulates between snapshots (0.6 energy/tick can never reach 1). So
+    // adopt only when the FLOORS disagree — that's a real server-side change
+    // (a hit built Rage, a rider fired, a cost we didn't predict) — and never
+    // adopt UP while a predicted spend is still in flight (see the hold doc).
+    const holdingSpend = performance.now() < this.resourceHoldUntilMs;
+    const predictedFloor = Math.floor(this.resource.value);
+    if (predictedFloor !== self.resource && !(holdingSpend && self.resource > predictedFloor)) {
+      this.resource.value = self.resource;
+    }
+    if (!(holdingSpend && self.comboPoints > this.resource.comboPoints)) {
+      this.resource.comboPoints = self.comboPoints;
+    }
+
     // 1c. While dead the server parks the body and ignores inputs — predicting
     // would only rubber-band. Adopt verbatim; run-world stops the sim too.
     if (deadNow) {
@@ -726,10 +1158,11 @@ export class Connection {
       return;
     }
 
-    // 3. Replay what it hasn't consumed yet, from the authoritative state.
+    // 3. Replay what it hasn't consumed yet, from the authoritative state —
+    // each input with the modifiers it was originally predicted under.
     cloneInto(this.replayScratch, this.authoritative);
     for (const pending of this.pendingInputs) {
-      stepMovement(this.replayScratch, pending.intent, TICK_DT, this.terrain);
+      stepMovement(this.replayScratch, pending.intent, TICK_DT, this.terrain, pending.modifiers);
     }
 
     // 4. Compare with what we predicted and correct smoothly (or snap).
@@ -738,6 +1171,15 @@ export class Connection {
     const errorZ = this.replayScratch.z - this.predicted.z;
     const error = Math.sqrt(errorX * errorX + errorY * errorY + errorZ * errorZ);
     this.stats.lastCorrectionM = error;
+
+    // 4b. Dash/blink hold: ability-initiated movement isn't in the replayed
+    // inputs, so for one round trip the replay disagrees by design. Trust the
+    // prediction unless the gap is beyond anything a kit can move us (a real
+    // desync or a server-side teleport we didn't predict).
+    if (performance.now() < this.correctionHoldUntilMs && error < 8) {
+      this.bufferRemotes(snapshot);
+      return;
+    }
 
     if (error > CORRECTION_IGNORE_M) {
       if (error > CORRECTION_SNAP_M) {
@@ -845,13 +1287,34 @@ export class Connection {
    * what we intended.
    */
   simulateTick(intent: MovementIntent): void {
+    // The exact modifier math the server runs per intent (world.step §1),
+    // captured with the input so replays walk the same ground.
+    const secondaryHeld = (intent.buttons & InputButton.SecondaryAction) !== 0;
+    const modifiers = this.modifiersNow(secondaryHeld);
+    // Evasive drains predicted Energy exactly like the server (re-based from
+    // every snapshot, so a mispredict self-heals within 50 ms).
+    if (secondaryHeld && this.classId === 'rogue' && this.resource.value >= 1) {
+      this.resource.value = Math.max(0, this.resource.value - EVASIVE_ENERGY_PER_S * TICK_DT);
+    }
+
     this.inputSeq = (this.inputSeq + 1) & 0xffff;
-    const record: PendingInput = { seq: this.inputSeq, intent: { ...intent } };
+    const record: PendingInput = { seq: this.inputSeq, intent: { ...intent }, modifiers };
     this.pendingInputs.push(record);
     // Bound the buffer: a very long stall should not replay thousands of steps.
     if (this.pendingInputs.length > 120) this.pendingInputs.shift();
 
-    stepMovement(this.predicted, intent, TICK_DT, this.terrain);
+    const result = stepMovement(this.predicted, intent, TICK_DT, this.terrain, modifiers);
+    if (result.dodged) {
+      // Dodge cancels the chain AND an active cast for half its cost back —
+      // the same §4.5 rule the server applies in its step.
+      this.cancelPredictedCombo();
+      const casting = this.abilityMachine.cast;
+      if (casting) {
+        const castDef = this.abilityDefs.get(casting.abilityId);
+        const interrupted = interruptCast(this.abilityMachine, 'dodge', castDef?.cost.amount ?? 0);
+        if (interrupted.refund > 0) gainResource(this.resource, interrupted.refund, true);
+      }
+    }
 
     if (this.isOpen) {
       this.sendRaw(
@@ -872,6 +1335,18 @@ export class Connection {
     // each arriving snapshot eases it back onto the server's timeline.
     // (Pinging is NOT done here — see pingTimer.)
     if (this.interpClockReady) this.interpClockMs += dtMs;
+
+    // Ability machine time: cooldown refills, GCD, cast completion — the same
+    // tick the server runs at 20 Hz, here at frame rate (both sides only
+    // compare against accumulated nowMs, so the cadence difference is safe).
+    if (this.status === 'playing') {
+      const moving = Math.abs(this.predicted.vx) > 0.05 || Math.abs(this.predicted.vz) > 0.05;
+      tickAbilityMachine(this.abilityMachine, dtMs, moving);
+      // Resource regen/decay between snapshots — same shared formula, with a
+      // client-tracked combat clock (resolves/flinches mark it below). The
+      // floor re-base on every snapshot keeps any drift under one unit.
+      tickResource(this.resource, dtMs, this.inCombat());
+    }
 
     if (this.correction.remainingMs > 0) {
       const decay = Math.max(0, 1 - dtMs / this.correction.remainingMs);

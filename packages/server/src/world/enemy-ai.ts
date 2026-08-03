@@ -19,7 +19,7 @@ import {
 } from '@dawned/shared';
 import type { ServerPlayer } from './player.js';
 import type { ServerEnemy } from './enemy.js';
-import { resolveEnemySwing, type CombatEvent } from './combat.js';
+import { resolveEnemySwing, type CombatEvent, type ServerProjectile } from './combat.js';
 
 /** Perception (NPCS_ENEMIES.md §2): 140° vision cone + 4 m all-round hearing. */
 const VISION_CONE_RAD = (140 * Math.PI) / 180;
@@ -52,6 +52,9 @@ export interface AiContext {
   events: CombatEvent[];
   /** Same-camp lookups for social aggro. */
   enemiesByCamp: (campTag: string) => readonly ServerEnemy[];
+  /** Live projectile pool + id source — Ranged-archetype volleys (P5). */
+  projectiles: ServerProjectile[];
+  nextProjectileId: () => number;
 }
 
 /** One 10 Hz decision for one enemy. */
@@ -173,8 +176,14 @@ const decideCombat = (enemy: ServerEnemy, ctx: AiContext): void => {
     return;
   }
 
-  // Validate the current top-threat target.
+  // Validate the current top-threat target. An active Taunt (P5, COMBAT.md
+  // §6.5) overrides threat entirely — forced target while it lasts.
   let target: ServerPlayer | null = null;
+  if (enemy.tauntedById !== null && ctx.nowMs < enemy.tauntedUntilMs) {
+    const taunter = ctx.players.get(enemy.tauntedById);
+    if (taunter && !taunter.dead) target = taunter;
+    else enemy.tauntedById = null;
+  }
   while (target === null) {
     const topId = enemy.topThreat();
     if (topId === null) break;
@@ -305,6 +314,9 @@ export const move = (
       ctx.nowMs,
       ctx.rng,
       ctx.events,
+      ctx.nextProjectileId,
+      ctx.projectiles,
+      enemy.targetId,
     );
   }
 
@@ -350,12 +362,30 @@ export const move = (
       const dx = target.movement.x - enemy.x;
       const dz = target.movement.z - enemy.z;
       const dist = Math.hypot(dx, dz);
-      // Stop just inside the shortest ready-ability reach; hover there.
-      const desired = desiredRange(enemy);
-      if (dist > desired) {
-        desiredX = dx / dist;
-        desiredZ = dz / dist;
-        speed = enemy.def.moveSpeed;
+      const band = volleyBand(enemy);
+      if (band && dist < band.min) {
+        // Ranged kite (NPCS_ENEMIES.md §1): back off at 60% speed when the
+        // target closes inside the volley band — panic-melee stays in the
+        // weighted attack pick, movement just reopens the distance.
+        desiredX = -dx / dist;
+        desiredZ = -dz / dist;
+        speed = enemy.def.moveSpeed * 0.6;
+      } else if (band) {
+        // Hold mid-band; approach only when the target drifts out of range.
+        const hold = (band.min + band.max) / 2;
+        if (dist > hold) {
+          desiredX = dx / dist;
+          desiredZ = dz / dist;
+          speed = enemy.def.moveSpeed;
+        }
+      } else {
+        // Melee: stop just inside the shortest ready-ability reach.
+        const desired = desiredRange(enemy);
+        if (dist > desired) {
+          desiredX = dx / dist;
+          desiredZ = dz / dist;
+          speed = enemy.def.moveSpeed;
+        }
       }
       enemy.yaw = Math.atan2(dx, dz);
     }
@@ -415,4 +445,16 @@ const desiredRange = (enemy: ServerEnemy): number => {
     if (ability.kind === 'melee_arc') best = Math.min(best, Math.max(ability.rangeMax - 0.4, 0.8));
   }
   return best;
+};
+
+/** The projectile range band a Ranged enemy holds (null = pure melee kit). */
+const volleyBand = (enemy: ServerEnemy): { min: number; max: number } | null => {
+  let min = Infinity;
+  let max = 0;
+  for (const ability of enemy.def.abilities) {
+    if (ability.kind !== 'projectile') continue;
+    min = Math.min(min, Math.max(ability.rangeMin, 3));
+    max = Math.max(max, ability.rangeMax);
+  }
+  return max > 0 ? { min, max } : null;
 };

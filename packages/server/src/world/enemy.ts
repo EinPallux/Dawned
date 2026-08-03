@@ -15,6 +15,7 @@ import {
   type StaggerState,
 } from '@dawned/shared';
 import { PositionHistory } from './history.js';
+import type { ActiveEffect } from './effects.js';
 
 export type EnemyFsmState = 'idle' | 'alert' | 'combat' | 'return' | 'dead';
 
@@ -71,6 +72,14 @@ export class ServerEnemy {
   lastDamagedAtMs = 0;
   /** Corpse timer: despawn + respawn ticket at this ms (dead state). */
   despawnAtMs = 0;
+
+  // --- P5 ability interactions --------------------------------------------
+  /** Live debuffs (EffectHost contract — world/effects.ts). */
+  effects: ActiveEffect[] = [];
+  effectsDirty = false;
+  /** Forced target from a Taunt (COMBAT.md §6.5) until this ms. */
+  tauntedById: number | null = null;
+  tauntedUntilMs = 0;
 
   readonly history = new PositionHistory();
 
@@ -130,6 +139,35 @@ export class ServerEnemy {
     this.stateSinceMs = nowMs;
   }
 
+  /**
+   * Player-inflicted control (Shield Bash stun, Earthshatter knockdown):
+   * rides the stagger-stun channel — the FSM already freezes and the client
+   * already plays the full-body react on the Staggered flag.
+   */
+  stunFor(durationMs: number, nowMs: number): void {
+    if (this.state === 'dead' || this.invulnerable) return;
+    this.stunnedUntilMs = Math.max(this.stunnedUntilMs, nowMs + durationMs);
+    this.swing = null; // a stun always interrupts the wind-up
+  }
+
+  /** Interrupt effect: cancel the current wind-up, brief recover. */
+  interruptSwing(nowMs: number): void {
+    if (this.swing) {
+      this.swing = null;
+      this.recoverUntilMs = Math.max(this.recoverUntilMs, nowMs + 600);
+    }
+  }
+
+  /** Taunt: forced target + top-threat override (COMBAT.md §6.5). */
+  tauntBy(playerId: number, durationMs: number, nowMs: number): void {
+    if (this.state === 'dead' || this.invulnerable) return;
+    this.tauntedById = playerId;
+    this.tauntedUntilMs = nowMs + durationMs;
+    const top = Math.max(0, ...this.threat.values());
+    this.threat.set(playerId, top * 1.2 + 10);
+    this.targetId = playerId;
+  }
+
   /** Full reset on leash-home or respawn: heal, wipe, stand down. */
   resetToHome(nowMs: number): void {
     this.hp = this.maxHp;
@@ -142,6 +180,10 @@ export class ServerEnemy {
     this.stunnedUntilMs = 0;
     this.vulnerableUntilMs = 0;
     this.recoverUntilMs = 0;
+    this.effects = [];
+    this.effectsDirty = true;
+    this.tauntedById = null;
+    this.tauntedUntilMs = 0;
     this.vx = 0;
     this.vz = 0;
     this.enterState('idle', nowMs);

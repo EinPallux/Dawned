@@ -3,3 +3,5 @@ export * from './stats.js';
 export * from './damage.js';
 export * from './hits.js';
 export * from './stagger.js';
+export * from './resources.js';
+export * from './ability-machine.js';

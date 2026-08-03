@@ -19,9 +19,11 @@ import {
   decodeTelegraph,
   encodeAbilityReject,
   encodeAbilityRequest,
+  encodeAbilityState,
   encodeAbilityResolve,
   encodeAbilityStart,
   encodeChatBroadcast,
+  encodeEffectSync,
   encodeEnemyMeta,
   encodeEntityEvent,
   encodeHello,
@@ -39,6 +41,7 @@ import {
 } from './messages.js';
 import {
   AbilityRejectReason,
+  ActionId,
   ClientOp,
   EntityEventKind,
   InputButton,
@@ -46,6 +49,8 @@ import {
   PROTOCOL_VERSION,
   ServerOp,
   TelegraphShape,
+  actionForSlot,
+  slotForAction,
 } from './opcodes.js';
 
 /** Strip the opcode byte and hand back a reader positioned at the payload. */
@@ -128,6 +133,8 @@ describe('snapshots', () => {
       flags: 0b1_0000_0101, // exercises the v6 u16 width (Leashing bit)
       hp: 217,
       maxHp: 236,
+      resource: 63, // v7: class resource floor (Rage/Energy/Mana)
+      comboPoints: 4, // v7: Rogue CP (0 for other classes)
     },
     entities: Array.from({ length: entityCount }, (_, i) => ({
       id: i + 1,
@@ -155,6 +162,8 @@ describe('snapshots', () => {
     expect(decoded.self.flags).toBe(snapshot.self.flags);
     expect(decoded.self.hp).toBe(snapshot.self.hp);
     expect(decoded.self.maxHp).toBe(snapshot.self.maxHp);
+    expect(decoded.self.resource).toBe(snapshot.self.resource);
+    expect(decoded.self.comboPoints).toBe(snapshot.self.comboPoints);
     expect(decoded.self.yaw).toBeCloseTo(snapshot.self.yaw, 3);
   });
 
@@ -221,8 +230,14 @@ describe('system notices', () => {
 });
 
 describe('combat messages (protocol v6)', () => {
-  it('round-trips an AbilityRequest with quantized aim', () => {
-    const packet = encodeAbilityRequest({ seq: 77, action: 0, aimYaw: -2.4, aimPitch: 0.3 });
+  it('round-trips an AbilityRequest with quantized aim and target (v7)', () => {
+    const packet = encodeAbilityRequest({
+      seq: 77,
+      action: 0,
+      aimYaw: -2.4,
+      aimPitch: 0.3,
+      targetId: 4021,
+    });
     expect(peekOpcode(packet)).toBe(ClientOp.AbilityRequest);
     const decoded = decodeAbilityRequest(body(packet));
     expect(decoded.seq).toBe(77);
@@ -230,6 +245,7 @@ describe('combat messages (protocol v6)', () => {
     expect(Math.cos(decoded.aimYaw)).toBeCloseTo(Math.cos(-2.4), 3);
     expect(Math.sin(decoded.aimYaw)).toBeCloseTo(Math.sin(-2.4), 3);
     expect(decoded.aimPitch).toBeCloseTo(0.3, 1);
+    expect(decoded.targetId).toBe(4021);
   });
 
   it('round-trips AbilityStart', () => {
@@ -323,5 +339,40 @@ describe('combat messages (protocol v6)', () => {
     const packet = encodeEnemyMeta(message);
     expect(peekOpcode(packet)).toBe(ServerOp.EnemyMeta);
     expect(decodeJsonEnvelope(body(packet))).toEqual(message);
+  });
+});
+
+describe('ability messages (protocol v7)', () => {
+  it('carries an entity effect list through EffectSync', () => {
+    const message = {
+      entityId: 17,
+      effects: [
+        { effectId: 'bleed_rending', stacks: 1, remainingMs: 7200, harmful: true },
+        { effectId: 'buff_shield_wall', stacks: 1, remainingMs: 5400, harmful: false },
+      ],
+    };
+    const packet = encodeEffectSync(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.EffectSync);
+    expect(decodeJsonEnvelope(body(packet))).toEqual(message);
+  });
+
+  it('carries authoritative cooldowns/resource through AbilityState', () => {
+    const message = {
+      cooldowns: { ability_warrior_shield_bash: 4200, ability_warrior_charge: 900 },
+      resource: 45,
+      comboPoints: 0,
+    };
+    const packet = encodeAbilityState(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.AbilityState);
+    expect(decodeJsonEnvelope(body(packet))).toEqual(message);
+  });
+
+  it('maps hotbar slots into the action byte and back', () => {
+    for (let slot = 1; slot <= 8; slot++) {
+      expect(slotForAction(actionForSlot(slot))).toBe(slot);
+    }
+    expect(slotForAction(ActionId.BasicAttack)).toBeNull();
+    expect(slotForAction(ActionId.Respawn)).toBeNull();
+    expect(slotForAction(actionForSlot(8) + 1)).toBeNull();
   });
 });

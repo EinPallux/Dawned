@@ -97,11 +97,13 @@ export const decodeInputIntent = (reader: BinaryReader): InputIntentMessage => {
 export interface AbilityRequestMessage {
   /** Client-side request counter (echoed in rejects; wraps at u16). */
   seq: number;
-  /** {@link ActionId} — 0 = basic attack; ability slots arrive P5. */
+  /** {@link ActionId} 0/1, or a hotbar slot via SLOT_ACTION_BASE (v7). */
   action: number;
   /** Aim at press time. Yaw in radians; pitch in radians (−π/2..π/2). */
   aimYaw: number;
   aimPitch: number;
+  /** Soft-target entity at press (0 = none) — Death Mark, Shadowstep (v7). */
+  targetId: number;
 }
 
 export const encodeAbilityRequest = (
@@ -113,7 +115,8 @@ export const encodeAbilityRequest = (
     .u16(msg.seq)
     .u8(msg.action)
     .u16(quantizeAngle(msg.aimYaw))
-    .i8(Math.round((Math.max(-1.55, Math.min(1.55, msg.aimPitch)) / (Math.PI / 2)) * 127));
+    .i8(Math.round((Math.max(-1.55, Math.min(1.55, msg.aimPitch)) / (Math.PI / 2)) * 127))
+    .u32(msg.targetId);
   return w.toUint8Array();
 };
 
@@ -122,6 +125,7 @@ export const decodeAbilityRequest = (reader: BinaryReader): AbilityRequestMessag
   action: reader.u8(),
   aimYaw: dequantizeAngle(reader.u16()),
   aimPitch: (reader.i8() / 127) * (Math.PI / 2),
+  targetId: reader.u32(),
 });
 
 export interface PingMessage {
@@ -232,6 +236,10 @@ export interface SnapshotSelf {
   /** Authoritative health (v6). Integers per project rules. */
   hp: number;
   maxHp: number;
+  /** Class resource — Rage/Energy/Mana, floored to whole units (v7). */
+  resource: number;
+  /** Rogue combo points 0..5; always 0 for other classes (v7). */
+  comboPoints: number;
 }
 
 export interface SnapshotMessage {
@@ -258,7 +266,9 @@ export const encodeSnapshot = (msg: SnapshotMessage, writer?: BinaryWriter): Uin
     .f32(self.stamina)
     .u16(self.flags)
     .u32(self.hp)
-    .u32(self.maxHp);
+    .u32(self.maxHp)
+    .u16(self.resource)
+    .u8(self.comboPoints);
 
   w.u16(msg.entities.length);
   for (const entity of msg.entities) {
@@ -291,6 +301,8 @@ export const decodeSnapshot = (reader: BinaryReader): SnapshotMessage => {
     flags: reader.u16(),
     hp: reader.u32(),
     maxHp: reader.u32(),
+    resource: reader.u16(),
+    comboPoints: reader.u8(),
   };
 
   const count = reader.u16();
@@ -596,6 +608,49 @@ export interface EnemyMetaMessage {
 
 export const encodeEnemyMeta = (msg: EnemyMetaMessage, writer?: BinaryWriter): Uint8Array =>
   encodeJsonEnvelope(ServerOp.EnemyMeta, msg, writer);
+
+/**
+ * One live buff/debuff on an entity, as the buff bar renders it. `effectId`
+ * is the content-declared id (`bleed_rending`), `icon` derives client-side.
+ */
+export interface EffectSyncEntry {
+  effectId: string;
+  stacks: number;
+  /** Remaining ms at send time (client counts down locally). */
+  remainingMs: number;
+  /** True for hostile effects (red seam on the bar; debuff row). */
+  harmful: boolean;
+}
+
+/**
+ * Authoritative effect list for ONE entity — sent on any change, replacing
+ * the client's list for that entity wholesale (tiny lists, no diff protocol
+ * needed at our scale). JSON envelope (cold-ish path, v7).
+ */
+export interface EffectSyncMessage {
+  entityId: number;
+  effects: EffectSyncEntry[];
+}
+
+export const encodeEffectSync = (msg: EffectSyncMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.EffectSync, msg, writer);
+
+/**
+ * Authoritative ability bookkeeping for SELF: sent on join/resume and after
+ * any reject that implies the client predicted wrong (cooldown/resource
+ * drift). The client adopts it wholesale. JSON envelope (rare, v7).
+ */
+export interface AbilityStateMessage {
+  /** abilityId → remaining cooldown ms. Absent = ready. */
+  cooldowns: Record<string, number>;
+  /** Authoritative resource floor + combo points (usually redundant with the
+   * snapshot; included so one message fully restores prediction state). */
+  resource: number;
+  comboPoints: number;
+}
+
+export const encodeAbilityState = (msg: AbilityStateMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.AbilityState, msg, writer);
 
 export interface SystemNoticeMessage {
   code: NoticeCode;

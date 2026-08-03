@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   cloneMovementState,
   createMovementState,
+  beginDash,
+  endDash,
   flatTerrain,
   isDodgeInvulnerable,
   maxHorizontalStep,
@@ -419,5 +421,100 @@ describe('stepMovement — dodge roll (COMBAT.md §7)', () => {
     simulate(state, idle, 12, shoreline);
     expect(state.swimming).toBe(true);
     expect(state.rollTimeLeft).toBe(0);
+  });
+});
+
+describe('movement modifiers (P5 stances/effects)', () => {
+  it('speedMult scales ground speed on both sides of 1', () => {
+    const slow = createMovementState();
+    const fast = createMovementState();
+    const plain = createMovementState();
+    for (let i = 0; i < 40; i++) {
+      stepMovement(slow, forward, TICK_DT, ground, { speedMult: 0.6 });
+      stepMovement(fast, forward, TICK_DT, ground, { speedMult: 1.1 });
+      stepMovement(plain, forward, TICK_DT, ground);
+    }
+    expect(slow.z).toBeLessThan(plain.z * 0.7);
+    expect(fast.z).toBeGreaterThan(plain.z * 1.05);
+  });
+
+  it('dodgeCostDelta discounts the roll and gates on the discounted price', () => {
+    const dodge: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: InputButton.Dodge };
+    // 20 stamina: a plain roll (25) is unaffordable, Evasive (-10 → 15) rolls.
+    const plain = createMovementState();
+    plain.stamina = 20;
+    stepMovement(plain, dodge, TICK_DT, ground);
+    expect(plain.rollTimeLeft).toBe(0);
+
+    const evasive = createMovementState();
+    evasive.stamina = 20;
+    stepMovement(evasive, dodge, TICK_DT, ground, { dodgeCostDelta: -10 });
+    expect(evasive.rollTimeLeft).toBeGreaterThan(0);
+    expect(evasive.stamina).toBe(5);
+  });
+
+  it('modifiers leave the neutral path bit-identical (anti-desync)', () => {
+    const withMods = createMovementState();
+    const without = createMovementState();
+    for (let i = 0; i < 60; i++) {
+      stepMovement(withMods, forwardSprint, TICK_DT, ground, { speedMult: 1, dodgeCostDelta: 0 });
+      stepMovement(without, forwardSprint, TICK_DT, ground);
+    }
+    expect(withMods).toEqual(without);
+  });
+});
+
+describe('ability dash (P5 Charge)', () => {
+  it('beginDash carries the body the full distance, then stops', () => {
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24); // 12 m at 24 m/s = 0.5 s = 10 ticks
+    simulate(state, idle, 10);
+    expect(state.z).toBeCloseTo(12, 1);
+    expect(state.dashTimeLeft).toBe(0);
+    // Velocity dies with the dash; the body settles instead of sliding on.
+    simulate(state, idle, 8);
+    expect(state.z).toBeLessThan(12.6);
+  });
+
+  it('steering input cannot bend a dash', () => {
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24);
+    simulate(state, { moveX: 1, moveZ: 0, yaw: 0, buttons: 0 }, 10);
+    expect(Math.abs(state.x)).toBeLessThan(0.05);
+    expect(state.z).toBeCloseTo(12, 1);
+  });
+
+  it('dodge cannot start mid-dash; endDash stops on demand', () => {
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24);
+    const dodge: MovementIntent = { moveX: 0, moveZ: 0, yaw: 0, buttons: InputButton.Dodge };
+    stepMovement(state, dodge, TICK_DT, ground);
+    expect(state.rollTimeLeft).toBe(0); // dash owns the body
+    endDash(state);
+    stepMovement(state, idle, TICK_DT, ground);
+    expect(state.dashTimeLeft).toBe(0);
+  });
+
+  it('a dash respects walkability like any other movement', () => {
+    const walled: TerrainSampler = {
+      heightAt: () => 0,
+      walkableAt: (_x, z) => z < 5,
+    };
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24);
+    simulate(state, idle, 12, walled);
+    expect(state.z).toBeLessThan(5.01);
+  });
+
+  it('deep water ends a dash (swim pin owns the body)', () => {
+    const shoreline: TerrainSampler = {
+      heightAt: (_x, z) => (z < 3 ? 0 : -4),
+      waterLevelAt: (_x, z) => (z < 3 ? null : 0.5),
+    };
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24);
+    simulate(state, idle, 12, shoreline);
+    expect(state.swimming).toBe(true);
+    expect(state.dashTimeLeft).toBe(0);
   });
 });

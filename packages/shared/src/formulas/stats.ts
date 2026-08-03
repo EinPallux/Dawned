@@ -39,6 +39,8 @@ export interface CombatStats {
   /** Magic mitigation in percent (0–100); players have none in 0.1.0. */
   magicResistPct: number;
   maxStamina: number;
+  /** INT attribute (mana pool sizing — CLASSES.md §0, v7). */
+  int: number;
 }
 
 /**
@@ -57,6 +59,7 @@ export const playerStats = (classId: ClassId, level: number): CombatStats => {
     armor: 0.5 * a.str,
     magicResistPct: 0,
     maxStamina: 100 + 5 * a.end + 2 * (level - 1),
+    int: a.int,
   };
 };
 

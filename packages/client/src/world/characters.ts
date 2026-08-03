@@ -120,6 +120,11 @@ export interface ComposedCharacter {
   setTimeScale: (scale: number) => void;
   /** One-shot blended OVER the base layer (flinches) — no control loss. */
   playOverlay: (clipName: string, weight: number, fadeSeconds: number) => boolean;
+  /**
+   * Held LOOPING overlay (RMB stances: shield up) blended over the base layer;
+   * null fades it out. Idempotent per clip — safe to call every frame.
+   */
+  setLoopOverlay: (clipName: string | null, weight: number, fadeSeconds: number) => void;
   /** Mixer truth for smokes/diagnostics: what is actually playing right now. */
   activeState: () => { clip: string; time: number; weight: number; running: boolean } | null;
   dispose: () => void;
@@ -345,6 +350,30 @@ export const composeCharacter = (
     return true;
   };
 
+  /** The held stance overlay's action, when one is up. */
+  let loopOverlayAction: THREE.AnimationAction | null = null;
+
+  const setLoopOverlay: ComposedCharacter['setLoopOverlay'] = (clipName, weight, fadeSeconds) => {
+    if (clipName === null) {
+      if (loopOverlayAction) {
+        loopOverlayAction.fadeOut(fadeSeconds);
+        loopOverlayAction = null;
+      }
+      return;
+    }
+    const clip = assets.clips.get(clipName);
+    if (!clip) return;
+    const action = mixer.clipAction(clip);
+    if (action === loopOverlayAction && action.isRunning()) return; // already up
+    if (loopOverlayAction && loopOverlayAction !== action) loopOverlayAction.fadeOut(fadeSeconds);
+    action.reset();
+    action.enabled = true;
+    action.setLoop(THREE.LoopRepeat, Infinity);
+    action.setEffectiveWeight(weight);
+    action.fadeIn(fadeSeconds).play();
+    loopOverlayAction = action;
+  };
+
   const setTimeScale: ComposedCharacter['setTimeScale'] = (scale) => {
     if (activeAction) activeAction.timeScale = scale;
   };
@@ -369,5 +398,5 @@ export const composeCharacter = (
     });
   };
 
-  return { group, mixer, play, setTimeScale, playOverlay, activeState, dispose };
+  return { group, mixer, play, setTimeScale, playOverlay, setLoopOverlay, activeState, dispose };
 };
