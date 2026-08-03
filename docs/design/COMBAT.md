@@ -158,6 +158,10 @@ future gear affixes, not separate mitigation channels in 0.1.0.
 > **decays 15/s after 2.5 s without new stagger gain** — this doc didn't pin decay, so that
 > default is flagged in USER_QUESTIONS.md.
 > Light-hit flinches ride `EntityEvent(Flinch)` with the enemies' baked hit-react clips.
+> Player flinches are blended **overlays** on the animation base layer (weight ≈ 0.5 over
+> the running swing/gait — the "no control loss" rule above, learned the hard way: base-layer
+> flinches under camp fire froze the whole rig, playtest round 6). True upper-body-only
+> masking waits for a bone-mask pass at P5 if the blend reads muddy.
 
 ### 6.5 Threat (enables the Warrior tank fantasy solo→group later)
 

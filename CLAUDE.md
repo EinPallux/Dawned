@@ -93,9 +93,14 @@ formulas, dodge roll with i-frames inside the shared movement step, per-class ba
 lag-rewound server hit resolution, Grunt AI camps (Shore Glub, Young Mushnub) + training
 dummies from published `content_enemies`/`content_spawners` rows, telegraphs, floating combat
 text, death → shrine respawn with the Dawned debuff, and the §9 juice pass v1 (hit-stop,
-camera kick, flash tints, temp WebAudio SFX slots). Verified: 15-assert headless combat probe
-(`tools/smoke/combat-probe.mjs`), 15-assert browser smoke (`tools/smoke/browser-p4.mjs`), all
-P3 smokes still green, tick p95 1.17 ms during a live camp fight (<15 ms gate).
+camera kick, flash tints, temp WebAudio SFX slots). Combat-hardened through the round-6 owner
+session (flinch overlays — base-layer flinches froze rigs under fire; one-shot action
+lifecycle; telegraph cones un-mirrored + unit-tested; over-the-shoulder reticle camera; death
+beat before the soul screen). Verified: 15-assert headless combat probe
+(`tools/smoke/combat-probe.mjs`), 19-assert browser smoke incl. mixer-truth animation asserts
+(`tools/smoke/browser-p4.mjs`), all P3 smokes still green, tick p95 1.17 ms during a live
+camp fight (<15 ms gate). Owner-confirmed: combat smooth at `/netsim 100 20`; 18/18 decisions
+folded (Q17 stagger decay, Q18 dummy model — decision log).
 **Owner items open (ROADMAP status blocks): the P3 real-hardware group session, the P4
 "10-minute demo" (clear a Glub camp with combo + dodge at `/netsim 100 20`) + §9 checklist
 review + feel signoff, and the A0 /admin login check (Dawned-Admin).** Deploys to production

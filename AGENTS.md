@@ -26,7 +26,10 @@ nothing beyond it.
   (protocol v6) — built and verified in dev 2026-08-03: shared combat formulas + dodge
   i-frames in the movement step, basic combos, lag-rewound hits, Grunt AI camps (Glub,
   Mushnub) + dummies from published content rows, telegraphs, FCT, death/respawn + Dawned,
-  §9 juice pass v1; combat-probe + browser-p4 smokes green, P3 smokes still green, tick p95
-  1.17 ms in a camp fight. A0 (panel foundation) built and verified in dev in Dawned-Admin.
+  §9 juice pass v1; round-6 owner-session fixes in (flinch overlays, one-shot action
+  lifecycle, un-mirrored telegraph cones, shoulder camera, death beat); combat-probe +
+  browser-p4 (19 asserts incl. mixer truth) green, P3 smokes still green, tick p95
+  1.17 ms in a camp fight; /netsim 100 20 owner-confirmed smooth. A0 (panel foundation)
+  built and verified in dev in Dawned-Admin.
   Open owner items: P3 real-hardware 100 ms session, P4 10-minute demo + §9 review + feel
   signoff, A0 /admin login check (ROADMAP status blocks).

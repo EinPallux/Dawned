@@ -1162,6 +1162,17 @@ canvas.game {
   text-align: center;
   background: radial-gradient(ellipse at center, rgba(21, 26, 38, 0.55), rgba(12, 14, 22, 0.92));
   z-index: 30;
+  /* The screen arrives AFTER the death-clip beat — ease in, don't pop. */
+  animation: hud-death-fade 0.9s ease-out;
+}
+
+@keyframes hud-death-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .hud-death-title {

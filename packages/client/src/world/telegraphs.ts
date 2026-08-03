@@ -36,19 +36,27 @@ const makeHatchTexture = (): THREE.CanvasTexture => {
   return texture;
 };
 
-const coneGeometry = (reach: number, spreadRad: number): THREE.BufferGeometry => {
-  const geometry = new THREE.CircleGeometry(reach, 24, Math.PI / 2 - spreadRad / 2, spreadRad);
+/**
+ * Decal geometry orientation contract (unit-tested in telegraphs.test.ts):
+ * the group gets `rotation.y = yaw`, and the game's yaw 0 faces +Z (shared
+ * movement: dir = (sin yaw, cos yaw)), so every directional shape must extend
+ * toward +Z in local space. CircleGeometry sectors live in the XY plane where
+ * θ = −π/2 lands on +Z after rotateX(−π/2) — centering the sector at +π/2
+ * flips the cone 180° behind the caster (owner playtest round 6).
+ */
+export const coneGeometry = (reach: number, spreadRad: number): THREE.BufferGeometry => {
+  const geometry = new THREE.CircleGeometry(reach, 24, -Math.PI / 2 - spreadRad / 2, spreadRad);
   geometry.rotateX(-Math.PI / 2);
   return geometry;
 };
 
-const circleGeometry = (radius: number): THREE.BufferGeometry => {
+export const circleGeometry = (radius: number): THREE.BufferGeometry => {
   const geometry = new THREE.CircleGeometry(radius, 32);
   geometry.rotateX(-Math.PI / 2);
   return geometry;
 };
 
-const rectGeometry = (length: number, width: number): THREE.BufferGeometry => {
+export const rectGeometry = (length: number, width: number): THREE.BufferGeometry => {
   const geometry = new THREE.PlaneGeometry(width, length);
   geometry.rotateX(-Math.PI / 2);
   geometry.translate(0, 0, length / 2);

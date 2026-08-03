@@ -18,6 +18,15 @@ export default defineConfig({
       '/game': { target: 'ws://127.0.0.1:8081', ws: true },
     },
   },
+  // `vite preview` serves the PRODUCTION build with the same proxy, so
+  // minified-bundle-only bugs reproduce locally before a deploy does it for us.
+  preview: {
+    port: 5199,
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:8081', changeOrigin: true },
+      '/game': { target: 'ws://127.0.0.1:8081', ws: true },
+    },
+  },
   build: {
     target: 'es2022',
     sourcemap: true,
