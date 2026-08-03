@@ -28,12 +28,16 @@ export interface RouteDeps {
   gateway: Gateway;
   metrics: MetricsRing;
   content: GameContent;
+  /** Re-read published rows + hot-swap the world's content (admin publish). */
+  reloadContent: () => Promise<GameContent>;
 }
 
 const LOCALHOST = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 export const registerRoutes = (app: App, deps: RouteDeps): void => {
-  const { config, world, gateway, metrics, content } = deps;
+  const { config, world, gateway, metrics, reloadContent } = deps;
+  // Mutable so /ops/reload-content refreshes what the content routes serve.
+  let content = deps.content;
 
   app.get('/api/health', () => ({
     status: 'ok',
@@ -48,10 +52,15 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * same data rows the server simulates — ability clip names, hit capsules,
    * scales (content-as-data; the response only changes on publish).
    */
-  const enemyDefsPayload = { enemies: [...content.enemies.values()] };
   app.get('/api/content/enemies', (_request, reply) => {
     void reply.header('cache-control', 'no-cache');
-    return enemyDefsPayload;
+    return { enemies: [...content.enemies.values()] };
+  });
+
+  /** Published ability definitions (P5): hotbar defs the client predicts with. */
+  app.get('/api/content/abilities', (_request, reply) => {
+    void reply.header('cache-control', 'no-cache');
+    return { abilities: [...content.abilities.values()] };
   });
 
   /** Minimal public status for the login screen's server pip. */
@@ -73,6 +82,34 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       ...metrics.snapshot(world.playerCount, world.entityCount),
       sessions: gateway.sessionCount,
     });
+  });
+
+  /**
+   * Hot content reload (A1 publish pipeline): re-validate published rows and
+   * swap them into the live world between ticks. Ability/enemy defs apply to
+   * future uses immediately; spawner LAYOUT changes need a restart (reported).
+   */
+  app.post('/ops/reload-content', async (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    try {
+      const next = await reloadContent();
+      content = next;
+      const summary = world.applyContent(next);
+      return await reply.send({
+        ok: true,
+        ...summary,
+        note: 'spawner layout changes apply on restart',
+      });
+    } catch (error) {
+      // Validation failures keep the OLD content live — publish is the gate.
+      return await reply.code(422).send({ ok: false, error: (error as Error).message });
+    }
   });
 
   app.post('/ops/announce', (request, reply) => {

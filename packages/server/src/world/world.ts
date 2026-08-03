@@ -96,7 +96,7 @@ export class World {
   constructor(
     private readonly terrain: TerrainSampler = devTerrain,
     private readonly spawn: SpawnPoint = { x: 0, y: 0, z: 0, yaw: 0 },
-    private readonly content: GameContent | null = null,
+    private content: GameContent | null = null,
     private readonly rng: Rng = Math.random,
   ) {
     if (content) this.populateFromSpawners();
@@ -281,6 +281,22 @@ export class World {
   // -------------------------------------------------------------------------
 
   /** Advance the world one tick. Returns combat events for the gateway. */
+  /**
+   * Hot-swap published content between ticks (admin publish → /ops/reload).
+   * Ability defs and slot bindings apply to every FUTURE use immediately;
+   * live enemies keep their def object until leash-reset or respawn (new
+   * spawns read the new defs). Spawner layout changes need a restart —
+   * the caller reports that honestly (docs/tech/ARCHITECTURE.md content cache).
+   */
+  applyContent(next: GameContent): { abilities: number; enemies: number; spawners: number } {
+    this.content = next;
+    return {
+      abilities: next.abilities.size,
+      enemies: next.enemies.size,
+      spawners: next.spawners.length,
+    };
+  }
+
   step(): CombatEvent[] {
     const events: CombatEvent[] = [];
     const nowMs = Date.now();
