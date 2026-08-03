@@ -14,7 +14,7 @@
 | P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
 | P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
 | P3    | Movement, Netcode Core & Chat v1         | L    | 🟨 built — owner signoff  |
-| P4    | Combat Foundation                        | XL   | 🟨 built — owner signoff  |
+| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                        |
 | P6    | Classes II — Mage, Cleric, Status System | L    | 🔲                        |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                        |
@@ -256,10 +256,15 @@ and it passes the COMBAT.md §9 checklist reviewed line-by-line; feel signoff fr
       asserts in `browser-p4.mjs` (19 total) pin swings-under-fire, the Roll clip during
       dodge, enemy wind-up playback and the death clip. **Owner confirmed: `/netsim 100 20`
       combat stays smooth. Q17/Q18 answered (decision log).**
-- [ ] **Owner: the 10-minute demo** — clear a Glub camp with basic combo + dodge only at
-      `/netsim 100 20`, COMBAT.md §9 checklist reviewed line-by-line on screen.
-- [ ] **Owner: feel signoff** — does it feel like Farever-smooth action combat? Iterate
-      until yes (tuning knobs live in shared constants + content rows).
+- [x] **Owner: the 10-minute demo** — Glub camp cleared with basic combo + dodge at
+      `/netsim 100 20`, §9 behaviors seen live in the same session ("worked good",
+      2026-08-03).
+- [x] **Owner: feel verdict** — demo session positive, P4 closed by the owner. Combat feel
+      stays a standing acceptance bar: every P5/P6 ability re-runs the §9 checklist against
+      real kits, and tuning knobs (shared constants + content rows) remain one edit away.
+
+**P4 closed 2026-08-03.** The P3 real-hardware group session stays open as a non-blocking
+item — it needs friends online and can ride along with any future group playtest.
 
 ## P5 — Classes I: Ability Framework, Warrior & Rogue (L) ⚙A1 (content editors) in parallel
 
