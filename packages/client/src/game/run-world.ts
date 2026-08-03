@@ -16,6 +16,7 @@ import {
 } from '@dawned/shared';
 import { Connection } from '../net/connection.js';
 import { InputController } from '../input/input.js';
+import { headingFromInput } from '../world/anim-math.js';
 import { GameScene } from '../world/scene.js';
 import { CharacterView } from '../world/character-view.js';
 import { loadCharacterAssets, type CharacterAssets } from '../world/characters.js';
@@ -267,6 +268,11 @@ export const runWorld = (
     const dtSeconds = deltaMs / 1000;
     const position = connection.renderPosition(simulationReady ? accumulatorMs : 0);
     localView.setPose(position.x, position.y, position.z, input.yaw);
+    // The 8-way clip follows the held keys, not measured velocity: the rig
+    // faces the live yaw while velocity trails the 20 Hz intents, so a camera
+    // flick would sweep a velocity heading across sectors (anim-math.ts).
+    const axes = input.moveAxes();
+    localView.setIntentHeading(headingFromInput(axes.forward, axes.strafe));
     localView.update(dtSeconds, {
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
