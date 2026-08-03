@@ -29,6 +29,13 @@
       "when": 1785724359812,
       "tag": "0003_p4_combat_seeds",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785755938067,
+      "tag": "0004_p5_content_abilities",
+      "breakpoints": true
     }
   ]
 }

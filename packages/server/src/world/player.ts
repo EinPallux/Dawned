@@ -9,6 +9,7 @@ import {
   EntityFlag,
   InputButton,
   createMovementState,
+  createResourceState,
   isDodgeInvulnerable,
   playerStats,
   type Appearance,
@@ -16,6 +17,7 @@ import {
   type CombatStats,
   type MovementIntent,
   type MovementState,
+  type ResourceState,
 } from '@dawned/shared';
 import { PositionHistory } from './history.js';
 
@@ -63,6 +65,8 @@ export class ServerPlayer {
   /** Float internally for smooth regen; rounded at the wire. */
   hp: number;
   readonly maxHp: number;
+  /** Class resource + combo points (P5) — ticked by the ability system. */
+  readonly resource: ResourceState;
   dead = false;
   /** Combo chain: current step (−1 = none) and when it started. */
   comboStep = -1;
@@ -115,6 +119,7 @@ export class ServerPlayer {
     this.stats = playerStats(classId, level);
     this.maxHp = this.stats.maxHp;
     this.hp = persistedHp !== null ? Math.min(Math.max(persistedHp, 1), this.maxHp) : this.maxHp;
+    this.resource = createResourceState(classId, this.stats.int);
     this.movement = createMovementState(spawnX, spawnY, spawnZ, this.stats.maxStamina);
     this.movement.yaw = yaw;
   }

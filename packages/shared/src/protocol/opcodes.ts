@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 6; // v6 (P4): combat — dodge in the step, abilities, enemies, HP
+export const PROTOCOL_VERSION = 7; // v7 (P5): slot abilities — resource/CP in self, effects, casts
 
 /** Client → server opcodes. */
 export const ClientOp = {
@@ -35,6 +35,10 @@ export const ServerOp = {
   ProjectileSpawn: 0x93,
   ProjectileEnd: 0x94,
   EnemyMeta: 0x95,
+  /** Authoritative buff/debuff list for one entity (JSON envelope, v7). */
+  EffectSync: 0x96,
+  /** Authoritative cooldown/resource correction for SELF (JSON envelope, v7). */
+  AbilityState: 0x97,
 } as const;
 export type ServerOp = (typeof ServerOp)[keyof typeof ServerOp];
 
@@ -67,7 +71,7 @@ export const EntityFlag = {
 } as const;
 export type EntityFlag = (typeof EntityFlag)[keyof typeof EntityFlag];
 
-/** Actions a client may request (COMBAT.md §3; ability slots arrive P5). */
+/** Actions a client may request (COMBAT.md §3–4). */
 export const ActionId = {
   BasicAttack: 0,
   /** Soul-screen "return to shrine" (COMBAT.md §10); valid only while dead. */
@@ -75,12 +79,27 @@ export const ActionId = {
 } as const;
 export type ActionId = (typeof ActionId)[keyof typeof ActionId];
 
+/** Hotbar slot s (1..8) rides AbilityRequest.action as SLOT_ACTION_BASE+s−1. */
+export const SLOT_ACTION_BASE = 2;
+export const actionForSlot = (slot: number): number => SLOT_ACTION_BASE + slot - 1;
+export const slotForAction = (action: number): number | null => {
+  const slot = action - SLOT_ACTION_BASE + 1;
+  return slot >= 1 && slot <= 8 ? slot : null;
+};
+
 /** Why an AbilityRequest was refused (client rolls back its prediction). */
 export const AbilityRejectReason = {
   Dead: 1,
   OnCooldown: 2,
   NoStamina: 3,
   BadState: 4,
+  /** Slot ability rejects (P5, protocol v7). */
+  Locked: 5,
+  OnGcd: 6,
+  NoResource: 7,
+  NoComboPoints: 8,
+  AlreadyCasting: 9,
+  NoTarget: 10,
 } as const;
 export type AbilityRejectReason = (typeof AbilityRejectReason)[keyof typeof AbilityRejectReason];
 

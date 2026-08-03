@@ -444,6 +444,8 @@ export class Gateway {
               flags: player.flags,
               hp: Math.round(player.hp),
               maxHp: player.maxHp,
+              resource: Math.floor(player.resource.value),
+              comboPoints: player.resource.comboPoints,
             },
             entities,
           },

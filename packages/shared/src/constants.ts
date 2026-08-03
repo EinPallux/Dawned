@@ -169,3 +169,59 @@ export const MAP_VERSION = 'dev-2';
 export const PLAYER_RADIUS = 0.35;
 /** Player capsule height in metres. */
 export const PLAYER_HEIGHT = 1.8;
+
+// ---------------------------------------------------------------------------
+// Class resources (P5 — CLASSES.md §0; all admin-tunable at heart, constants
+// until the balance sliders land in world settings)
+// ---------------------------------------------------------------------------
+
+/** Rage caps at 100; builds only IN combat, decays out of it. */
+export const RAGE_MAX = 100;
+/** Rage gained when the Warrior takes a hit (in combat). */
+export const RAGE_ON_DAMAGED = 5;
+/** Rage decay per second while OUT of combat. */
+export const RAGE_DECAY_PER_S = 2;
+
+/** Energy pool (Rogue). Regens always, combat or not. */
+export const ENERGY_MAX = 100;
+export const ENERGY_REGEN_PER_S = 12;
+
+/** Combo points (Rogue): 0..5, spent whole by finishers. */
+export const COMBO_POINTS_MAX = 5;
+
+/** Mana pool = MANA_BASE + MANA_PER_INT × INT (Mage/Cleric, kits at P6). */
+export const MANA_BASE = 100;
+export const MANA_PER_INT = 10;
+/** Mana regen as % of pool per second. */
+export const MANA_REGEN_PCT_OOC = 4;
+export const MANA_REGEN_PCT_COMBAT = 1.5;
+
+// ---------------------------------------------------------------------------
+// RMB class actions (held stances — CLASSES.md per-class RMB)
+// ---------------------------------------------------------------------------
+
+/** Frontal arc that counts as "blocked" while holding RMB block (degrees). */
+export const BLOCK_ARC_DEG = 120;
+/** Damage reduction while blocking: Warrior / Cleric (percent). */
+export const BLOCK_MITIGATION_PCT = { warrior: 60, cleric: 40 } as const;
+/** Stamina drained per absorbed (blocked) hit. */
+export const BLOCK_STAMINA_PER_HIT = 12;
+/** Perfect block: absorbing inside this window after raising the shield. */
+export const PERFECT_BLOCK_WINDOW_MS = 200;
+/** Perfect block rewards: attacker staggered, defender gains Rage (Warrior). */
+export const PERFECT_BLOCK_RAGE = 15;
+export const PERFECT_BLOCK_STAGGER = 35;
+
+/** Rogue Evasive Stance (RMB hold). */
+export const EVASIVE_MOVE_SPEED_PCT = 10;
+export const EVASIVE_DODGE_DISCOUNT = 10;
+export const EVASIVE_ENERGY_PER_S = 3;
+
+/** Rogue Ambusher passive: rear arc and crit bonus (CLASSES.md §3). */
+export const AMBUSHER_REAR_ARC_DEG = 120;
+export const AMBUSHER_REAR_CRIT_PCT = 15;
+/** Basic-crit grants +1 CP, at most once per this window. */
+export const AMBUSHER_CP_ICD_MS = 1000;
+
+/** Hotbar slot unlock levels (index 0 = slot 1; CLASSES.md header). */
+export const SLOT_UNLOCK_LEVELS = [1, 3, 6, 10, 14, 18, 22, 25] as const;

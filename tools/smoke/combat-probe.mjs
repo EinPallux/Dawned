@@ -122,6 +122,7 @@ class ProbeClient {
         action: ActionId.BasicAttack,
         aimYaw,
         aimPitch: 0,
+        targetId: 0,
       }),
     );
   }
@@ -233,7 +234,13 @@ const main = async () => {
   ok('dead bodies ignore movement intents');
 
   doomed.socket.send(
-    encodeAbilityRequest({ seq: 99, action: ActionId.Respawn, aimYaw: 0, aimPitch: 0 }),
+    encodeAbilityRequest({
+      seq: 99,
+      action: ActionId.Respawn,
+      aimYaw: 0,
+      aimPitch: 0,
+      targetId: 0,
+    }),
   );
   await sleep(600);
   const revived = doomed.lastSnapshot.self;

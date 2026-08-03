@@ -620,6 +620,7 @@ export class Connection {
           action: ActionId.BasicAttack,
           aimYaw,
           aimPitch,
+          targetId: 0,
         }),
       );
     }
@@ -642,6 +643,7 @@ export class Connection {
         action: ActionId.Respawn,
         aimYaw: 0,
         aimPitch: 0,
+        targetId: 0,
       }),
     );
   }

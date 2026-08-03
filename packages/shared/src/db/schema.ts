@@ -241,6 +241,20 @@ export const contentSpawners = pgTable(
   (table) => [primaryKey({ columns: [table.id, table.status] })],
 );
 
+export const contentAbilities = pgTable(
+  'content_abilities',
+  {
+    /** Content slug (`ability_warrior_crushing_blow`). */
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** AbilityDef (shared/src/content/abilities.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
 export type AccountRow = typeof accounts.$inferSelect;
 export type SessionRow = typeof sessions.$inferSelect;
 export type CharacterRow = typeof characters.$inferSelect;
@@ -249,3 +263,4 @@ export type AuditLogRow = typeof auditLog.$inferSelect;
 export type ContentWorldSettingsRow = typeof contentWorldSettings.$inferSelect;
 export type ContentEnemyRow = typeof contentEnemies.$inferSelect;
 export type ContentSpawnerRow = typeof contentSpawners.$inferSelect;
+export type ContentAbilityRow = typeof contentAbilities.$inferSelect;
