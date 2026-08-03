@@ -17,6 +17,7 @@ import {
   baseWeaponDamage,
   circleHits,
   commitUse,
+  beginDash,
   dashSweepHits,
   evaluateUse,
   gainComboPoints,
@@ -29,6 +30,7 @@ import {
   type HitTarget,
   type ResolveHit,
   type Rng,
+  type TerrainSampler,
   DAWNED_DAMAGE_PENALTY,
   armorMitigation,
   levelModifier,
@@ -84,6 +86,8 @@ export const handleSlotRequest = (
   aimPitch: number,
   targetId: number,
   content: GameContent,
+  enemies: ReadonlyMap<number, ServerEnemy>,
+  terrain: TerrainSampler,
   nowMs: number,
   events: CombatEvent[],
 ): void => {
@@ -138,10 +142,41 @@ export const handleSlotRequest = (
     return;
   }
 
+  let contactAtMs = nowMs + commit.contactDelayMs;
+  const m = player.movement;
+  if (def.targeting.kind === 'dash') {
+    // Charge: the shared dash carries the body; the sweep resolves at dash end.
+    player.dashStartX = m.x;
+    player.dashStartZ = m.z;
+    beginDash(m, Math.sin(aimYaw), Math.cos(aimYaw), def.targeting.distance, def.targeting.speed);
+    contactAtMs = nowMs + m.dashTimeLeft * 1000;
+  } else if (def.targeting.kind === 'blink_behind') {
+    // Shadowstep: teleport behind the soft-target (fallback: short hop along
+    // aim). Walkability decides; a blocked destination leaves position as-is.
+    const enemy = enemies.get(targetId);
+    let destX = m.x + Math.sin(aimYaw) * Math.min(4, def.targeting.maxRange);
+    let destZ = m.z + Math.cos(aimYaw) * Math.min(4, def.targeting.maxRange);
+    if (enemy && enemy.hp > 0 && !enemy.invulnerable) {
+      const dist = Math.hypot(enemy.x - m.x, enemy.z - m.z);
+      if (dist <= def.targeting.maxRange) {
+        const back = enemy.def.hitRadius + 0.7;
+        destX = enemy.x - Math.sin(enemy.yaw) * back;
+        destZ = enemy.z - Math.cos(enemy.yaw) * back;
+      }
+    }
+    if (!terrain.walkableAt || terrain.walkableAt(destX, destZ)) {
+      m.x = destX;
+      m.z = destZ;
+      m.y = terrain.heightAt(destX, destZ);
+      m.vx = 0;
+      m.vz = 0;
+    }
+  }
+
   player.pendingAbility = {
     def,
     action,
-    atMs: nowMs + commit.contactDelayMs,
+    atMs: contactAtMs,
     aimYaw,
     aimPitch,
     targetId,
@@ -437,6 +472,14 @@ const applyAbilityEffects = (
         };
         if (effect.target === 'self') {
           applyEffect(player, { ...input, tickDamage: 0 }, nowMs);
+          if (effect.mods.threatDrop) {
+            // Smoke Veil: AI sheds this player NOW (threat wipe-lite) — the
+            // lingering effect keeps re-acquisition suppressed via targeting.
+            for (const enemy of deps.enemies.values()) {
+              if (enemy.threat.has(player.id)) enemy.threat.set(player.id, 0);
+              if (enemy.targetId === player.id) enemy.targetId = enemy.topThreat();
+            }
+          }
         } else {
           for (const enemy of hitEnemies) {
             const mitigated =

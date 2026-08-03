@@ -173,8 +173,14 @@ const decideCombat = (enemy: ServerEnemy, ctx: AiContext): void => {
     return;
   }
 
-  // Validate the current top-threat target.
+  // Validate the current top-threat target. An active Taunt (P5, COMBAT.md
+  // §6.5) overrides threat entirely — forced target while it lasts.
   let target: ServerPlayer | null = null;
+  if (enemy.tauntedById !== null && ctx.nowMs < enemy.tauntedUntilMs) {
+    const taunter = ctx.players.get(enemy.tauntedById);
+    if (taunter && !taunter.dead) target = taunter;
+    else enemy.tauntedById = null;
+  }
   while (target === null) {
     const topId = enemy.topThreat();
     if (topId === null) break;

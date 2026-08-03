@@ -60,6 +60,8 @@ export interface QueuedAttack {
   action: number;
   aimYaw: number;
   aimPitch: number;
+  /** Soft-target at press (0 = none) — slot abilities only (v7). */
+  targetId: number;
 }
 
 /** A committed combo step waiting for its contact moment. */
@@ -95,6 +97,10 @@ export class ServerPlayer {
   effectsDirty = false;
   /** Ambusher CP-on-crit internal cooldown marker (CLASSES.md §3). */
   ambusherCpReadyAtMs = 0;
+  /** RMB stance (P5): shield up (Warrior/Cleric) this tick. */
+  blocking = false;
+  /** When the shield came up — the perfect-block window reference. */
+  blockRaisedAtMs = 0;
   dead = false;
   /** Combo chain: current step (−1 = none) and when it started. */
   comboStep = -1;

@@ -70,6 +70,15 @@ export interface MovementState {
   rollDirZ: number;
   /** Ms until the next roll may start (internal cooldown, from roll START). */
   rollCooldownMs: number;
+  /**
+   * Ability dash (Charge, P5): seconds left, locked direction, speed. Started
+   * by beginDash on BOTH sides at their own commit (client at press, server at
+   * receive) — the same shared integration keeps them reconciled like rolls.
+   */
+  dashTimeLeft: number;
+  dashDirX: number;
+  dashDirZ: number;
+  dashSpeed: number;
 }
 
 /** One tick of player intent, as sent by the client. */
@@ -159,7 +168,40 @@ export const createMovementState = (
   rollDirX: 0,
   rollDirZ: 0,
   rollCooldownMs: 0,
+  dashTimeLeft: 0,
+  dashDirX: 0,
+  dashDirZ: 0,
+  dashSpeed: 0,
 });
+
+/** Ability-dash ceiling: caps the anti-speedhack envelope and content speeds. */
+export const DASH_MAX_SPEED = 30;
+
+/**
+ * Start an ability dash (Charge). Both sides call this at their own commit
+ * moment; the shared step then integrates it deterministically. A dash never
+ * starts mid-roll or in water (callers gate on it — BadState).
+ */
+export const beginDash = (
+  state: MovementState,
+  dirX: number,
+  dirZ: number,
+  distance: number,
+  speed: number,
+): void => {
+  const length = Math.sqrt(dirX * dirX + dirZ * dirZ) || 1;
+  const clampedSpeed = Math.min(speed, DASH_MAX_SPEED);
+  state.dashDirX = dirX / length;
+  state.dashDirZ = dirZ / length;
+  state.dashSpeed = clampedSpeed;
+  state.dashTimeLeft = distance / clampedSpeed;
+};
+
+/** Cut a dash short (stop-on-hit, walls handled by integration already). */
+export const endDash = (state: MovementState): void => {
+  state.dashTimeLeft = 0;
+  state.dashSpeed = 0;
+};
 
 export const copyMovementState = (
   out: MovementState,
@@ -222,6 +264,7 @@ export function stepMovement(
   const dodgeCost = Math.max(0, DODGE_STAMINA_COST + (modifiers?.dodgeCostDelta ?? 0));
   if (
     !rollingBefore &&
+    state.dashTimeLeft <= 0 && // a dash owns the body until it lands
     state.grounded &&
     !state.swimming &&
     (intent.buttons & InputButton.Dodge) !== 0 &&
@@ -249,10 +292,15 @@ export function stepMovement(
 
   // 3. Sprint gating: needs input, stamina to start, and any stamina to continue.
   // A roll suppresses sprint for its duration (the roll owns the velocity).
+  const dashing = !rolling && state.dashTimeLeft > 0;
   const sprintHeld = (intent.buttons & InputButton.Sprint) !== 0;
   const canStartSprint = state.stamina >= SPRINT_MIN_STAMINA;
   const sprinting =
-    !rolling && sprintHeld && wantsMove && (state.sprinting ? state.stamina > 0 : canStartSprint);
+    !rolling &&
+    !dashing &&
+    sprintHeld &&
+    wantsMove &&
+    (state.sprinting ? state.stamina > 0 : canStartSprint);
   state.sprinting = sprinting;
 
   // 4. Accelerate horizontal velocity toward the target. Swim state is read from
@@ -263,6 +311,11 @@ export function stepMovement(
     const rollSpeed = DODGE_DISTANCE_M / DODGE_DURATION_S;
     state.vx = state.rollDirX * rollSpeed;
     state.vz = state.rollDirZ * rollSpeed;
+  } else if (dashing) {
+    // Ability dash (Charge): fixed velocity along the locked line; walls stop
+    // it through the same walkability slide as everything else.
+    state.vx = state.dashDirX * state.dashSpeed;
+    state.vz = state.dashDirZ * state.dashSpeed;
   } else {
     const speed =
       MOVE_SPEED *
@@ -396,6 +449,18 @@ export function stepMovement(
     // roll velocity (deterministic on both sides, so no parity concern).
     if (state.rollTimeLeft < 1e-9) state.rollTimeLeft = 0;
   }
+  // 10b. Dash timer — same decrement-after-integration contract as the roll.
+  if (state.swimming) {
+    state.dashTimeLeft = 0;
+  } else if (state.dashTimeLeft > 0) {
+    state.dashTimeLeft -= dt;
+    if (state.dashTimeLeft < 1e-9) {
+      state.dashTimeLeft = 0;
+      // Kill the dash velocity so the next frame decelerates from a stand.
+      state.vx = 0;
+      state.vz = 0;
+    }
+  }
 
   // 11. Stamina: spend while sprinting (swim-sprint drains faster, COMBAT.md §7),
   // otherwise regenerate after the delay.
@@ -415,8 +480,9 @@ export function stepMovement(
 
 /**
  * Upper bound on how far a character may legitimately travel in one step —
- * the server's anti-speedhack clamp (docs/tech/SECURITY.md §2). The dodge roll
- * (4.2 m / 0.55 s ≈ 7.64 m/s) is faster than sprint and sets the bound.
+ * the server's anti-speedhack clamp (docs/tech/SECURITY.md §2). Ability
+ * dashes (≤ DASH_MAX_SPEED, P5 Charge) are the fastest legitimate movement.
  */
 export const maxHorizontalStep = (dt: number): number =>
-  Math.max(MOVE_SPEED * SPRINT_MULTIPLIER, DODGE_DISTANCE_M / DODGE_DURATION_S) * dt;
+  Math.max(MOVE_SPEED * SPRINT_MULTIPLIER, DODGE_DISTANCE_M / DODGE_DURATION_S, DASH_MAX_SPEED) *
+  dt;

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   cloneMovementState,
   createMovementState,
+  beginDash,
+  endDash,
   flatTerrain,
   isDodgeInvulnerable,
   maxHorizontalStep,
@@ -459,5 +461,60 @@ describe('movement modifiers (P5 stances/effects)', () => {
       stepMovement(without, forwardSprint, TICK_DT, ground);
     }
     expect(withMods).toEqual(without);
+  });
+});
+
+describe('ability dash (P5 Charge)', () => {
+  it('beginDash carries the body the full distance, then stops', () => {
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24); // 12 m at 24 m/s = 0.5 s = 10 ticks
+    simulate(state, idle, 10);
+    expect(state.z).toBeCloseTo(12, 1);
+    expect(state.dashTimeLeft).toBe(0);
+    // Velocity dies with the dash; the body settles instead of sliding on.
+    simulate(state, idle, 8);
+    expect(state.z).toBeLessThan(12.6);
+  });
+
+  it('steering input cannot bend a dash', () => {
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24);
+    simulate(state, { moveX: 1, moveZ: 0, yaw: 0, buttons: 0 }, 10);
+    expect(Math.abs(state.x)).toBeLessThan(0.05);
+    expect(state.z).toBeCloseTo(12, 1);
+  });
+
+  it('dodge cannot start mid-dash; endDash stops on demand', () => {
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24);
+    const dodge: MovementIntent = { moveX: 0, moveZ: 0, yaw: 0, buttons: InputButton.Dodge };
+    stepMovement(state, dodge, TICK_DT, ground);
+    expect(state.rollTimeLeft).toBe(0); // dash owns the body
+    endDash(state);
+    stepMovement(state, idle, TICK_DT, ground);
+    expect(state.dashTimeLeft).toBe(0);
+  });
+
+  it('a dash respects walkability like any other movement', () => {
+    const walled: TerrainSampler = {
+      heightAt: () => 0,
+      walkableAt: (_x, z) => z < 5,
+    };
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24);
+    simulate(state, idle, 12, walled);
+    expect(state.z).toBeLessThan(5.01);
+  });
+
+  it('deep water ends a dash (swim pin owns the body)', () => {
+    const shoreline: TerrainSampler = {
+      heightAt: (_x, z) => (z < 3 ? 0 : -4),
+      waterLevelAt: (_x, z) => (z < 3 ? null : 0.5),
+    };
+    const state = createMovementState();
+    beginDash(state, 0, 1, 12, 24);
+    simulate(state, idle, 12, shoreline);
+    expect(state.swimming).toBe(true);
+    expect(state.dashTimeLeft).toBe(0);
   });
 });

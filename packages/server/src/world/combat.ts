@@ -27,7 +27,14 @@ import {
   STAGGER_VULNERABILITY,
   STAGGER_VULNERABILITY_MS,
   TICK_MS,
+  BLOCK_ARC_DEG,
+  BLOCK_MITIGATION_PCT,
+  BLOCK_STAMINA_PER_HIT,
+  PERFECT_BLOCK_RAGE,
+  PERFECT_BLOCK_WINDOW_MS,
+  RAGE_ON_DAMAGED,
   addStagger,
+  gainResource,
   arcHits,
   baseWeaponDamage,
   isDodgeInvulnerable,
@@ -39,6 +46,7 @@ import {
   type Rng,
   type TerrainSampler,
 } from '@dawned/shared';
+import { damageDealtMultOf, damageTakenMultOf } from './effects.js';
 import type { ServerPlayer } from './player.js';
 import type { ServerEnemy } from './enemy.js';
 
@@ -540,6 +548,42 @@ export const resolveEnemySwing = (
       player.history.wasInvulnerable(rewindTicksFor(player.rttMs));
     if (invulnerable) continue;
 
+    // RMB block (CLASSES.md): frontal hits are mitigated while the shield is
+    // up and stamina can pay for the absorb; a hit inside the raise window is
+    // a PERFECT block — the attacker staggers open, the Warrior gains Rage.
+    let blockMult = 1;
+    const mitigationPct =
+      player.classId === 'warrior' || player.classId === 'cleric'
+        ? BLOCK_MITIGATION_PCT[player.classId]
+        : undefined;
+    if (player.blocking && mitigationPct !== undefined) {
+      const toEnemy = Math.atan2(swingX - player.movement.x, swingZ - player.movement.z);
+      let facingDelta = toEnemy - player.movement.yaw;
+      while (facingDelta > Math.PI) facingDelta -= 2 * Math.PI;
+      while (facingDelta < -Math.PI) facingDelta += 2 * Math.PI;
+      const frontal = Math.abs(facingDelta) <= ((BLOCK_ARC_DEG / 2) * Math.PI) / 180;
+      if (frontal && player.movement.stamina >= BLOCK_STAMINA_PER_HIT) {
+        blockMult = 1 - mitigationPct / 100;
+        player.movement.stamina -= BLOCK_STAMINA_PER_HIT;
+        player.movement.staminaIdleMs = 0;
+        if (nowMs - player.blockRaisedAtMs <= PERFECT_BLOCK_WINDOW_MS) {
+          enemy.stunFor(1200, nowMs);
+          enemy.vulnerableUntilMs = nowMs + STAGGER_VULNERABILITY_MS;
+          events.push({
+            type: 'entity-event',
+            entityId: enemy.id,
+            event: EntityEventKind.Stagger,
+            a: 1200,
+            b: 0,
+            c: 0,
+          });
+          if (player.classId === 'warrior') {
+            gainResource(player.resource, PERFECT_BLOCK_RAGE, true);
+          }
+        }
+      }
+    }
+
     const { amount } = rollDamage(
       {
         coef: ability.coef,
@@ -552,11 +596,16 @@ export const resolveEnemySwing = (
         targetLevel: player.level,
         targetArmor: player.stats.armor,
         targetMagicResistPct: player.stats.magicResistPct,
+        damageTakenMult: damageTakenMultOf(player, enemy.id) * blockMult,
+        damageDealtMult: damageDealtMultOf(enemy),
       },
       rng,
     );
     player.hp = Math.max(0, player.hp - amount);
     player.lastCombatAtMs = nowMs;
+    if (player.classId === 'warrior' && player.hp > 0) {
+      gainResource(player.resource, RAGE_ON_DAMAGED, true);
+    }
     hits.push({ targetId: player.id, amount, flags: player.hp <= 0 ? HitFlag.Killed : 0 });
     if (player.hp <= 0) {
       events.push({ type: 'player-died', playerId: player.id, killerEnemyId: enemy.id });

@@ -22,6 +22,10 @@ import {
   encodeAbilityReject,
   encodeAbilityResolve,
   encodeAbilityStart,
+  encodeAbilityState,
+  encodeEffectSync,
+  exportCooldowns,
+  slotForAction,
   encodeChatBroadcast,
   encodeEnemyMeta,
   encodeEntityEvent,
@@ -198,6 +202,7 @@ export class Gateway {
     player.queueAttack({
       seq: request.seq,
       action: request.action,
+      targetId: request.targetId,
       aimYaw: request.aimYaw,
       aimPitch: request.aimPitch,
     });
@@ -453,6 +458,43 @@ export class Gateway {
         ),
       );
     }
+    this.flushEffectSync();
+  }
+
+  /**
+   * Buff/debuff lists changed this tick fan out AFTER snapshots (same
+   * current-visible-set contract as combat events). Self always receives its
+   * own list; bystanders receive lists for entities they can see.
+   */
+  private flushEffectSync(): void {
+    const flushHost = (
+      entityId: number,
+      host: { effects: import('../world/effects.js').ActiveEffect[]; effectsDirty: boolean },
+    ): void => {
+      if (!host.effectsDirty) return;
+      host.effectsDirty = false;
+      const nowMs = Date.now();
+      const message = encodeEffectSync({
+        entityId,
+        effects: host.effects.map((effect) => ({
+          effectId: effect.effectId,
+          stacks: effect.stacks,
+          remainingMs: Math.max(0, Math.round(effect.expiresAtMs - nowMs)),
+          harmful: effect.harmful,
+        })),
+      });
+      for (const session of this.sessions.values()) {
+        const viewer = session.player;
+        if (session.state !== 'playing' || !viewer) continue;
+        if (viewer.id === entityId || viewer.visible.has(entityId)) session.send(message);
+      }
+    };
+    for (const session of this.sessions.values()) {
+      if (session.state === 'playing' && session.player) {
+        flushHost(session.player.id, session.player);
+      }
+    }
+    for (const enemy of this.world.enemies.values()) flushHost(enemy.id, enemy);
   }
 
   /**
@@ -494,6 +536,17 @@ export class Gateway {
           target?.send(
             encodeAbilityReject({ seq: event.seq, action: event.action, reason: event.reason }),
           );
+          // A slot reject means the client's prediction diverged — follow with
+          // the authoritative cooldown/resource picture so it re-syncs (v7).
+          if (target?.player && slotForAction(event.action) !== null) {
+            target.send(
+              encodeAbilityState({
+                cooldowns: exportCooldowns(target.player.abilityMachine),
+                resource: Math.floor(target.player.resource.value),
+                comboPoints: target.player.resource.comboPoints,
+              }),
+            );
+          }
           break;
         }
         case 'ability-start':
