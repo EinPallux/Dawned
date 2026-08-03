@@ -6,12 +6,19 @@
 
 import * as THREE from 'three';
 import {
+  ActionId,
+  BASIC_COMBOS,
+  EntityEventKind,
   EntityFlag,
+  EntityKind,
+  HitFlag,
   MAP_VERSION,
   NoticeCode,
   SEA_LEVEL,
   TICK_MS,
+  angleDelta,
   maxStaminaFor,
+  playerStats,
   type Appearance,
 } from '@dawned/shared';
 import { Connection } from '../net/connection.js';
@@ -26,6 +33,13 @@ import { AmbienceController } from '../world/ambience.js';
 import { buildOceanMesh, updateWaterTime } from '../world/terrain-mesh.js';
 import { loadFoliageAssets, updateFoliageWind } from '../world/foliage.js';
 import { Hud } from '../ui/hud.js';
+import { EnemyView, loadEnemyAssets, type EnemyAssets } from '../world/enemy-view.js';
+import { TelegraphManager } from '../world/telegraphs.js';
+import { CombatTextManager } from '../world/combat-text.js';
+import { ProjectileManager } from '../world/projectiles.js';
+import { CombatSfx } from '../audio/combat-sfx.js';
+import { loadEnemyDefs } from '../content/enemy-defs.js';
+import type { EnemyDef } from '@dawned/shared';
 
 export interface WorldHandle {
   dispose: () => void;
@@ -63,6 +77,9 @@ export const runWorld = (
     },
     (focused) => {
       input.textEntryActive = focused;
+    },
+    () => {
+      connection.requestRespawn();
     },
   );
 
@@ -140,6 +157,84 @@ export const runWorld = (
       onRoster: (players) => {
         hud.setRoster(players, connection.selfId);
       },
+      onAbilityStart: (message) => {
+        if (message.entityId === connection.selfId) return; // predicted at press
+        const remote = connection.remotes.get(message.entityId);
+        if (!remote) return;
+        if (remote.kind === EntityKind.Enemy) {
+          enemyViews.get(message.entityId)?.playAbility(message.action, message.durationMs);
+          return;
+        }
+        // Remote player basic swing: clip from their class's chain data.
+        if (message.action === (ActionId.BasicAttack as number)) {
+          const classId = connection.rosterEntryFor(message.entityId)?.classId ?? 'warrior';
+          const step = BASIC_COMBOS[classId].steps[message.step];
+          if (step) {
+            remoteViews
+              .get(message.entityId)
+              ?.playAttack(step.clip, step.clipSeconds, message.durationMs);
+          }
+        }
+      },
+      onAbilityResolve: (message) => {
+        const mine = message.attackerId === connection.selfId;
+        for (const hit of message.hits) {
+          const crit = (hit.flags & HitFlag.Crit) !== 0;
+          const anchor = fctAnchor(hit.targetId);
+          if (anchor) {
+            const kind =
+              hit.targetId === connection.selfId ? 'incoming' : crit ? 'outgoing-crit' : 'outgoing';
+            combatText.spawn(kind, hit.amount, anchor.x, anchor.y, anchor.z);
+          }
+          enemyViews.get(hit.targetId)?.flash();
+          if ((hit.flags & HitFlag.Killed) !== 0) sfx.play('death');
+        }
+        if (mine && message.hits.length > 0) {
+          // Contact confirmed: hit-stop + directional kick + impact layer (§9).
+          hitStopUntilMs = performance.now() + 60;
+          scene.addKick(
+            input.yaw,
+            message.hits.some((h) => (h.flags & HitFlag.Crit) !== 0) ? 1.4 : 1,
+          );
+          sfx.play(
+            message.hits.some((h) => (h.flags & HitFlag.Crit) !== 0) ? 'impact_crit' : 'impact',
+          );
+        }
+      },
+      onEntityEvent: (message) => {
+        switch (message.event) {
+          case EntityEventKind.Alert:
+            enemyViews.get(message.entityId)?.playAlert();
+            break;
+          case EntityEventKind.Stagger:
+            enemyViews.get(message.entityId)?.playHitReact();
+            break;
+          case EntityEventKind.Flinch:
+            if (message.entityId === connection.selfId) {
+              localView.playFlinch();
+              scene.addShake(1);
+              sfx.play('hurt');
+            } else if (connection.remotes.get(message.entityId)?.kind === EntityKind.Player) {
+              remoteViews.get(message.entityId)?.playFlinch();
+            }
+            break;
+          case EntityEventKind.Death:
+            if (message.entityId === connection.selfId) sfx.play('death');
+            break;
+          default:
+            break;
+        }
+      },
+      onTelegraph: (message) => {
+        telegraphs.show(message);
+      },
+      onProjectileSpawn: (message) => {
+        projectiles.spawn(message);
+        sfx.play('bolt', 0.7);
+      },
+      onProjectileEnd: (message) => {
+        projectiles.end(message);
+      },
     },
     terrain.sampler,
     (x, z) => terrain.isGroundReadyAt(x, z),
@@ -178,6 +273,50 @@ export const runWorld = (
   scene.scene.add(localView.group);
 
   const remoteViews = new Map<number, CharacterView>();
+  const enemyViews = new Map<number, EnemyView>();
+  const enemyLastPos = new Map<number, { x: number; z: number }>();
+
+  // --- combat presentation (P4) --------------------------------------------
+  const telegraphs = new TelegraphManager(scene.scene, terrain.sampler);
+  const combatText = new CombatTextManager(scene.scene);
+  const projectiles = new ProjectileManager(scene.scene);
+  const sfx = new CombatSfx();
+  canvas.addEventListener('mousedown', () => {
+    sfx.unlock();
+  });
+  let enemyAssets: EnemyAssets | null = null;
+  void loadEnemyAssets().then((assets) => {
+    if (!disposed) enemyAssets = assets;
+  });
+  let enemyDefs = new Map<string, EnemyDef>();
+  void loadEnemyDefs().then((defs) => {
+    if (!disposed) enemyDefs = defs;
+  });
+  /** Attacker anim runs at 0.1× until this time — the §9 hit-stop. */
+  let hitStopUntilMs = 0;
+  /**
+   * One LMB press: predicted chain via the shared rules, swing anim NOW, and
+   * the request on the wire. Aim pitch leans a fraction of the camera pitch so
+   * mid-range bolts fly at torso height, not into the ground (feel-tunable).
+   */
+  const performAttackPress = (): boolean => {
+    const accepted = connection.requestBasicAttack(input.yaw, -input.pitch * 0.35);
+    if (!accepted) return false;
+    localView.playAttack(accepted.def.clip, accepted.def.clipSeconds, accepted.def.durationMs);
+    sfx.play('whoosh');
+    return true;
+  };
+  /** Where FCT for a target entity should appear. */
+  const fctAnchor = (entityId: number): { x: number; y: number; z: number } | null => {
+    if (entityId === connection.selfId) {
+      const p = connection.renderPosition();
+      return { x: p.x, y: p.y + 1.9, z: p.z };
+    }
+    const remote = connection.remotes.get(entityId);
+    if (!remote) return null;
+    const lift = remote.kind === EntityKind.Enemy ? 1.4 : 1.9;
+    return { x: remote.render.x, y: remote.render.y + lift, z: remote.render.z };
+  };
 
   // Rigs swap in whenever the shared assets land; the world never waits on them.
   let characterAssets: CharacterAssets | null = null;
@@ -208,6 +347,31 @@ export const runWorld = (
       }
       return out;
     },
+    /** Full attack-press path for smokes (pointer lock is unreliable headless). */
+    attack: (): boolean => performAttackPress(),
+    combatState: (): {
+      hp: number;
+      maxHp: number;
+      dead: boolean;
+      enemies: number;
+      enemiesInView: number;
+      telegraphs: number;
+      combatTexts: number;
+      fctTotal: number;
+      dawnedMs: number;
+      target: string | null;
+    } => ({
+      hp: connection.selfHp,
+      maxHp: connection.selfMaxHp,
+      dead: connection.selfDead,
+      enemies: [...connection.remotes.values()].filter((r) => r.kind === EntityKind.Enemy).length,
+      enemiesInView: enemyViews.size,
+      telegraphs: telegraphs.count,
+      combatTexts: combatText.count,
+      fctTotal: combatText.spawnedTotal,
+      dawnedMs: Math.max(0, connection.dawnedUntilMs - performance.now()),
+      target: softTarget()?.name ?? null,
+    }),
     animState: (): { local: string; localBubble: boolean; remotes: Record<string, string> } => {
       const remotes: Record<string, string> = {};
       for (const [id, view] of remoteViews) {
@@ -246,6 +410,7 @@ export const runWorld = (
     // would only earn a snap back to where the entity actually stands.
     const simulationReady =
       connection.status === 'playing' &&
+      !connection.selfDead &&
       mapReady &&
       walkgridReady &&
       terrain.isGroundReadyAt(streamPosition.x, streamPosition.z);
@@ -259,6 +424,12 @@ export const runWorld = (
     }
     if (accumulatorMs > TICK_MS * 5) accumulatorMs = 0; // gave up catching up
 
+    // 1b. LMB presses → predicted swings + server requests (COMBAT.md §4).
+    for (let presses = input.takeAttackPresses(); presses > 0; presses--) {
+      performAttackPress();
+    }
+    if (connection.predicted.rollTimeLeft > 0.5) sfx.play('dodge', 0.6);
+
     // 2. Per-frame networking housekeeping (corrections, interpolation).
     connection.update(deltaMs);
 
@@ -268,17 +439,25 @@ export const runWorld = (
     const dtSeconds = deltaMs / 1000;
     const position = connection.renderPosition(simulationReady ? accumulatorMs : 0);
     localView.setPose(position.x, position.y, position.z, input.yaw);
+    localView.setDead(connection.selfDead);
+    hud.showDeath(connection.selfDead);
     // The 8-way clip follows the held keys, not measured velocity: the rig
     // faces the live yaw while velocity trails the 20 Hz intents, so a camera
     // flick would sweep a velocity heading across sectors (anim-math.ts).
     const axes = input.moveAxes();
     localView.setIntentHeading(headingFromInput(axes.forward, axes.strafe));
-    localView.update(dtSeconds, {
+    // Hit-stop (§9): the attacker's rig freezes for a beat on confirmed contact.
+    const localDt = performance.now() < hitStopUntilMs ? dtSeconds * 0.1 : dtSeconds;
+    localView.update(localDt, {
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
       swimming: connection.predicted.swimming,
+      dodging: connection.predicted.rollTimeLeft > 0,
     });
     syncRemoteViews(dtSeconds);
+    telegraphs.update();
+    combatText.update(dtSeconds);
+    projectiles.update(dtSeconds);
 
     ambience?.update(dtSeconds, position.x, position.z);
     updateWaterTime(now / 1000);
@@ -290,7 +469,7 @@ export const runWorld = (
       connection.predicted.sprinting && !connection.predicted.swimming,
       dtSeconds,
     );
-    scene.updateCamera(cameraTarget, input.yaw, input.pitch);
+    scene.updateCamera(cameraTarget, input.yaw, input.pitch, dtSeconds);
     scene.render();
 
     hud.update({
@@ -310,6 +489,10 @@ export const runWorld = (
       position,
       stamina: connection.predicted.stamina,
       maxStamina: connection.predicted.maxStamina,
+      hp: connection.selfHp,
+      maxHp: connection.selfMaxHp || playerStats(connection.classId, 1).maxHp,
+      dawnedRemainingMs: Math.max(0, connection.dawnedUntilMs - now),
+      target: softTarget(),
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
       swimming: connection.predicted.swimming,
@@ -320,6 +503,25 @@ export const runWorld = (
   /** Create/advance/remove remote views to mirror the interpolated entity set. */
   const syncRemoteViews = (dtSeconds: number): void => {
     for (const [id, remote] of connection.remotes) {
+      if (remote.kind === EntityKind.Enemy) {
+        let enemyView = enemyViews.get(id);
+        if (!enemyView && remote.enemyMeta && enemyAssets) {
+          enemyView = new EnemyView(
+            id,
+            remote.enemyMeta,
+            enemyDefs.get(remote.enemyMeta.typeId),
+            enemyAssets,
+          );
+          enemyViews.set(id, enemyView);
+          enemyLastPos.set(id, { x: remote.render.x, z: remote.render.z });
+          scene.scene.add(enemyView.group);
+        }
+        if (enemyView) {
+          enemyView.update(dtSeconds, remote.render, enemyLastPos.get(id)!);
+        }
+        continue;
+      }
+
       let view = remoteViews.get(id);
       if (!view) {
         view = new CharacterView(remote.name);
@@ -335,10 +537,12 @@ export const runWorld = (
       }
 
       view.setPose(remote.render.x, remote.render.y, remote.render.z, remote.render.yaw);
+      view.setDead((remote.render.flags & EntityFlag.Dead) !== 0);
       view.update(dtSeconds, {
         grounded: (remote.render.flags & EntityFlag.Grounded) !== 0,
         sprinting: (remote.render.flags & EntityFlag.Sprinting) !== 0,
         swimming: (remote.render.flags & EntityFlag.Swimming) !== 0,
+        dodging: (remote.render.flags & EntityFlag.Dodging) !== 0,
       });
     }
     for (const [id, view] of remoteViews) {
@@ -347,6 +551,40 @@ export const runWorld = (
         remoteViews.delete(id);
       }
     }
+    for (const [id, view] of enemyViews) {
+      if (!connection.remotes.has(id)) {
+        view.dispose(scene.scene);
+        enemyViews.delete(id);
+        enemyLastPos.delete(id);
+      }
+    }
+  };
+
+  /** Soft-target (COMBAT.md §1): the best living enemy near the reticle line. */
+  const softTarget = (): { name: string; level: number; hpFraction: number } | null => {
+    const self = connection.renderPosition();
+    let best: { name: string; level: number; hpFraction: number } | null = null;
+    let bestScore = Infinity;
+    for (const remote of connection.remotes.values()) {
+      if (remote.kind !== EntityKind.Enemy || !remote.enemyMeta) continue;
+      if ((remote.render.flags & EntityFlag.Dead) !== 0) continue;
+      const dx = remote.render.x - self.x;
+      const dz = remote.render.z - self.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 22) continue;
+      const off = Math.abs(angleDelta(input.yaw, Math.atan2(dx, dz)));
+      if (off > 0.4) continue;
+      const score = off * 8 + dist * 0.1;
+      if (score < bestScore) {
+        bestScore = score;
+        best = {
+          name: remote.enemyMeta.name,
+          level: remote.enemyMeta.level,
+          hpFraction: remote.render.hpFraction,
+        };
+      }
+    }
+    return best;
   };
 
   requestAnimationFrame(frame);

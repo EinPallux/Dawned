@@ -5,6 +5,41 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — P4 Combat Foundation (2026-08-03, protocol v6)
+
+- **Enemies are in the world.** Shore Glub camps (3 camps on the western
+  shore), a Mushnub pair inland, and a training-dummy line south of the spawn
+  shrine — all authored as published `content_enemies`/`content_spawners`
+  rows (zod-validated at boot), streamed to the client with nameplates and
+  HP bars. Grunt AI v1: perception cones + hearing, an alert beat before
+  committing, threat-table targeting, melee/ranged attack bands, steering
+  with separation on the walkgrid, damage + social aggro (camps join in),
+  leashing with invulnerable return, and corpse → spawner respawns.
+- **The basic combo.** LMB chains a per-class 3-step basic attack (link
+  window in the last 40 % of each swing, warrior step 3 cleaves 120°);
+  casters fire bolts instead. Client-predicted swing anims with
+  server-confirmed damage; melee hits are lag-rewound to what the attacker
+  actually saw (RTT/2 + interpolation delay, capped 250 ms).
+- **The dodge roll.** Mouse4 (or V): 0.55 s / 4.2 m with i-frames from
+  0.05–0.35 s, 25 stamina, direction locked at press — simulated inside the
+  shared movement step, so prediction and server always agree.
+- **Getting hit, staggering, dying.** Full damage pipeline (crit, variance,
+  armor/resist, level scaling — unit-tested in shared), stagger meter with
+  hit reacts and a vulnerability window, floating combat text (outgoing/
+  crit/incoming/heal), enemy heavy attacks draw their **exact** hit shape as
+  a hatched ground telegraph (colorblind-safe pattern, fills toward impact),
+  death → soul screen → respawn at the shrine with a 30 s −15 % damage
+  "Dawned" debuff. HP persists across logout (dead characters revive at 1).
+- **Juice pass v1 (COMBAT.md §9).** 60 ms hit-stop on confirmed hits,
+  directional camera kick + capped shake, enemy flash tints, corpse
+  desaturate-and-sink, soft-target reticle plate, HP globe/vitals HUD, and
+  WebAudio-synthesized temp combat SFX (swing/impact/dodge/death — final
+  sourcing lands at P14).
+- Verification: `tools/smoke/combat-probe.mjs` (15 headless server asserts)
+  and `tools/smoke/browser-p4.mjs` (15 browser asserts incl. the death
+  loop); all P3 smokes still green; tick p95 1.17 ms during a live camp
+  fight (<15 ms gate).
+
 ### Fixed — production playtest round 5 (2026-08-03)
 
 - **Left/right locomotion clips are no longer mirrored** (A played the D

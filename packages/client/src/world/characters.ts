@@ -23,7 +23,7 @@ const ASSET_IDS = {
   },
   hairPrefix: 'characters_',
   beard: 'characters_hair_beard',
-  animations: ['characters_ual1'],
+  animations: ['characters_ual1', 'characters_ual2_standard'],
 } as const;
 
 interface ManifestAsset {

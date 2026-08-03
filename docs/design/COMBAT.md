@@ -58,6 +58,15 @@ weapon; Mage/Cleric use spell-bolt equivalents):
   step 3 cleaves 120°).
 - Basic attacks are never resource-gated — the floor of the rotation always works.
 
+> **As built (P4):** the combo framework is live for all four classes — 3-step chains with the
+> link window (last 40 %), 0.6 s reset grace, and a 400 ms GCD charged only on fresh chains
+> (links inside a chain don't re-pay it, or step 2 could never link on fast weapons). Timings
+> follow the baked clip lengths (warrior 450/500/750 ms), contact at 55 % of the swing (60 %
+> for caster bolts); Warrior step 3 cleaves 120°, Mage/Cleric fire bolts. Chains live in
+> `@dawned/shared/data/basic-combos.ts` for P4 and migrate into `content_abilities` rows with
+> the P5 ability pipeline. Resource _generation_ on steps (Rage +4 etc.) waits for the
+> resources themselves (P5); stamina is untouched by basics as specced.
+
 ## 4. Ability Framework (data-driven)
 
 Every ability is a content row (editable in Dawned-Admin) interpreted by one shared execution
@@ -142,6 +151,14 @@ future gear affixes, not separate mitigation channels in 0.1.0.
   (server-driven displacement, dodge-cancelable landing). CC diminishing returns: same-category CC
   within 10 s → 50% duration → immune (protects the solo experience vs. mob packs).
 
+> **As built (P4):** enemy stagger meters are live (players immune as specced — explicit CC on
+> players lands with P5/P6 abilities): step-3s and heavies build stagger, 100 triggers the
+> 1.2 s full-body react with the +10 % damage-taken window, and rank scales gain (elites 0.75×,
+> zone bosses 0.5×, world bosses immune). The +10 % window runs 2.5 s, and the meter
+> **decays 15/s after 2.5 s without new stagger gain** — this doc didn't pin decay, so that
+> default is flagged in USER_QUESTIONS.md.
+> Light-hit flinches ride `EntityEvent(Flinch)` with the enemies' baked hit-react clips.
+
 ### 6.5 Threat (enables the Warrior tank fantasy solo→group later)
 
 Per-enemy threat table: damage = 1 threat/point, healing = 0.5 to all enemies in the healer's combat,
@@ -186,6 +203,18 @@ Checklist every ability/enemy must pass before its phase closes:
 - [ ] Kill confirm: subtle time-dilation 60 ms on killing blow of elites/bosses.
 - [ ] Sound layers: whoosh (start), impact (contact), tail (rarity/size); 3 round-robin variants minimum (see AUDIO.md).
 
+> **As built (P4)** — the checklist boxes stay unchecked until the owner's line-by-line
+> review (it's the phase-close artifact), but the wiring is in: 60 ms hit-stop on confirmed
+> own hits (attacker view at 0.1× time), directional camera kick + capped receive shake with
+> the global intensity path, FCT pooled with the 40 cap (outgoing/crit/incoming/heal live —
+> XP violet joins at P7, resource colors at P5), enemy flash-tint 0.08 s, death = `Death`
+> clip → desaturate → sink (on the 10 s corpse timer for now; the 60 s loot window replaces
+> it when loot exists at P8), and WebAudio-synthesized temp SFX in the whoosh/impact/tail
+> slot layout (round-robin variants + real sourcing at P14). The killing-blow flag rides
+> `AbilityResolve` and drives the death beat (SFX + corpse sequence); the elite/boss
+> time-dilation confirm lands with elites at P9. Contact-frame sync (anim + VFX + SFX +
+> damage within a frame) is what the owner should judge on screen.
+
 ## 10. Death & Respawn
 
 On death: control locked, camera orbits body 2 s, soul screen with respawn options (nearest attuned
@@ -208,3 +237,9 @@ system still models "ally" targeting cleanly so Cleric heals and future duels do
 | Player deaths per hour, casual leveling | 0.5–1.5 (danger without punishment spiral)                                    |
 | GCD                                     | 400 ms; ability rotation APM target ≈ 40–60 (fun for weeks, not a piano exam) |
 | Basic:ability damage share at level     | ≈ 40:60 for DPS classes; movement uptime while fighting ≥ 85%                 |
+
+> **As built (P4), first measurements:** warrior-at-level TTK — Shore Glub ≈ 3 s (swarm rank,
+> deliberately under the trash band so camps of 3–4 total in the 6–10 s window), Mushnub
+> ≈ 8–9 s (in band). The remaining rows need their systems (elites P9, bosses P9/P12, ability
+> share P5). Tuning knobs live in shared constants + `content_enemies` rows until the admin
+> editors take over at A1/P5.

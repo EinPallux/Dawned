@@ -14,6 +14,7 @@ import type { Config } from '../config.js';
 import type { MetricsRing } from '../metrics/ring.js';
 import type { World } from '../world/world.js';
 import type { Gateway } from '../net/gateway.js';
+import type { GameContent } from '../content/loader.js';
 
 /**
  * The concrete Fastify instance type produced by our boot options (a pino
@@ -26,12 +27,13 @@ export interface RouteDeps {
   world: World;
   gateway: Gateway;
   metrics: MetricsRing;
+  content: GameContent;
 }
 
 const LOCALHOST = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 export const registerRoutes = (app: App, deps: RouteDeps): void => {
-  const { config, world, gateway, metrics } = deps;
+  const { config, world, gateway, metrics, content } = deps;
 
   app.get('/api/health', () => ({
     status: 'ok',
@@ -40,6 +42,17 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     players: world.playerCount,
     uptimeSec: Math.round(process.uptime()),
   }));
+
+  /**
+   * Published enemy definitions (P4): the client renders enemies from the
+   * same data rows the server simulates — ability clip names, hit capsules,
+   * scales (content-as-data; the response only changes on publish).
+   */
+  const enemyDefsPayload = { enemies: [...content.enemies.values()] };
+  app.get('/api/content/enemies', (_request, reply) => {
+    void reply.header('cache-control', 'no-cache');
+    return enemyDefsPayload;
+  });
 
   /** Minimal public status for the login screen's server pip. */
   app.get('/api/status', () => ({

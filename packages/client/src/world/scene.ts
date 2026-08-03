@@ -91,8 +91,34 @@ export class GameScene {
     this.camera.updateProjectionMatrix();
   }
 
+  // --- combat camera juice (COMBAT.md §9): directional kick on dealing, ---
+  // capped shake on receiving. Global intensity slider hook for settings.
+  private kick = { x: 0, y: 0 };
+  private shakeLeft = 0;
+  private shakeStrength = 0;
+  /** 0..1 — the "never nauseating" global slider (UI arrives with Settings). */
+  juiceIntensity = 1;
+
+  /** Small directional impulse when the player LANDS a heavy hit. */
+  addKick(directionYaw: number, strength = 1): void {
+    const s = 0.045 * strength * this.juiceIntensity;
+    this.kick.x += Math.sin(directionYaw) * s;
+    this.kick.y += 0.02 * strength * this.juiceIntensity;
+  }
+
+  /** Brief camera shake when the player TAKES a hit — hard-capped. */
+  addShake(strength = 1): void {
+    this.shakeLeft = 0.18;
+    this.shakeStrength = Math.min(0.09, 0.05 * strength) * this.juiceIntensity;
+  }
+
   /** Third-person orbit camera behind the player (mouselook, Q1 decision). */
-  updateCamera(target: { x: number; y: number; z: number }, yaw: number, pitch: number): void {
+  updateCamera(
+    target: { x: number; y: number; z: number },
+    yaw: number,
+    pitch: number,
+    dtSeconds = 0,
+  ): void {
     // The shadow frustum is a ±70 m box — anchor it to the player, or shadows
     // silently vanish the moment they walk away from the world origin.
     this.sun.position.set(target.x + 60, target.y + 90, target.z + 40);
@@ -105,6 +131,22 @@ export class GameScene {
       target.y + 1.6 + Math.sin(pitch) * distance,
       target.z - Math.cos(yaw) * horizontal,
     );
+
+    // Decay the kick fast; the shake is jittered noise inside its window.
+    const decay = Math.exp(-dtSeconds * 14);
+    this.kick.x *= decay;
+    this.kick.y *= decay;
+    let shakeX = 0;
+    let shakeY = 0;
+    if (this.shakeLeft > 0) {
+      this.shakeLeft -= dtSeconds;
+      const falloff = Math.max(0, this.shakeLeft / 0.18);
+      shakeX = (Math.random() * 2 - 1) * this.shakeStrength * falloff;
+      shakeY = (Math.random() * 2 - 1) * this.shakeStrength * falloff;
+    }
+    this.camera.position.x += this.kick.x + shakeX;
+    this.camera.position.y += this.kick.y + shakeY;
+
     this.camera.lookAt(target.x, target.y + 1.35, target.z);
     this.sky.position.copy(this.camera.position);
   }

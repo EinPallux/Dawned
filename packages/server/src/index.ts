@@ -98,7 +98,7 @@ const gateway = new Gateway(
   auth,
   characterService,
 );
-registerRoutes(app, { config, world, gateway, metrics });
+registerRoutes(app, { config, world, gateway, metrics, content });
 registerAuthRoutes(app, { auth, characters: characterService });
 
 await app.listen({ host: config.HOST, port: config.PORT });

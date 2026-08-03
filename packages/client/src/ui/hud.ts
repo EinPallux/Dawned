@@ -27,6 +27,12 @@ export interface HudStats {
   position: { x: number; y: number; z: number };
   stamina: number;
   maxStamina: number;
+  hp: number;
+  maxHp: number;
+  /** Ms left on the "Dawned" respawn debuff (0 = none). */
+  dawnedRemainingMs: number;
+  /** Soft-target under the reticle, when any (COMBAT.md §1). */
+  target: { name: string; level: number; hpFraction: number } | null;
   grounded: boolean;
   sprinting: boolean;
   swimming: boolean;
@@ -41,6 +47,14 @@ export class Hud {
   private readonly chatLogEl: HTMLElement;
   private readonly chatInput: HTMLInputElement;
   private readonly staminaFill: HTMLElement;
+  private readonly hpFill: HTMLElement;
+  private readonly hpText: HTMLElement;
+  private readonly deathEl: HTMLElement;
+  private readonly dawnedEl: HTMLElement;
+  private readonly dawnedSecondsEl: HTMLElement;
+  private readonly targetEl: HTMLElement;
+  private readonly targetNameEl: HTMLElement;
+  private readonly targetHpFill: HTMLElement;
   private readonly bannerEl: HTMLElement;
   private readonly pingCanvas: HTMLCanvasElement;
   private readonly correctionCanvas: HTMLCanvasElement;
@@ -54,6 +68,7 @@ export class Hud {
     parent: HTMLElement,
     private readonly onChatSubmit: (text: string) => void,
     private readonly onChatFocusChange: (focused: boolean) => void,
+    private readonly onRespawn: () => void = () => undefined,
   ) {
     this.root = document.createElement('div');
     this.root.className = 'hud';
@@ -70,7 +85,19 @@ export class Hud {
         <div data-roster class="hud-roster"></div>
       </div>
       <div class="hud-banner" data-banner hidden></div>
+      <div class="hud-reticle" data-reticle></div>
+      <div class="hud-target" data-target hidden>
+        <span class="hud-target-name" data-target-name></span>
+        <div class="hud-target-hp"><div class="hud-target-hp-fill" data-target-hp></div></div>
+      </div>
+      <div class="hud-death" data-death hidden>
+        <div class="hud-death-title">THE DAWN AWAITS</div>
+        <button class="hud-death-button" data-respawn>RETURN TO SHRINE</button>
+        <div class="hud-death-hint">Respawning carries the Dawned mark: −15% damage for 30 s.</div>
+      </div>
       <div class="hud-bottom">
+        <div class="hud-dawned" data-dawned hidden>DAWNED <span data-dawned-s></span></div>
+        <div class="hud-hp"><div class="hud-hp-fill" data-hp></div><span class="hud-hp-text" data-hp-text></span></div>
         <div class="hud-stamina"><div class="hud-stamina-fill" data-stamina></div></div>
         <div class="hud-hint">
           <b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>Mouse</b> look
@@ -90,6 +117,17 @@ export class Hud {
     this.rosterEl = this.query('[data-roster]');
     this.chatLogEl = this.query('[data-chatlog]');
     this.staminaFill = this.query('[data-stamina]');
+    this.hpFill = this.query('[data-hp]');
+    this.hpText = this.query('[data-hp-text]');
+    this.deathEl = this.query('[data-death]');
+    this.dawnedEl = this.query('[data-dawned]');
+    this.dawnedSecondsEl = this.query('[data-dawned-s]');
+    this.targetEl = this.query('[data-target]');
+    this.targetNameEl = this.query('[data-target-name]');
+    this.targetHpFill = this.query('[data-target-hp]');
+    this.query('[data-respawn]').addEventListener('click', () => {
+      this.onRespawn();
+    });
     this.bannerEl = this.query('[data-banner]');
     this.pingCanvas = this.query('[data-ping]') as HTMLCanvasElement;
     this.correctionCanvas = this.query('[data-correction]') as HTMLCanvasElement;
@@ -131,6 +169,11 @@ export class Hud {
   }
 
   /** Center-screen banner for states the player must not miss (reconnecting). */
+  /** Soul screen on death (COMBAT.md §10); hides again on respawn. */
+  showDeath(visible: boolean): void {
+    this.deathEl.hidden = !visible;
+  }
+
   setBanner(text: string | null): void {
     this.bannerEl.hidden = text === null;
     this.bannerEl.textContent = text ?? '';
@@ -191,6 +234,26 @@ export class Hud {
     const fraction = stats.maxStamina > 0 ? stats.stamina / stats.maxStamina : 0;
     this.staminaFill.style.width = `${(fraction * 100).toFixed(1)}%`;
     this.staminaFill.dataset.low = fraction < 0.25 ? 'true' : 'false';
+
+    const hpFraction = stats.maxHp > 0 ? stats.hp / stats.maxHp : 0;
+    this.hpFill.style.width = `${(hpFraction * 100).toFixed(1)}%`;
+    this.hpFill.dataset.low = hpFraction < 0.3 ? 'true' : 'false';
+    this.hpText.textContent = `${stats.hp} / ${stats.maxHp}`;
+
+    if (stats.dawnedRemainingMs > 0) {
+      this.dawnedEl.hidden = false;
+      this.dawnedSecondsEl.textContent = `${Math.ceil(stats.dawnedRemainingMs / 1000)}s`;
+    } else {
+      this.dawnedEl.hidden = true;
+    }
+
+    if (stats.target) {
+      this.targetEl.hidden = false;
+      this.targetNameEl.textContent = `${stats.target.name} · ${stats.target.level}`;
+      this.targetHpFill.style.width = `${(stats.target.hpFraction * 100).toFixed(1)}%`;
+    } else {
+      this.targetEl.hidden = true;
+    }
 
     this.pingHistory.push(stats.ping);
     if (this.pingHistory.length > 110) this.pingHistory.shift();

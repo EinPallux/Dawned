@@ -7,8 +7,13 @@
  */
 
 import {
+  ActionId,
+  BASIC_COMBOS,
   BinaryReader,
+  COMBO_LINK_WINDOW_FRACTION,
+  COMBO_RESET_MS,
   EntityFlag,
+  GCD_MS,
   INTERP_DELAY_MS,
   NoticeCode,
   PROTOCOL_VERSION,
@@ -16,11 +21,20 @@ import {
   ServerOp,
   TICK_DT,
   cloneMovementState,
+  comboWindow,
   createMovementState,
+  decodeAbilityReject,
+  decodeAbilityResolve,
+  decodeAbilityStart,
+  decodeEntityEvent,
   decodeJsonEnvelope,
   decodePong,
+  decodeProjectileEnd,
+  decodeProjectileSpawn,
   decodeSnapshot,
   decodeSystemNotice,
+  decodeTelegraph,
+  encodeAbilityRequest,
   encodeChat,
   encodeHello,
   encodeInputIntent,
@@ -28,12 +42,22 @@ import {
   noticeTextFor,
   peekOpcode,
   stepMovement,
+  type AbilityResolveMessage,
+  type AbilityStartMessage,
   type ChatBroadcastMessage,
+  type ClassId,
+  type ComboStep,
+  type EnemyMetaEntry,
+  type EnemyMetaMessage,
+  type EntityEventMessage,
   type MovementIntent,
   type MovementState,
+  type ProjectileEndMessage,
+  type ProjectileSpawnMessage,
   type RosterEntry,
   type RosterMessage,
   type SnapshotMessage,
+  type TelegraphMessage,
   type TerrainSampler,
   type WelcomeMessage,
 } from '@dawned/shared';
@@ -70,14 +94,19 @@ export interface RemoteSample {
   z: number;
   yaw: number;
   flags: number;
+  hpFraction: number;
 }
 
 export interface RemoteEntity {
   id: number;
+  /** {@link EntityKind} — players interpolate identically to enemies. */
+  kind: number;
   name: string;
   samples: RemoteSample[];
   /** Rendered position, updated every frame by {@link Connection.sampleRemotes}. */
-  render: { x: number; y: number; z: number; yaw: number; flags: number };
+  render: { x: number; y: number; z: number; yaw: number; flags: number; hpFraction: number };
+  /** Enemy identity (EnemyMeta, v6) — undefined for players. */
+  enemyMeta?: EnemyMetaEntry;
 }
 
 export type ConnectionStatus =
@@ -90,6 +119,15 @@ export interface ConnectionEvents {
   onWelcome?: (welcome: WelcomeMessage) => void;
   /** Fired for every SystemNotice so the UI can react per code (restart, name taken…). */
   onNotice?: (code: NoticeCode, friendlyText: string) => void;
+  // --- combat (protocol v6) ------------------------------------------------
+  onAbilityStart?: (message: AbilityStartMessage) => void;
+  onAbilityResolve?: (message: AbilityResolveMessage) => void;
+  /** A predicted action the server refused — prediction already rolled back. */
+  onAbilityReject?: (action: number, reason: number) => void;
+  onEntityEvent?: (message: EntityEventMessage) => void;
+  onTelegraph?: (message: TelegraphMessage) => void;
+  onProjectileSpawn?: (message: ProjectileSpawnMessage) => void;
+  onProjectileEnd?: (message: ProjectileEndMessage) => void;
 }
 
 interface PendingInput {
@@ -120,6 +158,26 @@ export class Connection {
 
   /** Predicted local state — what the player sees themselves as. */
   readonly predicted: MovementState = createMovementState();
+
+  // --- combat (protocol v6) --------------------------------------------------
+  /** Authoritative vitals from the newest snapshot. */
+  selfHp = 0;
+  selfMaxHp = 0;
+  /** Dead per the server (control locked; run-world freezes prediction). */
+  selfDead = false;
+  /** Raw self flags from the newest snapshot (Dodging etc. for the HUD). */
+  selfFlags = 0;
+  /** "Dawned" debuff end, in performance.now() terms (0 = none). */
+  dawnedUntilMs = 0;
+  /** Own class — drives the predicted combo chain timing. */
+  classId: ClassId = 'warrior';
+  /** Predicted basic-combo chain (mirrors the server's shared rules). */
+  private comboStep = -1;
+  private comboStartedAtMs = 0;
+  private gcdUntilMs = 0;
+  private attackSeq = 1;
+  /** Enemy identity by entity id — arrives once per enemy via EnemyMeta. */
+  private readonly enemyMetas = new Map<number, EnemyMetaEntry>();
   /** Last authoritative state received from the server. */
   private readonly authoritative: MovementState = createMovementState();
   /** Scratch state used while replaying unacked inputs. */
@@ -189,6 +247,12 @@ export class Connection {
     this.interpClockReady = false;
     this.clockInitialized = false;
     this.remotes.clear();
+    this.enemyMetas.clear();
+    this.comboStep = -1;
+    this.comboStartedAtMs = 0;
+    this.gcdUntilMs = 0;
+    this.selfDead = false;
+    this.dawnedUntilMs = 0;
     this.stats.lastSnapshotAtMs = 0;
     this.stats.snapshotIntervalMs = 0;
   }
@@ -407,7 +471,9 @@ export class Connection {
         // buffers) is stale. Start clean; the first snapshot refills all of it.
         this.resetForSession();
         this.selfId = welcome.selfId;
-        this.playerName = welcome.players.find((p) => p.id === welcome.selfId)?.name ?? '';
+        const selfEntry = welcome.players.find((p) => p.id === welcome.selfId);
+        this.playerName = selfEntry?.name ?? '';
+        this.classId = selfEntry?.classId ?? 'warrior';
         this.predicted.x = welcome.spawn.x;
         this.predicted.y = welcome.spawn.y;
         this.predicted.z = welcome.spawn.z;
@@ -467,9 +533,122 @@ export class Connection {
         console.warn('[net] system notice', notice.code, notice.detail ?? friendly);
         return;
       }
+      case ServerOp.EnemyMeta: {
+        const meta = decodeJsonEnvelope<EnemyMetaMessage>(reader);
+        for (const enemy of meta.enemies) {
+          this.enemyMetas.set(enemy.id, enemy);
+          const remote = this.remotes.get(enemy.id);
+          if (remote) {
+            remote.enemyMeta = enemy;
+            remote.name = enemy.name;
+          }
+        }
+        return;
+      }
+      case ServerOp.AbilityStart:
+        this.events.onAbilityStart?.(decodeAbilityStart(reader));
+        return;
+      case ServerOp.AbilityResolve:
+        this.events.onAbilityResolve?.(decodeAbilityResolve(reader));
+        return;
+      case ServerOp.AbilityReject: {
+        const reject = decodeAbilityReject(reader);
+        // The server refused what we predicted — drop the predicted chain so
+        // the next press starts honest. Rare on healthy clients.
+        this.comboStep = -1;
+        this.comboStartedAtMs = 0;
+        this.events.onAbilityReject?.(reject.action, reject.reason);
+        return;
+      }
+      case ServerOp.EntityEvent: {
+        const message = decodeEntityEvent(reader);
+        if (message.entityId === this.selfId) {
+          if (message.event === 7 /* Dawned */) {
+            this.dawnedUntilMs = performance.now() + message.a;
+          }
+        }
+        this.events.onEntityEvent?.(message);
+        return;
+      }
+      case ServerOp.Telegraph:
+        this.events.onTelegraph?.(decodeTelegraph(reader));
+        return;
+      case ServerOp.ProjectileSpawn:
+        this.events.onProjectileSpawn?.(decodeProjectileSpawn(reader));
+        return;
+      case ServerOp.ProjectileEnd:
+        this.events.onProjectileEnd?.(decodeProjectileEnd(reader));
+        return;
       default:
         console.warn(`[net] ignoring unknown opcode 0x${opcode.toString(16)}`);
     }
+  }
+
+  /**
+   * Press LMB: mirror the server's shared chain rules against the predicted
+   * state. Accepted → the request is sent and the caller gets the step to
+   * animate NOW (prediction); dropped (too early / GCD) → null, exactly as
+   * the server would drop or reject it.
+   */
+  requestBasicAttack(aimYaw: number, aimPitch: number): { step: number; def: ComboStep } | null {
+    if (this.status !== 'playing' || this.selfDead) return null;
+    if (this.predicted.rollTimeLeft > 0 || this.predicted.swimming) return null;
+    const combo = BASIC_COMBOS[this.classId];
+    const now = performance.now();
+    let step = 0;
+    if (this.comboStep >= 0 && this.comboStartedAtMs > 0) {
+      const current = combo.steps[this.comboStep]!;
+      const window = comboWindow(
+        current,
+        now - this.comboStartedAtMs,
+        COMBO_LINK_WINDOW_FRACTION,
+        COMBO_RESET_MS,
+      );
+      if (window === 'too_early') return null;
+      if (window === 'link') step = (this.comboStep + 1) % combo.steps.length;
+    }
+    if (now < this.gcdUntilMs && step === 0) return null;
+
+    this.comboStep = step;
+    this.comboStartedAtMs = now;
+    this.gcdUntilMs = now + GCD_MS;
+    if (this.isOpen) {
+      this.attackSeq = (this.attackSeq + 1) & 0xffff;
+      this.sendRaw(
+        encodeAbilityRequest({
+          seq: this.attackSeq,
+          action: ActionId.BasicAttack,
+          aimYaw,
+          aimPitch,
+        }),
+      );
+    }
+    return { step, def: combo.steps[step]! };
+  }
+
+  /** Dodge cancels the predicted chain (the server does the same). */
+  cancelPredictedCombo(): void {
+    this.comboStep = -1;
+    this.comboStartedAtMs = 0;
+  }
+
+  /** Soul-screen button: ask to respawn (valid only while dead). */
+  requestRespawn(): void {
+    if (!this.isOpen || !this.selfDead) return;
+    this.attackSeq = (this.attackSeq + 1) & 0xffff;
+    this.sendRaw(
+      encodeAbilityRequest({
+        seq: this.attackSeq,
+        action: ActionId.Respawn,
+        aimYaw: 0,
+        aimPitch: 0,
+      }),
+    );
+  }
+
+  /** Enemy identity for an entity id, once its EnemyMeta arrived. */
+  enemyMetaFor(id: number): EnemyMetaEntry | undefined {
+    return this.enemyMetas.get(id);
   }
 
   private handleSnapshot(snapshot: SnapshotMessage): void {
@@ -499,6 +678,27 @@ export class Connection {
     this.authoritative.swimming = (self.flags & EntityFlag.Swimming) !== 0;
     this.authoritative.fallPeakY = this.predicted.fallPeakY;
     this.authoritative.staminaIdleMs = this.predicted.staminaIdleMs;
+
+    // 1b. Vitals + death are authoritative-only — never predicted (v6).
+    this.selfHp = self.hp;
+    this.selfMaxHp = self.maxHp;
+    this.selfFlags = self.flags;
+    const deadNow = (self.flags & EntityFlag.Dead) !== 0;
+    if (deadNow && !this.selfDead) this.cancelPredictedCombo();
+    this.selfDead = deadNow;
+
+    // 1c. While dead the server parks the body and ignores inputs — predicting
+    // would only rubber-band. Adopt verbatim; run-world stops the sim too.
+    if (deadNow) {
+      this.pendingInputs.length = 0;
+      cloneInto(this.predicted, this.authoritative);
+      this.correction.x = 0;
+      this.correction.y = 0;
+      this.correction.z = 0;
+      this.correction.remainingMs = 0;
+      this.bufferRemotes(snapshot);
+      return;
+    }
 
     // 2. Drop inputs the server has already consumed.
     while (
@@ -579,16 +779,26 @@ export class Connection {
       else if (behind < -INTERP_MAX_LEAD_MS) this.interpClockMs = target + INTERP_MAX_LEAD_MS;
     }
 
-    // 6. Buffer remote entities for interpolation.
+    // 6. Buffer remote entities for interpolation (players and enemies alike).
     const time = snapshot.serverTimeMs;
     for (const entity of snapshot.entities) {
       let remote = this.remotes.get(entity.id);
       if (!remote) {
+        const meta = this.enemyMetas.get(entity.id);
         remote = {
           id: entity.id,
-          name: this.nameFor(entity.id),
+          kind: entity.kind,
+          name: meta?.name ?? this.nameFor(entity.id),
           samples: [],
-          render: { x: entity.x, y: entity.y, z: entity.z, yaw: entity.yaw, flags: entity.flags },
+          render: {
+            x: entity.x,
+            y: entity.y,
+            z: entity.z,
+            yaw: entity.yaw,
+            flags: entity.flags,
+            hpFraction: entity.hpFraction,
+          },
+          ...(meta ? { enemyMeta: meta } : {}),
         };
         this.remotes.set(entity.id, remote);
       }
@@ -599,6 +809,7 @@ export class Connection {
         z: entity.z,
         yaw: entity.yaw,
         flags: entity.flags,
+        hpFraction: entity.hpFraction,
       });
       if (remote.samples.length > INTERP_BUFFER_SIZE) remote.samples.shift();
     }
@@ -724,6 +935,7 @@ export class Connection {
         remote.render.z = only.z;
         remote.render.yaw = only.yaw;
         remote.render.flags = only.flags;
+        remote.render.hpFraction = only.hpFraction;
         continue;
       }
 
@@ -744,6 +956,7 @@ export class Connection {
       remote.render.z = older.z + (newer.z - older.z) * t;
       remote.render.yaw = lerpAngleShortest(older.yaw, newer.yaw, t);
       remote.render.flags = newer.flags;
+      remote.render.hpFraction = newer.hpFraction;
     }
   }
 

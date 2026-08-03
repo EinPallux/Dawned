@@ -84,17 +84,24 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 16 initial owner decisions are answered and folded (decision log in USER_QUESTIONS.md).
-**P0–P2 are ✅ complete (owner-verified). P3 — Movement, Netcode Core & Chat v1 — is built and
-verified in dev (2026-08-02, protocol v4)**: swimming in the shared step, AOI interest sets,
-15 s reconnect grace with client auto-reconnect, chat v1 + bubbles + `/stuck`, 8-way/lean/swim
-animations, `/netsim` lag lab + netgraph. Load/latency gates measured green (tick p95 1 ms at
-21 players; prediction p95 39 mm / 0 hard snaps at 100 ms ± 20 ms — ROADMAP P3 status).
-**One DoD item open: the owner's real-hardware group session at `/netsim 100 20`. A0 (panel
-foundation) is built and verified in dev in Dawned-Admin — its ROADMAP A0 status lists the
-owner's /admin login check as the last open item.** Deploys to production happen only when the
-owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is strict
-since the P1 deploy fix; it now also bridges the GitHub PAT so the admin panel's pinned
-`@dawned/shared` git dependency installs on the private repos).
+**P0–P2 are ✅ complete (owner-verified). P3 — Movement, Netcode Core & Chat v1 — is built,
+verified in dev, and playtest-hardened through five owner fix rounds** (swimming, AOI,
+reconnect grace, chat + bubbles, 8-way/lean/swim animations, `/netsim` lag lab; movement-feel
+rework + L/R clip mapping settled by the owner on screen). **P4 — Combat Foundation — is
+built and verified in dev (2026-08-03, protocol v6)**: shared damage/stat/hit-shape/stagger
+formulas, dodge roll with i-frames inside the shared movement step, per-class basic combos,
+lag-rewound server hit resolution, Grunt AI camps (Shore Glub, Young Mushnub) + training
+dummies from published `content_enemies`/`content_spawners` rows, telegraphs, floating combat
+text, death → shrine respawn with the Dawned debuff, and the §9 juice pass v1 (hit-stop,
+camera kick, flash tints, temp WebAudio SFX slots). Verified: 15-assert headless combat probe
+(`tools/smoke/combat-probe.mjs`), 15-assert browser smoke (`tools/smoke/browser-p4.mjs`), all
+P3 smokes still green, tick p95 1.17 ms during a live camp fight (<15 ms gate).
+**Owner items open (ROADMAP status blocks): the P3 real-hardware group session, the P4
+"10-minute demo" (clear a Glub camp with combo + dodge at `/netsim 100 20`) + §9 checklist
+review + feel signoff, and the A0 /admin login check (Dawned-Admin).** Deploys to production
+happen only when the owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its
+migration step is strict since the P1 deploy fix; it now also bridges the GitHub PAT so the
+admin panel's pinned `@dawned/shared` git dependency installs on the private repos).
 
 ### Running it locally
 
