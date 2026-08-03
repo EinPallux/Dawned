@@ -10,6 +10,7 @@
  */
 
 import * as THREE from 'three';
+import { coneGeometry } from './telegraphs.js';
 
 const MAX_PARTICLES = 512;
 /** Live trail/ring meshes beyond this are recycled oldest-first. */
@@ -69,7 +70,7 @@ export class AbilityVfxManager {
   private readonly geometry: THREE.BufferGeometry;
   private readonly shapes: ActiveShape[] = [];
   private readonly ringGeometry: THREE.RingGeometry;
-  private readonly trailGeometry: THREE.CircleGeometry;
+  private readonly trailGeometry: THREE.BufferGeometry;
   private cursor = 0;
 
   constructor(private readonly scene: THREE.Scene) {
@@ -110,11 +111,14 @@ export class AbilityVfxManager {
     this.points.frustumCulled = false;
     scene.add(this.points);
 
-    // Flat sector for trails (a 90° fan, scaled/rotated per swing) and a ring.
+    // Flat sector for trails (a ~103° fan, scaled/rotated per swing) and a
+    // ring. The fan MUST come from telegraphs' coneGeometry — its orientation
+    // contract (sector extends +Z = the caster's facing) is unit-tested there,
+    // and hand-rolling the sector here is exactly how the fan shipped mirrored
+    // 180° behind the swing twice (owner playtest rounds 6 and 8).
     this.ringGeometry = new THREE.RingGeometry(0.9, 1, 40);
     this.ringGeometry.rotateX(-Math.PI / 2);
-    this.trailGeometry = new THREE.CircleGeometry(1, 24, Math.PI / 2 - 0.9, 1.8);
-    this.trailGeometry.rotateX(-Math.PI / 2);
+    this.trailGeometry = coneGeometry(1, 1.8);
   }
 
   /** Radial burst at a point (impacts, blink smoke, dash kick-off). */
@@ -244,8 +248,12 @@ export class AbilityVfxManager {
     });
     const mesh = new THREE.Mesh(this.trailGeometry, material);
     mesh.position.set(x, y + 1.0, z);
+    // YXZ: yaw the fan onto the heading, THEN tip it about its own lateral
+    // axis — default XYZ tips about world X, which twists the fan sideways
+    // whenever the caster faces east/west.
+    mesh.rotation.order = 'YXZ';
     mesh.rotation.y = yaw;
-    mesh.rotation.x = -0.25; // tip the fan slightly toward the camera plane
+    mesh.rotation.x = -0.25;
     mesh.scale.setScalar(reach * 0.85);
     this.addShape({ mesh, life: 0, maxLife: 0.22, grow: 0, kind: 'trail' });
   }

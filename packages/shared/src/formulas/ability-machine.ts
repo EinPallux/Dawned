@@ -170,10 +170,16 @@ export const commitUse = (
   if (def.cost.type !== 'none' && def.cost.type !== 'stamina') {
     payResource(resource, def.cost.amount);
   }
-  const slot = slotFor(machine, def);
-  slot.charges -= 1;
-  if (def.cooldownMs > 0 && slot.rechargeAtMs === 0) {
-    slot.rechargeAtMs = machine.nowMs + def.cooldownMs;
+  // Charges exist only for abilities that actually recharge: a zero-cooldown
+  // ability is gated by GCD + resource alone. (Burning a charge here with no
+  // recharge timer to refill it bricked every cd-0 spender after one use —
+  // on BOTH sides, so the server agreed and never corrected. Round 7.)
+  if (def.cooldownMs > 0) {
+    const slot = slotFor(machine, def);
+    slot.charges -= 1;
+    if (slot.rechargeAtMs === 0) {
+      slot.rechargeAtMs = machine.nowMs + def.cooldownMs;
+    }
   }
   if (def.onGcd) machine.gcdUntilMs = machine.nowMs + GCD_MS;
 

@@ -27,7 +27,11 @@ nothing beyond it.
   executor + buffs/DoTs + RMB stances, 28 kit rows authored via the admin editor and
   published (hot reload; live-tune proven), predicted client hotbar + combat HUD cluster +
   VFX v1, basics from content rows, enemy projectile volleys + kiting AI, Spore Ridge ranged
-  camp, migration 0005 deploy seeds. browser-p5 (21 asserts) + all earlier smokes green in
-  one session, 165 tests, tick p95 1.21 ms under ability fights. Owner items open: P5 DoD
-  demo runs (both kits, both camps, /netsim 100 20) + §9 kit checklist + HUD look check;
-  non-blocking: P3 real-hardware group session, A0 /admin login check.
+  camp, migration 0005 deploy seeds + 0006 presentation repair (never edit an applied
+  migration — drizzle skips it silently). Owner playtest fix rounds 6–8 folded: ability
+  icons, anim retiming, HUD state/refusal readability, impact pass, cd-0 cast-once brick,
+  un-mirrored VFX fans, upper-body swing overlays while moving, dodge-roll priority.
+  browser-p5 (22 asserts) + all earlier smokes green in one session, 166 tests, tick p95
+  1.21 ms under ability fights. Owner items open: P5 DoD demo runs (both kits, both camps,
+  /netsim 100 20) + §9 kit checklist + HUD look check; non-blocking: P3 real-hardware group
+  session, A0 /admin login check.

@@ -95,9 +95,15 @@ published via publish v1 (hot reload, no restart — live-tune DoD proven end-to
 predicted client ability layer + combat HUD cluster (twin globes, radials, CP pips, buff
 chips, cast bar) + ability VFX v1, basics migrated to content rows, enemy projectile volleys
 with ranged kiting AI, and the Spore Ridge ranged test camp. Migration 0005 seeds all P5
-content for deploys (`ON CONFLICT DO NOTHING` — never reverts panel tuning). Verification:
-`tools/smoke/browser-p5.mjs` (21 asserts across Warrior/Rogue/ranged-camp phases), all P0–P4
-smokes green in the same server session, 165 unit tests, tick p95 1.21 ms under ability
+content for deploys (`ON CONFLICT DO NOTHING` — never reverts panel tuning); migration 0006
+repairs presentation fields (icons + retimed anims) on databases seeded before fix round 7 —
+never edit an applied migration, drizzle skips it silently (DATABASE.md §5). Owner playtest
+fix rounds 6–8 are folded: real game-icons for every ability, anim retiming out of
+fast-forward, HUD cooldown/castability states + refusals in words, an impact pass, the cd-0
+cast-once brick, un-mirrored VFX fans, bone-masked upper-body swing overlays while moving
+(no more gliding LMB spam), and dodge-roll priority (CHANGELOG has details). Verification:
+`tools/smoke/browser-p5.mjs` (22 asserts across Warrior/Rogue/ranged-camp phases), all P0–P4
+smokes green in the same server session, 166 unit tests, tick p95 1.21 ms under ability
 fights (<15 ms gate). **Owner items open (ROADMAP status blocks): the P5 DoD demo runs
 (clear Glub camp + Spore Ridge with each full kit at `/netsim 100 20`) + §9 checklist against
 the kits + HUD look check; plus the P3 real-hardware group session and the A0 /admin login
