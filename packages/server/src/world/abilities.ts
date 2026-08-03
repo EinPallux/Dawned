@@ -32,6 +32,10 @@ import {
   type Rng,
   type TerrainSampler,
   DAWNED_DAMAGE_PENALTY,
+  FOCUS_PROJECTILE_SPEED_PCT,
+  GRACE_CAST_REDUCTION_MS,
+  GRACE_CONSUMER_ABILITY,
+  GRACE_EFFECT_ID,
   GRACE_SELF_HEAL_PCT,
   HitFlag,
   armorMitigation,
@@ -41,6 +45,7 @@ import type { GameContent } from '../content/loader.js';
 import {
   applyEffect,
   cleanseEffects,
+  removeEffect,
   collectOnKillRiders,
   consumeNextAttackBonus,
   critBonusOf,
@@ -118,6 +123,10 @@ export const handleSlotRequest = (
     reject(AbilityRejectReason.BadState);
     return;
   }
+  if (player.isStunned(nowMs)) {
+    reject(AbilityRejectReason.BadState); // stunned: no presses (P6, §6.4)
+    return;
+  }
 
   // Ground-target sanity (v8): the point is client-clamped to maxRange; a
   // request outside range + slack is a desynced or dishonest client.
@@ -149,11 +158,23 @@ export const handleSlotRequest = (
 
   // Finisher CP are measured BEFORE commit (commit pays the energy).
   const comboPointsSpent = def.comboFinisher ? spendComboPoints(player.resource) : 0;
-  const commit = commitUse(player.abilityMachine, def, player.resource, {
-    yaw: aimYaw,
-    pitch: aimPitch,
-    targetId,
-  });
+  // Cleric Grace: banked Smite hits shave the next Mend cast. Stacks are a
+  // synced self-effect, so the client computes the same delta (bar parity).
+  let castMsDelta = 0;
+  if (player.classId === 'cleric' && def.id === GRACE_CONSUMER_ABILITY) {
+    const grace = player.effects.find((effect) => effect.effectId === GRACE_EFFECT_ID);
+    if (grace) {
+      castMsDelta = -GRACE_CAST_REDUCTION_MS * grace.stacks;
+      removeEffect(player, GRACE_EFFECT_ID);
+    }
+  }
+  const commit = commitUse(
+    player.abilityMachine,
+    def,
+    player.resource,
+    { yaw: aimYaw, pitch: aimPitch, targetId },
+    { castMsDelta },
+  );
 
   if (commit.phase === 'cast' || commit.phase === 'channel') {
     events.push({
@@ -161,8 +182,9 @@ export const handleSlotRequest = (
       entityId: player.id,
       action,
       step: 0,
-      // Casts show the bar for castMs; channels for their full duration.
-      durationMs: commit.phase === 'cast' ? def.castMs : (def.channel?.durationMs ?? 0),
+      // Casts show the bar for the (Grace-adjusted) cast; channels for their
+      // full duration.
+      durationMs: commit.phase === 'cast' ? commit.contactDelayMs : (def.channel?.durationMs ?? 0),
       yaw: aimYaw,
     });
     // Cast releases and channel ticks resolve in tickPlayerAbilities; ground
@@ -563,7 +585,7 @@ const spawnAbilityProjectile = (
     dirX: Math.sin(aimYaw) * cosPitch,
     dirY: Math.sin(aimPitch),
     dirZ: Math.cos(aimYaw) * cosPitch,
-    speed: targeting.speed,
+    speed: targeting.speed * (player.focusing ? 1 + FOCUS_PROJECTILE_SPEED_PCT / 100 : 1),
     radius: targeting.radius,
     travelled: 0,
     maxRange: targeting.maxRange,

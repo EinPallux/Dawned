@@ -10,7 +10,14 @@
  * invalidation bugs).
  */
 
-import { MOVEMENT_CATEGORIES, type AbilityEffectMods, type EffectCategory } from '@dawned/shared';
+import {
+  MOVEMENT_CATEGORIES,
+  armorMitigation,
+  levelModifier,
+  type AbilityDef,
+  type AbilityEffectMods,
+  type EffectCategory,
+} from '@dawned/shared';
 
 export interface ActiveEffect {
   effectId: string;
@@ -329,4 +336,71 @@ export const dodgeCostDeltaOf = (host: EffectHost): number => {
     if (effect.mods.dodgeCostDelta) delta += effect.mods.dodgeCostDelta;
   }
   return delta;
+};
+
+/** Damage inputs a projectile carries (the caster may be gone at impact). */
+export interface BoltDamageInputs {
+  casterId: number;
+  casterLevel: number;
+  power: number;
+  weaponMin: number;
+  weaponMax: number;
+  damageDealtMult: number;
+}
+
+/**
+ * Apply a slot bolt's ON-HIT riders at impact (P6): the def's `apply_effect
+ * target:'hit'` entries land on the struck enemy — Fireball's burn, Ice
+ * Lance's chill — with DoT budgets computed from the inputs captured at fire
+ * time, exactly like the melee apply path (mitigated once, split over ticks).
+ */
+export const applyBoltRiders = (
+  def: AbilityDef,
+  target: EffectHost & { armor: number; magicResistPct: number; level: number },
+  inputs: BoltDamageInputs,
+  nowMs: number,
+): void => {
+  for (const effect of def.effects) {
+    if (effect.kind !== 'apply_effect' || effect.target !== 'hit') continue;
+    const periodic = effect.mods.periodic;
+    const tickCount = periodic
+      ? Math.max(1, Math.floor(effect.durationMs / periodic.tickEveryMs))
+      : 0;
+    const dotBudget = periodic
+      ? periodic.coefTotal *
+        ((inputs.weaponMin + inputs.weaponMax) / 2 + inputs.power) *
+        inputs.damageDealtMult
+      : 0;
+    const mitigated =
+      periodic?.kind === 'damage'
+        ? Math.max(
+            1,
+            Math.round(
+              (dotBudget *
+                (1 -
+                  (periodic.school === 'physical'
+                    ? armorMitigation(target.armor, inputs.casterLevel)
+                    : target.magicResistPct / 100)) *
+                levelModifier(inputs.casterLevel, target.level)) /
+                tickCount,
+            ),
+          )
+        : 0;
+    applyEffect(
+      target,
+      {
+        effectId: effect.effectId,
+        casterId: inputs.casterId,
+        durationMs: effect.durationMs,
+        stacksMax: effect.stacksMax,
+        mods: effect.mods,
+        harmful: true,
+        category: effect.category,
+        tickDamage: mitigated,
+        tickSchool: periodic?.school ?? 'physical',
+        tickEveryMs: periodic?.tickEveryMs,
+      },
+      nowMs,
+    );
+  }
 };

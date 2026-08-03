@@ -482,6 +482,8 @@ export class Gateway {
           stacks: effect.stacks,
           remainingMs: Math.max(0, Math.round(effect.expiresAtMs - nowMs)),
           harmful: effect.harmful,
+          // Absorb pool on shield chips (v8) — omitted for everything else.
+          ...(effect.shieldPool > 0 ? { shieldRemaining: Math.round(effect.shieldPool) } : {}),
         })),
       });
       for (const session of this.sessions.values()) {

@@ -112,6 +112,8 @@ export class ServerPlayer {
   readonly ccDr = createCcDrState();
   /** RMB stance (P5): shield up (Warrior/Cleric) this tick. */
   blocking = false;
+  /** RMB stance (P6): Mage Focus held this tick (slow-strafe, +bolt speed). */
+  focusing = false;
   /** When the shield came up — the perfect-block window reference. */
   blockRaisedAtMs = 0;
   dead = false;

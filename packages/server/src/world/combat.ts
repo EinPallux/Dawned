@@ -32,15 +32,27 @@ import {
   PERFECT_BLOCK_RAGE,
   PERFECT_BLOCK_WINDOW_MS,
   RAGE_ON_DAMAGED,
+  ATTUNEMENT_CDR_MS,
+  ATTUNEMENT_EVERY,
+  ATTUNEMENT_MANA_REFUND,
+  GRACE_EFFECT_ID,
+  GRACE_MAX_STACKS,
+  GRACE_STACK_DURATION_MS,
+  GRACE_TRIGGER_ABILITY,
+  FOCUS_PROJECTILE_SPEED_PCT,
+  HOMING_TURN_RATE_RAD_S,
   addStagger,
+  applyCcDr,
   gainComboPoints,
   gainResource,
   payResource,
   arcHits,
   baseWeaponDamage,
+  interruptCast,
   isDodgeInvulnerable,
   rollDamage,
   sweepFirstHit,
+  type AbilityDef,
   type ClassId,
   type ComboChain,
   type EnemyAbilityDef,
@@ -51,9 +63,12 @@ import {
 } from '@dawned/shared';
 import {
   absorbFromShields,
+  applyBoltRiders,
+  applyEffect,
   damageDealtMultOf,
   damageTakenMultOf,
   dropManaShield,
+  hasCategory,
   manaShieldRateOf,
 } from './effects.js';
 import type { ServerPlayer } from './player.js';
@@ -193,6 +208,10 @@ export const handleAttackRequest = (
     reject(AbilityRejectReason.BadState);
     return;
   }
+  if (player.isStunned(nowMs)) {
+    reject(AbilityRejectReason.BadState); // stunned: no swings (P6, §6.4)
+    return;
+  }
 
   const combo = chains[player.classId];
   // Chain state: which step fires, per the shared timing rules.
@@ -245,6 +264,43 @@ export const cancelComboOnDodge = (player: ServerPlayer): void => {
 };
 
 /**
+ * Land hard CC on a player (P6, COMBAT.md §6.4) — THE entry point for enemy
+ * stuns/roots when they arrive (P9 casters/chargers; unit-tested now). Runs
+ * the diminishing-returns lanes (full → half → immune), sets the movement
+ * locks the shared step enforces, and a stun breaks any cast or channel with
+ * FULL cost loss + the Interrupted event so the bar shatters on screen.
+ * Returns the DR verdict (tier 2 = immune, nothing landed).
+ */
+export const applyCcToPlayer = (
+  player: ServerPlayer,
+  category: 'stun' | 'root',
+  durationMs: number,
+  nowMs: number,
+  events: CombatEvent[],
+): { durationMs: number; tier: 0 | 1 | 2 } => {
+  const verdict = applyCcDr(player.ccDr, category, nowMs, durationMs);
+  if (verdict.durationMs <= 0) return verdict;
+  if (category === 'stun') {
+    player.stunnedUntilMs = Math.max(player.stunnedUntilMs, nowMs + verdict.durationMs);
+    const interrupted = interruptCast(player.abilityMachine, 'stun', 0);
+    if (interrupted.hadCast) {
+      events.push({
+        type: 'entity-event',
+        entityId: player.id,
+        event: EntityEventKind.Interrupted,
+        a: 0,
+        b: 0,
+        c: 0,
+      });
+    }
+    cancelComboOnDodge(player); // a stun also wipes the basic chain
+  } else {
+    player.rootedUntilMs = Math.max(player.rootedUntilMs, nowMs + verdict.durationMs);
+  }
+  return verdict;
+};
+
+/**
  * Advance a player's pending contact; at contact time, resolve the step
  * against lag-rewound enemies (melee) or spawn the bolt (casters).
  */
@@ -281,7 +337,8 @@ export const advancePlayerContact = (
       dirX: Math.sin(contact.aimYaw) * cosPitch,
       dirY: Math.sin(contact.aimPitch),
       dirZ: Math.cos(contact.aimYaw) * cosPitch,
-      speed: combo.projectile.speed,
+      // Mage Focus (P6): held RMB tightens the spell — bolts fly faster.
+      speed: combo.projectile.speed * (player.focusing ? 1 + FOCUS_PROJECTILE_SPEED_PCT / 100 : 1),
       radius: combo.projectile.radius,
       travelled: 0,
       maxRange: combo.projectile.maxRange,
@@ -441,9 +498,37 @@ export const stepProjectiles = (
   nowMs: number,
   rng: Rng,
   events: CombatEvent[],
+  abilityDefs: ReadonlyMap<string, AbilityDef> | null = null,
 ): void => {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i]!;
+
+    // Homing bolts (P6 Barrage) bend toward their target's chest with a
+    // capped turn rate — dodgeable by breaking the line late, never a
+    // guaranteed hit. A dead/despawned target lets the bolt fly straight.
+    if (p.homingTargetId > 0 && p.ownerKind === 'player') {
+      const target = enemies.get(p.homingTargetId);
+      if (target && target.alive && !target.invulnerable) {
+        const tx = target.x - p.x;
+        const ty = target.y + target.def.hitHeight * 0.6 - p.y;
+        const tz = target.z - p.z;
+        const len = Math.hypot(tx, ty, tz);
+        if (len > 0.01) {
+          const maxTurn = HOMING_TURN_RATE_RAD_S * dt;
+          const dot = Math.max(-1, Math.min(1, (p.dirX * tx + p.dirY * ty + p.dirZ * tz) / len));
+          const angle = Math.acos(dot);
+          const t = angle > 1e-4 ? Math.min(1, maxTurn / angle) : 1;
+          const nx = p.dirX + (tx / len - p.dirX) * t;
+          const ny = p.dirY + (ty / len - p.dirY) * t;
+          const nz = p.dirZ + (tz / len - p.dirZ) * t;
+          const nlen = Math.hypot(nx, ny, nz) || 1;
+          p.dirX = nx / nlen;
+          p.dirY = ny / nlen;
+          p.dirZ = nz / nlen;
+        }
+      }
+    }
+
     const stepLen = p.speed * dt;
     const dx = p.dirX * stepLen;
     const dy = p.dirY * stepLen;
@@ -534,6 +619,20 @@ export const stepProjectiles = (
     if (hit) {
       const enemy = candidates[hit.index]!;
       const takenMult = nowMs < enemy.vulnerableUntilMs ? 1 + STAGGER_VULNERABILITY : 1;
+      const boltDef = p.abilityId && abilityDefs ? abilityDefs.get(p.abilityId) : undefined;
+      // Conditional bonus at IMPACT state (Ice Lance vs chilled/rooted): the
+      // status check happens when the bolt lands, not when it left the hand.
+      const boltDamage = boltDef?.effects.find(
+        (effect): effect is Extract<AbilityDef['effects'][number], { kind: 'damage' }> =>
+          effect.kind === 'damage',
+      );
+      const bonusMult =
+        boltDamage?.bonusVs &&
+        (hasCategory(enemy, boltDamage.bonusVs.categories) ||
+          (boltDamage.bonusVs.categories.includes('root') && nowMs < enemy.rootedUntilMs) ||
+          (boltDamage.bonusVs.categories.includes('stun') && nowMs < enemy.stunnedUntilMs))
+          ? 1 + boltDamage.bonusVs.pct / 100
+          : 1;
       const { amount, crit } = rollDamage(
         {
           coef: p.coef,
@@ -547,7 +646,7 @@ export const stepProjectiles = (
           targetArmor: enemy.armor,
           targetMagicResistPct: enemy.magicResistPct,
           damageTakenMult: takenMult,
-          damageDealtMult: p.damageDealtMult,
+          damageDealtMult: p.damageDealtMult * bonusMult,
         },
         rng,
       );
@@ -562,6 +661,55 @@ export const stepProjectiles = (
         nowMs,
         events,
       );
+      // On-hit riders ride the bolt (P6): Fireball's burn, Ice Lance's chill.
+      if (boltDef && enemy.hp > 0) {
+        applyBoltRiders(
+          boltDef,
+          enemy,
+          {
+            casterId: p.ownerId,
+            casterLevel: p.attackerLevel,
+            power: p.power,
+            weaponMin: p.weaponMin,
+            weaponMax: p.weaponMax,
+            damageDealtMult: p.damageDealtMult,
+          },
+          nowMs,
+        );
+      }
+      // Class passives keyed to landed bolts (P6):
+      if (owner && !owner.dead) {
+        if (p.fromBasic && owner.classId === 'mage') {
+          // Attunement: every 3rd landed basic bolt refunds Mana and shaves
+          // active cooldowns. The client mirrors the count from its own
+          // resolve events for display; the server number is authoritative.
+          owner.attunementCount += 1;
+          if (owner.attunementCount >= ATTUNEMENT_EVERY) {
+            owner.attunementCount = 0;
+            gainResource(owner.resource, ATTUNEMENT_MANA_REFUND, true);
+            for (const [, slot] of owner.abilityMachine.slots) {
+              if (slot.rechargeAtMs > 0) {
+                slot.rechargeAtMs = Math.max(nowMs, slot.rechargeAtMs - ATTUNEMENT_CDR_MS);
+              }
+            }
+          }
+        }
+        if (owner.classId === 'cleric' && p.abilityId === GRACE_TRIGGER_ABILITY) {
+          // Grace: Smite hits bank cast-time off the next Mend (stacks 3).
+          applyEffect(
+            owner,
+            {
+              effectId: GRACE_EFFECT_ID,
+              casterId: owner.id,
+              durationMs: GRACE_STACK_DURATION_MS,
+              stacksMax: GRACE_MAX_STACKS,
+              mods: {},
+              harmful: false,
+            },
+            nowMs,
+          );
+        }
+      }
       events.push({
         type: 'ability-resolve',
         attackerId: p.ownerId,

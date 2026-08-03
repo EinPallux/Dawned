@@ -264,6 +264,32 @@ describe('ability machine', () => {
     expect(machine4.channel).toBeNull();
   });
 
+  it('castMsDelta override shortens the bar but never below the 150 ms floor', () => {
+    const machine = createAbilityMachine();
+    const mend = makeDef({ id: 'ability_warrior_mendish', castMs: 1500 });
+    const commit = commitUse(
+      machine,
+      mend,
+      readyContext().resource,
+      { yaw: 0, pitch: 0, targetId: 0 },
+      { castMsDelta: -300 }, // three Grace stacks
+    );
+    expect(commit.contactDelayMs).toBe(1200);
+    expect(tickAbilityMachine(machine, 1199, false).released).toBeNull();
+    expect(tickAbilityMachine(machine, 1, false).released).not.toBeNull();
+
+    const machine2 = createAbilityMachine();
+    const quick = makeDef({ id: 'ability_warrior_quickcast', castMs: 200 });
+    const floored = commitUse(
+      machine2,
+      quick,
+      readyContext().resource,
+      { yaw: 0, pitch: 0, targetId: 0 },
+      { castMsDelta: -10000 },
+    );
+    expect(floored.contactDelayMs).toBe(150);
+  });
+
   it('zero-cooldown abilities never consume charges — spammable past the GCD', () => {
     // Regression (round 7): commit burned the only charge but a cd-0 def never
     // arms a recharge timer, bricking every spender after ONE use — on both

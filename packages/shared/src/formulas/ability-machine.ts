@@ -226,12 +226,17 @@ export interface CommitResult {
  * Pay costs, burn a charge, start GCD/cooldown/cast. Caller must have
  * evaluateUse'd OK — commit never re-checks (the pair stays cheap and the
  * server treats an invalid commit attempt as a reject at evaluate).
+ *
+ * `overrides.castMsDelta` shortens (negative) or stretches the cast bar —
+ * Cleric Grace stacks; BOTH sides must compute the same delta from synced
+ * state (the grace effect stacks) or the bars desync.
  */
 export const commitUse = (
   machine: AbilityMachine,
   def: AbilityDef,
   resource: ResourceState,
   aim: { yaw: number; pitch: number; targetId: number },
+  overrides?: { castMsDelta?: number },
 ): CommitResult => {
   if (def.cost.type !== 'none' && def.cost.type !== 'stamina') {
     payResource(resource, def.cost.amount);
@@ -266,17 +271,18 @@ export const commitUse = (
     return { phase: 'channel', contactDelayMs: def.channel.tickEveryMs };
   }
   if (def.castMs > 0) {
+    const castMs = Math.max(150, def.castMs + (overrides?.castMsDelta ?? 0));
     machine.cast = {
       abilityId: def.id,
       startedAtMs: machine.nowMs,
-      castMs: def.castMs,
+      castMs,
       aimYaw: aim.yaw,
       aimPitch: aim.pitch,
       targetId: aim.targetId,
       cancelOnMove: def.castWhileMoving === false,
       movingForMs: 0,
     };
-    return { phase: 'cast', contactDelayMs: def.castMs };
+    return { phase: 'cast', contactDelayMs: castMs };
   }
   return {
     phase: 'instant',

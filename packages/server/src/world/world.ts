@@ -13,6 +13,7 @@ import {
   DAWNED_DURATION_MS,
   EntityEventKind,
   EntityFlag,
+  HitFlag,
   EntityKind,
   OOC_AFTER_MS,
   OOC_HP_REGEN_PER_S,
@@ -26,6 +27,7 @@ import {
   EVASIVE_DODGE_DISCOUNT,
   EVASIVE_ENERGY_PER_S,
   EVASIVE_MOVE_SPEED_PCT,
+  FOCUS_MOVE_SPEED_MULT,
   InputButton,
   TICK_MS,
   gainResource,
@@ -54,7 +56,7 @@ import {
   type ServerProjectile,
 } from './combat.js';
 import { handleSlotRequest, tickPlayerAbilities, tickZones, type GroundZone } from './abilities.js';
-import { moveSpeedMultOf, tickEffects, type PeriodicTick } from './effects.js';
+import { dodgeCostDeltaOf, moveSpeedMultOf, tickEffects, type PeriodicTick } from './effects.js';
 import { CORPSE_LINGER_MS, decide, enterCombat, move, type AiContext } from './enemy-ai.js';
 
 /** AOI radii (docs/tech/NETWORKING.md §5): 3×3 of 64 m cells ≈ 96 m, +8 m leave margin. */
@@ -327,9 +329,10 @@ export class World {
           player.movement.vz = 0;
           continue;
         }
-        // RMB stances (P5, CLASSES.md): shield up for Warrior/Cleric with the
-        // perfect-block window stamped on the raise EDGE; Evasive for Rogues
-        // (speed + dodge discount, 3 Energy/s while held and affordable).
+        // RMB stances (P5/P6, CLASSES.md): shield up for Warrior/Cleric with
+        // the perfect-block window stamped on the raise EDGE; Evasive for
+        // Rogues (speed + dodge discount, 3 Energy/s while held and
+        // affordable); Focus for Mages (slow-strafe, faster bolts).
         const secondaryHeld = (intent.buttons & InputButton.SecondaryAction) !== 0;
         const blockClass = player.classId === 'warrior' || player.classId === 'cleric';
         if (blockClass) {
@@ -340,11 +343,19 @@ export class World {
         }
         const evasive = secondaryHeld && player.classId === 'rogue' && player.resource.value >= 1;
         if (evasive) payResource(player.resource, EVASIVE_ENERGY_PER_S * TICK_DT);
+        player.focusing = secondaryHeld && player.classId === 'mage';
         const whirlMult = player.pendingAbility?.def.anim.moveSpeedMult ?? 1;
         const modifiers = {
           speedMult:
-            moveSpeedMultOf(player) * (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) * whirlMult,
-          dodgeCostDelta: evasive ? -EVASIVE_DODGE_DISCOUNT : 0,
+            moveSpeedMultOf(player) *
+            (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) *
+            (player.focusing ? FOCUS_MOVE_SPEED_MULT : 1) *
+            whirlMult,
+          dodgeCostDelta: (evasive ? -EVASIVE_DODGE_DISCOUNT : 0) + dodgeCostDeltaOf(player),
+          // Hard CC (P6): stun locks everything, root pins the feet — the
+          // SHARED step enforces both so prediction agrees to the centimeter.
+          rooted: player.isRooted(nowMs),
+          controlsLocked: player.isStunned(nowMs),
         };
         const result: MovementStepResult = stepMovement(
           player.movement,
@@ -455,6 +466,7 @@ export class World {
       nowMs,
       this.rng,
       events,
+      this.content?.abilities ?? null,
     );
     if (abilityDeps) tickZones(this.zones, abilityDeps);
 
@@ -496,7 +508,21 @@ export class World {
       tickResource(player.resource, TICK_MS, inCombat);
       this.periodicScratch.length = 0;
       tickEffects(player, nowMs, this.periodicScratch);
-      // No hostile DoTs on players in P5 content — expiry/dirty only.
+      // HoTs on players tick here (P6: Overflow-style riders; Sanctuary is a
+      // ZONE, not an effect). Hostile DoTs on players arrive with P9 casters.
+      for (const tick of this.periodicScratch) {
+        if (tick.heal <= 0 || player.dead) continue;
+        const amount = Math.min(tick.heal, Math.round(player.maxHp - player.hp));
+        if (amount <= 0) continue;
+        player.hp = Math.min(player.maxHp, player.hp + amount);
+        events.push({
+          type: 'ability-resolve',
+          attackerId: tick.effect.casterId,
+          action: 0,
+          step: 0,
+          hits: [{ targetId: player.id, amount, flags: HitFlag.Healed }],
+        });
+      }
     }
 
     // 5b. Enemy effects: bleeds/poisons tick through the real damage path
