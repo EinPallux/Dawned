@@ -47,12 +47,12 @@ export interface ApplyEffectInput {
   mods: AbilityEffectMods;
   harmful: boolean;
   /** Precomputed damage per periodic tick per stack (0 = none). */
-  tickDamage?: number;
-  tickSchool?: 'physical' | 'magic';
-  tickEveryMs?: number;
-  markPct?: number;
-  onKillEnergy?: number;
-  onKillResetAbility?: string | null;
+  tickDamage?: number | undefined;
+  tickSchool?: 'physical' | 'magic' | undefined;
+  tickEveryMs?: number | undefined;
+  markPct?: number | undefined;
+  onKillEnergy?: number | undefined;
+  onKillResetAbility?: string | null | undefined;
 }
 
 /**

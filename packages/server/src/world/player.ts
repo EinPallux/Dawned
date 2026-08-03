@@ -8,10 +8,12 @@
 import {
   EntityFlag,
   InputButton,
+  createAbilityMachine,
   createMovementState,
   createResourceState,
   isDodgeInvulnerable,
   playerStats,
+  type AbilityDef,
   type Appearance,
   type ClassId,
   type CombatStats,
@@ -19,6 +21,20 @@ import {
   type MovementState,
   type ResourceState,
 } from '@dawned/shared';
+import type { ActiveEffect } from './effects.js';
+
+/** A committed instant ability waiting for its contact frame. */
+export interface PendingAbility {
+  def: AbilityDef;
+  action: number;
+  atMs: number;
+  aimYaw: number;
+  aimPitch: number;
+  targetId: number;
+  comboPointsSpent: number;
+  /** PBAoE pulse train remaining (Whirlwind ×2); 1 for single resolves. */
+  pulsesLeft: number;
+}
 import { PositionHistory } from './history.js';
 
 /** Inputs buffered beyond this are dropped — bounds jitter and input hoarding. */
@@ -67,6 +83,18 @@ export class ServerPlayer {
   readonly maxHp: number;
   /** Class resource + combo points (P5) — ticked by the ability system. */
   readonly resource: ResourceState;
+  /** Slot-ability timing/validation (P5) — same machine the client predicts. */
+  readonly abilityMachine = createAbilityMachine();
+  /** Committed instant awaiting its contact frame (and PBAoE pulse train). */
+  pendingAbility: PendingAbility | null = null;
+  /** Dash origin (Charge sweep resolves start → current position). */
+  dashStartX = 0;
+  dashStartZ = 0;
+  /** Live buffs/debuffs (EffectHost contract — world/effects.ts). */
+  effects: ActiveEffect[] = [];
+  effectsDirty = false;
+  /** Ambusher CP-on-crit internal cooldown marker (CLASSES.md §3). */
+  ambusherCpReadyAtMs = 0;
   dead = false;
   /** Combo chain: current step (−1 = none) and when it started. */
   comboStep = -1;
