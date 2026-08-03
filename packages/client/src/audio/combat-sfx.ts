@@ -7,7 +7,32 @@
  * Three round-robin variants per slot via pitch jitter — §9's minimum.
  */
 
-export type SfxSlot = 'whoosh' | 'impact' | 'impact_crit' | 'hurt' | 'death' | 'dodge' | 'bolt';
+export type SfxSlot =
+  | 'whoosh'
+  | 'impact'
+  | 'impact_crit'
+  | 'impact_heavy'
+  | 'hurt'
+  | 'death'
+  | 'dodge'
+  | 'bolt'
+  | 'deny';
+
+export const SFX_SLOTS: readonly SfxSlot[] = [
+  'whoosh',
+  'impact',
+  'impact_crit',
+  'impact_heavy',
+  'hurt',
+  'death',
+  'dodge',
+  'bolt',
+  'deny',
+];
+
+/** Content `sfx` ids map straight onto slots; unknown ids fall back. */
+export const sfxSlotOf = (id: string, fallback: SfxSlot = 'whoosh'): SfxSlot =>
+  (SFX_SLOTS as readonly string[]).includes(id) ? (id as SfxSlot) : fallback;
 
 export class CombatSfx {
   private ctx: AudioContext | null = null;
@@ -51,22 +76,39 @@ export class CombatSfx {
         break;
       }
       case 'impact':
-      case 'impact_crit': {
-        const heavy = slot === 'impact_crit';
+      case 'impact_crit':
+      case 'impact_heavy': {
+        const heavy = slot !== 'impact';
         const osc = ctx.createOscillator();
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime((heavy ? 160 : 220) * jitter, now);
-        osc.frequency.exponentialRampToValueAtTime(60, now + 0.09);
+        osc.frequency.setValueAtTime(
+          (slot === 'impact_heavy' ? 120 : heavy ? 160 : 220) * jitter,
+          now,
+        );
+        osc.frequency.exponentialRampToValueAtTime(slot === 'impact_heavy' ? 45 : 60, now + 0.09);
         const thud = this.noiseSource(ctx, 0.06);
         const thudGain = ctx.createGain();
         thudGain.gain.value = 0.5;
         thud.connect(thudGain).connect(gain);
         osc.connect(gain);
         gain.gain.setValueAtTime((heavy ? 0.3 : 0.2) * volume, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.16 : 0.1));
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.18 : 0.1));
         osc.start(now);
-        osc.stop(now + 0.18);
+        osc.stop(now + 0.2);
         thud.start(now);
+        break;
+      }
+      case 'deny': {
+        // Dull two-tick refusal — unmistakably "no", never a musical note.
+        const osc = ctx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.setValueAtTime(110, now + 0.05);
+        osc.connect(gain);
+        gain.gain.setValueAtTime(0.05 * volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.start(now);
+        osc.stop(now + 0.1);
         break;
       }
       case 'hurt': {

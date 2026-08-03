@@ -82,6 +82,7 @@ export class CharacterView {
   /** Combat one-shots (attack/hit) own the rig until this clock time. */
   private actionUntil = 0;
   private dead = false;
+  private blocking = false;
 
   private bubble: THREE.Sprite | null = null;
   private bubbleExpiresAt = 0;
@@ -136,6 +137,7 @@ export class CharacterView {
     this.composed = next;
     this.group.add(next.group);
     this.currentClip = '';
+    this.blocking = false; // fresh mixer — the stance overlay re-applies next frame
     this.playClip('Idle_Loop');
   }
 
@@ -175,12 +177,27 @@ export class CharacterView {
     this.composed.playOverlay(clip, 0.5, 0.03);
   }
 
+  /**
+   * RMB block stance (P5): the shield-up loop rides the OVERLAY layer so
+   * locomotion keeps playing underneath (walk while guarding). Local players
+   * drive it from held input (instant); remotes from EntityFlag.Blocking.
+   */
+  setBlocking(blocking: boolean): void {
+    if (blocking === this.blocking) return;
+    this.blocking = blocking;
+    this.composed?.setLoopOverlay(blocking && !this.dead ? 'Idle_Shield_Loop' : null, 0.75, 0.09);
+  }
+
   /** Death/respawn presentation — the server owns WHEN (Dead flag/events). */
   setDead(dead: boolean): void {
     if (dead === this.dead) return;
     this.dead = dead;
     if (dead) {
       this.actionUntil = 0;
+      if (this.blocking) {
+        this.blocking = false;
+        this.composed?.setLoopOverlay(null, 0.75, 0.09);
+      }
       this.playClip('Death01', { once: true, fadeSeconds: 0.1 });
     } else {
       this.currentClip = '';

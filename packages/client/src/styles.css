@@ -964,7 +964,7 @@ canvas.game {
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(560px, 70vw);
+  width: min(720px, 82vw);
   text-align: center;
 }
 
@@ -1072,35 +1072,429 @@ canvas.game {
   pointer-events: none;
 }
 
-.hud-hp {
+/* --------------------------------------------- combat cluster (P5-D, §3) */
+/* Twin faceted globes flank the hotbar; stamina slim bar under; cast above. */
+
+.hud-cluster {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hud-globe {
   position: relative;
-  width: 340px;
-  height: 18px;
-  margin: 0 auto 6px;
-  background: rgba(21, 26, 38, 0.82);
+  width: 84px;
+  height: 84px;
+  flex: none;
+  background: rgba(21, 26, 38, 0.85);
   border: 1px solid var(--hairline);
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  overflow: hidden;
+  /* Octagon cut — the faceted "globe", never a circle blob. */
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
 }
 
-.hud-hp-fill {
+.hud-globe-fill {
+  position: absolute;
+  inset: auto 0 0 0;
   height: 100%;
-  background: linear-gradient(180deg, #c2554a, #9c3a32);
-  transition: width 120ms steps(6);
+  transition: height 200ms var(--ease);
 }
 
-.hud-hp-fill[data-low='true'] {
-  background: linear-gradient(180deg, #e0763a, #b4502a);
+.hud-globe.is-hp .hud-globe-fill {
+  background: linear-gradient(180deg, #c2554a, #7c221a);
 }
 
-.hud-hp-text {
+.hud-globe.is-hp .hud-globe-fill[data-low='true'] {
+  background: linear-gradient(180deg, #e0763a, #8c3a1a);
+  animation: hud-low-pulse 0.9s var(--ease) infinite;
+}
+
+/* Liquid crest: a lighter meniscus line at the fill surface. */
+.hud-globe-fill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(237, 230, 212, 0.35);
+}
+
+.hud-globe-text {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
   font-size: 11px;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   color: var(--parchment);
-  text-shadow: 0 1px 2px rgba(21, 26, 38, 0.9);
+  text-shadow: 0 1px 2px rgba(21, 26, 38, 0.95);
+}
+
+.hud-globe.is-resource[data-stance='true'] {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(201, 163, 78, 0.5);
+}
+
+/* Rogue combo pips: 5 diamonds arcing over the resource globe. */
+.hud-cp {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  z-index: 2;
+}
+
+.hud-cp-pip {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg) scale(0.85);
+  background: rgba(237, 230, 212, 0.14);
+  outline: 1px solid rgba(237, 230, 212, 0.3);
+  transition:
+    background 120ms var(--ease),
+    transform 120ms var(--ease);
+}
+
+.hud-cp-pip:nth-child(1),
+.hud-cp-pip:nth-child(5) {
+  margin-top: 6px;
+}
+.hud-cp-pip:nth-child(2),
+.hud-cp-pip:nth-child(4) {
+  margin-top: 2px;
+}
+
+.hud-cp-pip[data-lit='true'] {
+  background: #d9c94a;
+  transform: rotate(45deg) scale(1);
+}
+
+.hud-cp[data-full='true'] .hud-cp-pip[data-lit='true'] {
+  background: var(--gold-bright);
+  box-shadow: 0 0 6px rgba(240, 196, 107, 0.8);
+}
+
+.hud-cluster-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------- hotbar (§3) */
+
+.hud-hotbar {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.hud-slot {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  background: rgba(21, 26, 38, 0.85);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(
+    var(--cut-sm) 0,
+    100% 0,
+    100% calc(100% - var(--cut-sm)),
+    calc(100% - var(--cut-sm)) 100%,
+    0 100%,
+    0 var(--cut-sm)
+  );
+  overflow: hidden;
+}
+
+.hud-slot.is-empty {
+  opacity: 0.35;
+}
+
+.hud-slot-key {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  z-index: 3;
+}
+
+.hud-slot-glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 19px;
+  letter-spacing: 0.04em;
+  color: var(--parchment);
+  text-shadow: 0 1px 2px rgba(21, 26, 38, 0.95);
+  transition: filter 120ms var(--ease);
+}
+
+.hud-slot-cost {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  z-index: 3;
+}
+
+/* Insufficient resource: desaturate + dim (§3). */
+.hud-slot[data-state='poor'] .hud-slot-glyph {
+  filter: grayscale(0.9) brightness(0.55);
+}
+.hud-slot[data-state='poor'] .hud-slot-cost {
+  color: var(--error);
+}
+
+.hud-slot[data-state='locked'] .hud-slot-glyph {
+  filter: grayscale(1) brightness(0.35);
+}
+.hud-slot[data-state='locked'] .hud-slot-cost {
+  color: var(--muted);
+}
+
+/* Cooldown radial: conic wipe from 12 o'clock, seconds centered. */
+.hud-slot-cd {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: conic-gradient(rgba(10, 13, 21, 0.82) var(--cd, 0deg), transparent 0);
+  display: grid;
+  place-items: center;
+}
+
+.hud-slot-cd-s {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--parchment);
+  text-shadow: 0 1px 3px #000;
+}
+
+/* GCD: quick bottom-up shade sweep across ready slots. */
+.hud-slot-gcd {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  background: rgba(10, 13, 21, 0.5);
+  z-index: 1;
+}
+
+/* Ready ping when a cooldown ends (§2 motion table). */
+.hud-slot.is-ready-ping {
+  animation: hud-ready-ping 260ms var(--ease);
+}
+
+@keyframes hud-ready-ping {
+  0% {
+    transform: scale(1.15);
+    filter: brightness(1.7);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+/* Refused press: red seam pulse (§3), no layout shift. */
+.hud-slot.is-refused {
+  animation: hud-refused 320ms var(--ease);
+}
+
+@keyframes hud-refused {
+  0%,
+  60% {
+    box-shadow: inset 0 0 0 2px var(--error);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+
+/* Proc glow: rotating gold seam (finisher at full pips). */
+.hud-slot.is-proc {
+  border-color: var(--gold);
+}
+.hud-slot.is-proc .hud-slot-seam {
+  position: absolute;
+  inset: -14px;
+  background: conic-gradient(transparent 0deg, rgba(240, 196, 107, 0.55) 40deg, transparent 80deg);
+  animation: hud-seam-spin 1.6s linear infinite;
+  z-index: 0;
+}
+
+@keyframes hud-seam-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hud-slot.is-dodge .hud-slot-glyph {
+  font-size: 22px;
+  color: var(--stamina);
+}
+.hud-slot.is-dodge[data-state='poor'] .hud-slot-glyph {
+  filter: grayscale(0.9) brightness(0.55);
+}
+
+@keyframes hud-low-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.35);
+  }
+}
+
+/* --------------------------------------------------------------- cast bar */
+
+.hud-cast {
+  position: relative;
+  width: 300px;
+  height: 16px;
+  margin: 0 auto 8px;
+  background: rgba(21, 26, 38, 0.85);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  overflow: hidden;
+}
+
+.hud-cast-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+}
+
+.hud-cast-name {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  font-weight: 800;
+  mix-blend-mode: normal;
+  text-shadow: 0 1px 1px rgba(237, 230, 212, 0.4);
+}
+
+/* --------------------------------------------------------- effect rows */
+
+.hud-effects {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+  max-width: 300px;
+}
+
+.hud-effect {
+  position: relative;
+  width: 34px;
+  padding: 3px 0 2px;
+  text-align: center;
+  background: rgba(21, 26, 38, 0.85);
+  border: 1px solid rgba(201, 163, 78, 0.55);
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+
+.hud-effect.is-harmful {
+  border-color: rgba(224, 77, 63, 0.65);
+}
+
+.hud-effect-glyph {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--parchment);
+  line-height: 1.1;
+}
+
+.hud-effect-glyph b {
+  font-size: 9px;
+  color: var(--gold-bright);
+  vertical-align: super;
+}
+
+.hud-effect.is-harmful .hud-effect-glyph b {
+  color: #f0b7a8;
+}
+
+.hud-effect-s {
+  display: block;
+  font-size: 8.5px;
+  color: var(--muted);
+  line-height: 1.1;
+}
+
+.hud-target-effects {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.hud-target-effects .hud-effect {
+  width: 28px;
+  padding: 2px 0 1px;
+}
+
+.hud-target-effects .hud-effect-glyph {
+  font-size: 11px;
+}
+
+.hud-target-effects:empty {
+  display: none;
+}
+
+/* Preserved smoke-test hook: HP numbers live inside the globe now. */
+.hud-hp-text {
+  font-size: 11px;
+}
+
+/* Compact cluster below 1500 px — the chat panel (bottom-left) must never
+ * cover the HP globe (UI_UX.md §3 is a 1920 reference, not a minimum). */
+@media (max-width: 1500px) {
+  .hud-globe {
+    width: 68px;
+    height: 68px;
+  }
+  .hud-slot {
+    width: 44px;
+    height: 44px;
+  }
+  .hud-slot-glyph {
+    font-size: 16px;
+  }
+  .hud-hotbar {
+    gap: 5px;
+  }
+  .hud-cluster {
+    gap: 8px;
+  }
+  .hud-chat {
+    width: 270px;
+  }
+  .hud-chat-log {
+    max-height: 110px;
+  }
 }
 
 .hud-dawned {

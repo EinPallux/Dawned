@@ -68,6 +68,8 @@ export const EntityFlag = {
   Dead: 1 << 7,
   /** Leash RETURN sprint — invulnerable, client tints/ignores as a target. */
   Leashing: 1 << 8,
+  /** RMB stance held (Warrior/Cleric shield up) — remotes loop the stance clip (v7). */
+  Blocking: 1 << 9,
 } as const;
 export type EntityFlag = (typeof EntityFlag)[keyof typeof EntityFlag];
 

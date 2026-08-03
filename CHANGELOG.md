@@ -5,6 +5,43 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — P5 client ability layer (2026-08-03)
+
+- **The combat HUD grew its real cluster (UI_UX.md §3):** twin faceted globes
+  (HP left, class resource right) flanking an 8-slot hotbar with keybind
+  glyphs, cost tags, conic cooldown radials with second countdowns, a GCD
+  sweep, end-of-cooldown "ready" ping, insufficient-resource desaturation and
+  a red seam pulse on refused presses; Rogue combo points as five diamond
+  pips arcing over the resource globe (full-pip finishers get a rotating
+  gold proc seam); a cast bar above the hotbar; self buffs/debuffs as
+  faceted chips top-right and the soft-target plate gained a debuff strip
+  (bleeds visibly tick). Below 1500 px the cluster compacts so chat never
+  covers the HP globe.
+- **Hotbar keys 1–8 cast the published class kits, predicted.** Presses run
+  the SAME shared evaluate → commit machine the server validates with —
+  costs, cooldowns, charges, GCD, unlock levels — so accepted casts animate
+  and debit instantly at any ping and refusals answer locally without a
+  round trip. Server rejects roll the prediction back and adopt the
+  authoritative cooldown/resource state; snapshots re-base resources every
+  50 ms (with an in-flight-spend hold so the globe never flickers a paid
+  cost back). Charge's dash and Shadowstep's teleport are predicted through
+  the shared movement state with correction holds sized to one round trip.
+- **RMB stances are held-input verbs:** Warrior/Cleric raise the shield
+  (looping overlay clip on your rig AND on remote players via the new
+  Blocking entity flag, protocol v7) while Rogues enter Evasive — both
+  predicted, both settled by the server per intent.
+- **Ability VFX v1 (COMBAT.md §9):** pooled additive particle bursts, swing
+  trail fans, expanding PBAoE ground rings, dash wakes and blink smoke —
+  procedural sprites, per-school/class palettes, driven by the same content
+  defs on your own casts, remote players' casts and confirmed impacts
+  (crits pop harder). Temp-synth SFX gained `impact_heavy` and a dull
+  `deny` tick for refused presses; ability rows pick their slot by id.
+- **New browser smoke** (`tools/smoke/browser-p5.mjs`, 16 asserts): hotbar
+  from published content, local Rage gating, rider-built Rage, Charge dash +
+  cooldown, spend-and-land, Shield Wall on the buff bar, bleed + DoT ticks,
+  the Blocking flag round trip, Twin Strike → pips → Eviscerate, and the
+  Evasive Energy drain — run against the real client and server.
+
 ### Fixed — P4 playtest round 6 (2026-08-03)
 
 - **Combat animations no longer freeze — swings, dodge and death all play

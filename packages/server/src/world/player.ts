@@ -236,6 +236,7 @@ export class ServerPlayer {
     if (Math.abs(m.vx) > 0.1 || Math.abs(m.vz) > 0.1) flags |= EntityFlag.Moving;
     if (m.swimming) flags |= EntityFlag.Swimming;
     if (m.rollTimeLeft > 0) flags |= EntityFlag.Dodging;
+    if (this.blocking) flags |= EntityFlag.Blocking;
     if (this.dead) flags |= EntityFlag.Dead;
     return flags;
   }
