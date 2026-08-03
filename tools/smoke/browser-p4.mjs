@@ -211,6 +211,56 @@ const runFighter = async (browser, token) => {
   const rolled = Math.hypot(dodgeTo.x - dodgeFrom.x, dodgeTo.z - dodgeFrom.z);
   if (rolled < 2.5) fail(`dodge displaced only ${rolled.toFixed(2)} m`);
   ok(`dodge rolls with the Roll clip playing (${rolled.toFixed(1)} m)`);
+
+  // R8 REGRESSION — gliding: a swing while MOVING must ride the upper-body
+  // overlay with the gait still live on the base layer. (Full-body swings
+  // froze the legs; LMB spam while walking slid the rig across the ground.)
+  await page.evaluate(() => {
+    window.__dawned.input.yaw = Math.PI; // inland — open ground, no water
+  });
+  await page.keyboard.down('w');
+  await sleep(400); // let the view classify the rig as moving
+  let movingSwing = null;
+  for (let i = 0; i < 20 && !movingSwing; i++) {
+    await page.evaluate(() => window.__dawned.attack());
+    movingSwing = await page.evaluate(() => {
+      const d = window.__dawned.animDebug();
+      const gait =
+        d.local !== null &&
+        (d.local.clip.startsWith('Jog_') ||
+          d.local.clip.startsWith('Sprint') ||
+          d.local.clip.startsWith('Walk'));
+      const swing =
+        d.overlay !== null && d.overlay.clip.startsWith('Sword_Regular') && d.overlay.running;
+      return gait && swing ? { base: d.local.clip, overlay: d.overlay.clip } : null;
+    });
+    await sleep(120);
+  }
+  await page.keyboard.up('w');
+  if (!movingSwing) fail('moving swing must overlay over a live gait (gliding regression)');
+  ok(`moving swing overlays the gait (${movingSwing.overlay} over ${movingSwing.base})`);
+
+  // R8 REGRESSION — roll priority: a dodge DURING a standing swing must show
+  // Roll immediately; the swing's action lock may not swallow it.
+  await sleep(600); // stand down: decel + dodge cooldown + stamina headroom
+  await page.waitForFunction(
+    () => {
+      window.__dawned.attack();
+      const local = window.__dawned.animDebug().local;
+      return local !== null && local.clip.startsWith('Sword_Regular') && local.running;
+    },
+    undefined,
+    { timeout: 10000 },
+  );
+  await page.keyboard.down('v');
+  await sleep(200);
+  const midSwingRoll = await page.evaluate(() => {
+    const local = window.__dawned.animDebug().local;
+    return local !== null && local.clip === 'Roll';
+  });
+  await page.keyboard.up('v');
+  if (!midSwingRoll) fail('dodge during a swing must preempt the action lock with Roll');
+  ok('dodge preempts a mid-swing action lock (Roll within 200 ms)');
   await shoot(page, 'p4-dummy-fight.png');
 
   // March to the glub camp, pick the fight by damage, expect a telegraph +

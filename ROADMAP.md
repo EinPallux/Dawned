@@ -327,6 +327,24 @@ NOTHING` — a panel-retuned live row is never reverted by a redeploy).
       publish → hot reload → game serves the new number → reverted the same way); tick perf
       with ability fights + projectiles: p50 0.36 / p95 1.21 / max 5.8 ms (<15 ms gate),
       RSS 200 MB.
+- [x] **Playtest fix round 7** (2026-08-03, first owner kit session — "combat feels
+      horrible"): real game-icons.net icons for all 28 rows through a new pipeline step
+      (vendored SVGs, per-author license ledger, HUD renders them as masked tiles so states
+      tint the icon), every slot ability re-timed out of 2.2–4.3× fast-forward into a
+      0.96–2.4× band with fitting clips, cooldown timers that count the whole way down,
+      lit/cold/locked/cooling tile states, refusals in words ("Not enough Rage"), and an
+      impact pass (contact flash + spray, 90 ms hit-stop, camera kick/shake, kill pop).
+- [x] **Playtest fix round 8** (2026-08-03): the cast-once brick (cd-0 commits burned a
+      charge nothing refilled — both sides agreed, so it stuck; machine fixed + regression
+      test + smoke double-press), ability VFX fans un-mirrored by reusing the telegraph
+      cone geometry (one unit-tested orientation contract), migration 0006 pushing icons +
+      anim retimes into already-seeded databases (0005 was edited in place and the runner
+      silently skips applied files — doctrine now in DATABASE.md §5), swings while moving
+      ride a bone-masked upper-body overlay so the gait keeps the feet honest (no more
+      gliding LMB spam; flinches + block stance de-wobbled the same way), and the dodge
+      roll preempts action locks at a readable 2.0× instead of losing its slot to long
+      swings. Smokes hardened off three reproduced failure modes (role-committed bleed
+      choreography, press-time cost re-checks, relative Evasive-drain windows).
 - [ ] **Owner: DoD demo runs** — clear the Glub camp AND the Spore Ridge with the full
       Warrior kit, then the full Rogue kit, at `/netsim 100 20`; §9 juice checklist re-read
       against the kits; feel verdict per ability (iterate until yes).

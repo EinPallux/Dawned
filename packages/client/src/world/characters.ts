@@ -118,17 +118,70 @@ export interface ComposedCharacter {
   ) => boolean;
   /** Playback speed of the active clip (foot-slide compensation). */
   setTimeScale: (scale: number) => void;
-  /** One-shot blended OVER the base layer (flinches) — no control loss. */
-  playOverlay: (clipName: string, weight: number, fadeSeconds: number) => boolean;
+  /**
+   * One-shot blended OVER the base layer (flinches, swings-while-moving) — no
+   * control loss. Overlays are UPPER-BODY ONLY by definition here: the mixer
+   * blends the whole skeleton by weight, so an unmasked overlay would drag the
+   * legs toward the one-shot's stance and soften the gait underneath (the
+   * "gliding" read). timeScale retimes the clip (attack durations).
+   */
+  playOverlay: (
+    clipName: string,
+    weight: number,
+    fadeSeconds: number,
+    timeScale?: number,
+  ) => boolean;
   /**
    * Held LOOPING overlay (RMB stances: shield up) blended over the base layer;
    * null fades it out. Idempotent per clip — safe to call every frame.
+   * Upper-body only, like all overlays.
    */
   setLoopOverlay: (clipName: string | null, weight: number, fadeSeconds: number) => void;
+  /** Fade out every live one-shot overlay (dodge/death must not carry a swing). */
+  cancelOverlays: (fadeSeconds: number) => void;
   /** Mixer truth for smokes/diagnostics: what is actually playing right now. */
   activeState: () => { clip: string; time: number; weight: number; running: boolean } | null;
+  /** The newest still-running one-shot overlay (smoke-test observability). */
+  overlayState: () => { clip: string; time: number; weight: number; running: boolean } | null;
   dispose: () => void;
 }
+
+/**
+ * Bones an overlay must NEVER touch: the locomotion half of the rig (UE-style
+ * names, verified against the baked UAL GLBs). An exclusion list on purpose —
+ * unlisted/new bones default to the overlay (a hand or spine twist bone must
+ * not silently drop out of swings), and `root` staying excluded keeps overlay
+ * clips from injecting root motion.
+ */
+const OVERLAY_EXCLUDED_BONES = new Set([
+  'root',
+  'pelvis',
+  'thigh_l',
+  'thigh_r',
+  'calf_l',
+  'calf_r',
+  'foot_l',
+  'foot_r',
+  'ball_l',
+  'ball_r',
+  'ball_leaf_l',
+  'ball_leaf_r',
+]);
+
+/** Upper-body variants are derived once per source clip and shared by all rigs. */
+const upperBodyClips = new WeakMap<THREE.AnimationClip, THREE.AnimationClip>();
+
+const upperBodyClipOf = (clip: THREE.AnimationClip): THREE.AnimationClip => {
+  const cached = upperBodyClips.get(clip);
+  if (cached) return cached;
+  // Track names are `<boneName>.<property>`; UAL bone names contain no dots.
+  const tracks = clip.tracks.filter(
+    (track) => !OVERLAY_EXCLUDED_BONES.has(track.name.split('.')[0] ?? ''),
+  );
+  const upper = new THREE.AnimationClip(`${clip.name}__upper`, clip.duration, tracks);
+  upperBodyClips.set(clip, upper);
+  return upper;
+};
 
 // three.js discriminator flags, narrowed without `any` (`isMesh` is a literal
 // `true` on the class, so a plain cast-and-check trips no-unnecessary-condition).
@@ -330,23 +383,41 @@ export const composeCharacter = (
     return true;
   };
 
+  /** Live one-shot overlay actions, newest last (pruned when finished). */
+  const liveOverlays: THREE.AnimationAction[] = [];
+
+  const pruneOverlays = (): void => {
+    for (let i = liveOverlays.length - 1; i >= 0; i--) {
+      if (!liveOverlays[i]!.isRunning()) liveOverlays.splice(i, 1);
+    }
+  };
+
   /**
    * One-shot OVERLAY on top of whatever plays (COMBAT.md §6.4 light-hit
-   * flinches: blended, no control loss). Never touches activeAction, so the
-   * base swing/roll/gait keeps running underneath — a mob wailing on you must
-   * not freeze your rig (it did; the "everything is static" playtest).
+   * flinches: blended, no control loss; P5 round 8: swings while moving).
+   * Upper-body masked — see the interface note. Never touches activeAction,
+   * so the base swing/roll/gait keeps running underneath — a mob wailing on
+   * you must not freeze your rig (the "everything is static" playtest).
    */
-  const playOverlay: ComposedCharacter['playOverlay'] = (clipName, weight, fadeSeconds) => {
-    const clip = assets.clips.get(clipName);
-    if (!clip) return false;
-    const action = mixer.clipAction(clip);
+  const playOverlay: ComposedCharacter['playOverlay'] = (
+    clipName,
+    weight,
+    fadeSeconds,
+    timeScale = 1,
+  ) => {
+    const source = assets.clips.get(clipName);
+    if (!source) return false;
+    const action = mixer.clipAction(upperBodyClipOf(source));
     if (action === activeAction) return false; // never fight the base layer
     action.reset();
     action.enabled = true;
     action.setLoop(THREE.LoopOnce, 1);
     action.clampWhenFinished = false; // influence ends with the clip
     action.setEffectiveWeight(weight);
+    action.timeScale = timeScale; // actions are cached — never inherit a stale scale
     action.fadeIn(fadeSeconds).play();
+    pruneOverlays();
+    if (!liveOverlays.includes(action)) liveOverlays.push(action);
     return true;
   };
 
@@ -361,17 +432,25 @@ export const composeCharacter = (
       }
       return;
     }
-    const clip = assets.clips.get(clipName);
-    if (!clip) return;
-    const action = mixer.clipAction(clip);
+    const source = assets.clips.get(clipName);
+    if (!source) return;
+    const action = mixer.clipAction(upperBodyClipOf(source));
     if (action === loopOverlayAction && action.isRunning()) return; // already up
     if (loopOverlayAction && loopOverlayAction !== action) loopOverlayAction.fadeOut(fadeSeconds);
     action.reset();
     action.enabled = true;
     action.setLoop(THREE.LoopRepeat, Infinity);
     action.setEffectiveWeight(weight);
+    action.timeScale = 1;
     action.fadeIn(fadeSeconds).play();
     loopOverlayAction = action;
+  };
+
+  const cancelOverlays: ComposedCharacter['cancelOverlays'] = (fadeSeconds) => {
+    for (const action of liveOverlays) {
+      if (action.isRunning()) action.fadeOut(fadeSeconds);
+    }
+    liveOverlays.length = 0;
   };
 
   const setTimeScale: ComposedCharacter['setTimeScale'] = (scale) => {
@@ -388,6 +467,18 @@ export const composeCharacter = (
     };
   };
 
+  const overlayState: ComposedCharacter['overlayState'] = () => {
+    pruneOverlays();
+    const action = liveOverlays[liveOverlays.length - 1];
+    if (!action) return null;
+    return {
+      clip: action.getClip().name,
+      time: action.time,
+      weight: action.getEffectiveWeight(),
+      running: action.isRunning(),
+    };
+  };
+
   const dispose = (): void => {
     mixer.stopAllAction();
     group.traverse((object) => {
@@ -398,5 +489,16 @@ export const composeCharacter = (
     });
   };
 
-  return { group, mixer, play, setTimeScale, playOverlay, setLoopOverlay, activeState, dispose };
+  return {
+    group,
+    mixer,
+    play,
+    setTimeScale,
+    playOverlay,
+    setLoopOverlay,
+    cancelOverlays,
+    activeState,
+    overlayState,
+    dispose,
+  };
 };

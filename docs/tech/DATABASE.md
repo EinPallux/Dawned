@@ -117,6 +117,11 @@ metrics_snapshots at · tick_p50/p95 REAL · entities INT · players INT · net_
 - `drizzle-kit generate` produces SQL migrations committed to the repo (`packages/shared/drizzle/`);
   `UPDATE.sh` runs `drizzle-kit migrate` before restarting services (additive-first policy:
   destructive migrations require a manual flag + backup check).
+- **Never edit a migration that may have been applied anywhere** (VPS, the owner's dev DB, CI).
+  drizzle's migrator skips already-applied entries by journal timestamp without comparing file
+  content, so an in-place edit silently never reaches existing databases — ship a follow-up
+  migration instead. (Learned in P5 round 8: 0005's re-generated seed rows never landed on
+  pre-round-7 databases; 0006 is the repair.)
 - Local dev: dockerless Postgres via system package or `postgres` npm-run helper; seed script
   (`pnpm seed`) loads the shipped content snapshot + a dev account (`dev/dev`, admin role) + test
   characters.

@@ -5,6 +5,49 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — P5 playtest round 8: cast-once brick, mirrored fans, missing icons, gliding attacks, dodge roll (2026-08-03)
+
+- **"I can only cast a spell one time" — real, and nasty.** Committing any
+  zero-cooldown ability burned a charge that nothing ever refilled (only
+  cooldown abilities arm a recharge timer), so every cd-0 spender bricked
+  after ONE use — on the client AND the server, so the server agreed and no
+  correction ever came. Charges are now only consumed by abilities that
+  actually recharge; a regression test pins it and the P5 smoke now presses
+  the same cd-0 ability twice.
+- **Swing-trail fans mirrored again:** the ability VFX hand-rolled its fan
+  sector and pointed it 180° behind the swing — the exact bug the telegraph
+  decals had in round 6. The fan now reuses the telegraph module's
+  unit-tested cone geometry (one orientation contract, one place), and its
+  camera tilt no longer twists sideways at east/west headings.
+- **"Still all the letters" — icons never reached already-seeded
+  databases.** Round 7 regenerated migration 0005 in place, but the
+  migration runner silently skips already-applied files, so any database
+  migrated before round 7 kept icon-less, badly-timed ability rows forever.
+  New migration 0006 surgically merges the icon + animation presentation
+  into existing rows (balance numbers untouched, drafts included,
+  idempotent). Doctrine added to DATABASE.md: never edit an applied
+  migration.
+- **No more ice-skating LMB spam:** swings while MOVING now play on a new
+  upper-body overlay layer (masked to the torso/arm bones) so the legs keep
+  the real gait — previously every swing froze the whole rig and the
+  character glided. Standing swings stay full-body; starting to move
+  mid-swing hands the rig back to locomotion; dash/blink abilities keep
+  their full-body read. Flinches and the block stance ride the same mask
+  now, so they no longer wobble the legs mid-run either.
+- **The dodge roll actually rolls:** the roll was losing its animation slot
+  to whatever swing was still playing (the action lock outranked it — worse
+  since round 7's longer, properly-timed swings) and was fast-forwarded
+  2.7×. Dodge now preempts any action instantly, clears attack overlays off
+  the roll's back, and plays at 2.0× — crouch and full roll inside the
+  550 ms dodge, recover tail fading into the run.
+- Smoke hardening from three reproduced failure modes: the bleed assert
+  commits to separate rage-builder and bleed-host dummies (ad-hoc target
+  juggling starved on murdered arenas), ability presses re-check costs at
+  press time (out-of-combat Rage decay made edge-exact presses refuse
+  silently), and the Evasive drain is measured as free-vs-held windows
+  (the displayed pool rides wire-floor jitter; the server drain itself was
+  verified correct). Ranged-camp fixture to level 12.
+
 ### Fixed — P5 playtest round 7: combat readability & feel (2026-08-03)
 
 The owner's verdict on the first kit session was blunt — no visible

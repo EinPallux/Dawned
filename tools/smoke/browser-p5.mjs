@@ -178,11 +178,12 @@ const main = async () => {
   // The third run parks at the Spore Ridge camp CENTER (P5's Ranged test camp
   // at 16,300): the nearest lobber panic-melees while the others kite out and
   // volley — every ranged system fires while the first kill comes fast.
-  // Level 10, not parity: the bot never dodges — 3 focus-firing lobbers kill
-  // a parity character who stands in every bolt (verified). The owner's DoD
-  // run is the parity test; this asserts the SYSTEMS.
+  // Level 12, not parity: the bot never dodges — 3 focus-firing lobbers kill
+  // a parity character who stands in every bolt (verified; at 10 the race
+  // between first-kill and bot-death still flipped roughly 1 run in 4). The
+  // owner's DoD run is the parity test; this asserts the SYSTEMS.
   await db.query(
-    'UPDATE characters SET pos_x=16, pos_y=5, pos_z=300, hp=NULL, level=10 WHERE id=$1',
+    'UPDATE characters SET pos_x=16, pos_y=5, pos_z=300, hp=NULL, level=12 WHERE id=$1',
     [ranger.id],
   );
   await db.end();
@@ -250,108 +251,40 @@ const runWarrior = async (browser, token) => {
   }
   ok('insufficient Rage refuses IN WORDS (floating reason + red seam + dark tile)');
 
-  // 3. Landed basics build Rage (+4 rider per hit, snapshot-rebased).
+  // 3. Landed basics build Rage (+4 rider per hit, snapshot-rebased). ≥20 is
+  //    five landed hits — proof of the rider without needing a healthy arena
+  //    (spender steps below bank their own Rage with role-committed loops).
   await waitFor(
     'Rage from landed basics',
     async () => {
       if (!(await closeOnDummy(page))) return false;
       await attack(page);
       await sleep(450);
-      return (await abilityState(page)).resource.value >= 30;
+      return (await abilityState(page)).resource.value >= 20;
     },
-    30000,
+    45000,
     50,
   );
   ok('Rage builds from landed basics (combat rider)');
 
-  // 4. Charge (slot 3): free, 12 s cooldown, dash carries the body. Aim at a
-  //    CLEAR heading first — stopOnHit against the dummy 2.6 m away would cut
-  //    the dash short and prove nothing.
-  await page.evaluate(() => {
-    const dawned = window.__dawned;
-    const base = dawned.input.yaw;
-    for (let i = 1; i <= 8; i++) {
-      dawned.input.yaw = base + (i * Math.PI) / 4;
-      if (!dawned.combatState().target) return;
-    }
-  });
-  const before = await page.evaluate(() => window.__dawned.connection.renderPosition());
-  await pressSlot(page, 3);
-  await sleep(600);
-  const after = await page.evaluate(() => window.__dawned.connection.renderPosition());
-  const dashed = Math.hypot(after.x - before.x, after.z - before.z);
-  if (dashed < 2.5) fail(`Charge should dash the body (moved ${dashed.toFixed(2)} m)`);
-  state = await abilityState(page);
-  if (state.hotbar[2].cooldownMs <= 0) fail('Charge must be cooling after use');
-  ok(`Charge dashes the body (${dashed.toFixed(1)} m) and starts its cooldown`);
-
-  // Walk back into melee reach before the melee asserts (dash left the line):
-  // face the nearest living dummy exactly and hold W in bursts until close.
-  await waitFor('back in dummy reach', () => closeOnDummy(page), 25000, 50);
-
-  // 5. Crushing Blow with Rage banked: accepted, Rage drops, dummy bleeds FCT.
-  await waitFor(
-    'Rage ≥ 30 again',
-    async () => {
-      if (!(await closeOnDummy(page))) return false;
-      await attack(page);
-      await sleep(420);
-      return (await abilityState(page)).resource.value >= 30;
-    },
-    30000,
-    50,
-  );
-  const rageBefore = (await abilityState(page)).resource.value;
-  const fctBefore = (await combatState(page)).fctTotal;
-  await pressSlot(page, 1);
-  await sleep(700);
-  state = await abilityState(page);
-  const fctAfter = (await combatState(page)).fctTotal;
-  if (state.resource.value > rageBefore - 15) {
-    fail(`Crushing Blow should spend ~25 Rage (was ${rageBefore}, now ${state.resource.value})`);
-  }
-  if (fctAfter <= fctBefore) fail('Crushing Blow should land damage numbers on the dummy');
-  ok('Crushing Blow spends Rage and lands (predicted commit, server resolve)');
-
-  // 6. Shield Wall (slot 7, self buff): EffectSync puts it on the buff bar.
-  await pressSlot(page, 7);
-  await waitFor('Shield Wall on the self buff bar', async () => {
-    const s = await abilityState(page);
-    return s.selfEffects.length > 0;
-  });
-  const chip = await page.evaluate(
-    () => document.querySelectorAll('.hud-effects .hud-effect').length,
-  );
-  if (chip < 1) fail('self buff row should render a chip for Shield Wall');
-  ok('Shield Wall syncs onto the buff bar (EffectSync → chips)');
-
-  // 7. Rending Slash (slot 4): bleed debuff on the dummy + DoT ticks.
-  await waitFor(
-    'Rage ≥ 35 for Rending Slash',
-    async () => {
-      if (!(await closeOnDummy(page))) return false;
-      await attack(page);
-      await sleep(420);
-      return (await abilityState(page)).resource.value >= 35;
-    },
-    30000,
-    50,
-  );
-  // The strip lists the bleed on a LIVING host — at level 25 the direct hit
-  // finishes any chewed dummy, so aim at the FULLEST one (they reset to full
-  // 5 s out of combat; a full dummy always survives the direct hit).
+  // Aim at the fullest LIVING dummy and close on it; also reports how many
+  // are alive. Fullest-first matters twice over: dummies reset to full 5 s
+  // out of combat, and at level 25 a chewed host dies to the direct hit.
   const closeOnFullestDummy = async () => {
     const status = await page.evaluate(() => {
       const DEAD = 1 << 7;
       const c = window.__dawned.connection;
       const p = c.renderPosition();
       let best = null;
+      let bestId = 0;
       let bestScore = -1;
       let bestD = 1e9;
       let bestHp = 0;
-      for (const r of c.remotes.values()) {
+      let living = 0;
+      for (const [id, r] of c.remotes) {
         if (r.enemyMeta?.typeId !== 'enemy_training_dummy') continue;
         if ((r.render.flags & DEAD) !== 0) continue;
+        living += 1;
         const d = Math.hypot(r.render.x - p.x, r.render.z - p.z);
         const score = r.render.hpFraction - d * 0.001; // fullest, ties → nearest
         if (score > bestScore) {
@@ -359,10 +292,11 @@ const runWarrior = async (browser, token) => {
           bestD = d;
           bestHp = r.render.hpFraction;
           best = r;
+          bestId = id;
         }
       }
       if (best) window.__dawned.input.yaw = Math.atan2(best.render.x - p.x, best.render.z - p.z);
-      return { dist: bestD, hpFraction: bestHp };
+      return { dist: bestD, hpFraction: bestHp, living, id: bestId };
     });
     if (status.dist > 2.2) {
       if (status.dist < 1e8) {
@@ -376,25 +310,111 @@ const runWarrior = async (browser, token) => {
     }
     return status;
   };
+
+  /** Re-aim at a SPECIFIC entity (keeps the soft-target lock on it). */
+  const aimAtEntity = (id) =>
+    page.evaluate((entityId) => {
+      const c = window.__dawned.connection;
+      const r = c.remotes.get(entityId);
+      if (!r || (r.render.flags & (1 << 7)) !== 0) return false;
+      const p = c.renderPosition();
+      window.__dawned.input.yaw = Math.atan2(r.render.x - p.x, r.render.z - p.z);
+      return true;
+    }, id);
+
+  // 4. Rending Slash (slot 4): bleed debuff on the dummy + DoT ticks.
+  //    `targetEffects` reads the CURRENT SOFT TARGET's effects, so the press
+  //    and the verify are BOUND to one entity. Choreography (round 8, after
+  //    three failure modes reproduced): commit to ROLES up front — one dummy
+  //    is the rage BUILDER, a DIFFERENT one is the bleed HOST. Ad-hoc
+  //    per-iteration choices let the roles flip-flop (chew the nearest → it
+  //    disqualifies → the other resets → walk over → Rage decays → rebuild →
+  //    chew the new host…) and starve the whole budget. With the host never
+  //    the rage source, it idles to a 5 s out-of-combat full reset while the
+  //    builder soaks the basics, and the press meets a full body every cycle.
+  const dummyRoles = () =>
+    page.evaluate(() => {
+      const DEAD = 1 << 7;
+      const c = window.__dawned.connection;
+      const p = c.renderPosition();
+      const living = [];
+      for (const [id, r] of c.remotes) {
+        if (r.enemyMeta?.typeId !== 'enemy_training_dummy') continue;
+        if ((r.render.flags & DEAD) !== 0) continue;
+        living.push({
+          id,
+          hp: r.render.hpFraction,
+          dist: Math.hypot(r.render.x - p.x, r.render.z - p.z),
+        });
+      }
+      if (living.length < 2) return null;
+      living.sort((a, b) => a.dist - b.dist);
+      const builder = living[0];
+      const host = living
+        .slice(1)
+        .reduce((best, d) => (d.hp - d.dist * 0.001 > best.hp - best.dist * 0.001 ? d : best));
+      return { builderId: builder.id, hostId: host.id, hostHp: host.hp };
+    });
+  const approachEntity = async (id, maxDist) => {
+    for (let i = 0; i < 60; i++) {
+      const dist = await page.evaluate((entityId) => {
+        const c = window.__dawned.connection;
+        const r = c.remotes.get(entityId);
+        if (!r || (r.render.flags & (1 << 7)) !== 0) return null;
+        const p = c.renderPosition();
+        window.__dawned.input.yaw = Math.atan2(r.render.x - p.x, r.render.z - p.z);
+        return Math.hypot(r.render.x - p.x, r.render.z - p.z);
+      }, id);
+      if (dist === null) return false; // died — caller repicks roles
+      if (dist <= maxDist) return true;
+      await page.keyboard.down('KeyW');
+      await sleep(180);
+      await page.keyboard.up('KeyW');
+    }
+    return false;
+  };
   await waitFor(
     'bleed on the target strip',
     async () => {
-      const s = await abilityState(page);
-      if (s.targetEffects.length > 0) return true;
-      const host = await closeOnFullestDummy();
-      if (!host) return false;
-      if (host.hpFraction >= 0.6 && s.resource.value >= 30 && s.hotbar[3].cooldownMs <= 0) {
-        // A ≥60% host survives the non-crit direct hit; a crit retry is fine.
-        await pressSlot(page, 4);
-      } else if (s.resource.value < 35) {
-        // Top Rage on the NEAREST dummy — leaving the fullest untouched lets
-        // the 5 s out-of-combat refill hand us a clean bleed host.
-        if (await closeOnDummy(page)) await attack(page);
+      const roles = await dummyRoles();
+      if (!roles) {
+        await sleep(800); // fewer than 2 living — respawns land within 15 s
+        return false;
       }
-      await sleep(400);
+      // Build phase: basics at the BUILDER only, until 45 Rage is banked
+      // (cost 30 + decay margin for the walk to the host).
+      for (let i = 0; i < 24; i++) {
+        if ((await abilityState(page)).resource.value >= 45) break;
+        if (!(await approachEntity(roles.builderId, 2.2))) return false; // builder died
+        await attack(page);
+        await sleep(430);
+      }
+      if ((await abilityState(page)).resource.value < 40) return false;
+      // Press phase: walk to the untouched host, settle, verify bound to it.
+      if (!(await approachEntity(roles.hostId, 2.2))) return false;
+      await sleep(500); // let any in-flight basic land — no corpse presses
+      if (!(await aimAtEntity(roles.hostId))) return false;
+      const ready = await abilityState(page);
+      const hostHp = await page.evaluate((id) => {
+        const r = window.__dawned.connection.remotes.get(id);
+        return r ? r.render.hpFraction : 0;
+      }, roles.hostId);
+      // A refused press arms no cooldown and applies nothing — never press
+      // under the 30 cost (Rage decays 2/s OOC during the walk + settle).
+      if (hostHp < 0.6 || ready.resource.value < 32 || ready.hotbar[3].cooldownMs > 0) {
+        return false;
+      }
+      await pressSlot(page, 4);
+      // Hold the reticle on the pressed host until its bleed shows (contact
+      // ~440 ms + EffectSync); bail to the outer retry if it dies anyway.
+      for (let i = 0; i < 12; i++) {
+        await sleep(250);
+        if (!(await aimAtEntity(roles.hostId))) return false;
+        if ((await abilityState(page)).targetEffects.length > 0) return true;
+      }
       return false;
     },
-    60000,
+    90000,
     100,
   );
   // DoT proof: damage numbers keep coming with NO further presses. At level
@@ -420,6 +440,86 @@ const runWarrior = async (browser, token) => {
     100,
   );
   ok('Rending Slash applies a bleed (target strip + DoT ticks)');
+
+  // 5. Charge (slot 3): free, 12 s cooldown, dash carries the body. Aim at a
+  //    CLEAR heading first — stopOnHit against the dummy 2.6 m away would cut
+  //    the dash short and prove nothing.
+  await page.evaluate(() => {
+    const dawned = window.__dawned;
+    const base = dawned.input.yaw;
+    for (let i = 1; i <= 8; i++) {
+      dawned.input.yaw = base + (i * Math.PI) / 4;
+      if (!dawned.combatState().target) return;
+    }
+  });
+  const before = await page.evaluate(() => window.__dawned.connection.renderPosition());
+  await pressSlot(page, 3);
+  await sleep(600);
+  const after = await page.evaluate(() => window.__dawned.connection.renderPosition());
+  const dashed = Math.hypot(after.x - before.x, after.z - before.z);
+  if (dashed < 2.5) fail(`Charge should dash the body (moved ${dashed.toFixed(2)} m)`);
+  state = await abilityState(page);
+  if (state.hotbar[2].cooldownMs <= 0) fail('Charge must be cooling after use');
+  ok(`Charge dashes the body (${dashed.toFixed(1)} m) and starts its cooldown`);
+
+  // Walk back into melee reach before the melee asserts (dash left the line):
+  // face the nearest living dummy exactly and hold W in bursts until close.
+  await waitFor('back in dummy reach', () => closeOnDummy(page), 25000, 50);
+
+  // 6. Crushing Blow with Rage banked: accepted, Rage drops, dummy bleeds FCT.
+  //    Press ONLY over a verified healthy host: at level 25 the rage-building
+  //    basics can finish a chewed dummy with the killing hit still in flight,
+  //    and a slot press over the fresh corpse commits, debits and whiffs into
+  //    empty air — no damage numbers ever (round-8 flake, reproduced). The
+  //    settle sleep lets any in-flight basic contact before the re-check.
+  await waitFor(
+    'Crushing Blow lands on a healthy host',
+    async () => {
+      let s = await abilityState(page);
+      if (s.resource.value < 34) {
+        if (await closeOnDummy(page)) await attack(page);
+        await sleep(420);
+        return false;
+      }
+      const host = await closeOnFullestDummy();
+      if (!host || host.hpFraction < 0.5) return false; // resets/respawns land
+      await sleep(500);
+      const settled = await closeOnFullestDummy();
+      if (!settled || settled.hpFraction < 0.5) return false;
+      s = await abilityState(page);
+      const rageBefore = s.resource.value;
+      // ≥28, not ≥25: OOC decay keeps running between this read and the press,
+      // and an edge-exact pool refuses AT the press — which the spend check
+      // below would misread as broken cost math (round 8: "was 27, now 23").
+      if (rageBefore < 28) return false;
+      const fctBefore = (await combatState(page)).fctTotal;
+      await pressSlot(page, 1);
+      await sleep(700);
+      const after = await abilityState(page);
+      if (after.resource.value > rageBefore - 15) {
+        fail(
+          `Crushing Blow should spend ~25 Rage (was ${rageBefore}, now ${after.resource.value})`,
+        );
+      }
+      // No numbers = the host still died under us — Crushing is cd-0, retry.
+      return (await combatState(page)).fctTotal > fctBefore;
+    },
+    60000,
+    100,
+  );
+  ok('Crushing Blow spends Rage and lands (predicted commit, server resolve)');
+
+  // 7. Shield Wall (slot 7, self buff): EffectSync puts it on the buff bar.
+  await pressSlot(page, 7);
+  await waitFor('Shield Wall on the self buff bar', async () => {
+    const s = await abilityState(page);
+    return s.selfEffects.length > 0;
+  });
+  const chip = await page.evaluate(
+    () => document.querySelectorAll('.hud-effects .hud-effect').length,
+  );
+  if (chip < 1) fail('self buff row should render a chip for Shield Wall');
+  ok('Shield Wall syncs onto the buff bar (EffectSync → chips)');
 
   // 8. RMB Block: the server folds the stance and echoes the Blocking flag.
   await setStance(page, true);
@@ -475,6 +575,24 @@ const runRogue = async (browser, token) => {
   if (litPips < 1) fail('combo point pips should light over the resource globe');
   ok('Twin Strike spends Energy and lights combo pips');
 
+  // 9b. R8 REGRESSION — cd-0 spam: a SECOND press of the same zero-cooldown
+  // slot must commit again. (commitUse burned a charge that nothing ever
+  // refilled, bricking every cd-0 spender after one use — on both sides, so
+  // the server agreed and no smoke caught it via a single press.)
+  await waitFor('energy + GCD for a second Twin Strike', async () => {
+    const s = await abilityState(page);
+    return s.resource.value >= 95;
+  });
+  await pressSlot(page, 1);
+  const energySecondPress = (await abilityState(page)).resource.value;
+  if (energySecondPress > 80) {
+    fail(
+      `second Twin Strike press must spend again (at ${energySecondPress} — ` +
+        'zero-cooldown charge bricked?)',
+    );
+  }
+  ok('zero-cooldown ability casts repeatedly (second press spends again)');
+
   // 10. Eviscerate (finisher) spends ALL combo points.
   await waitFor(
     'energy for Eviscerate',
@@ -499,28 +617,41 @@ const runRogue = async (browser, token) => {
     undefined,
     { timeout: 90000 },
   );
-  //     Sink energy first (Fan of Knives, 30) so the pool can't hit its cap
-  //     mid-measurement — at the cap drain and regen are indistinguishable.
-  await waitFor(
-    'energy for Fan of Knives',
-    async () => (await abilityState(page)).resource.value >= 30,
-  );
-  await pressSlot(page, 4);
-  await sleep(250);
-  const energyBefore = (await abilityState(page)).resource.value;
-  await setStance(page, true);
-  await sleep(2000);
-  const energyHeld = (await abilityState(page)).resource.value;
-  await setStance(page, false);
-  // Regen is +12/s vs drain −3/s; while held net is +9/s vs +12/s free. The
-  // clean observable: value must stay BELOW a free-regen projection.
-  const freeProjection = Math.min(100, energyBefore + 2 * 12);
-  if (energyHeld >= freeProjection) {
+  //     Measurement design (round 8): the DISPLAYED pool re-bases onto the
+  //     wire's integer floor nearly every snapshot, so a single absolute
+  //     "held < free projection" check rides ±2 of floor jitter and fails on
+  //     the boundary while the server drains perfectly (verified). Instead,
+  //     compare a FREE window and a HELD window measured IDENTICALLY — same
+  //     entry gate, one Twin Strike sink (25, cd-0 — keeps the window off the
+  //     100 cap), same settle — so read-timing bias mirrors and cancels. The
+  //     ~7.5 energy gap (3/s × 2.5 s) dwarfs the jitter.
+  const measureRegenWindow = async (held) => {
+    // Entry state: catch the rising pool just past 65 → sink → ~41 → settle
+    // (+18) → window start ~59, free end ~89 — never capped.
+    await waitFor(
+      'energy past 65 for a drain window',
+      async () => (await abilityState(page)).resource.value >= 65,
+      20000,
+      100,
+    );
+    await pressSlot(page, 1);
+    await sleep(1500); // spend adopted server-side; display converged
+    if (held) await setStance(page, true);
+    const start = (await abilityState(page)).resource.value;
+    await sleep(2500);
+    const delta = (await abilityState(page)).resource.value - start;
+    if (held) await setStance(page, false);
+    return delta;
+  };
+  const freeDelta = await measureRegenWindow(false);
+  const heldDelta = await measureRegenWindow(true);
+  if (heldDelta > freeDelta - 3) {
     fail(
-      `Evasive should slow the Energy curve (held ${energyHeld}, free would be ~${freeProjection})`,
+      `Evasive should slow the Energy curve (free +${freeDelta} vs held +${heldDelta} ` +
+        'over 2500 ms — expected a ≥3 gap from the 3/s drain)',
     );
   }
-  ok('Evasive Stance drains Energy while held (server-mirrored)');
+  ok(`Evasive Stance drains Energy while held (free +${freeDelta} vs held +${heldDelta})`);
 
   await shoot(page, 'p5-rogue.png');
   if (errors.length > 0) {

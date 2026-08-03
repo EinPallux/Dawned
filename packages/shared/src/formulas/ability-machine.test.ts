@@ -201,4 +201,19 @@ describe('ability machine', () => {
     tickAbilityMachine(fresh, 6000, false);
     expect(evaluateUse(fresh, def, readyContext())).toEqual({ ok: true });
   });
+
+  it('zero-cooldown abilities never consume charges — spammable past the GCD', () => {
+    // Regression (round 7): commit burned the only charge but a cd-0 def never
+    // arms a recharge timer, bricking every spender after ONE use — on both
+    // sides, so the server agreed and no correction ever came.
+    const machine = createAbilityMachine();
+    const def = makeDef({ cooldownMs: 0 });
+    for (let press = 0; press < 4; press++) {
+      const ctx = readyContext();
+      expect(evaluateUse(machine, def, ctx)).toEqual({ ok: true });
+      commitUse(machine, def, ctx.resource, { yaw: 0, pitch: 0, targetId: 0 });
+      expect(cooldownRemainingMs(machine, def.id)).toBe(0);
+      tickAbilityMachine(machine, GCD_MS + 10, false); // clear the GCD between presses
+    }
+  });
 });

@@ -81,6 +81,8 @@ export class CharacterView {
   private currentClip = '';
   /** Combat one-shots (attack/hit) own the rig until this clock time. */
   private actionUntil = 0;
+  /** Whether movement may break the current full-body action (not dash/blink). */
+  private actionEscapable = false;
   private dead = false;
   private blocking = false;
 
@@ -149,18 +151,34 @@ export class CharacterView {
 
   /**
    * Play a combat swing (predicted locally at press; remotes on AbilityStart).
-   * The clip is time-scaled so its natural length fits `durationMs`, and it
-   * owns the rig for that long — locomotion resumes after.
+   * The clip is time-scaled so its natural length fits `durationMs`.
+   *
+   * While MOVING the swing rides the upper-body overlay layer so the gait
+   * keeps the feet honest — a full-body one-shot froze the legs and read as
+   * gliding under LMB spam (owner round 8). Standing swings stay full-body
+   * (nicer poses, nothing to preserve). `fullBody` forces the old behavior for
+   * abilities whose whole read IS body motion (dash, blink) — their frozen
+   * lunge pose over the rush is the point.
    */
-  playAttack(clip: string, clipSeconds: number, durationMs: number): void {
+  playAttack(
+    clip: string,
+    clipSeconds: number,
+    durationMs: number,
+    opts: { fullBody?: boolean } = {},
+  ): void {
     if (this.dead) return;
     const durationS = Math.max(durationMs / 1000, 0.15);
-    this.playClip(clip, {
-      once: true,
-      fadeSeconds: 0.05,
-      timeScale: clipSeconds / durationS,
-    });
+    const timeScale = clipSeconds / durationS;
+    const speed = Math.hypot(this.velocity.x, this.velocity.z);
+    if (!opts.fullBody && speed >= IDLE_BELOW_MPS) {
+      // Weight 2.5 vs the base gait's 1 ≈ 71% swing on torso/arms (the mixer
+      // averages by weight); legs are untouched by the upper-body mask.
+      this.composed?.playOverlay(clip, 2.5, 0.05, timeScale);
+      return;
+    }
+    this.playClip(clip, { once: true, fadeSeconds: 0.05, timeScale });
     this.actionUntil = this.clock + durationS;
+    this.actionEscapable = !opts.fullBody;
   }
 
   /**
@@ -194,6 +212,7 @@ export class CharacterView {
     this.dead = dead;
     if (dead) {
       this.actionUntil = 0;
+      this.composed?.cancelOverlays(0.1); // no swing riding the corpse
       if (this.blocking) {
         this.blocking = false;
         this.composed?.setLoopOverlay(null, 0.75, 0.09);
@@ -260,14 +279,33 @@ export class CharacterView {
   private selectClip(flags: CharacterPoseFlags): void {
     const speed = Math.hypot(this.velocity.x, this.velocity.z);
 
-    // Death owns everything; combat one-shots own the rig until they finish.
+    // Death owns everything.
     if (this.dead) return;
-    if (this.clock < this.actionUntil) return;
 
-    // Dodge roll (predicted for the local player, Dodging flag for remotes).
+    // Dodge preempts ANY action — the roll is the i-frame message and must
+    // read the instant the dodge starts. Checking the action lock first let
+    // the new long swings (0.9–1.8 s) swallow the whole roll (owner round 8:
+    // "the roll animation does not work very well"). Breaking the lock +
+    // clearing attack overlays keeps a swing from riding the roll's back.
     if (flags.dodging) {
-      this.playClip('Roll', { timeScale: 1.467 / 0.55, fadeSeconds: 0.05 });
+      if (this.currentClip !== 'Roll') {
+        this.actionUntil = 0;
+        this.composed?.cancelOverlays(0.06);
+        // 2.0× shows the clip's crouch + full ground roll inside the 550 ms
+        // dodge, and the recover tail fades into gait when the flag drops.
+        // (The old 2.67× "fit the whole clip" squeeze read as chipmunk.)
+        this.playClip('Roll', { timeScale: 2.0, fadeSeconds: 0.05 });
+      }
       return;
+    }
+
+    // Combat one-shots own the rig until they finish — but starting to MOVE
+    // hands escapable ones (standing swings) back to locomotion: the player's
+    // input beats anim completeness (§9), and the server's contact timing
+    // never depended on the pose. Dash/blink actions are not escapable.
+    if (this.clock < this.actionUntil) {
+      if (!this.actionEscapable || speed < IDLE_BELOW_MPS) return;
+      this.actionUntil = 0;
     }
 
     // Swimming replaces the whole grounded/airborne tree (movement pins the body
@@ -397,6 +435,16 @@ export class CharacterView {
   /** Mixer truth (what is REALLY playing) — smoke tests catch silent no-ops. */
   get actionState(): { clip: string; time: number; weight: number; running: boolean } | null {
     return this.composed?.activeState() ?? null;
+  }
+
+  /** Newest live one-shot overlay (moving swings, flinches) — smoke truth. */
+  get overlayActionState(): {
+    clip: string;
+    time: number;
+    weight: number;
+    running: boolean;
+  } | null {
+    return this.composed?.overlayState() ?? null;
   }
 
   /** True while a chat bubble is on screen (smoke-test observability). */

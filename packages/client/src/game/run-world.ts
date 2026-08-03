@@ -190,7 +190,9 @@ export const runWorld = (
           const def = connection.abilityDefFor(classId, slot);
           const view = remoteViews.get(message.entityId);
           if (def && view) {
-            view.playAttack(def.anim.clip, def.anim.clipSeconds, message.durationMs);
+            view.playAttack(def.anim.clip, def.anim.clipSeconds, message.durationMs, {
+              fullBody: fullBodyAnim(def),
+            });
             const p = view.group.position;
             abilityCommitVfx(def, p.x, p.y, p.z, message.yaw);
           }
@@ -381,6 +383,15 @@ export const runWorld = (
     return true;
   };
 
+  /**
+   * Abilities whose anim must stay full-body even while moving: the movement
+   * IS the ability (dash lunge, blink) — an upper-body overlay over a jog
+   * would erase their read. Everything else swings on the overlay layer when
+   * the caster is moving (character-view.ts playAttack).
+   */
+  const fullBodyAnim = (def: AbilityDef): boolean =>
+    def.targeting.kind === 'dash' || def.targeting.kind === 'blink_behind';
+
   /** Commit-moment VFX for an ability, at any caster (self or remote). */
   const abilityCommitVfx = (
     def: AbilityDef,
@@ -461,7 +472,9 @@ export const runWorld = (
       return;
     }
     const def = result.def;
-    localView.playAttack(def.anim.clip, def.anim.clipSeconds, def.anim.durationMs);
+    localView.playAttack(def.anim.clip, def.anim.clipSeconds, def.anim.durationMs, {
+      fullBody: fullBodyAnim(def),
+    });
     sfx.play(sfxSlotOf(def.sfx));
     abilityCommitVfx(def, before.x, before.y, before.z, input.yaw);
     // Big self-centered moments shake the camera at commit (§9).
@@ -592,6 +605,7 @@ export const runWorld = (
     /** Mixer truth: what is REALLY playing (catches silently-unbound clips). */
     animDebug: (): {
       local: { clip: string; time: number; weight: number; running: boolean } | null;
+      overlay: { clip: string; time: number; weight: number; running: boolean } | null;
       enemies: Record<string, { clip: string; time: number; running: boolean; actions: number }>;
       rollTimeLeft: number;
     } => {
@@ -602,6 +616,7 @@ export const runWorld = (
       for (const [id, view] of enemyViews) enemies[String(id)] = view.animDebug;
       return {
         local: localView.actionState,
+        overlay: localView.overlayActionState,
         enemies,
         rollTimeLeft: connection.predicted.rollTimeLeft,
       };
