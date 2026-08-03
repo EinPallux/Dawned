@@ -311,6 +311,8 @@ export class World {
       rng: this.rng,
       events,
       enemiesByCamp: (tag) => this.campIndex.get(tag) ?? [],
+      projectiles: this.projectiles,
+      nextProjectileId: () => this.nextProjectileId++,
     };
 
     // 1. Player movement — re-simulated from client intents with the shared step.

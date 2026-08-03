@@ -157,6 +157,7 @@ const main = async () => {
   const token = await ensureAccount(BASE_URL, 'zz_p5_arena', PASSWORD);
   const warrior = await ensureCharacter(BASE_URL, token, 'Kitwarrior', 'warrior');
   const rogue = await ensureCharacter(BASE_URL, token, 'Kitrogue', 'rogue');
+  const ranger = await ensureCharacter(BASE_URL, token, 'Kitvsranged', 'rogue');
   const db = new pg.Client({ connectionString: DATABASE_URL });
   await db.connect();
   // Both park in reach of the middle training dummy (same spot the P4 smoke
@@ -166,17 +167,28 @@ const main = async () => {
     'UPDATE characters SET pos_x=0.5, pos_y=4.6, pos_z=382.6, hp=NULL, level=25 WHERE id = ANY($1)',
     [[warrior.id, rogue.id]],
   );
+  // The third run parks at the Spore Ridge camp CENTER (P5's Ranged test camp
+  // at 16,300): the nearest lobber panic-melees while the others kite out and
+  // volley — every ranged system fires while the first kill comes fast.
+  // Level 10, not parity: the bot never dodges — 3 focus-firing lobbers kill
+  // a parity character who stands in every bolt (verified). The owner's DoD
+  // run is the parity test; this asserts the SYSTEMS.
+  await db.query(
+    'UPDATE characters SET pos_x=16, pos_y=5, pos_z=300, hp=NULL, level=10 WHERE id=$1',
+    [ranger.id],
+  );
   await db.end();
-  ok('fixtures parked at the training line (warrior + rogue, level 25)');
+  ok('fixtures parked (warrior + rogue at the dummies, one inside the spore ridge)');
 
   const browser = await chromium.launch();
   try {
     await runWarrior(browser, token);
     await runRogue(browser, token);
+    await runRangedCamp(browser, token);
   } finally {
     await browser.close();
   }
-  console.log('\n🗡️  P5 browser check passed — kits, resources, stances, buffs.\n');
+  console.log('\n🗡️  P5 browser check passed — kits, resources, stances, buffs, ranged camp.\n');
 };
 
 // ---------------------------------------------------------------------------
@@ -304,16 +316,84 @@ const runWarrior = async (browser, token) => {
     30000,
     50,
   );
-  await waitFor('dummy in reach for Rending Slash', () => closeOnDummy(page), 25000, 50);
-  await pressSlot(page, 4);
-  await waitFor('bleed on the target strip', async () => {
-    const s = await abilityState(page);
-    return s.targetEffects.length > 0;
-  });
-  const dotBase = (await combatState(page)).fctTotal;
-  await sleep(2600);
-  const dotAfter = (await combatState(page)).fctTotal;
-  if (dotAfter <= dotBase) fail('the bleed should tick damage numbers without further presses');
+  // The strip lists the bleed on a LIVING host — at level 25 the direct hit
+  // finishes any chewed dummy, so aim at the FULLEST one (they reset to full
+  // 5 s out of combat; a full dummy always survives the direct hit).
+  const closeOnFullestDummy = async () => {
+    const status = await page.evaluate(() => {
+      const DEAD = 1 << 7;
+      const c = window.__dawned.connection;
+      const p = c.renderPosition();
+      let best = null;
+      let bestScore = -1;
+      let bestD = 1e9;
+      let bestHp = 0;
+      for (const r of c.remotes.values()) {
+        if (r.enemyMeta?.typeId !== 'enemy_training_dummy') continue;
+        if ((r.render.flags & DEAD) !== 0) continue;
+        const d = Math.hypot(r.render.x - p.x, r.render.z - p.z);
+        const score = r.render.hpFraction - d * 0.001; // fullest, ties → nearest
+        if (score > bestScore) {
+          bestScore = score;
+          bestD = d;
+          bestHp = r.render.hpFraction;
+          best = r;
+        }
+      }
+      if (best) window.__dawned.input.yaw = Math.atan2(best.render.x - p.x, best.render.z - p.z);
+      return { dist: bestD, hpFraction: bestHp };
+    });
+    if (status.dist > 2.2) {
+      await page.keyboard.down('KeyW');
+      await sleep(180);
+      await page.keyboard.up('KeyW');
+      return null;
+    }
+    return status;
+  };
+  await waitFor(
+    'bleed on the target strip',
+    async () => {
+      const s = await abilityState(page);
+      if (s.targetEffects.length > 0) return true;
+      const host = await closeOnFullestDummy();
+      if (!host) return false;
+      if (host.hpFraction >= 0.6 && s.resource.value >= 30 && s.hotbar[3].cooldownMs <= 0) {
+        // A ≥60% host survives the non-crit direct hit; a crit retry is fine.
+        await pressSlot(page, 4);
+      } else if (s.resource.value < 35) {
+        // Top Rage on the NEAREST dummy — leaving the fullest untouched lets
+        // the 5 s out-of-combat refill hand us a clean bleed host.
+        if (await closeOnDummy(page)) await attack(page);
+      }
+      await sleep(400);
+      return false;
+    },
+    40000,
+    100,
+  );
+  // DoT proof: damage numbers keep coming with NO further presses. At level
+  // 25 the host dummy can die under the bleed mid-window, so re-arm on a
+  // living target when the strip empties (Rending is off cooldown by then).
+  await waitFor(
+    'bleed DoT ticks (FCT without presses)',
+    async () => {
+      const before = (await combatState(page)).fctTotal;
+      await sleep(1400);
+      if ((await combatState(page)).fctTotal > before) return true;
+      const state = await abilityState(page);
+      if (state.targetEffects.length === 0 && (await closeOnDummy(page))) {
+        if (state.resource.value >= 30 && state.hotbar[3].cooldownMs <= 0) {
+          await pressSlot(page, 4);
+        } else {
+          await attack(page); // rebuild Rage toward the re-arm
+        }
+      }
+      return false;
+    },
+    30000,
+    100,
+  );
   ok('Rending Slash applies a bleed (target strip + DoT ticks)');
 
   // 8. RMB Block: the server folds the stance and echoes the Blocking flag.
@@ -421,6 +501,128 @@ const runRogue = async (browser, token) => {
     fail(`rogue phase console errors:\n  ${errors.slice(0, 5).join('\n  ')}`);
   }
   ok('rogue phase: no console errors');
+  await context.close();
+};
+
+// ---------------------------------------------------------------------------
+// Ranged camp: Spore Lobbers volley dodgeable bolts, and the kit clears them
+// ---------------------------------------------------------------------------
+
+const runRangedCamp = async (browser, token) => {
+  const { context, page, errors } = await openPage(browser, token);
+
+  await enterWorld(page, 'Kitvsranged', errors);
+
+  // 12. The camp streams in on dry land.
+  await page.waitForFunction(
+    () => {
+      let count = 0;
+      for (const r of window.__dawned.connection.remotes.values()) {
+        if (r.enemyMeta?.typeId === 'enemy_spore_lobber') count++;
+      }
+      return count >= 3;
+    },
+    { timeout: 30000 },
+  );
+  const dry = await page.evaluate(() => {
+    for (const r of window.__dawned.connection.remotes.values()) {
+      if (r.enemyMeta?.typeId === 'enemy_spore_lobber' && r.render.y < 0.5) return false;
+    }
+    return true;
+  });
+  if (!dry) fail('spore ridge spawned in water — move the spawner');
+  ok('spore ridge streams in (3 lobbers on dry land)');
+
+  // 13–14. One live fight, three staged proofs: volleys fly (ProjectileSpawn
+  // events), bolts connect (hp drops), and the kit kills a lobber. The bot
+  // fights from second one — standing around under 3 snipers is how bots die.
+  await page.evaluate(() => {
+    const c = window.__dawned.connection;
+    window.__boltSpawns = 0;
+    const prev = c.events.onProjectileSpawn;
+    c.events.onProjectileSpawn = (m) => {
+      window.__boltSpawns += 1;
+      prev?.(m);
+    };
+  });
+  const aimAtLobber = () =>
+    page.evaluate(() => {
+      const DEAD = 1 << 7;
+      const c = window.__dawned.connection;
+      const p = c.renderPosition();
+      let best = null;
+      let bestD = 1e9;
+      for (const r of c.remotes.values()) {
+        if (r.enemyMeta?.typeId !== 'enemy_spore_lobber') continue;
+        if ((r.render.flags & DEAD) !== 0) continue;
+        const d = Math.hypot(r.render.x - p.x, r.render.z - p.z);
+        if (d < bestD) {
+          bestD = d;
+          best = r;
+        }
+      }
+      if (best) window.__dawned.input.yaw = Math.atan2(best.render.x - p.x, best.render.z - p.z);
+      return bestD;
+    });
+  let sawVolley = false;
+  let sawBoltHit = false;
+  await waitFor(
+    'ranged-camp fight (volleys + hits + first kill)',
+    async () => {
+      if (!sawVolley && (await page.evaluate(() => window.__boltSpawns >= 2))) {
+        sawVolley = true;
+        ok('lobbers volley projectiles at the intruder');
+      }
+      const s = await combatState(page);
+      if (!sawBoltHit && s.hp > 0 && s.hp < s.maxHp) {
+        sawBoltHit = true;
+        ok('spore bolts connect (hp dropping under ranged fire)');
+      }
+      if (s.dead) {
+        fail('the intruder died to the camp — retune the fixture or the lobbers');
+      }
+      const dead = await page.evaluate(() => {
+        const DEAD = 1 << 7;
+        let count = 0;
+        for (const r of window.__dawned.connection.remotes.values()) {
+          if (r.enemyMeta?.typeId === 'enemy_spore_lobber' && (r.render.flags & DEAD) !== 0) {
+            count++;
+          }
+        }
+        return count;
+      });
+      if (dead >= 1 && sawVolley && sawBoltHit) return true;
+
+      const dist = await aimAtLobber();
+      const state = await abilityState(page);
+      if (dist > 6 && dist < 1e8 && state.hotbar[1].cooldownMs <= 0 && state.resource.value >= 20) {
+        // Shadowstep behind the kiter — the kit's own answer to ranged flight.
+        await pressSlot(page, 2);
+        await sleep(250);
+      } else if (dist > 2.0 && dist < 1e8) {
+        // Sprint burst: a kiting lobber backs off at 60% speed — walk loses.
+        await page.keyboard.down('ShiftLeft');
+        await page.keyboard.down('KeyW');
+        await sleep(380);
+        await page.keyboard.up('KeyW');
+        await page.keyboard.up('ShiftLeft');
+      }
+      await aimAtLobber();
+      await attack(page);
+      await pressSlot(page, 1); // Twin Strike whenever Energy allows
+      await sleep(260);
+      return false;
+    },
+    90000,
+    50,
+  );
+  ok('the kit clears a lobber (Shadowstep closes, melee finishes)');
+
+  await shoot(page, 'p5-ranged.png');
+  if (errors.length > 0) {
+    fail(`ranged phase console errors:\n  ${errors.slice(0, 5).join('\n  ')}`);
+  }
+  ok('ranged phase: no console errors');
   await context.close();
 };
 

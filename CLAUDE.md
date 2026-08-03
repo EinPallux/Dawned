@@ -84,24 +84,27 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 18 owner decisions to date are answered and folded (decision log in USER_QUESTIONS.md).
-**P0–P4 are ✅ complete (owner-verified; P4 closed 2026-08-03 after the 10-minute demo —
-Glub camp cleared with combo + dodge at `/netsim 100 20`, "worked good").** P4 shipped
-protocol v6: shared damage/stat/hit-shape/stagger formulas, dodge roll with i-frames inside
-the shared movement step, per-class basic combos, lag-rewound server hit resolution, Grunt AI
-camps (Shore Glub, Young Mushnub) + training dummies from published
-`content_enemies`/`content_spawners` rows, telegraphs, floating combat text, death → shrine
-respawn with the Dawned debuff, the §9 juice pass v1, and six owner-playtest fix rounds
-(movement feel, L/R clips, flinch overlays + one-shot action lifecycle, un-mirrored telegraph
-cones, shoulder camera, death beat). Verification: 15-assert combat probe
-(`tools/smoke/combat-probe.mjs`), 19-assert browser smoke incl. mixer-truth animation asserts
-(`tools/smoke/browser-p4.mjs`), P3 smokes green, tick p95 1.17 ms in a live camp fight
-(<15 ms gate). **Next: P5 — Classes I (ability framework, Warrior & Rogue) with A1 (admin
-content editors + publish v1) in parallel — P5's DoD requires ability rows authored through
-the A1 editor end-to-end. Owner items open (non-blocking): the P3 real-hardware group
-session, and the A0 /admin login check (Dawned-Admin).** Deploys to production happen only
-when the owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is
-strict since the P1 deploy fix; it now also bridges the GitHub PAT so the admin panel's
-pinned `@dawned/shared` git dependency installs on the private repos).
+**P0–P4 are ✅ complete (owner-verified; P4 closed 2026-08-03 after the 10-minute demo).
+P5 — Classes I (ability framework, Warrior & Rogue) is built and verified in dev
+(2026-08-03, protocol v7), with A1's abilities editor + publish v1 shipped in parallel.**
+P5 shipped: the `content_abilities` schema + deterministic ability machine (evaluate →
+commit → tick) that BOTH sides run, class resources (Rage/Energy+CP/Mana), the server slot
+executor with lag-rewound targeting + buff/debuff runtime + RMB stances (Block with
+perfect-block riposte; Evasive), all 28 kit rows authored THROUGH the admin editor and
+published via publish v1 (hot reload, no restart — live-tune DoD proven end-to-end), the
+predicted client ability layer + combat HUD cluster (twin globes, radials, CP pips, buff
+chips, cast bar) + ability VFX v1, basics migrated to content rows, enemy projectile volleys
+with ranged kiting AI, and the Spore Ridge ranged test camp. Migration 0005 seeds all P5
+content for deploys (`ON CONFLICT DO NOTHING` — never reverts panel tuning). Verification:
+`tools/smoke/browser-p5.mjs` (21 asserts across Warrior/Rogue/ranged-camp phases), all P0–P4
+smokes green in the same server session, 165 unit tests, tick p95 1.21 ms under ability
+fights (<15 ms gate). **Owner items open (ROADMAP status blocks): the P5 DoD demo runs
+(clear Glub camp + Spore Ridge with each full kit at `/netsim 100 20`) + §9 checklist against
+the kits + HUD look check; plus the P3 real-hardware group session and the A0 /admin login
+check (both non-blocking).** Deploys to production happen only when the owner merges to
+`main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is strict since the P1
+deploy fix; it now also bridges the GitHub PAT so the admin panel's pinned `@dawned/shared`
+git dependency installs on the private repos).
 
 ### Running it locally
 

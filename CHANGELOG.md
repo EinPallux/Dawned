@@ -5,6 +5,31 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — P5 ranged camp, deploy seeds & live-tune proof (2026-08-03)
+
+- **Enemies can shoot now.** The enemy pipeline gained projectile volleys:
+  bolts aim at the target's position at release (strafing during the draw
+  changes the shot), fly dodgeable (i-frames count live or rewound) and are
+  frontally blockable exactly like melee. Ranged-archetype steering holds
+  the volley band and kites at 60 % speed when you close (NPCS_ENEMIES.md
+  §1); panic-melee stays in the weighted attack pick.
+- **New test camp: the Spore Ridge** — three Spore Lobbers (lv 3–5, mushnub
+  rig) east of the shore-glub corridor, published content rows. Tuned after
+  the first run: three focused snipers at full cadence overwhelmed a
+  non-dodging target, so volleys now breathe (2.4 s cooldown, coef 0.8).
+- **P5 content deploys itself:** migration 0005 seeds the 28 published kit
+  rows (frozen from the editor-authored publish) + the Spore Ridge with
+  `ON CONFLICT DO NOTHING` — a fresh database gets the kits, a live one
+  keeps its panel tuning.
+- **Live-tune DoD proven end-to-end:** Crushing Blow's coefficient bumped
+  through the panel (draft → publish v1 → `/ops/reload-content`), the live
+  game served the new number without a restart, then reverted the same way
+  (`Dawned-Admin/tools/content/live-tune-proof.mjs` re-runs the proof).
+- **The P5 browser smoke grew to 21 asserts** (three phases: Warrior kit,
+  Rogue kit, ranged camp — volleys observed, bolts connect, Shadowstep
+  closes the kite and the kit clears a lobber). Tick p95 under ability
+  fights + projectiles: 1.21 ms (<15 ms gate).
+
 ### Added — P5 client ability layer (2026-08-03)
 
 - **The combat HUD grew its real cluster (UI_UX.md §3):** twin faceted globes

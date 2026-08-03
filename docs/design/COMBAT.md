@@ -99,6 +99,36 @@ Rules of the pipeline (identical client-predicted & server-validated):
 5. Casts are interruptible by: own dodge (cancels, 50% cost refund), stun/knockback (full loss),
    moving when `castWhileMoving=false` (grace 150 ms).
 
+### 4.1 As-built (P5, protocol v7)
+
+The row shape shipped as `content_abilities` (shared/src/content/abilities.ts is the contract —
+the field sketch above is superseded by it): bindings are `slot 1–8 | basic step 1–3 | rmb`,
+targeting adds `pbaoe(ticks)` pulse trains, `blink_behind` and per-cone `visual`, and the effect
+vocabulary carries finisher CP scaling, stagger bonuses, apply_effect with mods (incl. periodic
+DoT/HoT, on-hit-apply, next-attack and threat-drop), caster-scoped marks with on-kill riders,
+heals and shields. Both sides run the SAME machine (`formulas/ability-machine.ts`): the client
+evaluates/commits at keypress (instant anim + debit at any ping, refusals answered locally), the
+server validates with identical rules — a reject means real state divergence and ships an
+authoritative cooldown/resource correction (`AbilityState`) the client adopts wholesale.
+
+Decisions of record from the build:
+
+- **Two GCD tracks.** Basics gate on their own combo-window GCD; slot abilities gate on the
+  machine GCD. Weaving a basic between ability presses is legal and intended — the animation
+  layer serializes what the hands do.
+- **Finisher CP are measured before commit** (commit pays the Energy); Eviscerate-style scaling
+  uses the points spent, not the points shown.
+- **Ability movement is predicted movement.** Charge runs through the shared dash inside the
+  movement step; Shadowstep teleports predictively against the interpolated target. Both hold
+  reconciliation for one RTT (the replay can't re-trigger request-initiated movement) — a real
+  desync still snaps via the normal path.
+- **RMB stances are held INTENT, not requests.** The SecondaryAction button bit rides every
+  movement intent; the server folds Block (frontal 120° mitigation, stamina per absorb,
+  200 ms perfect-block window → attacker stagger + Warrior Rage) or Evasive (+10 % speed,
+  −10 dodge stamina, 3 Energy/s) per intent. Remotes see Block via the Blocking entity flag.
+- **Resources re-base from snapshots** (floor compare, fractional regen preserved) with an
+  in-flight-spend hold so a paid cost never bounces back onto the globe during its round trip.
+
 ## 5. Hit Detection Shapes (server truth)
 
 | Shape        | Used by                  | Check                                                                                                                  |

@@ -15,7 +15,7 @@
 | P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
 | P3    | Movement, Netcode Core & Chat v1         | L    | 🟨 built — owner signoff  |
 | P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
-| P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                        |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | 🟨 built — owner signoff  |
 | P6    | Classes II — Mage, Cleric, Status System | L    | 🔲                        |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                        |
 | P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                        |
@@ -278,6 +278,60 @@ Kenney atlas, mesh trails, decals).
 **DoD:** Warrior & Rogue each clear the P4 camp + a new Ranged-archetype camp using full kits;
 every ability passes the juice checklist; ability numbers live-tunable from admin panel without
 restart.
+
+**Status (2026-08-03, protocol v7): built and verified in dev — owner signoff items open.**
+
+- [x] Shared ability core (P5-A): `content_abilities` zod schema (bindings slot/basic/rmb, costs,
+      cooldowns/charges, casts/channels, 9 targeting kinds, ordered effect vocabulary incl.
+      DoTs/marks/on-kill riders — a superset so P6's Mage/Cleric are data-only), the class
+      resource model (Rage builds-in-combat/decays-OOC, Energy 12/s, Mana 100+10×INT, combo
+      points ×5 with spend-all finishers; fractional accumulation so 20 Hz never starves regen),
+      and the deterministic ability machine (evaluate → commit → tick: GCD, charges, cast
+      release, dodge-interrupt refunds) that BOTH sides run. Protocol v7: AbilityRequest gains
+      `targetId`, snapshots carry self resource+CP, EffectSync 0x96 + AbilityState 0x97, the
+      Blocking entity flag. Migration 0004 + 165 tests total across the suites.
+- [x] Server pipeline (P5-B): slot-request executor through the SHARED machine (rejects mean
+      real divergence and ship an authoritative AbilityState correction), lag-rewound targeting
+      for arcs/cones/PBAoE-pulse-trains/single, Charge through the shared dash, Shadowstep
+      blink-behind, the buff/debuff runtime (same-caster stacking, periodic DoTs through the
+      real damage path, caster-scoped marks, next-attack + on-kill riders, aggregate
+      multipliers), RMB stances folded per intent (Warrior/Cleric frontal block + stamina absorb + perfect-block riposte window; Rogue Evasive speed/dodge-discount at 3 Energy/s), taunt
+      override in the AI, and `/ops/reload-content` hot-swap.
+- [x] Kits as content through the editor path (P5-C + A1): all 28 rows (16 slot abilities +
+      12 basics ×4 classes) authored via the Dawned-Admin abilities editor API and published
+      through publish v1 (validate → slot-collision cross-check → transactional copy → ops
+      reload — the cross-check caught a leaked test fixture on its first live run). Basics now
+      execute from content rows (Rage/CP riders on landed hits); ability clips baked with real
+      durations. Migration 0005 freezes the published set for deploys (`ON CONFLICT DO
+NOTHING` — a panel-retuned live row is never reverted by a redeploy).
+- [x] Client ability layer (P5-D): hotbar presses 1–8 predicted through the SAME machine
+      (instant anim + debit at any ping, local refusals with no round trip, rollback + wholesale
+      correction on server rejects, an in-flight-spend hold so the resource globe never bounces),
+      predicted dash/blink under one-RTT correction holds, per-intent stance/Evasive prediction
+      with replay-stable modifiers, and the combat HUD cluster (twin faceted globes, cooldown
+      radials + GCD sweep + ready ping, red refusal seam, CP pips with full-pip proc seam, cast
+      bar, buff/debuff chips, target debuff strip, compact <1500 px breakpoint). Ability VFX v1:
+      pooled bursts/trails/rings/wakes from the defs. RMB shield-up loops on your rig and on
+      remotes via the Blocking flag.
+- [x] Ranged-archetype test camp (P5-E): enemy projectile pipeline (volleys aimed at release,
+      dodgeable by i-frames live-or-rewound, blockable frontally), band-holding + 60 %-speed
+      kiting steering per NPCS_ENEMIES.md §1, and the Spore Ridge camp (3 Spore Lobbers east of
+      the glub corridor) as published content — tuned after the first bot run proved 3 focused
+      snipers overwhelm a non-dodging target.
+- [x] Verification (P5-E): `pnpm check` green (165 tests); the full smoke ladder green in one
+      server session — two-client-sync, combat-probe 15, browser-sync, browser-p4 19, and the
+      new `tools/smoke/browser-p5.mjs` (21 asserts: content-driven hotbar, local Rage gating,
+      rider-built Rage, Charge dash+cooldown, spend-and-land, Shield Wall on the buff bar,
+      bleed + DoT ticks, perfect-block flag round trip, Twin Strike → pips → Eviscerate,
+      Evasive drain, spore volleys + kill); live-tune DoD proven end-to-end (panel edit →
+      publish → hot reload → game serves the new number → reverted the same way); tick perf
+      with ability fights + projectiles: p50 0.36 / p95 1.21 / max 5.8 ms (<15 ms gate),
+      RSS 200 MB.
+- [ ] **Owner: DoD demo runs** — clear the Glub camp AND the Spore Ridge with the full
+      Warrior kit, then the full Rogue kit, at `/netsim 100 20`; §9 juice checklist re-read
+      against the kits; feel verdict per ability (iterate until yes).
+- [ ] **Owner: hotbar/HUD look check** — the Cut Facets combat cluster (globes, radials,
+      pips, buff chips) on the real monitor; call out anything that reads wrong.
 
 ## P6 — Classes II: Mage, Cleric & Status System (L)
 

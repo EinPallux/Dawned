@@ -21,12 +21,13 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0-P4 complete (owner-verified; P4 closed 2026-08-03 after the 10-minute demo
-  at /netsim 100 20). P4 = protocol v6 combat foundation: shared formulas + dodge i-frames
-  in the movement step, basic combos, lag-rewound hits, Grunt AI camps (Glub, Mushnub) +
-  dummies from published content rows, telegraphs, FCT, death/respawn + Dawned, §9 juice
-  pass v1, six owner fix rounds; combat-probe + browser-p4 (19 asserts incl. mixer truth)
-  green, tick p95 1.17 ms in a camp fight. A0 (panel foundation) built and verified in dev
-  in Dawned-Admin. Next: P5 (ability framework, Warrior & Rogue) ⚙ A1 (content editors +
-  publish v1) in parallel. Open non-blocking owner items: P3 real-hardware group session,
-  A0 /admin login check.
+- **State:** P0-P4 complete (owner-verified). P5 (Classes I: ability framework, Warrior &
+  Rogue, protocol v7) built and verified in dev 2026-08-03 alongside A1's abilities editor +
+  publish v1: shared ability machine both sides run, Rage/Energy+CP resources, server slot
+  executor + buffs/DoTs + RMB stances, 28 kit rows authored via the admin editor and
+  published (hot reload; live-tune proven), predicted client hotbar + combat HUD cluster +
+  VFX v1, basics from content rows, enemy projectile volleys + kiting AI, Spore Ridge ranged
+  camp, migration 0005 deploy seeds. browser-p5 (21 asserts) + all earlier smokes green in
+  one session, 165 tests, tick p95 1.21 ms under ability fights. Owner items open: P5 DoD
+  demo runs (both kits, both camps, /netsim 100 20) + §9 kit checklist + HUD look check;
+  non-blocking: P3 real-hardware group session, A0 /admin login check.

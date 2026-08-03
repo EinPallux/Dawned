@@ -57,14 +57,15 @@ KayKit Adventurers (humanoid enemies use Adventurer rigs + weapon bits).
 
 ### Dawnshore (1–6)
 
-| Enemy                           | Lvl | Archetype            | Model                      |
-| ------------------------------- | --- | -------------------- | -------------------------- |
-| Shore Glub                      | 1–2 | Swarm                | Q Glub                     |
-| Meadow Blob / Bog Blob          | 2–4 | Grunt (slow, bouncy) | Q Green/Pink Blob          |
-| Young Mushnub                   | 3–5 | Grunt                | Q Mushnub                  |
-| Cliff Pigeon (aggressive)       | 3–4 | Swarm (dive)         | Q Pigeon                   |
-| Bandit Forager                  | 4–6 | Ranged (thrown)      | KA Peasant-look + dagger   |
-| **Mossback** (mini-boss, quest) | 6   | Elite Grunt          | Q Glub Evolved (scale 1.6) |
+| Enemy                           | Lvl | Archetype            | Model                       |
+| ------------------------------- | --- | -------------------- | --------------------------- |
+| Shore Glub                      | 1–2 | Swarm                | Q Glub                      |
+| Meadow Blob / Bog Blob          | 2–4 | Grunt (slow, bouncy) | Q Green/Pink Blob           |
+| Young Mushnub                   | 3–5 | Grunt                | Q Mushnub                   |
+| Cliff Pigeon (aggressive)       | 3–4 | Swarm (dive)         | Q Pigeon                    |
+| Bandit Forager                  | 4–6 | Ranged (thrown)      | KA Peasant-look + dagger    |
+| Spore Lobber (P5 test camp)     | 3–5 | Ranged (spore bolt)  | Q Mushnub (until KA bandit) |
+| **Mossback** (mini-boss, quest) | 6   | Elite Grunt          | Q Glub Evolved (scale 1.6)  |
 
 ### Verdant Weald (6–12)
 

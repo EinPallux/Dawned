@@ -88,14 +88,17 @@ cross-ref checks: every loot ref exists, every spawner enemy exists, every quest
 not by FKs across draft tables (drafts may be temporarily dangling while editing — the validator
 is the gate, and the game only ever sees validated snapshots).
 
-> **As built (P4):** the first two content tables are live — `content_enemies` and
-> `content_spawners`, each `PK(id, status)` with the whole definition in one `def JSONB`
-> column validated by the shared zod schemas (`@dawned/shared/content`). The draft/published
-> split is the PK's status axis from day one; the server loads **published rows only** at
-> boot and refuses to start on a row that fails validation (fail loud beats simulating weird
-> content). The P4 enemies/camps ship as published seed rows in migration 0003 — authored
-> in SQL exactly once, because the admin content editors arrive with A1/P5; from then on
-> these rows are edited via panel + publish pipeline. The typed hot-field columns sketched
+> **As built (P4/P5):** three content tables are live — `content_enemies`,
+> `content_spawners` and `content_abilities` (P5), each `PK(id, status)` with the whole
+> definition in one `def JSONB` column validated by the shared zod schemas
+> (`@dawned/shared/content`). The draft/published split is the PK's status axis from day
+> one; the server loads **published rows only** at boot and refuses to start on a row that
+> fails validation (fail loud beats simulating weird content). The P4 enemies/camps ship as
+> published seed rows in migration 0003; the P5 ability kits were authored THROUGH the
+> Dawned-Admin abilities editor + publish v1 (drafts → validate → slot-collision cross-check
+> → transactional copy → `/ops/reload-content` hot reload) and migration 0005 freezes that
+> published output for deploys with `ON CONFLICT DO NOTHING` — a redeploy never reverts a
+> panel-retuned live row. The typed hot-field columns sketched
 > above remain the target for when editors need to filter/sort server-side; the zod def is
 > the source of truth either way. Spawner defs as built: point spawns with count, respawn
 > seconds (±20 % jitter), camp tag for social aggro, and a leash radius per entry.

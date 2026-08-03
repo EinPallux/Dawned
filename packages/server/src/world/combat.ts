@@ -102,6 +102,8 @@ export type CombatEvent =
 export interface ServerProjectile {
   id: number;
   ownerId: number;
+  /** Whose bolt: player bolts sweep enemies, enemy bolts sweep players (P5). */
+  ownerKind: 'player' | 'enemy';
   /** The owner's rewind offset in ticks, captured at fire time. */
   rewindTicks: number;
   x: number;
@@ -258,6 +260,7 @@ export const advancePlayerContact = (
     const projectile: ServerProjectile = {
       id: nextProjectileId(),
       ownerId: player.id,
+      ownerKind: 'player',
       rewindTicks: rewind,
       x: player.movement.x,
       y: player.movement.y + 1.4, // hand height
@@ -430,6 +433,77 @@ export const stepProjectiles = (
     const dy = p.dirY * stepLen;
     const dz = p.dirZ * stepLen;
 
+    // Enemy bolts sweep PLAYERS (Ranged archetype, P5) — dodge i-frames and
+    // the RMB block both count exactly like a melee swing would.
+    if (p.ownerKind === 'enemy') {
+      const candidates: ServerPlayer[] = [];
+      const targets: HitTarget[] = [];
+      for (const player of players.values()) {
+        if (player.dead) continue;
+        const px = player.movement.x - p.x;
+        const pz = player.movement.z - p.z;
+        if (px * px + pz * pz > (stepLen + 6) ** 2) continue;
+        candidates.push(player);
+        targets.push({
+          x: player.movement.x,
+          y: player.movement.y,
+          z: player.movement.z,
+          radius: PLAYER_RADIUS,
+          height: PLAYER_HEIGHT,
+        });
+      }
+      const hitPlayer = sweepFirstHit(p.x, p.y, p.z, dx, dy, dz, p.radius, targets, -1);
+      if (hitPlayer) {
+        const victim = candidates[hitPlayer.index]!;
+        const owner = enemies.get(p.ownerId);
+        const hits: ResolveHit[] = [];
+        if (owner) {
+          const resolved = applyEnemyHitToPlayer(
+            owner,
+            victim,
+            p.coef,
+            p.x,
+            p.z,
+            nowMs,
+            rng,
+            events,
+          );
+          if (resolved) hits.push(resolved);
+        }
+        // A dodged bolt (no resolved hit) still pops at the body it grazed.
+        events.push({ type: 'ability-resolve', attackerId: p.ownerId, action: 0, step: 0, hits });
+        const ex = p.x + dx * hitPlayer.t;
+        const ey = p.y + dy * hitPlayer.t;
+        const ez = p.z + dz * hitPlayer.t;
+        events.push({
+          type: 'projectile-end',
+          projectileId: p.id,
+          hit: true,
+          x: ex,
+          y: ey,
+          z: ez,
+        });
+        projectiles.splice(i, 1);
+        continue;
+      }
+      p.x += dx;
+      p.y += dy;
+      p.z += dz;
+      p.travelled += stepLen;
+      if (p.y <= terrain.heightAt(p.x, p.z) || p.travelled >= p.maxRange) {
+        events.push({
+          type: 'projectile-end',
+          projectileId: p.id,
+          hit: p.y <= terrain.heightAt(p.x, p.z),
+          x: p.x,
+          y: p.y,
+          z: p.z,
+        });
+        projectiles.splice(i, 1);
+      }
+      continue;
+    }
+
     const candidates: ServerEnemy[] = [];
     const targets: HitTarget[] = [];
     for (const enemy of enemies.values()) {
@@ -518,7 +592,112 @@ export const stepProjectiles = (
   }
 };
 
-/** Enemy melee swing resolution against players (server-true positions). */
+/**
+ * One enemy-sourced hit landing on one player: dodge i-frames, RMB block
+ * (frontal mitigation + perfect-block riposte), damage roll, Rage-on-damaged,
+ * flinch/death events. Shared by melee swings and enemy projectiles — the
+ * attack SOURCE position drives the block-facing test (the swing origin for
+ * melee, the bolt's impact origin for ranged). Returns null when i-frames ate
+ * the hit.
+ */
+const applyEnemyHitToPlayer = (
+  enemy: ServerEnemy,
+  player: ServerPlayer,
+  coef: number,
+  sourceX: number,
+  sourceZ: number,
+  nowMs: number,
+  rng: Rng,
+  events: CombatEvent[],
+): ResolveHit | null => {
+  if (player.dead) return null;
+  // I-frames count live AND in the victim's rewound time — the roll they
+  // saw on their own screen protects them (NETWORKING.md §4). The OR is
+  // deliberately player-favorable; PvE softens the fairness stakes.
+  const invulnerable =
+    isDodgeInvulnerable(player.movement) ||
+    player.history.wasInvulnerable(rewindTicksFor(player.rttMs));
+  if (invulnerable) return null;
+
+  // RMB block (CLASSES.md): frontal hits are mitigated while the shield is
+  // up and stamina can pay for the absorb; a hit inside the raise window is
+  // a PERFECT block — the attacker staggers open, the Warrior gains Rage.
+  let blockMult = 1;
+  const mitigationPct =
+    player.classId === 'warrior' || player.classId === 'cleric'
+      ? BLOCK_MITIGATION_PCT[player.classId]
+      : undefined;
+  if (player.blocking && mitigationPct !== undefined) {
+    const toSource = Math.atan2(sourceX - player.movement.x, sourceZ - player.movement.z);
+    let facingDelta = toSource - player.movement.yaw;
+    while (facingDelta > Math.PI) facingDelta -= 2 * Math.PI;
+    while (facingDelta < -Math.PI) facingDelta += 2 * Math.PI;
+    const frontal = Math.abs(facingDelta) <= ((BLOCK_ARC_DEG / 2) * Math.PI) / 180;
+    if (frontal && player.movement.stamina >= BLOCK_STAMINA_PER_HIT) {
+      blockMult = 1 - mitigationPct / 100;
+      player.movement.stamina -= BLOCK_STAMINA_PER_HIT;
+      player.movement.staminaIdleMs = 0;
+      if (nowMs - player.blockRaisedAtMs <= PERFECT_BLOCK_WINDOW_MS) {
+        enemy.stunFor(1200, nowMs);
+        enemy.vulnerableUntilMs = nowMs + STAGGER_VULNERABILITY_MS;
+        events.push({
+          type: 'entity-event',
+          entityId: enemy.id,
+          event: EntityEventKind.Stagger,
+          a: 1200,
+          b: 0,
+          c: 0,
+        });
+        if (player.classId === 'warrior') {
+          gainResource(player.resource, PERFECT_BLOCK_RAGE, true);
+        }
+      }
+    }
+  }
+
+  const { amount } = rollDamage(
+    {
+      coef,
+      weaponMin: enemy.swingDamage,
+      weaponMax: enemy.swingDamage,
+      power: 0,
+      school: 'physical',
+      critPct: 0, // enemies never crit — spikes read unfair, not dangerous
+      attackerLevel: enemy.level,
+      targetLevel: player.level,
+      targetArmor: player.stats.armor,
+      targetMagicResistPct: player.stats.magicResistPct,
+      damageTakenMult: damageTakenMultOf(player, enemy.id) * blockMult,
+      damageDealtMult: damageDealtMultOf(enemy),
+    },
+    rng,
+  );
+  player.hp = Math.max(0, player.hp - amount);
+  player.lastCombatAtMs = nowMs;
+  if (player.classId === 'warrior' && player.hp > 0) {
+    gainResource(player.resource, RAGE_ON_DAMAGED, true);
+  }
+  if (player.hp <= 0) {
+    events.push({ type: 'player-died', playerId: player.id, killerEnemyId: enemy.id });
+  } else {
+    events.push({
+      type: 'entity-event',
+      entityId: player.id,
+      event: EntityEventKind.Flinch,
+      a: 0,
+      b: 0,
+      c: 0,
+    });
+  }
+  return { targetId: player.id, amount, flags: player.hp <= 0 ? HitFlag.Killed : 0 };
+};
+
+/**
+ * Enemy swing resolution against players (server-true positions). Melee kinds
+ * arc-test at contact; projectile kinds loose a bolt at the current target
+ * instead (Ranged archetype, NPCS_ENEMIES.md §1: "dodgeable projectile" — the
+ * flight time IS the counterplay window, so no decal).
+ */
 export const resolveEnemySwing = (
   enemy: ServerEnemy,
   ability: EnemyAbilityDef,
@@ -529,7 +708,72 @@ export const resolveEnemySwing = (
   nowMs: number,
   rng: Rng,
   events: CombatEvent[],
+  nextProjectileId?: () => number,
+  projectiles?: ServerProjectile[],
+  targetId?: number | null,
 ): void => {
+  if (ability.kind === 'projectile') {
+    if (!nextProjectileId || !projectiles) return;
+    // Aim at the target's position at RELEASE (not wind-up start): strafing
+    // during the draw changes the shot, and level flight keeps it dodgeable.
+    const target = players.find((p) => p.id === targetId && !p.dead);
+    let dirX = Math.sin(swingYaw);
+    let dirY = 0;
+    let dirZ = Math.cos(swingYaw);
+    const muzzleY = enemy.y + enemy.def.hitHeight * 0.75;
+    if (target) {
+      const tx = target.movement.x - enemy.x;
+      const ty = target.movement.y + PLAYER_HEIGHT * 0.55 - muzzleY;
+      const tz = target.movement.z - enemy.z;
+      const len = Math.hypot(tx, ty, tz);
+      if (len > 1e-3) {
+        dirX = tx / len;
+        dirY = ty / len;
+        dirZ = tz / len;
+      }
+    }
+    const projectile: ServerProjectile = {
+      id: nextProjectileId(),
+      ownerId: enemy.id,
+      ownerKind: 'enemy',
+      rewindTicks: 0, // victims are tested at server-true time (their i-frames still rewind)
+      x: enemy.x,
+      y: muzzleY,
+      z: enemy.z,
+      dirX,
+      dirY,
+      dirZ,
+      speed: ability.projectileSpeed,
+      radius: ability.projectileRadius,
+      travelled: 0,
+      maxRange: ability.rangeMax + 6,
+      coef: ability.coef,
+      school: 'physical',
+      power: 0,
+      weaponMin: enemy.swingDamage,
+      weaponMax: enemy.swingDamage,
+      critPct: 0,
+      attackerLevel: enemy.level,
+      damageDealtMult: damageDealtMultOf(enemy),
+      stagger: 0,
+    };
+    projectiles.push(projectile);
+    events.push({
+      type: 'projectile-spawn',
+      projectileId: projectile.id,
+      ownerId: enemy.id,
+      x: projectile.x,
+      y: projectile.y,
+      z: projectile.z,
+      dirX,
+      dirY,
+      dirZ,
+      speed: projectile.speed,
+      visual: 2, // enemy palette (client VISUALS[2])
+    });
+    return;
+  }
+
   const targets: HitTarget[] = players.map((p) => ({
     x: p.movement.x,
     y: p.movement.y,
@@ -550,87 +794,17 @@ export const resolveEnemySwing = (
 
   const hits: ResolveHit[] = [];
   for (const index of hitIndices) {
-    const player = players[index]!;
-    if (player.dead) continue;
-    // I-frames count live AND in the victim's rewound time — the roll they
-    // saw on their own screen protects them (NETWORKING.md §4). The OR is
-    // deliberately player-favorable; PvE softens the fairness stakes.
-    const invulnerable =
-      isDodgeInvulnerable(player.movement) ||
-      player.history.wasInvulnerable(rewindTicksFor(player.rttMs));
-    if (invulnerable) continue;
-
-    // RMB block (CLASSES.md): frontal hits are mitigated while the shield is
-    // up and stamina can pay for the absorb; a hit inside the raise window is
-    // a PERFECT block — the attacker staggers open, the Warrior gains Rage.
-    let blockMult = 1;
-    const mitigationPct =
-      player.classId === 'warrior' || player.classId === 'cleric'
-        ? BLOCK_MITIGATION_PCT[player.classId]
-        : undefined;
-    if (player.blocking && mitigationPct !== undefined) {
-      const toEnemy = Math.atan2(swingX - player.movement.x, swingZ - player.movement.z);
-      let facingDelta = toEnemy - player.movement.yaw;
-      while (facingDelta > Math.PI) facingDelta -= 2 * Math.PI;
-      while (facingDelta < -Math.PI) facingDelta += 2 * Math.PI;
-      const frontal = Math.abs(facingDelta) <= ((BLOCK_ARC_DEG / 2) * Math.PI) / 180;
-      if (frontal && player.movement.stamina >= BLOCK_STAMINA_PER_HIT) {
-        blockMult = 1 - mitigationPct / 100;
-        player.movement.stamina -= BLOCK_STAMINA_PER_HIT;
-        player.movement.staminaIdleMs = 0;
-        if (nowMs - player.blockRaisedAtMs <= PERFECT_BLOCK_WINDOW_MS) {
-          enemy.stunFor(1200, nowMs);
-          enemy.vulnerableUntilMs = nowMs + STAGGER_VULNERABILITY_MS;
-          events.push({
-            type: 'entity-event',
-            entityId: enemy.id,
-            event: EntityEventKind.Stagger,
-            a: 1200,
-            b: 0,
-            c: 0,
-          });
-          if (player.classId === 'warrior') {
-            gainResource(player.resource, PERFECT_BLOCK_RAGE, true);
-          }
-        }
-      }
-    }
-
-    const { amount } = rollDamage(
-      {
-        coef: ability.coef,
-        weaponMin: enemy.swingDamage,
-        weaponMax: enemy.swingDamage,
-        power: 0,
-        school: 'physical',
-        critPct: 0, // enemies never crit — spikes read unfair, not dangerous
-        attackerLevel: enemy.level,
-        targetLevel: player.level,
-        targetArmor: player.stats.armor,
-        targetMagicResistPct: player.stats.magicResistPct,
-        damageTakenMult: damageTakenMultOf(player, enemy.id) * blockMult,
-        damageDealtMult: damageDealtMultOf(enemy),
-      },
+    const hit = applyEnemyHitToPlayer(
+      enemy,
+      players[index]!,
+      ability.coef,
+      swingX,
+      swingZ,
+      nowMs,
       rng,
+      events,
     );
-    player.hp = Math.max(0, player.hp - amount);
-    player.lastCombatAtMs = nowMs;
-    if (player.classId === 'warrior' && player.hp > 0) {
-      gainResource(player.resource, RAGE_ON_DAMAGED, true);
-    }
-    hits.push({ targetId: player.id, amount, flags: player.hp <= 0 ? HitFlag.Killed : 0 });
-    if (player.hp <= 0) {
-      events.push({ type: 'player-died', playerId: player.id, killerEnemyId: enemy.id });
-    } else {
-      events.push({
-        type: 'entity-event',
-        entityId: player.id,
-        event: EntityEventKind.Flinch,
-        a: 0,
-        b: 0,
-        c: 0,
-      });
-    }
+    if (hit) hits.push(hit);
   }
   events.push({ type: 'ability-resolve', attackerId: enemy.id, action: 0, step: 0, hits });
 };

@@ -20,6 +20,18 @@
 - **Respec:** gold cost at Dawnhaven "Mirror of Dawn" (see PROGRESSION.md §6): refunds all skill
   points (stat points separately).
 
+> **As built (P5, 2026-08-03):** the Warrior (§1) and Rogue (§3) kits are live as
+> `content_abilities` rows — 8 slot abilities each plus all 12 basic-combo steps (all four
+> classes), authored through the Dawned-Admin abilities editor and published via publish v1;
+> exact shipped numbers live in the rows (panel-tunable without restart), with migration 0005
+> as the deploy seed. Resource model implemented per §0: Rage 100 (builds +4/landed basic,
+> +5/hit taken, +15 perfect block; decays 2/s out of combat), Energy 100 at 12/s with combo
+> points ×5 (builder-granted, finishers spend all), Mana `100 + 10×INT` (P6 casters). RMB
+> stances live: Warrior Block (frontal 120°, 60 % mitigation, 12 stamina per absorb, 200 ms
+> perfect-block window → riposte stagger + 15 Rage) and Rogue Evasive (+10 % speed, −10 dodge
+> stamina, 3 Energy/s). Slot unlock levels [1,3,6,10,14,18,22,25]. Mage/Cleric kits are P6
+> data on the same schema.
+
 ### Class overview
 
 | Class   | Archetype              | Resource                                           | Weapons (asset refs)                                                                                             | Damage stat              | Armor class                |

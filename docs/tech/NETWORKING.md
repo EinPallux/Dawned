@@ -37,7 +37,13 @@ binary.
 > Hello (P1), v3 chunked terrain + walkability (P2), v4 swimming flag + entity `kind` byte
 > (P3), v5 downhill ground glue (P3 fix rounds), v6 combat (dodge button in the shared step,
 > hp/maxHp in the self block, hpFraction u8 + flags u16 on entities, Ping echoes the last
-> Pong's server time so the server measures RTT for rewind). Snapshots remain **full-state
+> Pong's server time so the server measures RTT for rewind), v7 abilities (P5:
+> AbilityRequest carries the soft-target `targetId`; the self block carries the resource
+> floor u16 + combo points u8; EffectSync 0x96 replaces an entity's buff/debuff list
+> wholesale on change; AbilityState 0x97 is the authoritative cooldown/resource correction
+> after slot rejects and on join/resume; hotbar slots ride the action byte via
+> SLOT_ACTION_BASE; the Blocking entity flag shows RMB stances on remotes; the
+> SecondaryAction input button carries held stances per intent). Snapshots remain **full-state
 > within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
 > (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
 > total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16
