@@ -7,7 +7,10 @@
 
 import { eq } from 'drizzle-orm';
 import {
+  BASIC_COMBOS,
   abilityDefSchema,
+  buildBasicChains,
+  type ComboChain,
   enemyDefSchema,
   spawnerDefSchema,
   validateEnemyDef,
@@ -26,6 +29,8 @@ export interface GameContent {
   abilities: Map<string, AbilityDef>;
   /** Hotbar lookup: `${classId}:${slot}` → def (request routing). */
   abilityBySlot: Map<string, AbilityDef>;
+  /** Basic combo chains — content-sourced (falls back to code until 0005 seeds). */
+  basicChains: Record<ClassId, ComboChain>;
 }
 
 export const slotKey = (classId: ClassId, slot: number): string => `${classId}:${slot}`;
@@ -103,5 +108,13 @@ export const loadContent = async (db: Db): Promise<GameContent> => {
   if (problems.length > 0) {
     throw new Error(`published content failed validation:\n  ${problems.join('\n  ')}`);
   }
-  return { enemies, spawners, abilities, abilityBySlot };
+
+  // Basics from content (COMBAT.md §3 as-built): the shared fallback covers a
+  // database that predates the kit seed migration — warn, never half-load.
+  const basicChains = buildBasicChains([...abilities.values()]) ?? BASIC_COMBOS;
+  if (buildBasicChains([...abilities.values()]) === null) {
+    console.warn('[content] basic-combo rows missing/incomplete — using shared BASIC_COMBOS');
+  }
+
+  return { enemies, spawners, abilities, abilityBySlot, basicChains };
 };

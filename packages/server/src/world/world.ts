@@ -22,6 +22,7 @@ import {
   stepMovement,
   type Appearance,
   type ClassId,
+  BASIC_COMBOS,
   EVASIVE_DODGE_DISCOUNT,
   EVASIVE_ENERGY_PER_S,
   EVASIVE_MOVE_SPEED_PCT,
@@ -375,7 +376,15 @@ export class World {
       // 1b. Queued combat requests enter the pipeline after movement.
       for (const request of player.takeAttackRequests()) {
         if (request.action === (ActionId.BasicAttack as number)) {
-          handleAttackRequest(player, request.seq, request.aimYaw, request.aimPitch, nowMs, events);
+          handleAttackRequest(
+            player,
+            request.seq,
+            request.aimYaw,
+            request.aimPitch,
+            this.content?.basicChains ?? BASIC_COMBOS,
+            nowMs,
+            events,
+          );
         } else if (request.action === (ActionId.Respawn as number)) {
           this.handleRespawn(player, request.seq, nowMs, events);
         } else if (slotForAction(request.action) !== null && this.content !== null) {
@@ -420,6 +429,7 @@ export class World {
       advancePlayerContact(
         player,
         this.enemies,
+        this.content?.basicChains ?? BASIC_COMBOS,
         nowMs,
         this.rng,
         () => this.nextProjectileId++,

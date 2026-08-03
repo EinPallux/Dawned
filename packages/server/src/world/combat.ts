@@ -11,7 +11,6 @@
 import {
   ActionId,
   AbilityRejectReason,
-  BASIC_COMBOS,
   COMBO_LINK_WINDOW_FRACTION,
   COMBO_RESET_MS,
   DAWNED_DAMAGE_PENALTY,
@@ -34,12 +33,15 @@ import {
   PERFECT_BLOCK_WINDOW_MS,
   RAGE_ON_DAMAGED,
   addStagger,
+  gainComboPoints,
   gainResource,
   arcHits,
   baseWeaponDamage,
   isDodgeInvulnerable,
   rollDamage,
   sweepFirstHit,
+  type ClassId,
+  type ComboChain,
   type EnemyAbilityDef,
   type HitTarget,
   type ResolveHit,
@@ -155,6 +157,7 @@ export const handleAttackRequest = (
   seq: number,
   aimYaw: number,
   aimPitch: number,
+  chains: Record<ClassId, ComboChain>,
   nowMs: number,
   events: CombatEvent[],
 ): void => {
@@ -176,7 +179,7 @@ export const handleAttackRequest = (
     return;
   }
 
-  const combo = BASIC_COMBOS[player.classId];
+  const combo = chains[player.classId];
   // Chain state: which step fires, per the shared timing rules.
   let step = 0;
   if (player.comboStep >= 0 && player.comboStartedAtMs > 0) {
@@ -233,6 +236,7 @@ export const cancelComboOnDodge = (player: ServerPlayer): void => {
 export const advancePlayerContact = (
   player: ServerPlayer,
   enemies: ReadonlyMap<number, ServerEnemy>,
+  chains: Record<ClassId, ComboChain>,
   nowMs: number,
   rng: Rng,
   nextProjectileId: () => number,
@@ -243,7 +247,7 @@ export const advancePlayerContact = (
   if (!contact || nowMs < contact.atMs) return;
   player.pendingContact = null;
 
-  const combo = BASIC_COMBOS[player.classId];
+  const combo = chains[player.classId];
   const stepDef = combo.steps[contact.step]!;
   const weapon = baseWeaponDamage(player.level);
   const dealtMult = nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1;
@@ -342,6 +346,14 @@ export const advancePlayerContact = (
     hits.push(
       applyDamageToEnemy(enemy, player.id, player, amount, crit, stepDef.stagger, nowMs, events),
     );
+  }
+  // Resource riders per landed step (CLASSES.md §0/§3): Rage per basic hit,
+  // the Rogue combo point on step 3 — content-declared, applied on contact.
+  if (hits.length > 0) {
+    if (stepDef.rageGain > 0) gainResource(player.resource, stepDef.rageGain, true);
+    if (stepDef.comboPointGain > 0 && player.classId === 'rogue') {
+      gainComboPoints(player.resource, stepDef.comboPointGain);
+    }
   }
   // Always resolve — an empty hit list tells the attacker's client to cancel
   // its optimistic hit-stop (a whiff must read as a whiff).

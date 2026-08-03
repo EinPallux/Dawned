@@ -157,10 +157,7 @@
       "skinned": true,
       "bodyCut": {
         "meshPattern": "Superhero|Retopology",
-        "bones": [
-          "Head",
-          "neck_01"
-        ],
+        "bones": ["Head", "neck_01"],
         "threshold": 0.4
       },
       "imageOverrides": {
@@ -170,19 +167,11 @@
         "T_Superhero_Female_Dark_BaseColor.png": "../Textures/T_Superhero_Female_Light_BaseColor.png",
         "T_Hair_1_BaseColor.png": {
           "grayscale": true,
-          "multiplyRGB": [
-            1.47,
-            1.47,
-            1.47
-          ]
+          "multiplyRGB": [1.47, 1.47, 1.47]
         },
         "T_Hair_2_BaseColor.png": {
           "grayscale": true,
-          "multiplyRGB": [
-            1.47,
-            1.47,
-            1.47
-          ]
+          "multiplyRGB": [1.47, 1.47, 1.47]
         }
       }
     },
@@ -195,19 +184,11 @@
       "imageOverrides": {
         "T_Hair_1_BaseColor.png": {
           "grayscale": true,
-          "multiplyRGB": [
-            1.47,
-            1.47,
-            1.47
-          ]
+          "multiplyRGB": [1.47, 1.47, 1.47]
         },
         "T_Hair_2_BaseColor.png": {
           "grayscale": true,
-          "multiplyRGB": [
-            1.47,
-            1.47,
-            1.47
-          ]
+          "multiplyRGB": [1.47, 1.47, 1.47]
         }
       }
     },
@@ -219,18 +200,10 @@
       "skinned": true,
       "imageOverrides": {
         "T_Regular_Male_Dark_BaseColor.png": {
-          "multiplyRGB": [
-            1.062,
-            1.094,
-            1.13
-          ]
+          "multiplyRGB": [1.062, 1.094, 1.13]
         },
         "T_Regular_Female_Dark_BaseColor.png": {
-          "multiplyRGB": [
-            1.036,
-            1.055,
-            1.078
-          ]
+          "multiplyRGB": [1.036, 1.055, 1.078]
         }
       }
     },
