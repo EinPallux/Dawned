@@ -8,6 +8,7 @@
  */
 
 import { build } from '../src/build.mjs';
+import { bakeIcons, fetchIcons } from '../src/icons.mjs';
 import { report } from '../src/report.mjs';
 import { sync } from '../src/sync.mjs';
 
@@ -29,8 +30,13 @@ const run = async () => {
       await sync();
       return;
     }
+    case 'icons': {
+      if (flags.includes('--fetch')) await fetchIcons();
+      await bakeIcons();
+      return;
+    }
     default:
-      console.error(`unknown command "${command}" — expected "build", "report" or "sync"`);
+      console.error(`unknown command "${command}" — expected "build", "icons", "report" or "sync"`);
       process.exitCode = 1;
   }
 };

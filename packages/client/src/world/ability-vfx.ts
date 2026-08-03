@@ -35,9 +35,9 @@ interface ActiveShape {
   mesh: THREE.Mesh;
   life: number;
   maxLife: number;
-  /** Ring: end radius. Trail: unused. */
+  /** Ring: end radius. Flash: end scale. Trail: unused. */
   grow: number;
-  kind: 'ring' | 'trail';
+  kind: 'ring' | 'trail' | 'flash';
 }
 
 /** Soft radial sprite for the particle cloud. */
@@ -184,6 +184,31 @@ export class AbilityVfxManager {
     }
   }
 
+  /**
+   * Camera-facing impact flash: a bright sprite that pops and dies in ~150 ms.
+   * THE contact read — bursts alone were too subtle on a real monitor.
+   */
+  flash(x: number, y: number, z: number, color: THREE.ColorRepresentation, size = 1.4): void {
+    const material = new THREE.SpriteMaterial({
+      map: (this.points.material as THREE.PointsMaterial).map,
+      color,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.position.set(x, y, z);
+    sprite.scale.setScalar(size * 0.5);
+    this.addShape({
+      mesh: sprite as unknown as THREE.Mesh,
+      life: 0,
+      maxLife: 0.16,
+      grow: size,
+      kind: 'flash',
+    });
+  }
+
   /** Expanding ground ring (PBAoE pulses, perfect-block ping). */
   ring(x: number, y: number, z: number, radius: number, color: THREE.ColorRepresentation): void {
     const material = new THREE.MeshBasicMaterial({
@@ -283,6 +308,10 @@ export class AbilityVfxManager {
         const eased = 1 - (1 - t) * (1 - t);
         shape.mesh.scale.setScalar(Math.max(0.2, shape.grow * eased));
         material.opacity = 0.85 * (1 - t);
+      } else if (shape.kind === 'flash') {
+        const eased = 1 - (1 - t) * (1 - t);
+        shape.mesh.scale.setScalar(Math.max(0.2, shape.grow * (0.4 + 0.6 * eased)));
+        material.opacity = 0.95 * (1 - t);
       } else {
         material.opacity = 0.5 * (1 - t);
         shape.mesh.scale.multiplyScalar(1 + dt * 1.6);

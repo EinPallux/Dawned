@@ -5,6 +5,48 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — P5 playtest round 7: combat readability & feel (2026-08-03)
+
+The owner's verdict on the first kit session was blunt — no visible
+cooldowns, no castable/uncastable states, no proper ability animations, no
+impact, no icons. Root causes found and fixed:
+
+- **Every ability has a real icon now** (owner request): a curated
+  game-icons.net set — Crushing Blow `hammer-drop`, Shield Bash
+  `shield-bash`, Charge `charging-bull`, Rending Slash `bleeding-wound`,
+  Taunting Shout `shouting`, Whirlwind `whirlwind`, Shield Wall
+  `edged-shield`, Earthshatter `quake-stomp`, Twin Strike `crossed-swords`,
+  Shadowstep `shadow-follower`, Eviscerate `bloody-sword`, Fan of Knives
+  `thrown-daggers`, Crippling Strike `broken-bone`, Poisoned Blades
+  `dripping-knife`, Smoke Veil `smoke-bomb`, Death Mark `targeting`, plus
+  per-class basics — 20 icons through a new pipeline step
+  (`pnpm assets:icons --fetch`, vendored SVGs, license ledger with every
+  author named, CC BY 3.0). The HUD masks them, so tile states tint the
+  icon itself. Buff/debuff chips wear the icon of the ability that applied
+  them.
+- **Ability animations were playing at 2.2×–4.3× fast-forward** — the real
+  reason combat looked animation-less: every kit press crammed a long clip
+  into a short swing (Whirlwind squeezed a 4.3 s combo into 1 s; Shield
+  Wall "played" an idle loop at 4.2×; Smoke Veil somersaulted the dodge
+  roll). All 16 slot abilities re-timed into a readable 0.96–2.4× band
+  with fitting clips (Shield Wall braces with the shield pop, Smoke Veil
+  THROWS the bomb, Earthshatter gets the big overhead) — republished
+  through the panel, deploy seed refreshed.
+- **Cooldowns you can actually read:** the radial wipe darkened and the
+  timer now counts the whole way down (tenths under 10 s, seconds above),
+  in bright gold on every cooling tile.
+- **Castability at a glance:** ready tiles are lit with a warm icon glow;
+  unaffordable tiles go cold-dark with the cost in red; locked tiles are
+  near-black with their `Lv N` tag; cooling tiles shade until the ready
+  ping. And every refused press now SAYS WHY — a floating reason above the
+  hotbar ("Not enough Rage", "Locked — reach level 6", "Needs combo
+  points") on both local refusals and server rejects.
+- **Impact you can feel:** every confirmed hit pops a bright flash at the
+  wound plus a bigger spray (crits ~double, kills flash white), slot
+  abilities hit with 90 ms hit-stop + a stronger camera kick + a shake,
+  PBAoE casts shake on commit, and Shadowstep flashes out/in at both ends.
+  Ability contacts use the heavy impact sound layer.
+
 ### Added — P5 ranged camp, deploy seeds & live-tune proof (2026-08-03)
 
 - **Enemies can shoot now.** The enemy pipeline gained projectile volleys:

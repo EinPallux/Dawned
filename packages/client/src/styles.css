@@ -1240,17 +1240,56 @@ canvas.game {
   transition: filter 120ms var(--ease);
 }
 
+/* Real ability icon (game-icons, baked): masked so STATES tint it. */
+.hud-slot-icon {
+  position: absolute;
+  inset: 7px;
+  background-color: var(--parchment);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+  transition: background-color 120ms var(--ease);
+}
+
 .hud-slot-cost {
   position: absolute;
   bottom: 2px;
   right: 4px;
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 800;
   color: var(--gold-bright);
+  text-shadow: 0 1px 2px #000;
   z-index: 3;
 }
 
-/* Insufficient resource: desaturate + dim (§3). */
+.hud-slot-lock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: var(--muted);
+  z-index: 3;
+}
+
+/* READY: lit tile — the icon glows parchment on a livelier frame. */
+.hud-slot[data-state='ready'] {
+  border-color: #59647c;
+  background: linear-gradient(180deg, rgba(40, 50, 74, 0.9), rgba(21, 26, 38, 0.9));
+}
+.hud-slot[data-state='ready'] .hud-slot-icon {
+  filter: drop-shadow(0 0 3px rgba(240, 196, 107, 0.25));
+}
+
+/* POOR (can't afford): the whole tile goes cold — unmistakable at a glance. */
+.hud-slot[data-state='poor'] {
+  background: rgba(10, 13, 20, 0.92);
+}
+.hud-slot[data-state='poor'] .hud-slot-icon {
+  background-color: #46506a;
+}
 .hud-slot[data-state='poor'] .hud-slot-glyph {
   filter: grayscale(0.9) brightness(0.55);
 }
@@ -1258,6 +1297,17 @@ canvas.game {
   color: var(--error);
 }
 
+/* COOLING: shaded while the radial runs (state color comes back on ready). */
+.hud-slot[data-state='cooling'] .hud-slot-icon {
+  background-color: #6b7488;
+}
+
+.hud-slot[data-state='locked'] {
+  background: rgba(8, 10, 16, 0.92);
+}
+.hud-slot[data-state='locked'] .hud-slot-icon {
+  background-color: #2c3345;
+}
 .hud-slot[data-state='locked'] .hud-slot-glyph {
   filter: grayscale(1) brightness(0.35);
 }
@@ -1265,21 +1315,64 @@ canvas.game {
   color: var(--muted);
 }
 
-/* Cooldown radial: conic wipe from 12 o'clock, seconds centered. */
+/* Cooldown radial: conic wipe from 12 o'clock, timer readable the whole way. */
 .hud-slot-cd {
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: conic-gradient(rgba(10, 13, 21, 0.82) var(--cd, 0deg), transparent 0);
+  background: conic-gradient(rgba(8, 10, 16, 0.88) var(--cd, 0deg), rgba(8, 10, 16, 0.25) 0);
   display: grid;
   place-items: center;
 }
 
 .hud-slot-cd-s {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
-  color: var(--parchment);
-  text-shadow: 0 1px 3px #000;
+  color: #ffe9b8;
+  text-shadow:
+    0 0 4px #000,
+    0 1px 3px #000;
+}
+
+/* Refusal reason: pops above the hotbar, then fades (§3 red-seam companion). */
+.hud-refusal {
+  width: max-content;
+  margin: 0 auto 6px;
+  padding: 3px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffb4a8;
+  background: rgba(21, 26, 38, 0.92);
+  border: 1px solid rgba(224, 77, 63, 0.7);
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.hud-refusal.is-live {
+  animation: hud-refusal-pop 900ms var(--ease);
+}
+
+@keyframes hud-refusal-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1.02);
+  }
+  20% {
+    transform: translateY(0) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 /* GCD: quick bottom-up shade sweep across ready slots. */
@@ -1425,6 +1518,33 @@ canvas.game {
   font-size: 13px;
   color: var(--parchment);
   line-height: 1.1;
+}
+
+.hud-effect-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0 auto;
+  background-color: var(--parchment);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.hud-effect.is-harmful .hud-effect-icon {
+  background-color: #f0a08e;
+}
+
+.hud-effect-stacks {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--gold-bright);
+}
+
+.hud-effect.is-harmful .hud-effect-stacks {
+  color: #f0b7a8;
 }
 
 .hud-effect-glyph b {
