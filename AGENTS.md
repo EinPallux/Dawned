@@ -21,8 +21,12 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0-P2 complete (owner-verified). P3 (movement/netcode core/chat v1, protocol v4)
-  built and verified in dev 2026-08-02 — swimming, AOI, reconnect grace, chat+bubbles+/stuck,
-  8-way/lean/swim anims, lag lab; load/latency gates green (ROADMAP P3 status). A0 (panel
-  foundation) built and verified in dev in Dawned-Admin. Open: the owner's real-hardware 100 ms
-  P3 signoff and the /admin login check — then both phases close.
+- **State:** P0-P2 complete (owner-verified). P3 (movement/netcode core/chat v1) built,
+  verified and playtest-hardened through five owner fix rounds. P4 — Combat Foundation
+  (protocol v6) — built and verified in dev 2026-08-03: shared combat formulas + dodge
+  i-frames in the movement step, basic combos, lag-rewound hits, Grunt AI camps (Glub,
+  Mushnub) + dummies from published content rows, telegraphs, FCT, death/respawn + Dawned,
+  §9 juice pass v1; combat-probe + browser-p4 smokes green, P3 smokes still green, tick p95
+  1.17 ms in a camp fight. A0 (panel foundation) built and verified in dev in Dawned-Admin.
+  Open owner items: P3 real-hardware 100 ms session, P4 10-minute demo + §9 review + feel
+  signoff, A0 /admin login check (ROADMAP status blocks).

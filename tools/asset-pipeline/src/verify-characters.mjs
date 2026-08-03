@@ -31,11 +31,13 @@ const PIECE_IDS = [
   'characters_hair_beard',
 ];
 
-const ANIMATION_IDS = ['characters_ual1'];
+const ANIMATION_IDS = ['characters_ual1', 'characters_ual2_standard'];
 
 /**
  * Clips the client requires at runtime — class pose clips from
- * packages/shared/src/data/appearance.ts plus the locomotion set used in-world.
+ * packages/shared/src/data/appearance.ts, the locomotion set used in-world,
+ * and the P4 combat set (combo chain from shared/src/data/basic-combos.ts,
+ * dodge Roll, hit reacts, death, block, knockback).
  * Keep in sync when either side changes.
  */
 const REQUIRED_CLIPS = [
@@ -61,6 +63,19 @@ const REQUIRED_CLIPS = [
   'Jump_Land',
   'Swim_Idle_Loop',
   'Swim_Fwd_Loop',
+  'Roll',
+  'Death01',
+  'Hit_Chest',
+  'Hit_Head',
+  'Hit_Stomach',
+  'Hit_Shoulder_L',
+  'Hit_Shoulder_R',
+  'Spell_Simple_Shoot',
+  'Sword_Regular_A',
+  'Sword_Regular_B',
+  'Sword_Regular_C',
+  'Sword_Block',
+  'Hit_Knockback',
 ];
 
 const readBaked = async (manifest, id, failures) => {

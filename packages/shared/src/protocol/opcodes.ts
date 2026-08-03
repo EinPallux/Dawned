@@ -7,12 +7,13 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 5; // v5 (P3 fix): downhill ground snap in the shared step
+export const PROTOCOL_VERSION = 6; // v6 (P4): combat — dodge in the step, abilities, enemies, HP
 
 /** Client → server opcodes. */
 export const ClientOp = {
   Hello: 0x01,
   InputIntent: 0x02,
+  AbilityRequest: 0x03,
   Ping: 0x08,
   Chat: 0x07,
 } as const;
@@ -26,6 +27,14 @@ export const ServerOp = {
   Roster: 0x8b,
   Pong: 0x8c,
   SystemNotice: 0x8d,
+  AbilityStart: 0x8e,
+  AbilityResolve: 0x8f,
+  AbilityReject: 0x90,
+  EntityEvent: 0x91,
+  Telegraph: 0x92,
+  ProjectileSpawn: 0x93,
+  ProjectileEnd: 0x94,
+  EnemyMeta: 0x95,
 } as const;
 export type ServerOp = (typeof ServerOp)[keyof typeof ServerOp];
 
@@ -39,14 +48,70 @@ export const InputButton = {
 } as const;
 export type InputButton = (typeof InputButton)[keyof typeof InputButton];
 
-/** Entity state flags carried in snapshots. */
+/** Entity state flags carried in snapshots (u16 on the wire since v6). */
 export const EntityFlag = {
   Grounded: 1 << 0,
   Sprinting: 1 << 1,
   Moving: 1 << 2,
   Swimming: 1 << 3,
+  /** Mid dodge-roll (remote clients play the Roll clip). */
+  Dodging: 1 << 4,
+  /** Enemy posture: in the COMBAT FSM state (client shows combat idle/plates). */
+  InCombat: 1 << 5,
+  /** Stagger stun playing (COMBAT.md §6.4 HitReact window). */
+  Staggered: 1 << 6,
+  /** Dead but still visible (death anim / corpse until despawn). */
+  Dead: 1 << 7,
+  /** Leash RETURN sprint — invulnerable, client tints/ignores as a target. */
+  Leashing: 1 << 8,
 } as const;
 export type EntityFlag = (typeof EntityFlag)[keyof typeof EntityFlag];
+
+/** Actions a client may request (COMBAT.md §3; ability slots arrive P5). */
+export const ActionId = {
+  BasicAttack: 0,
+  /** Soul-screen "return to shrine" (COMBAT.md §10); valid only while dead. */
+  Respawn: 1,
+} as const;
+export type ActionId = (typeof ActionId)[keyof typeof ActionId];
+
+/** Why an AbilityRequest was refused (client rolls back its prediction). */
+export const AbilityRejectReason = {
+  Dead: 1,
+  OnCooldown: 2,
+  NoStamina: 3,
+  BadState: 4,
+} as const;
+export type AbilityRejectReason = (typeof AbilityRejectReason)[keyof typeof AbilityRejectReason];
+
+/** Per-entity combat happenings (ServerOp.EntityEvent payload kinds). */
+export const EntityEventKind = {
+  /** Enemy noticed a player: 0.5 s alert beat ('No' clip + tell). */
+  Alert: 1,
+  /** Stagger triggered: full-body HitReact for `a` ms. */
+  Stagger: 2,
+  /** Death. Corpse lingers; client plays Death clip + desaturate + sink. */
+  Death: 3,
+  /** (Re)spawned or leash-reset to full — client refreshes plates. */
+  Respawn: 4,
+  /** Leash RETURN began (invulnerable sprint home). */
+  Leash: 5,
+  /** Knockback displacement: (a,b) = world dx,dz applied over `c` ms (snap window). */
+  Knockback: 6,
+  /** The "Dawned" respawn debuff applied to a player for `a` ms (COMBAT.md §10). */
+  Dawned: 7,
+  /** Light-hit flinch on a victim (upper-body blend on remotes). */
+  Flinch: 8,
+} as const;
+export type EntityEventKind = (typeof EntityEventKind)[keyof typeof EntityEventKind];
+
+/** Telegraph decal shapes (COMBAT.md §8; rect ships for P9 chargers). */
+export const TelegraphShape = {
+  Circle: 1,
+  Cone: 2,
+  Rect: 3,
+} as const;
+export type TelegraphShape = (typeof TelegraphShape)[keyof typeof TelegraphShape];
 
 /**
  * Coded reasons the server rejects or ends something. The client maps these to

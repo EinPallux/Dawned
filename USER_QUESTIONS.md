@@ -8,7 +8,28 @@
 
 ## Open questions
 
-_None right now._ 🎉
+### 2026-08-03 — P4 combat foundation
+
+**Q17 — Stagger decay tuning.** COMBAT.md §6.4 defines how the enemy stagger meter fills and
+what happens at 100, but not how it drains. Implemented default (feels right in dev, one knob
+each): **after 2.5 s without new stagger gain, the meter decays 15/s** — sustained pressure
+keeps progress toward the stagger payoff, disengaging for a few seconds forfeits it, and a
+camp reset always returns to zero. Alternative extremes: no decay at all (stagger becomes
+inevitable in long fights, weaker as a "keep the pressure up" reward) or instant decay on
+leaving combat only. **Recommended: keep the shipped default**; both constants
+(`STAGGER_DECAY_DELAY_MS`, `STAGGER_DECAY_PER_S`) are in `@dawned/shared/constants.ts` and
+worth revisiting once elites (0.75× gain) exist at P9. _Playtest it during the P4 demo — does
+breaking off an attack feel appropriately costly?_
+
+**Q18 — Training dummies wear the Mushnub model.** The dummy line south of the spawn shrine
+reuses `enemies_mushnub` (scaled 1.25×, renamed "Training Dummy", deals zero damage, never
+aggroes, 300 HP that refills a few seconds after you stop hitting it — and a 15 s respawn if
+someone actually burns one down) because the asset packs have no straw-dummy prop rig, and a
+T-posed static mesh would break rule 1 (no placeholder-forever: dummies need hit reacts and
+HP feedback to read as dummies). **Recommended: accept for 0.1.0** (they read
+fine in dev — mushroom punching bags by the shrine have their own charm); alternative is
+commissioning/sourcing a dummy model at P12 world-building and swapping the `model_ref` in
+its `content_enemies` row (one field, no code).
 
 ---
 

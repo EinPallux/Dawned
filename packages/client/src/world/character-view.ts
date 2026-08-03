@@ -51,6 +51,8 @@ export interface CharacterPoseFlags {
   grounded: boolean;
   sprinting: boolean;
   swimming: boolean;
+  /** Mid dodge-roll (shared-step prediction locally; EntityFlag for remotes). */
+  dodging?: boolean;
 }
 
 export class CharacterView {
@@ -77,6 +79,9 @@ export class CharacterView {
   private landingUntil = 0; // mixer-time lockout while Jump_Land plays
   private clock = 0;
   private currentClip = '';
+  /** Combat one-shots (attack/hit) own the rig until this clock time. */
+  private actionUntil = 0;
+  private dead = false;
 
   private bubble: THREE.Sprite | null = null;
   private bubbleExpiresAt = 0;
@@ -141,6 +146,44 @@ export class CharacterView {
   }
 
   /**
+   * Play a combat swing (predicted locally at press; remotes on AbilityStart).
+   * The clip is time-scaled so its natural length fits `durationMs`, and it
+   * owns the rig for that long — locomotion resumes after.
+   */
+  playAttack(clip: string, clipSeconds: number, durationMs: number): void {
+    if (this.dead) return;
+    const durationS = Math.max(durationMs / 1000, 0.15);
+    this.playClip(clip, {
+      once: true,
+      fadeSeconds: 0.05,
+      timeScale: clipSeconds / durationS,
+    });
+    this.actionUntil = this.clock + durationS;
+  }
+
+  /** Upper-body flinch on taking a light hit (COMBAT.md §6.4). */
+  playFlinch(): void {
+    if (this.dead) return;
+    const variants = ['Hit_Chest', 'Hit_Head', 'Hit_Stomach', 'Hit_Shoulder_L', 'Hit_Shoulder_R'];
+    const clip = variants[Math.floor(Math.random() * variants.length)]!;
+    this.playClip(clip, { once: true, fadeSeconds: 0.05 });
+    this.actionUntil = this.clock + 0.3;
+  }
+
+  /** Death/respawn presentation — the server owns WHEN (Dead flag/events). */
+  setDead(dead: boolean): void {
+    if (dead === this.dead) return;
+    this.dead = dead;
+    if (dead) {
+      this.actionUntil = 0;
+      this.playClip('Death01', { once: true, fadeSeconds: 0.1 });
+    } else {
+      this.currentClip = '';
+      this.playClip('Idle_Loop');
+    }
+  }
+
+  /**
    * LOCAL player only (remotes never call this): the 8-way heading follows the
    * held movement keys instead of measured velocity. The local rig faces the
    * LIVE mouse yaw while its rendered velocity trails the 20 Hz intents by
@@ -194,6 +237,16 @@ export class CharacterView {
 
   private selectClip(flags: CharacterPoseFlags): void {
     const speed = Math.hypot(this.velocity.x, this.velocity.z);
+
+    // Death owns everything; combat one-shots own the rig until they finish.
+    if (this.dead) return;
+    if (this.clock < this.actionUntil) return;
+
+    // Dodge roll (predicted for the local player, Dodging flag for remotes).
+    if (flags.dodging) {
+      this.playClip('Roll', { timeScale: 1.467 / 0.55, fadeSeconds: 0.05 });
+      return;
+    }
 
     // Swimming replaces the whole grounded/airborne tree (movement pins the body
     // to the surface, so vertical state is meaningless while in water).

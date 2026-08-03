@@ -94,17 +94,59 @@ export const decodeInputIntent = (reader: BinaryReader): InputIntentMessage => {
   return { seq, moveX, moveZ, yaw, buttons };
 };
 
-export interface PingMessage {
-  clientTimeMs: number;
+export interface AbilityRequestMessage {
+  /** Client-side request counter (echoed in rejects; wraps at u16). */
+  seq: number;
+  /** {@link ActionId} — 0 = basic attack; ability slots arrive P5. */
+  action: number;
+  /** Aim at press time. Yaw in radians; pitch in radians (−π/2..π/2). */
+  aimYaw: number;
+  aimPitch: number;
 }
 
-export const encodePing = (msg: PingMessage, writer?: BinaryWriter): Uint8Array => {
+export const encodeAbilityRequest = (
+  msg: AbilityRequestMessage,
+  writer?: BinaryWriter,
+): Uint8Array => {
   const w = (writer ?? new BinaryWriter(16)).reset();
-  w.u8(ClientOp.Ping).f64(msg.clientTimeMs);
+  w.u8(ClientOp.AbilityRequest)
+    .u16(msg.seq)
+    .u8(msg.action)
+    .u16(quantizeAngle(msg.aimYaw))
+    .i8(Math.round((Math.max(-1.55, Math.min(1.55, msg.aimPitch)) / (Math.PI / 2)) * 127));
   return w.toUint8Array();
 };
 
-export const decodePing = (reader: BinaryReader): PingMessage => ({ clientTimeMs: reader.f64() });
+export const decodeAbilityRequest = (reader: BinaryReader): AbilityRequestMessage => ({
+  seq: reader.u16(),
+  action: reader.u8(),
+  aimYaw: dequantizeAngle(reader.u16()),
+  aimPitch: (reader.i8() / 127) * (Math.PI / 2),
+});
+
+export interface PingMessage {
+  clientTimeMs: number;
+  /**
+   * RTT echo (v6): the serverTimeMs of the last pong received, plus how long
+   * ago it arrived. The server derives rtt ≈ now − (echo + age) — its own
+   * measurement for the lag-compensation rewind window, never client-claimed
+   * latency (a liar can only inflate within the 250 ms clamp). 0/0 = no pong yet.
+   */
+  echoServerTimeMs: number;
+  echoAgeMs: number;
+}
+
+export const encodePing = (msg: PingMessage, writer?: BinaryWriter): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(24)).reset();
+  w.u8(ClientOp.Ping).f64(msg.clientTimeMs).f64(msg.echoServerTimeMs).f64(msg.echoAgeMs);
+  return w.toUint8Array();
+};
+
+export const decodePing = (reader: BinaryReader): PingMessage => ({
+  clientTimeMs: reader.f64(),
+  echoServerTimeMs: reader.f64(),
+  echoAgeMs: reader.f64(),
+});
 
 export interface ChatMessage {
   text: string;
@@ -158,6 +200,7 @@ export const encodeChatBroadcast = (msg: ChatBroadcastMessage, writer?: BinaryWr
 /** Entity taxonomy on the wire — the P4/P9 seam (enemies, projectiles, props). */
 export const EntityKind = {
   Player: 0,
+  Enemy: 1,
 } as const;
 export type EntityKind = (typeof EntityKind)[keyof typeof EntityKind];
 
@@ -169,8 +212,10 @@ export interface SnapshotEntity {
   y: number;
   z: number;
   yaw: number;
-  /** Bitfield of {@link EntityFlag}. */
+  /** Bitfield of {@link EntityFlag} (u16 since v6). */
   flags: number;
+  /** Current HP as a fraction 0..1, quantized to u8 (nameplate bars). */
+  hpFraction: number;
 }
 
 export interface SnapshotSelf {
@@ -182,7 +227,11 @@ export interface SnapshotSelf {
   vz: number;
   yaw: number;
   stamina: number;
+  /** Bitfield of {@link EntityFlag} (u16 since v6). */
   flags: number;
+  /** Authoritative health (v6). Integers per project rules. */
+  hp: number;
+  maxHp: number;
 }
 
 export interface SnapshotMessage {
@@ -207,7 +256,9 @@ export const encodeSnapshot = (msg: SnapshotMessage, writer?: BinaryWriter): Uin
     .f32(self.vz)
     .u16(quantizeAngle(self.yaw))
     .f32(self.stamina)
-    .u8(self.flags);
+    .u16(self.flags)
+    .u32(self.hp)
+    .u32(self.maxHp);
 
   w.u16(msg.entities.length);
   for (const entity of msg.entities) {
@@ -217,7 +268,8 @@ export const encodeSnapshot = (msg: SnapshotMessage, writer?: BinaryWriter): Uin
       .f32(entity.y)
       .f32(entity.z)
       .u16(quantizeAngle(entity.yaw))
-      .u8(entity.flags);
+      .u16(entity.flags)
+      .u8(Math.round(Math.max(0, Math.min(1, entity.hpFraction)) * 255));
   }
   return w.toUint8Array();
 };
@@ -236,7 +288,9 @@ export const decodeSnapshot = (reader: BinaryReader): SnapshotMessage => {
     vz: reader.f32(),
     yaw: dequantizeAngle(reader.u16()),
     stamina: reader.f32(),
-    flags: reader.u8(),
+    flags: reader.u16(),
+    hp: reader.u32(),
+    maxHp: reader.u32(),
   };
 
   const count = reader.u16();
@@ -249,7 +303,8 @@ export const decodeSnapshot = (reader: BinaryReader): SnapshotMessage => {
       y: reader.f32(),
       z: reader.f32(),
       yaw: dequantizeAngle(reader.u16()),
-      flags: reader.u8(),
+      flags: reader.u16(),
+      hpFraction: reader.u8() / 255,
     };
   }
   return { tick, lastInputSeq, serverTimeMs, self, entities };
@@ -270,6 +325,277 @@ export const decodePong = (reader: BinaryReader): PongMessage => ({
   clientTimeMs: reader.f64(),
   serverTimeMs: reader.f64(),
 });
+
+// ---------------------------------------------------------------------------
+// Combat (protocol v6, docs/tech/NETWORKING.md §4)
+// ---------------------------------------------------------------------------
+
+export interface AbilityStartMessage {
+  /** Acting entity (player or enemy). */
+  entityId: number;
+  /** {@link ActionId} for players; enemy ability ordinal for enemies. */
+  action: number;
+  /** Combo step 0–2 for basics; 0 otherwise. */
+  step: number;
+  /** Wind-up/step duration in ms — remotes scale their anim to this. */
+  durationMs: number;
+  yaw: number;
+}
+
+export const encodeAbilityStart = (msg: AbilityStartMessage, writer?: BinaryWriter): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(16)).reset();
+  w.u8(ServerOp.AbilityStart)
+    .u32(msg.entityId)
+    .u8(msg.action)
+    .u8(msg.step)
+    .u16(msg.durationMs)
+    .u16(quantizeAngle(msg.yaw));
+  return w.toUint8Array();
+};
+
+export const decodeAbilityStart = (reader: BinaryReader): AbilityStartMessage => ({
+  entityId: reader.u32(),
+  action: reader.u8(),
+  step: reader.u8(),
+  durationMs: reader.u16(),
+  yaw: dequantizeAngle(reader.u16()),
+});
+
+/** Per-target outcome flags inside an {@link AbilityResolveMessage}. */
+export const HitFlag = {
+  Crit: 1 << 0,
+  Killed: 1 << 1,
+  Staggered: 1 << 2,
+} as const;
+export type HitFlag = (typeof HitFlag)[keyof typeof HitFlag];
+
+export interface ResolveHit {
+  targetId: number;
+  amount: number;
+  /** Bitfield of {@link HitFlag}. */
+  flags: number;
+}
+
+export interface AbilityResolveMessage {
+  attackerId: number;
+  action: number;
+  step: number;
+  hits: ResolveHit[];
+}
+
+export const encodeAbilityResolve = (
+  msg: AbilityResolveMessage,
+  writer?: BinaryWriter,
+): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(64)).reset();
+  w.u8(ServerOp.AbilityResolve).u32(msg.attackerId).u8(msg.action).u8(msg.step);
+  w.u8(msg.hits.length);
+  for (const hit of msg.hits) {
+    w.u32(hit.targetId).u32(hit.amount).u8(hit.flags);
+  }
+  return w.toUint8Array();
+};
+
+export const decodeAbilityResolve = (reader: BinaryReader): AbilityResolveMessage => {
+  const attackerId = reader.u32();
+  const action = reader.u8();
+  const step = reader.u8();
+  const count = reader.u8();
+  const hits: ResolveHit[] = new Array<ResolveHit>(count);
+  for (let i = 0; i < count; i++) {
+    hits[i] = { targetId: reader.u32(), amount: reader.u32(), flags: reader.u8() };
+  }
+  return { attackerId, action, step, hits };
+};
+
+export interface AbilityRejectMessage {
+  /** Echo of the request's seq so the client rolls back the right prediction. */
+  seq: number;
+  action: number;
+  /** {@link AbilityRejectReason}. */
+  reason: number;
+}
+
+export const encodeAbilityReject = (
+  msg: AbilityRejectMessage,
+  writer?: BinaryWriter,
+): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(8)).reset();
+  w.u8(ServerOp.AbilityReject).u16(msg.seq).u8(msg.action).u8(msg.reason);
+  return w.toUint8Array();
+};
+
+export const decodeAbilityReject = (reader: BinaryReader): AbilityRejectMessage => ({
+  seq: reader.u16(),
+  action: reader.u8(),
+  reason: reader.u8(),
+});
+
+export interface EntityEventMessage {
+  entityId: number;
+  /** {@link EntityEventKind}. */
+  event: number;
+  /** Kind-specific params (see EntityEventKind docs). Unused = 0. */
+  a: number;
+  b: number;
+  c: number;
+}
+
+export const encodeEntityEvent = (msg: EntityEventMessage, writer?: BinaryWriter): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(20)).reset();
+  w.u8(ServerOp.EntityEvent).u32(msg.entityId).u8(msg.event).f32(msg.a).f32(msg.b).f32(msg.c);
+  return w.toUint8Array();
+};
+
+export const decodeEntityEvent = (reader: BinaryReader): EntityEventMessage => ({
+  entityId: reader.u32(),
+  event: reader.u8(),
+  a: reader.f32(),
+  b: reader.f32(),
+  c: reader.f32(),
+});
+
+export interface TelegraphMessage {
+  casterId: number;
+  /** {@link TelegraphShape}. */
+  shape: number;
+  x: number;
+  z: number;
+  yaw: number;
+  /** Circle: radius. Cone: reach. Rect: length. */
+  size: number;
+  /** Cone: full angle in radians. Rect: width. Circle: unused. */
+  spread: number;
+  /** Time until impact from send, ms — the decal's fill duration. */
+  impactInMs: number;
+}
+
+export const encodeTelegraph = (msg: TelegraphMessage, writer?: BinaryWriter): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(32)).reset();
+  w.u8(ServerOp.Telegraph)
+    .u32(msg.casterId)
+    .u8(msg.shape)
+    .f32(msg.x)
+    .f32(msg.z)
+    .u16(quantizeAngle(msg.yaw))
+    .f32(msg.size)
+    .f32(msg.spread)
+    .u16(msg.impactInMs);
+  return w.toUint8Array();
+};
+
+export const decodeTelegraph = (reader: BinaryReader): TelegraphMessage => ({
+  casterId: reader.u32(),
+  shape: reader.u8(),
+  x: reader.f32(),
+  z: reader.f32(),
+  yaw: dequantizeAngle(reader.u16()),
+  size: reader.f32(),
+  spread: reader.f32(),
+  impactInMs: reader.u16(),
+});
+
+export interface ProjectileSpawnMessage {
+  projectileId: number;
+  ownerId: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Unit direction; the client integrates the straight flight locally. */
+  dirX: number;
+  dirY: number;
+  dirZ: number;
+  speed: number;
+  /** Visual style index (class bolt tints, enemy variants). */
+  visual: number;
+}
+
+export const encodeProjectileSpawn = (
+  msg: ProjectileSpawnMessage,
+  writer?: BinaryWriter,
+): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(40)).reset();
+  w.u8(ServerOp.ProjectileSpawn)
+    .u32(msg.projectileId)
+    .u32(msg.ownerId)
+    .f32(msg.x)
+    .f32(msg.y)
+    .f32(msg.z)
+    .f32(msg.dirX)
+    .f32(msg.dirY)
+    .f32(msg.dirZ)
+    .f32(msg.speed)
+    .u8(msg.visual);
+  return w.toUint8Array();
+};
+
+export const decodeProjectileSpawn = (reader: BinaryReader): ProjectileSpawnMessage => ({
+  projectileId: reader.u32(),
+  ownerId: reader.u32(),
+  x: reader.f32(),
+  y: reader.f32(),
+  z: reader.f32(),
+  dirX: reader.f32(),
+  dirY: reader.f32(),
+  dirZ: reader.f32(),
+  speed: reader.f32(),
+  visual: reader.u8(),
+});
+
+export interface ProjectileEndMessage {
+  projectileId: number;
+  /** True when it struck something (impact FX); false = expired/blocked fade. */
+  hit: boolean;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export const encodeProjectileEnd = (
+  msg: ProjectileEndMessage,
+  writer?: BinaryWriter,
+): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(24)).reset();
+  w.u8(ServerOp.ProjectileEnd)
+    .u32(msg.projectileId)
+    .u8(msg.hit ? 1 : 0)
+    .f32(msg.x)
+    .f32(msg.y)
+    .f32(msg.z);
+  return w.toUint8Array();
+};
+
+export const decodeProjectileEnd = (reader: BinaryReader): ProjectileEndMessage => ({
+  projectileId: reader.u32(),
+  hit: reader.u8() !== 0,
+  x: reader.f32(),
+  y: reader.f32(),
+  z: reader.f32(),
+});
+
+/**
+ * Immutable description of an enemy entity, sent once when it first enters a
+ * client's interest set (the snapshot then carries only dynamic state). JSON
+ * envelope — cold path, small volume.
+ */
+export interface EnemyMetaEntry {
+  id: number;
+  /** Content slug (`enemy_shore_glub`). */
+  typeId: string;
+  name: string;
+  level: number;
+  rank: string;
+  /** Baked model manifest id + display scale. */
+  modelRef: string;
+  scale: number;
+}
+
+export interface EnemyMetaMessage {
+  enemies: EnemyMetaEntry[];
+}
+
+export const encodeEnemyMeta = (msg: EnemyMetaMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.EnemyMeta, msg, writer);
 
 export interface SystemNoticeMessage {
   code: NoticeCode;

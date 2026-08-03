@@ -22,6 +22,7 @@ import { assertDbReachable, assertSchemaPresent, createDb } from './db/client.js
 import { runMigrations } from './db/migrate.js';
 import { AuthService } from './auth/service.js';
 import { CharacterService } from './characters/service.js';
+import { loadContent } from './content/loader.js';
 
 const config = loadConfig();
 const log = createLogger(config.LOG_LEVEL, config.NODE_ENV !== 'production');
@@ -46,8 +47,18 @@ const characterService = new CharacterService(dbHandle.db);
 const map = await loadMapTerrain(path.join(config.MAP_DIR, MAP_VERSION));
 log.info({ mapVersion: map.meta.mapVersion, chunks: map.terrain.chunkCount }, 'map terrain loaded');
 
+// --- content ----------------------------------------------------------------
+// Published enemies + spawners, zod-validated at the door (P4). A world with
+// invalid content refuses to boot rather than half-run.
+const content = await loadContent(dbHandle.db);
+log.info(
+  { enemies: content.enemies.size, spawners: content.spawners.length },
+  'published content loaded',
+);
+
 const metrics = new MetricsRing();
-const world = new World(map.terrain, map.meta.spawn);
+const world = new World(map.terrain, map.meta.spawn, content);
+log.info({ entities: world.entityCount }, 'world populated from spawners');
 
 const app = Fastify({
   loggerInstance: log.child({ component: 'http' }),
@@ -87,7 +98,7 @@ const gateway = new Gateway(
   auth,
   characterService,
 );
-registerRoutes(app, { config, world, gateway, metrics });
+registerRoutes(app, { config, world, gateway, metrics, content });
 registerAuthRoutes(app, { auth, characters: characterService });
 
 await app.listen({ host: config.HOST, port: config.PORT });
@@ -117,12 +128,12 @@ const loop = new TickLoop(
     // us instead of leaving a wedged world running.
     try {
       const events = world.step();
-      for (const event of events) {
-        // Fall damage has nothing to damage until P4 wires HP — but the contract
-        // stays visible instead of silently vanishing.
-        log.debug({ event }, 'world event');
-      }
+      // Snapshots FIRST: entitiesFor refreshes every viewer's interest set,
+      // and the event fan-out scopes by those sets — the other order drops
+      // events about entities a client is meeting this very tick (a fresh
+      // join stood next to an alerting enemy and never heard the alert).
       gateway.broadcastSnapshots(tick);
+      gateway.broadcastCombatEvents(events);
 
       // Once a second: drop dead sockets and expire reconnect grace windows.
       if (++idleSweepCounter >= TICK_RATE) {

@@ -143,6 +143,9 @@ export class CharacterService {
     characterId: number,
     pos: { x: number; y: number; z: number; yaw: number },
     playtimeDeltaSeconds: number,
+    /** Current HP (rounded); a dead character saves as 1 — respawn is a live
+     * flow, never a login state (COMBAT.md §10). */
+    hp?: number,
   ): Promise<void> {
     await this.db
       .update(characters)
@@ -151,6 +154,7 @@ export class CharacterService {
         posY: pos.y,
         posZ: pos.z,
         yaw: pos.yaw,
+        ...(hp !== undefined ? { hp: Math.max(1, Math.round(hp)) } : {}),
         playtimeSeconds: sql`${characters.playtimeSeconds} + ${Math.max(0, Math.round(playtimeDeltaSeconds))}`,
       })
       .where(eq(characters.id, characterId));

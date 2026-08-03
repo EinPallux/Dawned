@@ -69,13 +69,36 @@ export class InputController {
       this.altReleased = false;
     });
 
-    canvas.addEventListener('mousedown', () => {
-      if (!this.pointerLocked && !this.textEntryActive) void canvas.requestPointerLock();
+    canvas.addEventListener('mousedown', (event) => {
+      if (!this.pointerLocked) {
+        if (!this.textEntryActive) void canvas.requestPointerLock();
+        return;
+      }
+      // Locked = combat verbs (COMBAT.md §2): LMB basic attack; Mouse4 dodge.
+      if (event.button === 0) this.attackPresses++;
+      if (event.button === 3) {
+        event.preventDefault();
+        this.held.add('Mouse4');
+        this.tapped.add('Mouse4');
+      }
+    });
+    canvas.addEventListener('mouseup', (event) => {
+      if (event.button === 3) this.held.delete('Mouse4');
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === canvas;
     });
     document.addEventListener('mousemove', this.handleMouseMove);
+  }
+
+  /** LMB presses since last drained — run-world turns them into attack requests. */
+  private attackPresses = 0;
+
+  /** Drain buffered attack presses (called once per frame). */
+  takeAttackPresses(): number {
+    const presses = this.attackPresses;
+    this.attackPresses = 0;
+    return presses;
   }
 
   get isPointerLocked(): boolean {
@@ -157,7 +180,7 @@ export class InputController {
     let buttons = 0;
     if (active('ShiftLeft') || active('ShiftRight')) buttons |= InputButton.Sprint;
     if (active('Space')) buttons |= InputButton.Jump;
-    if (active('KeyV')) buttons |= InputButton.Dodge;
+    if (active('KeyV') || active('Mouse4')) buttons |= InputButton.Dodge;
 
     this.tapped.clear();
     return { moveX, moveZ, yaw: this.yaw, buttons };

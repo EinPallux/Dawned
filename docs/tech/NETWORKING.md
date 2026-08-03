@@ -27,17 +27,23 @@ round-trip). Every message: `u8 opcode` + payload. Cold-path messages (login han
 inventory ops, quest text) ride JSON envelopes (they're rare; readability wins). Hot path is pure
 binary.
 
-> **Implementation status (P3, protocol v4):** the tables below describe the full 0.1.0 target
-> protocol. Implemented in `packages/shared/src/protocol/`: Hello/InputIntent/Ping/Chat up,
-> Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice down. History: v2 authenticated Hello
-> (P1), v3 chunked terrain + walkability (P2), v4 swimming flag + entity `kind` byte (P3).
-> Snapshots are **full-state within AOI**: every included entity ships id/kind/pos/yaw/flags as
-> plain f32s each tick. Measured at 21 clustered players: ~42 kB/s total server egress ≈ 2 kB/s
-> per client — an order of magnitude under budget, because AOI already bounds the entity list.
-> The ENTER/UPDATE/LEAVE delta sections and i16 quantization stay deferred until P9 raises entity
-> counts (enemies/projectiles); deltas before then would add reconnect/loss-recovery complexity
-> for bandwidth we don't need yet. Remaining messages land with their phases, each bumping
-> `PROTOCOL_VERSION`.
+> **Implementation status (P4, protocol v6):** the tables below describe the full 0.1.0 target
+> protocol. Implemented in `packages/shared/src/protocol/`: Hello/InputIntent/Ping/Chat/
+> AbilityRequest (0x03) up; Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice plus the
+> combat fan-out — AbilityStart 0x8E, AbilityResolve 0x8F (per-hit target/amount/flags),
+> AbilityReject 0x90, EntityEvent 0x91 (alert/stagger/death/respawn/leash/…), Telegraph 0x92
+> (exact shape params), ProjectileSpawn 0x93 / ProjectileEnd 0x94, and EnemyMeta 0x95 (JSON
+> envelope, sent once per enemy before its first snapshot) — down. History: v2 authenticated
+> Hello (P1), v3 chunked terrain + walkability (P2), v4 swimming flag + entity `kind` byte
+> (P3), v5 downhill ground glue (P3 fix rounds), v6 combat (dodge button in the shared step,
+> hp/maxHp in the self block, hpFraction u8 + flags u16 on entities, Ping echoes the last
+> Pong's server time so the server measures RTT for rewind). Snapshots remain **full-state
+> within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
+> (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
+> total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16
+> quantization stay deferred until P9 raises entity counts; opcode numbers above are the
+> as-built ones where they differ from the target table. Remaining messages land with their
+> phases, each bumping `PROTOCOL_VERSION`.
 
 ### 2.1 Client → Server
 
@@ -118,7 +124,17 @@ notice (client shows reload screen — deploys are seamless because the client i
   50 ms optimistic window canceled if no resolve arrives (imperceptible at our RTTs).
 - Cooldowns/resources: predicted client-side, corrected by `StateDelta` (drift ≤1 tick in practice).
 
-## 5. Interest Management (AOI)
+> **As built (P4):** position history is a 32-tick typed-array ring per entity (players also
+> record their i-frame bit). The server measures each player's RTT itself — `Pong` carries
+> server time, the next `Ping` echoes it plus the age it was held, EMA 0.7/0.3 into
+> `player.rttMs` — no trusting a client-reported number. Rewind = `RTT/2 + 100 ms interp
+delay`, clamped to 250 ms, rounded to ticks; player melee arcs and projectile sweeps test
+> **rewound** enemy capsules. Enemy attacks test players at server-true current positions (no
+> rewind, as specced), with one player-favorable extension: your dodge i-frames count if they
+> were active **either** live or in your rewound timeline. Hit-stop as built triggers on the
+> confirmed `AbilityResolve` (60 ms at 0.1× time) rather than the predicted-then-cancel
+> scheme — at dev-tested RTTs (≤100 ms lag-lab) the confirm arrives inside perception; the
+> optimistic window remains the documented fallback if higher-RTT players report mush.
 
 - World grid 64 m cells (matches terrain chunks). Subscription = 3×3 cells (~96 m radius effective)
   for entities; 5×5 for terrain residency (client streams meshes ahead).

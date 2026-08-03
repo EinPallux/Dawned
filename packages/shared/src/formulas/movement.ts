@@ -14,6 +14,12 @@
 import {
   AIR_CONTROL,
   BASE_STAMINA,
+  DODGE_COOLDOWN_MS,
+  DODGE_DISTANCE_M,
+  DODGE_DURATION_S,
+  DODGE_IFRAME_END_S,
+  DODGE_IFRAME_START_S,
+  DODGE_STAMINA_COST,
   FALL_DAMAGE_MAX_FRACTION,
   FALL_DAMAGE_MIN_HEIGHT,
   FALL_DAMAGE_PER_METRE,
@@ -57,6 +63,13 @@ export interface MovementState {
   staminaIdleMs: number;
   /** Highest Y since leaving the ground — the fall-damage reference height. */
   fallPeakY: number;
+  /** Seconds left in the current dodge roll (0 = not rolling). COMBAT.md §7. */
+  rollTimeLeft: number;
+  /** Locked roll direction (unit), set at roll start — rolls do not steer. */
+  rollDirX: number;
+  rollDirZ: number;
+  /** Ms until the next roll may start (internal cooldown, from roll START). */
+  rollCooldownMs: number;
 }
 
 /** One tick of player intent, as sent by the client. */
@@ -102,7 +115,21 @@ export interface MovementStepResult {
   jumped: boolean;
   /** Distance fallen when landing, in metres (0 otherwise). */
   fallDistance: number;
+  /** True on the tick a dodge roll started (drives anim/FX and cast cancels). */
+  dodged: boolean;
 }
+
+/**
+ * Whether the character is inside the roll's invulnerability window
+ * (COMBAT.md §7: 0.05–0.35 s from roll start). The server evaluates this on
+ * REWOUND state so a roll that was rolling on the player's screen counts
+ * (docs/tech/NETWORKING.md §4).
+ */
+export const isDodgeInvulnerable = (state: Readonly<MovementState>): boolean => {
+  if (state.rollTimeLeft <= 0) return false;
+  const elapsed = DODGE_DURATION_S - state.rollTimeLeft;
+  return elapsed >= DODGE_IFRAME_START_S && elapsed <= DODGE_IFRAME_END_S;
+};
 
 /** Max stamina for a character (docs/design/PROGRESSION.md §2). */
 export const maxStaminaFor = (level: number, endurance: number): number =>
@@ -128,6 +155,10 @@ export const createMovementState = (
   maxStamina,
   staminaIdleMs: STAMINA_REGEN_DELAY_MS,
   fallPeakY: y,
+  rollTimeLeft: 0,
+  rollDirX: 0,
+  rollDirZ: 0,
+  rollCooldownMs: 0,
 });
 
 export const copyMovementState = (
@@ -153,6 +184,7 @@ export function stepMovement(
     landed: false,
     jumped: false,
     fallDistance: 0,
+    dodged: false,
   };
 
   // 1. Facing follows the client's aim directly (combat re-validates aim from P4).
@@ -168,39 +200,81 @@ export function stepMovement(
   }
   const wantsMove = dirLength > 0.001;
 
+  // 2b. Dodge roll (COMBAT.md §7): grounded only, gated by stamina + internal
+  // cooldown. Direction locks at roll start — movement direction if held, else
+  // facing — and steering is ignored until the roll ends. The cooldown runs
+  // from roll START so spam can never queue back-to-back rolls.
+  state.rollCooldownMs = Math.max(0, state.rollCooldownMs - dt * 1000);
+  const rollingBefore = state.rollTimeLeft > 0;
+  if (
+    !rollingBefore &&
+    state.grounded &&
+    !state.swimming &&
+    (intent.buttons & InputButton.Dodge) !== 0 &&
+    state.rollCooldownMs <= 0 &&
+    state.stamina >= DODGE_STAMINA_COST
+  ) {
+    state.rollTimeLeft = DODGE_DURATION_S;
+    state.rollCooldownMs = DODGE_COOLDOWN_MS;
+    state.stamina -= DODGE_STAMINA_COST;
+    state.staminaIdleMs = 0;
+    if (wantsMove) {
+      state.rollDirX = dirX;
+      state.rollDirZ = dirZ;
+    } else {
+      state.rollDirX = Math.sin(state.yaw);
+      state.rollDirZ = Math.cos(state.yaw);
+    }
+    // Normalize: axes may be sub-unit (analog input) — the roll is always unit.
+    const len = Math.sqrt(state.rollDirX ** 2 + state.rollDirZ ** 2) || 1;
+    state.rollDirX /= len;
+    state.rollDirZ /= len;
+    result.dodged = true;
+  }
+  const rolling = state.rollTimeLeft > 0;
+
   // 3. Sprint gating: needs input, stamina to start, and any stamina to continue.
+  // A roll suppresses sprint for its duration (the roll owns the velocity).
   const sprintHeld = (intent.buttons & InputButton.Sprint) !== 0;
   const canStartSprint = state.stamina >= SPRINT_MIN_STAMINA;
   const sprinting =
-    sprintHeld && wantsMove && (state.sprinting ? state.stamina > 0 : canStartSprint);
+    !rolling && sprintHeld && wantsMove && (state.sprinting ? state.stamina > 0 : canStartSprint);
   state.sprinting = sprinting;
 
   // 4. Accelerate horizontal velocity toward the target. Swim state is read from
   // the previous tick's resolution (one-tick transition lag, identical on both
   // sides) — swimming is slower, and swim control feels like ground control.
-  const speed =
-    MOVE_SPEED * (state.swimming ? SWIM_SPEED_FACTOR : 1) * (sprinting ? SPRINT_MULTIPLIER : 1);
-  const targetVx = dirX * speed;
-  const targetVz = dirZ * speed;
-  const baseRate = wantsMove ? MOVE_ACCEL : MOVE_DECEL;
-  const rate = state.grounded || state.swimming ? baseRate : baseRate * AIR_CONTROL;
-  const maxDelta = rate * dt;
-
-  const dvx = targetVx - state.vx;
-  const dvz = targetVz - state.vz;
-  const deltaLength = Math.sqrt(dvx * dvx + dvz * dvz);
-  if (deltaLength <= maxDelta || deltaLength === 0) {
-    state.vx = targetVx;
-    state.vz = targetVz;
+  // A roll overrides the whole block: fixed speed along the locked direction.
+  if (rolling) {
+    const rollSpeed = DODGE_DISTANCE_M / DODGE_DURATION_S;
+    state.vx = state.rollDirX * rollSpeed;
+    state.vz = state.rollDirZ * rollSpeed;
   } else {
-    const scale = maxDelta / deltaLength;
-    state.vx += dvx * scale;
-    state.vz += dvz * scale;
+    const speed =
+      MOVE_SPEED * (state.swimming ? SWIM_SPEED_FACTOR : 1) * (sprinting ? SPRINT_MULTIPLIER : 1);
+    const targetVx = dirX * speed;
+    const targetVz = dirZ * speed;
+    const baseRate = wantsMove ? MOVE_ACCEL : MOVE_DECEL;
+    const rate = state.grounded || state.swimming ? baseRate : baseRate * AIR_CONTROL;
+    const maxDelta = rate * dt;
+
+    const dvx = targetVx - state.vx;
+    const dvz = targetVz - state.vz;
+    const deltaLength = Math.sqrt(dvx * dvx + dvz * dvz);
+    if (deltaLength <= maxDelta || deltaLength === 0) {
+      state.vx = targetVx;
+      state.vz = targetVz;
+    } else {
+      const scale = maxDelta / deltaLength;
+      state.vx += dvx * scale;
+      state.vz += dvz * scale;
+    }
   }
 
-  // 5. Jump (free — costs no stamina, per docs/design/COMBAT.md §7).
+  // 5. Jump (free — costs no stamina, per docs/design/COMBAT.md §7). Not
+  // available mid-roll: the roll owns the character until it completes.
   const wasGrounded = state.grounded;
-  if (state.grounded && (intent.buttons & InputButton.Jump) !== 0) {
+  if (!rolling && state.grounded && (intent.buttons & InputButton.Jump) !== 0) {
     state.vy = JUMP_VELOCITY;
     state.grounded = false;
     state.fallPeakY = state.y;
@@ -294,7 +368,19 @@ export function stepMovement(
     if (state.y > state.fallPeakY) state.fallPeakY = state.y;
   }
 
-  // 10. Stamina: spend while sprinting (swim-sprint drains faster, COMBAT.md §7),
+  // 10. Roll timer: decrement AFTER integration, so the start tick already
+  // moves — 11 ticks at 20 Hz cover exactly DODGE_DISTANCE_M. Water ends a
+  // roll instantly (the swim pin owns the body; no rolling across the surface).
+  if (state.swimming) {
+    state.rollTimeLeft = 0;
+  } else if (state.rollTimeLeft > 0) {
+    state.rollTimeLeft -= dt;
+    // Snap float dust to done — a 1e-16 remainder must not buy a 12th tick of
+    // roll velocity (deterministic on both sides, so no parity concern).
+    if (state.rollTimeLeft < 1e-9) state.rollTimeLeft = 0;
+  }
+
+  // 11. Stamina: spend while sprinting (swim-sprint drains faster, COMBAT.md §7),
   // otherwise regenerate after the delay.
   if (sprinting) {
     const drainPerSec = state.swimming ? SWIM_SPRINT_STAMINA_PER_SEC : SPRINT_STAMINA_PER_SEC;
@@ -312,6 +398,8 @@ export function stepMovement(
 
 /**
  * Upper bound on how far a character may legitimately travel in one step —
- * the server's anti-speedhack clamp (docs/tech/SECURITY.md §2).
+ * the server's anti-speedhack clamp (docs/tech/SECURITY.md §2). The dodge roll
+ * (4.2 m / 0.55 s ≈ 7.64 m/s) is faster than sprint and sets the bound.
  */
-export const maxHorizontalStep = (dt: number): number => MOVE_SPEED * SPRINT_MULTIPLIER * dt;
+export const maxHorizontalStep = (dt: number): number =>
+  Math.max(MOVE_SPEED * SPRINT_MULTIPLIER, DODGE_DISTANCE_M / DODGE_DURATION_S) * dt;

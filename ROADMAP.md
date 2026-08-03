@@ -14,7 +14,7 @@
 | P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
 | P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
 | P3    | Movement, Netcode Core & Chat v1         | L    | 🟨 built — owner signoff  |
-| P4    | Combat Foundation                        | XL   | 🔲                        |
+| P4    | Combat Foundation                        | XL   | 🟨 built — owner signoff  |
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | 🔲                        |
 | P6    | Classes II — Mage, Cleric, Status System | L    | 🔲                        |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                        |
@@ -201,6 +201,54 @@ now, final at P14).
 **DoD:** the "10-minute demo": clear a Glub camp with basic combo + dodge only, at 100 ms lag-lab,
 and it passes the COMBAT.md §9 checklist reviewed line-by-line; feel signoff from the owner
 (explicitly: does it feel like Farever-smooth action combat? iterate until yes).
+
+**Status (2026-08-03, protocol v6): built and verified in dev — owner signoff items open.**
+
+- [x] Shared combat core (P4-A): class stat spreads + HP/weapon curves, the full damage
+      formula (crit, variance, armor/resist mitigation, level mod, stagger-vuln and Dawned
+      multipliers — injectable RNG, unit-tested), pure hit-shape math (melee arc, projectile
+      sweep vs capsule, circle, dash sweep), stagger meter with exact-decay ticking, the dodge
+      roll **inside the shared movement step** (0.55 s / 4.2 m, i-frames 0.05–0.35 s,
+      25 stamina, 0.5 s cooldown, direction locked at start, grounded-only — predicted like
+      any other movement, so no dodge desync), basic-combo data + link-window rules, and
+      protocol v6 (AbilityRequest/Start/Resolve/Reject, EntityEvent, Telegraph, Projectile
+      spawn/end, EnemyMeta, hp/flags in snapshots, ping echo for server-side RTT). 112 shared
+      tests green.
+- [x] Combat content as data (P4-B): `content_enemies` + `content_spawners` tables with zod
+      defs (invalid published content refuses boot — fail loud, not weird), P4 seeds authored
+      as published rows in migration 0003 (Shore Glub camps ×3, Mushnub pair, training-dummy
+      line), `GET /api/content/enemies` serves defs to the client, and the enemy model + combat
+      clip bake (`enemies_glub`, `enemies_mushnub` + UAL Roll/attack/hit clips) through the
+      standard pipeline.
+- [x] Server combat (P4-C): position-history rings + lag rewind (rewind = RTT/2 + interp
+      delay, capped 250 ms; player attacks test rewound enemies, enemy hits honor i-frames
+      live **or** rewound — player-favorable), the ability executor (combo validation, costs,
+      contact-point scheduling, cleave arcs, projectile flight), Grunt AI FSM at 10 Hz
+      (perception cone + hearing, alert beat, threat-table targeting, ranged/melee bands,
+      heavy attacks with exact-shape telegraphs, seek+separation steering on the walkgrid,
+      damage + social aggro, leash with invulnerable return, corpse → spawner respawn
+      tickets), player death → control lock → shrine respawn with the 30 s −15 % Dawned
+      debuff, threat core, and hp persistence. Headless probe:
+      `tools/smoke/combat-probe.mjs` (15 asserts incl. combo chain, arc damage, alert
+      discipline, telegraph shape, death/respawn loop).
+- [x] Client combat (P4-D): LMB basic combo with predicted chain + instant swing anim
+      (server-confirmed resolve), Mouse4/V dodge, enemy views from `EnemyMeta` + content defs
+      (skeleton-cloned rigs, nameplates + HP slabs, ability/hit/death clips, desaturate-sink
+      corpses), soft-target reticle plate, telegraph decals (exact server shapes, hatched
+      fill — colorblind-safe by construction), pooled floating combat text (cap 40), local
+      projectile integration between server spawn/end, death soul-screen → respawn button →
+      Dawned chip, and the §9 juice pass v1: 60 ms hit-stop on confirmed hits, directional
+      camera kick, capped shake, enemy flash tints, WebAudio temp SFX slots (swing/impact/
+      dodge/death — final sourcing at P14). Browser smoke: `tools/smoke/browser-p4.mjs`
+      (15 asserts, screenshot trail).
+- [x] Verification (P4-E): full `pnpm check` green; P3 regression smokes all green against
+      the v6 stack (browser-p3 21 asserts, two-client-sync, browser-sync, predict-lag →
+      corrections p95 56 mm / 0 hard snaps at 100 ms ± 20 ms); tick perf **with a live camp
+      fight**: p50 0.14 / p95 1.17 / max 4.5 ms (<15 ms gate), RSS 129 MB.
+- [ ] **Owner: the 10-minute demo** — clear a Glub camp with basic combo + dodge only at
+      `/netsim 100 20`, COMBAT.md §9 checklist reviewed line-by-line on screen.
+- [ ] **Owner: feel signoff** — does it feel like Farever-smooth action combat? Iterate
+      until yes (tuning knobs live in shared constants + content rows).
 
 ## P5 — Classes I: Ability Framework, Warrior & Rogue (L) ⚙A1 (content editors) in parallel
 

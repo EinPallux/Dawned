@@ -110,3 +110,8 @@ Pack id `quaternius-ual1` · author **Quaternius** · license **CC0-1.0** · htt
 
 - `characters_ual1` — assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb
 
+### Quaternius Universal Animation Library 2 (Standard)
+Pack id `quaternius-ual2` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/
+
+- `characters_ual2_standard` — assets/player_characters/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb
+

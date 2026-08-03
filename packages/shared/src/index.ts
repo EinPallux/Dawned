@@ -16,8 +16,11 @@ export * from './world/chunk-terrain.js';
 export * from './world/walkgrid.js';
 export * from './content/zones.js';
 export * from './content/world-settings.js';
+export * from './content/enemies.js';
+export * from './content/spawners.js';
 export * from './data/appearance.js';
 export * from './data/splat-layers.js';
+export * from './data/basic-combos.js';
 export * from './api/requests.js';
 // NOTE: the Drizzle database schema is deliberately NOT exported here — it would
 // drag ORM code into the browser bundle. Server/admin import '@dawned/shared/schema'.

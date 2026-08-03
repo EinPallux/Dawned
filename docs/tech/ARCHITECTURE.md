@@ -91,6 +91,15 @@ Persistence philosophy: the world is memory-resident; Postgres is the durable re
 save on: timer, logout, level/quest/item events. Server crash loses ≤10 s of movement, zero item/xp
 transactions (those are write-through).
 
+> **As built (P4):** `world.step()` runs 1–5 and returns the tick's combat events; the
+> gateway then sends snapshots and **only then** fans the events out through the per-viewer
+> interest sets (`broadcastSnapshots` → `broadcastCombatEvents` in `index.ts`). That order is
+> load-bearing: events are scoped to each viewer's **current-tick** visible set, so a fresh
+> join (empty set until its first snapshot) would silently drop same-tick events — e.g. the
+> alert beat of the camp you spawn next to — if events went first. Enemy AI runs at 10 Hz by
+> id parity (half the brains per tick); enemy `EnemyMeta` announcements piggyback the
+> snapshot path so meta always precedes the first snapshot containing that enemy.
+
 **Content cache:** published content (items, enemies, abilities, loot, quests, zones, spawn layers,
 walkgrid, node placements) loads at boot from PG + baked files; `/ops/reload-content` (admin-panel
 button / `/reloadcontent` GM command) re-loads safely between ticks (never mid-tick), diffing what

@@ -45,6 +45,10 @@ export class Session {
   state: SessionState = 'handshaking';
   player: ServerPlayer | null = null;
 
+  /** Enemy ids whose one-time EnemyMeta this session has received (P4). Ids
+   * are never reused, so the set only ever grows with newly-met enemies. */
+  readonly knownEnemies = new Set<number>();
+
   /** Reused across sends so the tick loop allocates nothing per client. */
   readonly writer = new BinaryWriter(2048);
 
