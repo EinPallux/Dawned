@@ -43,6 +43,14 @@ export const MOVE_DECEL = 50;
 export const AIR_CONTROL = 0.35;
 /** Gravity in m/s². */
 export const GRAVITY = 24;
+/**
+ * Max height a grounded character steps DOWN in one tick while staying glued
+ * to the ground. Covers the steepest walkable slope at sprint speed
+ * (tan 50° × 7.4 m/s × 0.05 s ≈ 0.44 m); a bigger drop is a real fall.
+ * Without this, every downhill tick goes "airborne" for one step and the
+ * grounded state (and its animations) flicker at walking pace.
+ */
+export const GROUND_SNAP_M = 0.5;
 /** Vertical impulse on jump in m/s (≈1.1 m apex). */
 export const JUMP_VELOCITY = 7.27;
 /** Terminal downward speed in m/s. */

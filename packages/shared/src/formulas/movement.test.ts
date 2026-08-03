@@ -196,6 +196,53 @@ describe('stepMovement — vertical', () => {
   });
 });
 
+describe('stepMovement — downhill ground snap', () => {
+  /** A 30° descent along +Z (drops ~0.16 m per jog tick — well within snap range). */
+  const downhill: TerrainSampler = { heightAt: (_x, z) => -z * Math.tan(Math.PI / 6) };
+
+  it('stays grounded on every tick of a downhill run (no state flicker)', () => {
+    const state = createMovementState(0, 0, 0);
+    simulate(state, forwardSprint, 10, downhill); // up to speed
+    for (let i = 0; i < 100; i++) {
+      stepMovement(state, forwardSprint, TICK_DT, downhill);
+      expect(state.grounded).toBe(true);
+      expect(state.y).toBeCloseTo(downhill.heightAt(state.x, state.z), 6);
+    }
+  });
+
+  it('takes no fall damage from a long glued descent', () => {
+    const state = createMovementState(0, 0, 0);
+    for (let i = 0; i < 200; i++) {
+      const result = stepMovement(state, forwardSprint, TICK_DT, downhill);
+      expect(result.fallDamageFraction).toBe(0);
+    }
+    expect(state.y).toBeLessThan(-20); // genuinely descended a long way
+  });
+
+  it('jumping still leaves the ground on a slope', () => {
+    const state = createMovementState(0, 0, 0);
+    simulate(state, forward, 10, downhill);
+    stepMovement(state, { ...forward, buttons: InputButton.Jump }, TICK_DT, downhill);
+    expect(state.grounded).toBe(false);
+    expect(state.vy).toBeGreaterThan(0);
+  });
+
+  it('a drop beyond the snap height is a real fall', () => {
+    // Walkable plateau ending in a 3 m cliff at z = 2.
+    const cliff: TerrainSampler = { heightAt: (_x, z) => (z < 2 ? 0 : -3) };
+    const state = createMovementState(0, 0, 0);
+    simulate(state, forward, 10, cliff);
+    let wentAirborne = false;
+    for (let i = 0; i < 40; i++) {
+      stepMovement(state, forward, TICK_DT, cliff);
+      if (!state.grounded) wentAirborne = true;
+    }
+    expect(wentAirborne).toBe(true);
+    expect(state.y).toBeCloseTo(-3, 5); // and landed below
+    expect(state.grounded).toBe(true);
+  });
+});
+
 describe('client/server prediction parity', () => {
   it('produces bit-identical state for identical input streams', () => {
     // This is the whole anti-desync promise: two independent runs of the same code

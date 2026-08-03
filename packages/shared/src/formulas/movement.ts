@@ -18,6 +18,7 @@ import {
   FALL_DAMAGE_MIN_HEIGHT,
   FALL_DAMAGE_PER_METRE,
   GRAVITY,
+  GROUND_SNAP_M,
   JUMP_VELOCITY,
   MOVE_ACCEL,
   MOVE_DECEL,
@@ -198,6 +199,7 @@ export function stepMovement(
   }
 
   // 5. Jump (free — costs no stamina, per docs/design/COMBAT.md §7).
+  const wasGrounded = state.grounded;
   if (state.grounded && (intent.buttons & InputButton.Jump) !== 0) {
     state.vy = JUMP_VELOCITY;
     state.grounded = false;
@@ -253,6 +255,22 @@ export function stepMovement(
     state.grounded = false;
     state.swimming = true;
     state.fallPeakY = state.y;
+  } else if (
+    wasGrounded &&
+    !result.jumped &&
+    state.y > groundY &&
+    state.y - groundY <= GROUND_SNAP_M
+  ) {
+    // Downhill ground snap: a grounded character whose new column is a small
+    // step below stays GLUED to the slope. Without this, every descending tick
+    // flips to "airborne" for one gravity step and back — the grounded state
+    // (and its animations) flicker at walking pace. Bigger drops are real
+    // falls; a jump this tick always leaves the ground.
+    state.y = groundY;
+    state.vy = 0;
+    state.grounded = true;
+    state.swimming = false;
+    state.fallPeakY = groundY;
   } else if (state.y <= groundY) {
     if (!state.grounded && !state.swimming) {
       const drop = state.fallPeakY - groundY;

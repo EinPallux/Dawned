@@ -232,22 +232,45 @@ const run = async (browser, token, character) => {
   ok(`D strafes screen-right (Δx ${dx.toFixed(1)} m at yaw 0)`);
 
   // --- Forward run uses the sprint gait + sub-tick extrapolation ------------
+  // Face INLAND (spawn yaw π) — running seaward would pile into the shoreline
+  // block mid-test and zero the velocity the probes below depend on.
+  await page.evaluate(() => {
+    window.__dawned.input.yaw = Math.PI;
+  });
   await page.keyboard.down('w');
   await page.waitForFunction(() => window.__dawned.animState().local === 'Sprint_Loop', {
     timeout: 15000,
   });
   ok('forward run plays the sprint-gait cycle (no more half-speed jog skating)');
+
   const extrapolation = await page.evaluate(() => {
     const c = window.__dawned.connection;
     const now = c.renderPosition(0);
     const ahead = c.renderPosition(25);
     return Math.hypot(ahead.x - now.x, ahead.z - now.z);
   });
-  await page.keyboard.up('w');
   if (extrapolation < 0.05 || extrapolation > 0.25) {
     fail(`sub-tick extrapolation looks wrong (${(extrapolation * 100).toFixed(1)} cm over 25 ms)`);
   }
   ok(`local render extrapolates between ticks (${(extrapolation * 100).toFixed(1)} cm / 25 ms)`);
+
+  // Grounded-state stability: the spawn meadow slopes — before the shared
+  // ground snap, every downhill tick flipped airborne and the HUD/animations
+  // flickered. Sample while the run continues inland.
+  const groundedSamples = await page.evaluate(async () => {
+    const results = [];
+    for (let i = 0; i < 30; i++) {
+      results.push(window.__dawned.connection.predicted.grounded);
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    }
+    return results;
+  });
+  await page.keyboard.up('w');
+  const airborneCount = groundedSamples.filter((grounded) => !grounded).length;
+  if (airborneCount > 0) {
+    fail(`grounded state flickered ${airborneCount}/30 samples during a sloped run`);
+  }
+  ok('grounded state holds steady across a sloped run (no airborne flicker)');
   await sleep(400);
 
   // Hold the diagonal and wait for the jog to engage — right after the recall

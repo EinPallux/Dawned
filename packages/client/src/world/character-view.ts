@@ -224,8 +224,13 @@ export class CharacterView {
     const forward = sector === 0;
 
     // Fast forward movement = the sprint gait (run and sprint both — see the
-    // natural-speed table above), banking into hard turns. The lean side keeps
-    // the P1-D-verified convention: positive local X is the rig's "L" side.
+    // natural-speed table above), banking into hard turns.
+    //
+    // CLIP NAMING NOTE: the UAL pack's L/R suffixes are from the VIEWER'S side,
+    // not the character's — established in playtesting (P1-D "looked right"
+    // under the then-mirrored strafe input; with the input fixed, the raw names
+    // read crossed). Character-left motion therefore plays the "R"-named clips
+    // throughout, and a left turn banks with LeanR.
     if (forward && speed >= JOG_TO_RUN_MPS) {
       if (this.leanSide === 0) {
         if (Math.abs(this.yawRate) > LEAN_ENTER_RAD_PER_S)
@@ -236,8 +241,9 @@ export class CharacterView {
         this.leanSide = this.yawRate > 0 ? 1 : -1;
       }
       if (this.leanSide !== 0) {
+        // leanSide +1 = turning character-left → viewer-named "R" clip.
         // Lean clips are jog-family — cap the scale, the moment is transient.
-        this.playClip(this.leanSide > 0 ? 'Jog_Fwd_LeanL_Loop' : 'Jog_Fwd_LeanR_Loop', {
+        this.playClip(this.leanSide > 0 ? 'Jog_Fwd_LeanR_Loop' : 'Jog_Fwd_LeanL_Loop', {
           timeScale: THREE.MathUtils.clamp(speed / JOG_NAT_MPS, 0.8, 1.6),
         });
         return;
@@ -259,15 +265,17 @@ export class CharacterView {
     }
 
     // 8-way jog: strafes, backpedal, diagonals and forward transition speeds.
+    // Positive heading = character-LEFT motion → viewer-named "R" clips (see
+    // the naming note above).
     const SECTOR_CLIPS = [
       'Jog_Fwd_Loop', //      0: fwd
-      'Jog_Fwd_L_Loop', //    1: fwd-left
-      'Jog_Left_Loop', //     2: left
-      'Jog_Bwd_L_Loop', //    3: bwd-left
+      'Jog_Fwd_R_Loop', //    1: fwd-left  (viewer-named R)
+      'Jog_Right_Loop', //    2: left      (viewer-named Right)
+      'Jog_Bwd_R_Loop', //    3: bwd-left
       'Jog_Bwd_Loop', //      4: bwd
-      'Jog_Bwd_R_Loop', //    5: bwd-right
-      'Jog_Right_Loop', //    6: right
-      'Jog_Fwd_R_Loop', //    7: fwd-right
+      'Jog_Bwd_L_Loop', //    5: bwd-right
+      'Jog_Left_Loop', //     6: right     (viewer-named Left)
+      'Jog_Fwd_L_Loop', //    7: fwd-right
     ] as const;
     this.playClip(SECTOR_CLIPS[sector]!, {
       timeScale: THREE.MathUtils.clamp(speed / JOG_NAT_MPS, 0.7, 1.6),
