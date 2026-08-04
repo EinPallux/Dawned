@@ -51,6 +51,23 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   (`periodic.pctMaxHpTotal` — how Immovable's 30% max-HP heal works for
   SP-less warriors). The p7 probe now allocates against the published
   trees and proves the tier-2 gate + skill-rank persistence on relog.
+- **Progression on screen (P7-D):** the thin XP bar rides the bottom edge
+  (segment ticks, hover numbers, purple `+N XP` floaters and a pulse on
+  every award), and leveling up fires the full juice contract — gold
+  pillar, the new `Celebration` animation when idle, a gold flash frame
+  with sparks bursting off the bar, a chime, chat toast, ability-unlock
+  toasts (click one to open Skills) and a banked-points note. `C` opens
+  the Character panel (attribute +/− staging with Confirm, the one-click
+  suggested build, derived stats that explain their formulas on hover,
+  gold + attribute respec); `K` opens Skills (ability tiles with unlock
+  levels + the three branches as climbing faceted lattices — invest by
+  click, connectors light up, capstone at the crown, tooltips generated
+  from the published node data with next-rank previews). A slim micro
+  menu sits above the XP bar with badge pips for banked points. Under
+  the hood the client folds allocated trees exactly like the server
+  (effective ability defs, movement/stamina/attack-speed/resource
+  scalars), so builds predict as tightly as fresh characters; discovery
+  and level-up moments also surface as slide-in toasts.
 
 ### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (2026-08-03)
 

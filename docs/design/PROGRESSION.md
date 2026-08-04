@@ -136,3 +136,27 @@ riders at the damage rolls, stance/passive tweaks at their sites, and the proc r
 (low-HP heals/auto-shields with ICDs, on-kill buffs, resource-spent stacks, thorns,
 melee-attacker debuffs, self-heal speed bursts, every-Nth echo bolts, Flurry empowers,
 Archmage surge, consume-bonus finishers, poison jump).
+
+### As built (P7-D client, 2026-08-04)
+
+The client consumes the whole v9 vocabulary. The **XP bar** rides the bottom edge (thin,
+segment ticks, hover shows `LEVEL n · x / y XP`, `MAX` at cap) and every `XpGained` pops a
+purple `+N XP` FCT over the character plus a bar pulse (§7: every action ticks). **Level-ups
+run the §1.3 contract**: gold pillar VFX at the character (bystanders see it on remote
+`LevelUp` too), the baked UAL `Celebration` clip when idle (escapable — moving cancels), a
+gold flash frame + spark burst off the XP bar, a rising-triad chime, the chat toast, unlock
+toasts for slots crossed (click → Skills panel) and a banked-points toast (click →
+Character). **Panels**: `C` opens Character (attributes with +/− staging + Confirm, the §2
+one-click suggested build, derived stats with hover formulas mirroring these very
+derivations, gold + the stats respec), `K` opens Skills (8 ability tiles with unlock levels;
+the 3 branches as climbing lattices — tier 1 at the foot, capstone at the crown — nodes as
+cut hexes with rank badges, connectors lighting on invest, and data-generated tooltips
+rendered from the node rows' effect lists, next-rank preview included). Allocation clicks
+run the SHARED gate check first (a locally-refused click never hits the wire), apply
+optimistically, and the next `ProgressSync` confirms or corrects. The **micro menu**
+(UI_UX.md §3) ships with C/K glyphs; banked points wear its badge pips. **Prediction
+parity:** the connection folds the allocated tree exactly like the server — effective defs
+via shared `buildEffectiveDefs` drive the hotbar/machine (costs, cooldowns, cast bars),
+node move-speed/dodge/sprint/stamina-regen scalars ride every movement intent, attack-speed
+effects (Flurry) retime the predicted basic chain, and INT/node mods resize the resource
+pool — so a specced character predicts as tightly as a fresh one.

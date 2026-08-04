@@ -8,8 +8,10 @@ import { useEffect, useRef, useState } from 'react';
 import { NoticeCode, noticeTextFor } from '@dawned/shared';
 import { useApp } from '../store.js';
 import { tokenStore } from '../../net/api.js';
-import { runWorld } from '../../game/run-world.js';
+import { runWorld, type PanelId, type WorldHandle } from '../../game/run-world.js';
 import { Button } from '../components/ui.js';
+import { CharacterPanel } from '../panels/CharacterPanel.js';
+import { SkillsPanel } from '../panels/SkillsPanel.js';
 
 interface OverlayState {
   title: string;
@@ -21,6 +23,9 @@ export const WorldScreen = (): React.JSX.Element => {
   const { token, activeCharacter, leaveWorld, logout } = useApp();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [overlay, setOverlay] = useState<OverlayState | null>(null);
+  const [openPanel, setOpenPanel] = useState<PanelId | null>(null);
+  /** The live world handle, in state so panel renders may read it. */
+  const [world, setWorld] = useState<WorldHandle | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -33,6 +38,7 @@ export const WorldScreen = (): React.JSX.Element => {
       activeCharacter.name,
       activeCharacter.appearance,
       {
+        onPanelChange: setOpenPanel,
         onNotice: (code, friendlyText) => {
           switch (code) {
             case NoticeCode.ServerShuttingDown:
@@ -72,6 +78,7 @@ export const WorldScreen = (): React.JSX.Element => {
         },
       },
     );
+    setWorld(handle);
 
     return () => {
       handle.dispose();
@@ -82,6 +89,22 @@ export const WorldScreen = (): React.JSX.Element => {
   return (
     <div className="world-screen">
       <div ref={containerRef} className="world-mount" />
+      {world && openPanel === 'character' ? (
+        <CharacterPanel
+          bridge={world.progression}
+          onClose={() => {
+            world.setPanel(null);
+          }}
+        />
+      ) : null}
+      {world && openPanel === 'skills' ? (
+        <SkillsPanel
+          bridge={world.progression}
+          onClose={() => {
+            world.setPanel(null);
+          }}
+        />
+      ) : null}
       {overlay ? (
         <div className="modal-scrim">
           <div className="panel modal">

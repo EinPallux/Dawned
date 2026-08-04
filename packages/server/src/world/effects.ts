@@ -11,6 +11,8 @@
  */
 
 import {
+  ARCANE_SURGE_EFFECT,
+  FLURRY_EFFECT,
   MOVEMENT_CATEGORIES,
   armorMitigation,
   levelModifier,
@@ -19,10 +21,9 @@ import {
   type EffectCategory,
 } from '@dawned/shared';
 
-/** Synced self-effect id: Archmage's next-cast-instant window (P7). */
-export const ARCANE_SURGE_EFFECT = 'arcane_surge';
-/** Synced self-effect id: Flurry's empowered-basics window (P7). */
-export const FLURRY_EFFECT = 'flurry';
+// Re-exported for the server modules that import them from here — the ids
+// themselves live in shared since P7-D (the client predicts with them too).
+export { ARCANE_SURGE_EFFECT, FLURRY_EFFECT };
 
 export interface ActiveEffect {
   effectId: string;

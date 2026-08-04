@@ -9,10 +9,12 @@
 import {
   AbilityRejectReason,
   ActionId,
+  ARCANE_SURGE_EFFECT,
   ATTUNEMENT_EVERY,
   BASIC_COMBOS,
   BinaryReader,
   DODGE_STAMINA_COST,
+  FLURRY_EFFECT,
   EVASIVE_DODGE_DISCOUNT,
   EVASIVE_ENERGY_PER_S,
   EVASIVE_MOVE_SPEED_PCT,
@@ -22,23 +24,38 @@ import {
   GRACE_EFFECT_ID,
   InputButton,
   OOC_AFTER_MS,
+  SPRINT_STAMINA_PER_SEC,
   actionForSlot,
+  aggregateNodeEffects,
   beginDash,
   buildBasicChains,
+  buildEffectiveDefs,
   canAfford,
+  canAllocateNode,
   commitUse,
   cooldownRemainingMs,
   createAbilityMachine,
   createResourceState,
+  decodeLevelUp,
+  decodeXpGained,
+  emptyNodeAggregates,
+  encodeAllocateSkill,
+  encodeAllocateStats,
+  encodeRespec,
   evaluateUse,
   gainResource,
   importCooldowns,
   interruptCast,
+  neutralResourceMods,
   playerStats,
+  rebuildResourceMax,
+  respecCost,
+  RespecWireKind,
   slotForAction,
   spendComboPoints,
   tickAbilityMachine,
   tickResource,
+  zeroAttributes,
   COMBO_LINK_WINDOW_FRACTION,
   COMBO_RESET_MS,
   EntityEventKind,
@@ -51,7 +68,6 @@ import {
   ServerOp,
   TICK_DT,
   cloneMovementState,
-  comboWindow,
   createMovementState,
   decodeAbilityReject,
   decodeAbilityResolve,
@@ -76,10 +92,18 @@ import {
   type AbilityResolveMessage,
   type AbilityStartMessage,
   type AbilityStateMessage,
+  type AttributeSpread,
   type ComboChain,
   type EffectSyncEntry,
   type EffectSyncMessage,
+  type LevelUpMessage,
+  type NodeAggregates,
+  type ProgressSyncMessage,
+  type RespecKind,
+  type ResourceMods,
   type ResourceState,
+  type SkillNodeDef,
+  type XpGainedMessage,
   type ChatBroadcastMessage,
   type ClassId,
   type ComboStep,
@@ -165,6 +189,11 @@ export interface ConnectionEvents {
   onTelegraph?: (message: TelegraphMessage) => void;
   onProjectileSpawn?: (message: ProjectileSpawnMessage) => void;
   onProjectileEnd?: (message: ProjectileEndMessage) => void;
+  // --- progression (protocol v9) --------------------------------------------
+  /** An XP award landed on us — FCT "+N XP" + bar tick (run-world). */
+  onXpGained?: (message: XpGainedMessage) => void;
+  /** Somebody leveled: self runs the §1.3 juice, remotes get the pillar. */
+  onLevelUp?: (message: LevelUpMessage, oldLevel: number) => void;
 }
 
 interface PendingInput {
@@ -262,8 +291,33 @@ export class Connection {
   /** Predicted Whirlwind-style move slow until this performance.now() ms. */
   private abilityMoveMultUntilMs = 0;
   private abilityMoveMult = 1;
-  /** Own character level (Welcome) — unlock gating mirrors the server. */
+  /** Own character level (Welcome/LevelUp/ProgressSync) — unlock gating mirrors the server. */
   selfLevel = 1;
+
+  // --- progression (protocol v9) --------------------------------------------
+  /**
+   * The authoritative self sheet (ProgressSync), plus the optimistic edits an
+   * allocation click applies while its request is in flight. Every arriving
+   * sync adopts wholesale — mispredictions live for one round trip at most.
+   */
+  sheet: ProgressSyncMessage | null = null;
+  /** Published skill-node defs (fetched from /api/content/skill-nodes). */
+  readonly skillNodeDefs = new Map<string, SkillNodeDef>();
+  /** Own allocated ranks as a Map (the shared helpers' shape). */
+  private readonly nodeRanks = new Map<string, number>();
+  /** Folded tree: the same aggregates the server folds server-side. */
+  aggregates: NodeAggregates = emptyNodeAggregates();
+  /** Node-rewritten defs for OWN abilities (buildEffectiveDefs — both sides). */
+  private effectiveDefs = new Map<string, AbilityDef>();
+  /** Derived stats at (class, level, allocation) — stamina regen, INT pool. */
+  private selfStats = playerStats('warrior', 1);
+  /** effectId → attack-speed % (Flurry, Killer's Rhythm — basics timing). */
+  private readonly effectAttackSpeedPct = new Map<string, number>();
+  /** Panels re-render on any progression change (React subscribes here). */
+  private readonly progressListeners = new Set<() => void>();
+  /** Monotonic change counter — the React panels' useSyncExternalStore
+   * snapshot (the sheet object itself mutates in place between syncs). */
+  progressVersion = 0;
   /**
    * Corrections are held (not adopted) until this time after a predicted dash
    * or blink: those are ability-initiated movement the input replay can't
@@ -611,12 +665,13 @@ export class Connection {
         this.playerName = selfEntry?.name ?? '';
         this.classId = selfEntry?.classId ?? 'warrior';
         this.selfLevel = selfEntry?.level ?? 1;
-        // Resource pool sized like the server sizes it (class + INT at level).
+        // Resource pool sized like the server sizes it (class + INT at level);
+        // the ProgressSync right behind this refines it with allocation+nodes.
         Object.assign(
           this.resource,
           createResourceState(this.classId, playerStats(this.classId, this.selfLevel).int),
         );
-        this.rebuildSlotDefs();
+        this.rebuildProgressionFolds();
         this.predicted.x = welcome.spawn.x;
         this.predicted.y = welcome.spawn.y;
         this.predicted.z = welcome.spawn.z;
@@ -792,9 +847,255 @@ export class Connection {
       case ServerOp.ProjectileEnd:
         this.events.onProjectileEnd?.(decodeProjectileEnd(reader));
         return;
+      case ServerOp.ProgressSync: {
+        // The authoritative sheet: initial state AND the correction that heals
+        // any mispredicted allocation click. Adopt wholesale, re-fold.
+        const sync = decodeJsonEnvelope<ProgressSyncMessage>(reader);
+        this.sheet = sync;
+        this.selfLevel = sync.level;
+        this.nodeRanks.clear();
+        for (const [nodeId, rank] of Object.entries(sync.nodes)) {
+          if (rank > 0) this.nodeRanks.set(nodeId, rank);
+        }
+        this.rebuildProgressionFolds();
+        this.notifyProgress();
+        return;
+      }
+      case ServerOp.XpGained: {
+        const gained = decodeXpGained(reader);
+        // The message carries the ABSOLUTE bar position — a dropped packet can
+        // never desync the bar, and level here always trails LevelUp's own.
+        if (this.sheet) {
+          this.sheet.xp = gained.xp;
+          this.sheet.level = gained.level;
+        }
+        this.events.onXpGained?.(gained);
+        this.notifyProgress();
+        return;
+      }
+      case ServerOp.LevelUp: {
+        const levelUp = decodeLevelUp(reader);
+        const oldLevel = levelUp.entityId === this.selfId ? this.selfLevel : 0;
+        if (levelUp.entityId === this.selfId) {
+          this.selfLevel = levelUp.level;
+          if (this.sheet) this.sheet.level = levelUp.level;
+          // Derived pools resize now (the follow-up ProgressSync brings the
+          // banked points; HP/stamina/resource refills ride the snapshot).
+          this.rebuildProgressionFolds();
+          this.notifyProgress();
+        }
+        this.events.onLevelUp?.(levelUp, oldLevel);
+        return;
+      }
       default:
         console.warn(`[net] ignoring unknown opcode 0x${opcode.toString(16)}`);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Progression (protocol v9) — the client half of the P7 fold
+  // -------------------------------------------------------------------------
+
+  /** Adopt the published skill-node defs (fetched once per world entry). */
+  setSkillNodeContent(defs: readonly SkillNodeDef[]): void {
+    this.skillNodeDefs.clear();
+    for (const def of defs) this.skillNodeDefs.set(def.id, def);
+    this.rebuildProgressionFolds();
+    this.notifyProgress();
+  }
+
+  /** Panels/HUD subscribe for re-render on any progression change. */
+  subscribeProgress(listener: () => void): () => void {
+    this.progressListeners.add(listener);
+    return () => this.progressListeners.delete(listener);
+  }
+
+  private notifyProgress(): void {
+    this.progressVersion++;
+    for (const listener of this.progressListeners) listener();
+  }
+
+  /** Allocated attribute points (zero spread until the first sync). */
+  get allocated(): AttributeSpread {
+    return this.sheet?.allocated ?? zeroAttributes();
+  }
+
+  /** Own allocated ranks, in the shared helpers' Map shape. */
+  get ranks(): ReadonlyMap<string, number> {
+    return this.nodeRanks;
+  }
+
+  /**
+   * Re-fold the allocated tree exactly like the server's rebuildNodeFolds:
+   * aggregates → effective defs → derived stats (maxStamina, resource pool)
+   * → the effect-mod indexes prediction reads per intent. Runs on sync,
+   * content load, level-up and optimistic allocation clicks.
+   */
+  private rebuildProgressionFolds(): void {
+    this.aggregates = aggregateNodeEffects(this.skillNodeDefs, this.nodeRanks);
+    this.effectiveDefs = buildEffectiveDefs(this.abilityDefs, this.aggregates.abilityMods);
+    this.selfStats = playerStats(this.classId, this.selfLevel, this.allocated);
+    // Client-owned movement pool: the server sizes stamina the same way.
+    this.predicted.maxStamina = this.selfStats.maxStamina;
+    this.predicted.stamina = Math.min(this.predicted.stamina, this.predicted.maxStamina);
+    // Resource pool: INT + node mods resize it (rebuildPlayerDerived mirror);
+    // the VALUE stays put — refills arrive via snapshot re-base.
+    rebuildResourceMax(
+      this.resource,
+      this.classId,
+      this.selfStats.int,
+      this.resourceModsNow(),
+      false,
+    );
+    this.rebuildEffectModIndexes();
+    this.rebuildSlotDefs();
+  }
+
+  /** Node resource mods, exactly as the server's resourceModsOf folds them. */
+  private resourceModsNow(): ResourceMods | undefined {
+    const stats = this.aggregates.stats;
+    const mods = neutralResourceMods();
+    if (this.resource.type === 'energy') {
+      mods.maxFlat = stats.maxEnergyDelta;
+      mods.regenFlat = stats.energyRegenDelta;
+    } else if (this.resource.type === 'mana') {
+      mods.maxPct = stats.maxManaPct;
+      mods.regenPct = stats.manaRegenPct;
+    }
+    if (mods.maxFlat === 0 && mods.maxPct === 0 && mods.regenFlat === 0 && mods.regenPct === 0) {
+      return undefined;
+    }
+    return mods;
+  }
+
+  /**
+   * effectId → movement/attack-speed mods, scanned from the EFFECTIVE defs
+   * (node addEffects included) plus node-granted buffs (on-kill/on-spend
+   * procs, on-use grants) — so a Killer's Rhythm stack speeds the predicted
+   * combo exactly like the server's.
+   */
+  private rebuildEffectModIndexes(): void {
+    this.effectSpeedPct.clear();
+    this.effectDodgeDelta.clear();
+    this.effectAttackSpeedPct.clear();
+    const index = (
+      effectId: string,
+      mods: {
+        moveSpeedPct?: number | undefined;
+        dodgeCostDelta?: number | undefined;
+        attackSpeedPct?: number | undefined;
+      },
+    ): void => {
+      if (mods.moveSpeedPct !== undefined) this.effectSpeedPct.set(effectId, mods.moveSpeedPct);
+      if (mods.dodgeCostDelta !== undefined) {
+        this.effectDodgeDelta.set(effectId, mods.dodgeCostDelta);
+      }
+      if (mods.attackSpeedPct !== undefined) {
+        this.effectAttackSpeedPct.set(effectId, mods.attackSpeedPct);
+      }
+    };
+    for (const def of this.abilityDefs.values()) {
+      const effective = this.effectiveDefs.get(def.id) ?? def;
+      for (const effect of effective.effects) {
+        if (effect.kind === 'apply_effect') index(effect.effectId, effect.mods);
+      }
+    }
+    for (const { proc } of this.aggregates.procs) {
+      if (
+        proc.proc === 'on_kill_buff' ||
+        proc.proc === 'resource_spent_stacks' ||
+        proc.proc === 'on_self_heal_buff'
+      ) {
+        index(proc.effectId, proc.mods);
+      }
+    }
+    // Flurry (capstone): the server applies FLURRY_EFFECT with the node's
+    // attackSpeedPct — index it so empowered basics predict at full speed.
+    for (const modsList of this.aggregates.abilityMods.values()) {
+      for (const mods of modsList) {
+        if (mods.empowerBasics) {
+          index(FLURRY_EFFECT, { attackSpeedPct: mods.empowerBasics.attackSpeedPct });
+        }
+      }
+    }
+  }
+
+  /** The def OUR press runs: node-rewritten, else authored (server parity). */
+  private effectiveDefOf(abilityId: string): AbilityDef | undefined {
+    return this.effectiveDefs.get(abilityId) ?? this.abilityDefs.get(abilityId);
+  }
+
+  /** Attack-speed multiplier from live self effects (server attackSpeedMultOf). */
+  private attackSpeedMultNow(): number {
+    let mult = 1;
+    const effects = this.effectLists.get(this.selfId);
+    if (effects) {
+      for (const effect of effects) {
+        const pct = this.effectAttackSpeedPct.get(effect.effectId);
+        if (pct !== undefined) mult *= 1 + pct / 100;
+      }
+    }
+    return Math.max(0.25, mult);
+  }
+
+  /**
+   * Spend banked attribute points (the C panel's Confirm). Optimistic: the
+   * sheet and folds update NOW; the server validates with the same shared
+   * rules and its ProgressSync confirms (or corrects) one round trip later.
+   */
+  sendAllocateStats(deltas: AttributeSpread): void {
+    const total = deltas.str + deltas.agi + deltas.int + deltas.vit + deltas.end;
+    if (!this.sheet || total < 1 || total > this.sheet.unspentStatPoints) return;
+    if (!this.isOpen) return;
+    this.sheet.unspentStatPoints -= total;
+    this.sheet.allocated = {
+      str: this.sheet.allocated.str + deltas.str,
+      agi: this.sheet.allocated.agi + deltas.agi,
+      int: this.sheet.allocated.int + deltas.int,
+      vit: this.sheet.allocated.vit + deltas.vit,
+      end: this.sheet.allocated.end + deltas.end,
+    };
+    this.rebuildProgressionFolds();
+    this.sendRaw(encodeAllocateStats(deltas));
+    this.notifyProgress();
+  }
+
+  /**
+   * Put one rank into a node (the K panel's click). Runs the SAME shared
+   * gate check the server enforces — a locally-refused click never hits the
+   * wire; an accepted one folds immediately and syncs behind.
+   */
+  sendAllocateSkill(nodeId: string): { ok: boolean; reason?: string } {
+    if (!this.sheet || !this.isOpen) return { ok: false, reason: 'no_sheet' };
+    const verdict = canAllocateNode(
+      this.skillNodeDefs,
+      this.nodeRanks,
+      nodeId,
+      this.selfLevel,
+      this.sheet.unspentSkillPoints,
+    );
+    if (!verdict.ok) return { ok: false, reason: verdict.reason };
+    this.sheet.unspentSkillPoints -= 1;
+    const next = (this.nodeRanks.get(nodeId) ?? 0) + 1;
+    this.nodeRanks.set(nodeId, next);
+    this.sheet.nodes[nodeId] = next;
+    this.rebuildProgressionFolds();
+    this.sendRaw(encodeAllocateSkill({ nodeId }));
+    this.notifyProgress();
+    return { ok: true };
+  }
+
+  /**
+   * Mirror of Dawn respec (PROGRESSION.md §6). Not predicted — gold and the
+   * full refund come back on the authoritative ProgressSync (rare, and a
+   * wrongly-predicted wipe would feel far worse than 50 ms of waiting).
+   */
+  sendRespec(kind: RespecKind): void {
+    if (!this.sheet || !this.isOpen) return;
+    if (this.sheet.gold < respecCost(kind, this.selfLevel)) return;
+    this.sendRaw(
+      encodeRespec({ kind: kind === 'skills' ? RespecWireKind.Skills : RespecWireKind.Stats }),
+    );
   }
 
   /**
@@ -803,26 +1104,28 @@ export class Connection {
    * animate NOW (prediction); dropped (too early / GCD) → null, exactly as
    * the server would drop or reject it.
    */
-  requestBasicAttack(aimYaw: number, aimPitch: number): { step: number; def: ComboStep } | null {
+  requestBasicAttack(
+    aimYaw: number,
+    aimPitch: number,
+  ): { step: number; def: ComboStep; durationMs: number } | null {
     if (this.status !== 'playing' || this.selfDead) return null;
     if (this.predicted.rollTimeLeft > 0 || this.predicted.swimming) return null;
     // Stunned gates attacks at request level, same as the server (P6).
     if ((this.selfFlags & EntityFlag.Stunned) !== 0) return null;
     // Content-sourced chain (P5): the SAME rows the server validates with —
-    // panel-tuned step timing stays predicted correctly.
+    // panel-tuned step timing stays predicted correctly. Attack-speed buffs
+    // (P7: Flurry, Killer's Rhythm) shrink every step duration server-side
+    // (combat.ts handleAttackRequest) — the same fold times this mirror.
     const combo = this.basicChains[this.classId];
+    const speedMult = this.attackSpeedMultNow();
     const now = performance.now();
     let step = 0;
     if (this.comboStep >= 0 && this.comboStartedAtMs > 0) {
       const current = combo.steps[this.comboStep]!;
-      const window = comboWindow(
-        current,
-        now - this.comboStartedAtMs,
-        COMBO_LINK_WINDOW_FRACTION,
-        COMBO_RESET_MS,
-      );
-      if (window === 'too_early') return null;
-      if (window === 'link') step = (this.comboStep + 1) % combo.steps.length;
+      const stepMs = current.durationMs / speedMult;
+      const since = now - this.comboStartedAtMs;
+      if (since < stepMs * (1 - COMBO_LINK_WINDOW_FRACTION)) return null;
+      if (since <= stepMs + COMBO_RESET_MS) step = (this.comboStep + 1) % combo.steps.length;
     }
     if (now < this.gcdUntilMs && step === 0) return null;
 
@@ -842,7 +1145,8 @@ export class Connection {
         }),
       );
     }
-    return { step, def: combo.steps[step]! };
+    const def = combo.steps[step]!;
+    return { step, def, durationMs: Math.round(def.durationMs / speedMult) };
   }
 
   /** Dodge cancels the predicted chain (the server does the same). */
@@ -863,31 +1167,24 @@ export class Connection {
    */
   setAbilityContent(defs: readonly AbilityDef[]): void {
     this.abilityDefs.clear();
-    this.effectSpeedPct.clear();
-    this.effectDodgeDelta.clear();
-    for (const def of defs) {
-      this.abilityDefs.set(def.id, def);
-      for (const effect of def.effects) {
-        if (effect.kind !== 'apply_effect') continue;
-        if (effect.mods.moveSpeedPct !== undefined) {
-          this.effectSpeedPct.set(effect.effectId, effect.mods.moveSpeedPct);
-        }
-        if (effect.mods.dodgeCostDelta !== undefined) {
-          this.effectDodgeDelta.set(effect.effectId, effect.mods.dodgeCostDelta);
-        }
-      }
-    }
+    for (const def of defs) this.abilityDefs.set(def.id, def);
     const chains = buildBasicChains(defs);
     if (chains) this.basicChains = chains;
-    this.rebuildSlotDefs();
+    // Effective defs, slot map and the effect-mod indexes all derive from the
+    // authored defs × the allocated tree — one rebuild covers every path.
+    this.rebuildProgressionFolds();
   }
 
-  /** Own hotbar: slot → published def for the player's class. */
+  /**
+   * Own hotbar: slot → published def for the player's class — the EFFECTIVE
+   * def when allocated nodes rewrite it (P7): predicted costs, cooldowns and
+   * cast bars must match what the server will actually charge and time.
+   */
   private rebuildSlotDefs(): void {
     this.slotDefs.clear();
     for (const def of this.abilityDefs.values()) {
       if (def.classId === this.classId && def.binding.kind === 'slot') {
-        this.slotDefs.set(def.binding.slot, def);
+        this.slotDefs.set(def.binding.slot, this.effectiveDefs.get(def.id) ?? def);
       }
     }
   }
@@ -950,6 +1247,15 @@ export class Connection {
         .get(this.selfId)
         ?.find((effect) => effect.effectId === GRACE_EFFECT_ID);
       if (grace) castMsDelta = -GRACE_CAST_REDUCTION_MS * grace.stacks;
+    }
+    // Archmage surge (P7): a banked instant-cast window collapses the next
+    // real cast — the effect is synced, so this predicts the same collapse
+    // the server applies at commit (abilities.ts).
+    if (
+      def.castMs > 0 &&
+      this.effectLists.get(this.selfId)?.some((effect) => effect.effectId === ARCANE_SURGE_EFFECT)
+    ) {
+      castMsDelta = -def.castMs;
     }
 
     // Mirror the server's order exactly: finisher CP measured before commit.
@@ -1094,12 +1400,18 @@ export class Connection {
     }
     // Focus stance (P6): the mage's held slow-strafe, same fold as world.step.
     if (secondaryHeld && this.classId === 'mage') speedMult *= FOCUS_MOVE_SPEED_MULT;
+    // Node stat folds (P7): Fleet/Traveler/Pilgrim speed, Acrobat dodges,
+    // Marathon sprints, END-scaled regen — world.step folds the same numbers.
+    const nodeStats = this.aggregates.stats;
+    speedMult *= 1 + nodeStats.moveSpeedPct / 100;
+    dodgeCostDelta += nodeStats.dodgeStaminaCostDelta;
     // Casting/channeling with a fractional castWhileMoving walks slower — the
-    // def is the same row the server reads, so both sides slow identically.
+    // def is the same row the server reads (node-rewritten alike), so both
+    // sides slow identically.
     const activeCastId =
       this.abilityMachine.cast?.abilityId ?? this.abilityMachine.channel?.abilityId ?? null;
     if (activeCastId !== null) {
-      const castMove = this.abilityDefs.get(activeCastId)?.castWhileMoving;
+      const castMove = this.effectiveDefOf(activeCastId)?.castWhileMoving;
       if (typeof castMove === 'number') speedMult *= castMove;
     }
     if (now < this.abilityMoveMultUntilMs) speedMult *= this.abilityMoveMult;
@@ -1108,7 +1420,14 @@ export class Connection {
     // one-RTT window before the flag lands resolves through normal corrections.
     const stunned = (this.selfFlags & EntityFlag.Stunned) !== 0;
     const rooted = stunned || (this.selfFlags & EntityFlag.Rooted) !== 0;
-    return { speedMult, dodgeCostDelta, rooted, controlsLocked: stunned };
+    return {
+      speedMult,
+      dodgeCostDelta,
+      staminaRegenPerS: this.selfStats.staminaRegenPerS,
+      sprintStaminaPerS: SPRINT_STAMINA_PER_SEC + nodeStats.sprintStaminaPerSDelta,
+      rooted,
+      controlsLocked: stunned,
+    };
   }
 
   // --- HUD state (polled per frame) ----------------------------------------
@@ -1466,11 +1785,12 @@ export class Connection {
     const result = stepMovement(this.predicted, intent, TICK_DT, this.terrain, modifiers);
     if (result.dodged) {
       // Dodge cancels the chain AND an active cast/channel for half its cost
-      // back — the same §4.5 rule the server applies in its step.
+      // back — the same §4.5 rule the server applies in its step. The refund
+      // reads the EFFECTIVE cost (node cost discounts, P7), like the server.
       this.cancelPredictedCombo();
       const casting = this.abilityMachine.cast ?? this.abilityMachine.channel;
       if (casting) {
-        const castDef = this.abilityDefs.get(casting.abilityId);
+        const castDef = this.effectiveDefOf(casting.abilityId);
         const interrupted = interruptCast(this.abilityMachine, 'dodge', castDef?.cost.amount ?? 0);
         if (interrupted.refund > 0) gainResource(this.resource, interrupted.refund, true);
       }
@@ -1508,13 +1828,13 @@ export class Connection {
       if (ticked.released) {
         this.machineEvents.push({
           kind: 'released',
-          def: this.abilityDefs.get(ticked.released.abilityId) ?? null,
+          def: this.effectiveDefOf(ticked.released.abilityId) ?? null,
         });
       }
       for (const tick of ticked.channelTicks) {
         this.machineEvents.push({
           kind: 'channel-tick',
-          def: this.abilityDefs.get(tick.abilityId) ?? null,
+          def: this.effectiveDefOf(tick.abilityId) ?? null,
         });
       }
       if (ticked.channelEnded) this.machineEvents.push({ kind: 'channel-ended', def: null });

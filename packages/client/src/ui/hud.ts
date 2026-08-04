@@ -89,6 +89,14 @@ export interface HudStats {
   ccState: 'stunned' | 'rooted' | null;
   /** Mage Attunement pips 0–2 (null = not a mage). */
   attunement: number | null;
+  // --- progression (P7-D) ---------------------------------------------------
+  /** Level + absolute bar position (null until the first ProgressSync). */
+  progress: { level: number; xp: number; xpToNext: number } | null;
+  /** Banked points → the micro-menu badge pips (§7: gentle, never a modal). */
+  unspentStatPoints: number;
+  unspentSkillPoints: number;
+  /** Which panel is open (micro-menu tiles light up). */
+  openPanel: 'character' | 'skills' | null;
 }
 
 export class Hud {
@@ -158,6 +166,21 @@ export class Hud {
   private readonly correctionCanvas: HTMLCanvasElement;
   private readonly pingHistory: number[] = [];
   private readonly correctionHistory: number[] = [];
+  // --- progression (P7-D) ---------------------------------------------------
+  private readonly toastsEl: HTMLElement;
+  private readonly xpFillEl: HTMLElement;
+  private readonly xpLabelEl: HTMLElement;
+  private readonly xpBarEl: HTMLElement;
+  private readonly xpBurstCanvas: HTMLCanvasElement;
+  private readonly levelFlashEl: HTMLElement;
+  private readonly microBadgeC: HTMLElement;
+  private readonly microBadgeK: HTMLElement;
+  private readonly microTiles = new Map<string, HTMLElement>();
+  /** Rising gold sparks over the XP bar while a level-up burst runs. */
+  private xpBurstParticles: { x: number; y: number; vx: number; vy: number; life: number }[] = [];
+  private xpBurstRafArmed = false;
+  /** Last rendered xp state (skip DOM writes when nothing moved). */
+  private xpShown = { level: -1, xp: -1, xpToNext: -1 };
   /** kbps window: last sample of the cumulative byte counters. */
   private lastBytes = { in: 0, out: 0, at: 0 };
   private rateKbps = { in: 0, out: 0 };
@@ -167,6 +190,7 @@ export class Hud {
     private readonly onChatSubmit: (text: string) => void,
     private readonly onChatFocusChange: (focused: boolean) => void,
     private readonly onRespawn: () => void = () => undefined,
+    private readonly onMenuAction: (panel: 'character' | 'skills') => void = () => undefined,
   ) {
     this.root = document.createElement('div');
     this.root.className = 'hud';
@@ -228,6 +252,26 @@ export class Hud {
         <div class="hud-chat-log" data-chatlog></div>
         <input class="hud-chat-input" data-chatinput placeholder="Press Enter to chat…" maxlength="200" />
       </div>
+      <div class="hud-toasts" data-toasts></div>
+      <div class="hud-micromenu" data-micromenu>
+        <button class="hud-micro" data-micro="character" type="button">
+          <span class="hud-micro-glyph">◆</span>
+          <span class="hud-micro-badge" data-badge-c hidden></span>
+          <span class="hud-micro-label">Character · C</span>
+        </button>
+        <button class="hud-micro" data-micro="skills" type="button">
+          <span class="hud-micro-glyph">✦</span>
+          <span class="hud-micro-badge" data-badge-k hidden></span>
+          <span class="hud-micro-label">Skills · K</span>
+        </button>
+      </div>
+      <div class="hud-xpbar" data-xpbar>
+        <div class="hud-xpbar-fill" data-xp-fill></div>
+        <div class="hud-xpbar-ticks">${Array.from({ length: 9 }, (_, i) => `<span style="left:${(i + 1) * 10}%"></span>`).join('')}</div>
+        <canvas class="hud-xpbar-burst" data-xp-burst width="360" height="56"></canvas>
+        <span class="hud-xpbar-label" data-xp-label></span>
+      </div>
+      <div class="hud-levelflash" data-levelflash hidden></div>
     `;
     parent.appendChild(this.root);
 
@@ -265,6 +309,21 @@ export class Hud {
     this.pingCanvas = this.query('[data-ping]') as HTMLCanvasElement;
     this.correctionCanvas = this.query('[data-correction]') as HTMLCanvasElement;
     this.chatInput = this.query('[data-chatinput]') as HTMLInputElement;
+    this.toastsEl = this.query('[data-toasts]');
+    this.xpBarEl = this.query('[data-xpbar]');
+    this.xpFillEl = this.query('[data-xp-fill]');
+    this.xpLabelEl = this.query('[data-xp-label]');
+    this.xpBurstCanvas = this.query('[data-xp-burst]') as HTMLCanvasElement;
+    this.levelFlashEl = this.query('[data-levelflash]');
+    this.microBadgeC = this.query('[data-badge-c]');
+    this.microBadgeK = this.query('[data-badge-k]');
+    for (const tile of this.root.querySelectorAll<HTMLElement>('[data-micro]')) {
+      const panel = tile.dataset.micro as 'character' | 'skills';
+      this.microTiles.set(panel, tile);
+      tile.addEventListener('click', () => {
+        this.onMenuAction(panel);
+      });
+    }
 
     this.chatInput.addEventListener('focus', () => {
       this.onChatFocusChange(true);
@@ -487,6 +546,124 @@ export class Hud {
     this.interruptedUntilMs = performance.now() + 650;
   }
 
+  // --- progression (P7-D) ---------------------------------------------------
+
+  /**
+   * Toast (UI_UX.md §2): slide-in right, dwell, fade; stack max 5, oldest
+   * collapse into "+n more". `onClick` makes it a click-to-open shortcut
+   * (unlock toasts open the Skills panel).
+   */
+  toast(text: string, opts: { onClick?: () => void; tone?: 'gold' | 'xp' } = {}): void {
+    const row = document.createElement('div');
+    row.className = 'hud-toast';
+    if (opts.tone) row.dataset.tone = opts.tone;
+    row.textContent = text;
+    if (opts.onClick) {
+      row.classList.add('is-clickable');
+      row.addEventListener('click', () => {
+        opts.onClick?.();
+        row.remove();
+        this.collapseToasts();
+      });
+    }
+    this.toastsEl.appendChild(row);
+    this.collapseToasts();
+    setTimeout(() => {
+      row.classList.add('is-leaving');
+      setTimeout(() => {
+        row.remove();
+        this.collapseToasts();
+      }, 260);
+    }, 4500);
+  }
+
+  /** Keep at most 5 visible; older ones fold into a single "+n more" line. */
+  private collapseToasts(): void {
+    const rows = [...this.toastsEl.children].filter(
+      (el) => !el.classList.contains('hud-toast-more'),
+    ) as HTMLElement[];
+    let more = this.toastsEl.querySelector<HTMLElement>('.hud-toast-more');
+    const excess = rows.length - 5;
+    if (excess > 0) {
+      for (let i = 0; i < excess; i++) rows[i]!.hidden = true;
+      if (!more) {
+        more = document.createElement('div');
+        more.className = 'hud-toast hud-toast-more';
+        this.toastsEl.prepend(more);
+      }
+      more.textContent = `+${excess} more`;
+    } else {
+      for (const row of rows) row.hidden = false;
+      more?.remove();
+    }
+  }
+
+  /** Quick highlight on the XP bar when an award lands (§7: bar always ticks). */
+  xpPulse(): void {
+    this.xpBarEl.classList.remove('is-pulse');
+    void this.xpBarEl.offsetWidth;
+    this.xpBarEl.classList.add('is-pulse');
+  }
+
+  /**
+   * Level-up juice, HUD half (PROGRESSION.md §1.3): gold flash frame around
+   * the HUD (600 ms) + a particle burst riding the XP bar (DOM canvas).
+   * The world half (pillar, Celebration) runs in run-world.
+   */
+  levelUpJuice(): void {
+    this.levelFlashEl.hidden = false;
+    this.levelFlashEl.classList.remove('is-live');
+    void this.levelFlashEl.offsetWidth;
+    this.levelFlashEl.classList.add('is-live');
+    setTimeout(() => {
+      this.levelFlashEl.hidden = true;
+    }, 700);
+
+    // Gold sparks rise off the bar for ~0.9 s.
+    const canvas = this.xpBurstCanvas;
+    if (canvas.width !== canvas.clientWidth && canvas.clientWidth > 0) {
+      canvas.width = canvas.clientWidth; // match CSS width — crisp sparks
+    }
+    const w = canvas.width;
+    for (let i = 0; i < 42; i++) {
+      this.xpBurstParticles.push({
+        x: Math.random() * w,
+        y: canvas.height - 4,
+        vx: (Math.random() - 0.5) * 30,
+        vy: -60 - Math.random() * 90,
+        life: 0.5 + Math.random() * 0.45,
+      });
+    }
+    if (!this.xpBurstRafArmed) {
+      this.xpBurstRafArmed = true;
+      let last = performance.now();
+      const tick = (): void => {
+        const now = performance.now();
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          this.xpBurstRafArmed = false;
+          return;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.xpBurstParticles = this.xpBurstParticles.filter((p) => (p.life -= dt) > 0);
+        for (const p of this.xpBurstParticles) {
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vy += 140 * dt;
+          ctx.globalAlpha = Math.min(1, p.life * 2.2);
+          ctx.fillStyle = '#f0c46b';
+          ctx.fillRect(p.x, p.y, 2.5, 2.5);
+        }
+        ctx.globalAlpha = 1;
+        if (this.xpBurstParticles.length > 0) requestAnimationFrame(tick);
+        else this.xpBurstRafArmed = false;
+      };
+      requestAnimationFrame(tick);
+    }
+  }
+
   /** Red seam pulse on a refused press (local evaluate or server reject). */
   pulseSlot(slot: number): void {
     const els = this.slotEls.get(slot);
@@ -670,6 +847,35 @@ export class Hud {
       for (let i = 0; i < pips.length; i++) {
         (pips[i] as HTMLElement).dataset.lit = i < attunement ? 'true' : 'false';
       }
+    }
+
+    // XP bar (P7-D, §3 layout: thin bar, full bottom edge, segment ticks).
+    const progress = stats.progress;
+    if (progress) {
+      if (
+        progress.level !== this.xpShown.level ||
+        progress.xp !== this.xpShown.xp ||
+        progress.xpToNext !== this.xpShown.xpToNext
+      ) {
+        this.xpShown = { ...progress };
+        const capped = progress.xpToNext <= 0;
+        const fraction = capped ? 1 : Math.min(1, progress.xp / progress.xpToNext);
+        this.xpFillEl.style.width = `${(fraction * 100).toFixed(2)}%`;
+        this.xpLabelEl.textContent = capped
+          ? `LEVEL ${progress.level} · MAX`
+          : `LEVEL ${progress.level} · ${progress.xp.toLocaleString('en-US')} / ${progress.xpToNext.toLocaleString('en-US')} XP`;
+      }
+    }
+
+    // Micro-menu badges: the §7 "gentle pip" for banked points.
+    const statPts = stats.unspentStatPoints;
+    const skillPts = stats.unspentSkillPoints;
+    this.microBadgeC.hidden = statPts <= 0;
+    if (statPts > 0) this.microBadgeC.textContent = String(statPts);
+    this.microBadgeK.hidden = skillPts <= 0;
+    if (skillPts > 0) this.microBadgeK.textContent = String(skillPts);
+    for (const [panel, tile] of this.microTiles) {
+      tile.dataset.open = stats.openPanel === panel ? 'true' : 'false';
     }
 
     // Buff/debuff rows.

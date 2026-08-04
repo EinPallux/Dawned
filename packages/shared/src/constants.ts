@@ -230,6 +230,13 @@ export const GRACE_EFFECT_ID = 'grace';
 /** Grace stacks idle out after this long without a Smite hit. */
 export const GRACE_STACK_DURATION_MS = 10000;
 
+/** Synced self-effect id: Archmage's next-cast-instant window (P7 node).
+ * Both sides collapse a >0 cast to instant while it's up — bar parity. */
+export const ARCANE_SURGE_EFFECT = 'arcane_surge';
+/** Synced self-effect id: Flurry's empowered-basics window (P7 capstone).
+ * Its attackSpeedPct mod times the predicted combo like the server's. */
+export const FLURRY_EFFECT = 'flurry';
+
 /** Mage Attunement passive (CLASSES.md §2): every Nth landed basic bolt. */
 export const ATTUNEMENT_EVERY = 3;
 export const ATTUNEMENT_MANA_REFUND = 5;

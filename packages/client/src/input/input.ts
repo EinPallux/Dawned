@@ -56,6 +56,12 @@ export class InputController {
   /** Set while a text field (chat) owns the keyboard. */
   textEntryActive = false;
 
+  /**
+   * Panel keys (P7-D, UI_UX.md §4): C Character, K Skills, Esc close. Set by
+   * run-world; fires on keydown (non-repeat) while no text field owns keys.
+   */
+  onUiKey: ((key: 'character' | 'skills' | 'close') => void) | null = null;
+
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly onChatKey: () => void,
@@ -156,6 +162,13 @@ export class InputController {
     if (event.code === 'Enter') {
       this.onChatKey();
       return;
+    }
+    // Panel toggles (P7-D). Esc doubles as the browser's pointer-lock exit —
+    // the handler still runs, so an open panel closes on the same press.
+    if (!event.repeat) {
+      if (event.code === 'KeyC') this.onUiKey?.('character');
+      else if (event.code === 'KeyK') this.onUiKey?.('skills');
+      else if (event.code === 'Escape') this.onUiKey?.('close');
     }
     // Space would scroll the page; the game owns it.
     if (event.code === 'Space') event.preventDefault();
