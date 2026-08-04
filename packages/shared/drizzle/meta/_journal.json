@@ -99,6 +99,13 @@
       "when": 1785838086826,
       "tag": "0013_p9_bestiary_seeds",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1785838087826,
+      "tag": "0014_a2_map_drafts",
+      "breakpoints": true
     }
   ]
 }
