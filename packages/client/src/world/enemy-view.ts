@@ -12,27 +12,74 @@ import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.j
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { EntityFlag, type EnemyDef, type EnemyMetaEntry } from '@dawned/shared';
 
+interface ClipSet {
+  idle: string;
+  move: string;
+  hit: string;
+  death: string;
+  alert: string;
+}
+
+const armature = (name: string): string => `CharacterArmature|${name}`;
+
+/**
+ * The Quaternius monster bundle rigs its models in exactly three families, and
+ * their clip names are NOT interchangeable — a walker has `Idle`/`Walk` where
+ * a floater has `Flying_Idle`/`Fast_Flying`, and the two spell the hit react
+ * differently (`HitRecieve` vs `HitReact` — the pack misspells one of them).
+ * Naming the families once beats fifteen near-identical literals and makes the
+ * mismatch impossible to introduce by copy-paste.
+ *
+ * Verified by reading the baked glTF animation lists, not by assumption.
+ */
+const WALKER: ClipSet = {
+  idle: armature('Idle'),
+  move: armature('Walk'),
+  hit: armature('HitRecieve'), // (sic — the pack misspells it in this family)
+  death: armature('Death'),
+  alert: armature('No'),
+};
+
+/** Floaters (glub, bees, ghosts): no Idle and no Walk exist on these rigs. */
+const FLOATER: ClipSet = {
+  idle: armature('Flying_Idle'),
+  move: armature('Fast_Flying'),
+  hit: armature('HitReact'),
+  death: armature('Death'),
+  alert: armature('No'),
+};
+
+/** The richest family (frog, orc, mushroom king): real Run + Weapon clips. */
+const HUMANOID: ClipSet = {
+  idle: armature('Idle'),
+  move: armature('Run'),
+  hit: armature('HitReact'),
+  death: armature('Death'),
+  alert: armature('No'),
+};
+
 /** Logical → actual clip names per baked model (verified against the bakes). */
-const MODEL_CLIPS: Record<
-  string,
-  { idle: string; move: string; hit: string; death: string; alert: string }
-> = {
-  enemies_glub: {
-    idle: 'CharacterArmature|Flying_Idle',
-    move: 'CharacterArmature|Fast_Flying',
-    hit: 'CharacterArmature|HitReact',
-    death: 'CharacterArmature|Death',
-    alert: 'CharacterArmature|No',
-  },
-  enemies_mushnub: {
-    idle: 'CharacterArmature|Idle',
-    move: 'CharacterArmature|Walk',
-    hit: 'CharacterArmature|HitRecieve', // (sic — the pack misspells it)
-    death: 'CharacterArmature|Death',
-    alert: 'CharacterArmature|No',
-  },
-  // skeleton_minion is baked but unmapped until P9 places it — an unmapped
-  // model renders statically rather than guessing clip names unverified.
+const MODEL_CLIPS: Record<string, ClipSet> = {
+  // Dawnshore
+  enemies_glub: FLOATER,
+  enemies_mushnub: WALKER,
+  enemies_green_blob: WALKER,
+  enemies_pink_blob: WALKER,
+  enemies_pigeon: WALKER,
+  enemies_orc: HUMANOID,
+  enemies_glub_evolved: FLOATER,
+  // Verdant Weald
+  enemies_frog: HUMANOID,
+  enemies_mushnub_evolved: WALKER,
+  enemies_armabee: FLOATER,
+  enemies_armabee_evolved: FLOATER,
+  enemies_ghost: FLOATER,
+  enemies_cat: WALKER,
+  enemies_wizard: WALKER,
+  enemies_mushroom_king: HUMANOID,
+  // skeleton_minion is baked but unmapped until something places it — an
+  // unmapped model renders statically rather than guessing clip names
+  // unverified.
 };
 
 interface ManifestAsset {

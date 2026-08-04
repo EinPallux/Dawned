@@ -1,5 +1,5 @@
 {
-  "$comment": "License ledger \u2014 the source of truth for attribution. Every served asset must belong to a pack listed here, and every pack must carry license + source. The build fails on unattributed files (docs/tech/ASSET_PIPELINE.md \u00a71). Licenses marked \"verify\" are Phase 0 checklist items before those packs may ship.",
+  "$comment": "License ledger — the source of truth for attribution. Every served asset must belong to a pack listed here, and every pack must carry license + source. The build fails on unattributed files (docs/tech/ASSET_PIPELINE.md §1). Licenses marked \"verify\" are Phase 0 checklist items before those packs may ship.",
   "packs": {
     "kaykit-forest": {
       "name": "KayKit Forest Nature Pack 1.0 FREE",
@@ -50,7 +50,7 @@
       "root": "assets/player_characters/Universal Base Characters[Standard]"
     },
     "quaternius-outfits-fantasy": {
-      "name": "Quaternius Modular Character Outfits \u2014 Fantasy (Standard)",
+      "name": "Quaternius Modular Character Outfits — Fantasy (Standard)",
       "author": "Quaternius",
       "license": "CC0-1.0",
       "verified": true,
@@ -82,7 +82,7 @@
       "root": "assets_vendor/game-icons"
     }
   },
-  "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land \u2014 the pipeline itself does not change.",
+  "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land — the pipeline itself does not change.",
   "selection": [
     {
       "pack": "kaykit-forest",
@@ -97,7 +97,7 @@
       "limit": 3
     },
     {
-      "$comment": "P2 foliage set \u2014 instanced per terrain chunk (grass tufts, bushes, bare trees for the ashen zone).",
+      "$comment": "P2 foliage set — instanced per terrain chunk (grass tufts, bushes, bare trees for the ashen zone).",
       "pack": "kaykit-forest",
       "category": "world/nature",
       "glob": "Assets/gltf/Grass_*_Color1.gltf",
@@ -189,7 +189,90 @@
       "limit": 1
     },
     {
-      "$comment": "P1 player heads: the modular outfits ship their own body geometry (bodyCut keeps head+neck of the fused base; the seam hides in every collar). The pack's Godot-UE export references two textures that do not exist (typo'd `_png.png` names) and defaults to the Dark basecolor variants \u2014 the runtime skin-tint model multiplies DOWN from the Light variants (packages/shared appearance.ts), so both are overridden. `null` drops the broken slot.",
+      "$comment": "P9 bestiary — Dawnshore (NPCS_ENEMIES.md §4). Shore Glub and Young Mushnub reuse the models baked at P4/P5.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Green Blob.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Pink Blob.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Pigeon.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Bandit Forager: the doc names a KayKit Adventurers peasant, a pack not in assets/. Orc is the closest humanoid on disk that actually WALKS — Tribal looked right but is rigged in the pack's flyer family (no Idle/Walk clips). See USER_QUESTIONS Q22.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Orc.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Mossback, the Dawnshore elite mini-boss.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Glub Evolved.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "P9 bestiary — Verdant Weald.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Frog.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Mushnub Evolved.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Armabee.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Armabee Evolved.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Ghost.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Cat.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Wizard.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Mushroom King — the first real boss (P9 DoD).",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Mushroom King.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "P1 player heads: the modular outfits ship their own body geometry (bodyCut keeps head+neck of the fused base; the seam hides in every collar). The pack's Godot-UE export references two textures that do not exist (typo'd `_png.png` names) and defaults to the Dark basecolor variants — the runtime skin-tint model multiplies DOWN from the Light variants (packages/shared appearance.ts), so both are overridden. `null` drops the broken slot.",
       "pack": "quaternius-base-characters",
       "category": "characters",
       "glob": "Base Characters/Godot - UE/Superhero_*_FullBody.gltf",
@@ -215,7 +298,7 @@
       }
     },
     {
-      "$comment": "Hairstyles + beard, skinned to the shared 65-bone rig (head bone variant). Eyebrows_* are deliberately excluded \u2014 the base bodies ship eyebrows built in. Hair basecolors bake to a brightness-normalized luminance map (grayscale mean 0.56 \u00d7 1.47 \u2248 0.82) so runtime multiply tints land on the picked swatch with strand shading intact.",
+      "$comment": "Hairstyles + beard, skinned to the shared 65-bone rig (head bone variant). Eyebrows_* are deliberately excluded — the base bodies ship eyebrows built in. Hair basecolors bake to a brightness-normalized luminance map (grayscale mean 0.56 × 1.47 ≈ 0.82) so runtime multiply tints land on the picked swatch with strand shading intact.",
       "pack": "quaternius-base-characters",
       "category": "characters",
       "glob": "Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_*.gltf",
@@ -247,7 +330,7 @@
       }
     },
     {
-      "$comment": "Animation library \u2014 only the clips a shipped phase uses are kept (menus: class poses; world: locomotion; P4: dodge, hit reacts, deaths, spell bolt; P7: level-up Celebration).",
+      "$comment": "Animation library — only the clips a shipped phase uses are kept (menus: class poses; world: locomotion; P4: dodge, hit reacts, deaths, spell bolt; P7: level-up Celebration).",
       "pack": "quaternius-ual1",
       "category": "characters",
       "glob": "Unreal-Godot/UAL1.glb",

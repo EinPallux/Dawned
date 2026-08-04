@@ -8,8 +8,21 @@
 
 ## Open questions
 
-_None._ (New questions get added here as they come up — with a recommended default, per the rule
-at the top of this file.)
+### Q22 — Bandit Forager's model (P9, 2026-08-04)
+
+NPCS_ENEMIES.md §4 casts the Dawnshore **Bandit Forager** as "KA Peasant-look + dagger" — a
+KayKit Adventurers rig. That pack is not in `assets/` (we have KayKit Skeletons and the
+Quaternius Monster Bundle). Everything else in the Dawnshore + Weald bestiary matched a model
+already on disk; this is the one gap.
+
+Shipped for now: **`Orc.glb`** from the Quaternius bundle. It is the closest humanoid that
+actually walks — the first pick, `Tribal.glb`, _looks_ the part but is rigged in the pack's
+flyer family with no `Idle` or `Walk` clip at all, so it would have T-posed on the ground.
+
+**Recommended default: keep the Orc.** A bandit camp of orcish foragers reads fine on the
+Dawnshore, and it costs nothing. If you would rather have a human bandit, dropping the free
+KayKit Adventurers pack into `assets/enemy_models/` and changing one `modelRef` in the panel is
+the whole job — no code. Either way this is a one-line content edit, not a rebuild.
 
 ---
 
