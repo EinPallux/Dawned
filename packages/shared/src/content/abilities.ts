@@ -185,6 +185,12 @@ export const effectModsSchema = z
         coefTotal: z.number().min(0).max(10),
         school: z.enum(['physical', 'magic']).default('physical'),
         tickEveryMs: z.number().int().min(250),
+        /**
+         * Heals only (P7, Immovable): total healing as a percent of the
+         * TARGET'S max HP spread over the duration — for effects on classes
+         * whose SP cannot carry a meaningful coefTotal. Adds to coefTotal.
+         */
+        pctMaxHpTotal: z.number().min(0).max(100).default(0),
       })
       .optional(),
     /** Attacks apply this debuff to victims while the buff runs (Poisoned Blades). */

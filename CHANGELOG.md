@@ -39,6 +39,18 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   the grind-free test path. Verified live: `tools/smoke/p7-probe.mjs`
   (join sync → setlevel 10 → allocation → relog persistence) plus the P4
   combat probe and the two-client smoke green on v9.
+- **The trees are content (P7-C, with Dawned-Admin A1):** the full XP
+  curve (29 rows) and all 96 skill-tree nodes from CLASSES.md are now
+  published, live-tunable rows authored through the panel's new Content →
+  Progression editors and its publish pipeline (diff → validate + tree
+  cross-checks → transactional copy → hot reload) — tier layout and
+  per-rank ramps follow the Q21 authoring defaults (USER_QUESTIONS.md).
+  Seed migration 0010 carries the whole progression content set to fresh
+  deploys, `GET /api/content/skill-nodes` serves the trees to the client
+  for P7-D, and heal-over-time ticks can now carry a %-of-max-HP part
+  (`periodic.pctMaxHpTotal` — how Immovable's 30% max-HP heal works for
+  SP-less warriors). The p7 probe now allocates against the published
+  trees and proves the tier-2 gate + skill-rank persistence on relog.
 
 ### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (2026-08-03)
 

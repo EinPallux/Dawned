@@ -173,11 +173,21 @@ ground quick-casts (Q19), ally-soft heals (Q20), Blink's teleport + root break, 
 mana-per-point absorb and Aegis' pooled shield with the synced remaining number. Passives:
 Attunement (3rd landed bolt → +5 Mana, −0.5 s cooldowns) and Grace (Smite hits bank −0.1 s
 Mend stacks, max 3) run server-side with client mirrors; Focus is the mage's held RMB stance
-(0.6× move, +10 % bolt speed). Skill trees (§ tables above) land at P7 — the P6 kits are the
-tree-less baselines. `tools/smoke/browser-p6.mjs` runs a scripted 25 s rotation per class at
-L25 and gates that every kit sustains real damage end to end; the §5 ORDERING is a
-played-well property the bot can't measure (it pilots a mage far better than a rogue), so
+(0.6× move, +10 % bolt speed). `tools/smoke/browser-p6.mjs` runs a scripted 25 s rotation
+per class at L25 and gates that every kit sustains real damage end to end; the §5 ORDERING is
+a played-well property the bot can't measure (it pilots a mage far better than a rogue), so
 the percentages are validated by the owner's parity playtest and tuned via the panel.
+
+### As-built (P7 — skill trees live as content)
+
+All 96 nodes in the § tables above ship as published `content_skill_nodes` rows (authored
+through the panel's Content → Progression editor, seed migration 0010 for fresh deploys) on
+the closed per-rank effect vocabulary in `@dawned/shared/content/skill-nodes.ts` — every
+effect the tables describe is expressed in data and folded server-side (stats, per-ability
+rewrites, conditionals, stance/passive tweaks, procs). Two authoring defaults not pinned by
+the tables are recorded as Q21 (USER_QUESTIONS.md): tiers follow listed order (nodes 1–2 →
+tier 1 … node 8 = capstone) and multi-rank effects ramp linearly to the listed value at max
+rank. Both are one panel edit away per node — retuning is content work, not code.
 
 ## 5. Balance guardrails
 

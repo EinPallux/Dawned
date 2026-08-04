@@ -63,6 +63,12 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     return { abilities: [...content.abilities.values()] };
   });
 
+  /** Published skill-tree nodes (P7): the trees the client draws + predicts. */
+  app.get('/api/content/skill-nodes', (_request, reply) => {
+    void reply.header('cache-control', 'no-cache');
+    return { nodes: [...content.skillNodes.values()] };
+  });
+
   /** Minimal public status for the login screen's server pip. */
   app.get('/api/status', () => ({
     online: true,

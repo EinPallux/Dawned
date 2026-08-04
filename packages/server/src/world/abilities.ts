@@ -1010,9 +1010,18 @@ const applyAbilityEffects = (
         const tickCountHeal = periodic
           ? Math.max(1, Math.floor(effect.durationMs / periodic.tickEveryMs))
           : 0;
-        const healPerTick =
+        // Heal ticks: SP-scaled coefTotal, plus the P7 pct-of-max-HP term
+        // (Immovable) computed against each TARGET's own pool at apply.
+        const healPerTickFor = (target: ServerPlayer): number =>
           periodic?.kind === 'heal'
-            ? Math.max(1, Math.round((periodic.coefTotal * player.stats.sp) / tickCountHeal))
+            ? Math.max(
+                1,
+                Math.round(
+                  (periodic.coefTotal * player.stats.sp +
+                    (periodic.pctMaxHpTotal / 100) * target.maxHp) /
+                    tickCountHeal,
+                ),
+              )
             : 0;
         const input = {
           effectId: effect.effectId,
@@ -1022,19 +1031,22 @@ const applyAbilityEffects = (
           mods: effect.mods,
           harmful: effect.target === 'hit' && hitEnemies.length > 0,
           category: effect.category,
-          tickHeal: healPerTick,
           tickSchool: periodic?.school ?? ('physical' as const),
           tickEveryMs: periodic?.tickEveryMs,
         };
         if (effect.target === 'hit' && hitEnemies.length === 0 && hitPlayers.length > 0) {
           // Ally-targeted buff/HoT (P6): 'hit' on a friendly resolution.
           for (const target of hitPlayers) {
-            applyEffect(target, { ...input, harmful: false, tickDamage: 0 }, nowMs);
+            applyEffect(
+              target,
+              { ...input, harmful: false, tickDamage: 0, tickHeal: healPerTickFor(target) },
+              nowMs,
+            );
           }
           break;
         }
         if (effect.target === 'self') {
-          applyEffect(player, { ...input, tickDamage: 0 }, nowMs);
+          applyEffect(player, { ...input, tickDamage: 0, tickHeal: healPerTickFor(player) }, nowMs);
           if (effect.mods.threatDrop) {
             // Smoke Veil: AI sheds this player NOW (threat wipe-lite) — the
             // lingering effect keeps re-acquisition suppressed via targeting.
@@ -1060,7 +1072,7 @@ const applyAbilityEffects = (
                     ),
                   )
                 : 0;
-            applyEffect(enemy, { ...input, tickDamage: mitigated }, nowMs);
+            applyEffect(enemy, { ...input, tickDamage: mitigated, tickHeal: 0 }, nowMs);
           }
         }
         break;
