@@ -17,6 +17,7 @@ export * from './world/walkgrid.js';
 export * from './content/zones.js';
 export * from './content/world-settings.js';
 export * from './content/enemies.js';
+export * from './content/enemy-clips.js';
 export * from './content/spawners.js';
 export * from './content/abilities.js';
 export * from './content/xp-curve.js';

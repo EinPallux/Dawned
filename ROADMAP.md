@@ -476,6 +476,23 @@ across Dawnshore+Weald as the template set; Mushroom King (first real boss) comp
 mixed camps (grunt+ranged+caster) create the intended "pick your fight" pressure; AI CPU within
 budget at 150 active.
 
+**Status (2026-08-04): P9-A/B/C built; P9-D (client) and P9-E (verification) remain.**
+
+- [x] Shared archetype + boss core (P9-A): charge/self-shield ability kinds, interruptible casts,
+      hp-threshold/once-per-life/phase conditions, boss phases + arena leash, and the SHARED
+      selection rules (`selectableEnemyAbilities`, `pickEnemyAbility`, `bossPhaseAt`) the AI and
+      the panel's TTK preview both run.
+- [x] Server AI (P9-B, protocol v12): charger lunge with per-tick segment sweeps and the
+      overshoot punish, caster casts flagged interruptible, swarm surround rings, ranged/caster
+      stand-off from `ARCHETYPE_MOTION` clipped to what the kit can reach, bosses walking one-way
+      phases inside their arena.
+- [x] Content (P9-C, with Dawned-Admin A1-d): 13 new enemy models baked (3 → 16), the Dawnshore + Weald bestiary (17 enemies, 20 spawners incl. two mixed camps) authored through the
+      Enemies editor and published, frozen into seed migration 0013. The TTK simulator caught the
+      Mushroom King at a 48 s kill — under the §12 floor — before he ever went live.
+- [ ] Client (P9-D): rect charge decals, enemy cast bars, boss frame, elite nameplates + scale.
+- [ ] Verification (P9-E): `browser-p9` smoke (solo the King inside 60–120 s with 3 mechanics
+      readable, mixed-camp pressure run), AI CPU budget at 150 active.
+
 ## P10 — Gathering Professions (M) ⚙A3 node placement tools required
 
 **Goal:** all four professions shippable.

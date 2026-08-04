@@ -67,3 +67,12 @@ nothing beyond it.
     composed rig has several `hand_r`). `two-client-sync.mjs` no longer drifts its fixtures
     apart (both `/stuck` first, walk-back in a `finally`); new `roll-probe.mjs` and a roll
     gate in `predict-lag.mjs`. 342 unit tests green.
+    **P9 — Enemies & AI Depth (in progress):** A/B/C built, D (client) + E (verification)
+    left. Shared owns the archetype vocabulary AND the selection rules
+    (`selectableEnemyAbilities`/`pickEnemyAbility`/`bossPhaseAt`) so AI and panel preview
+    agree; protocol v12 completed the AI (charger lunge + overshoot punish, interruptible
+    casts, swarm rings, kit-clipped stand-off bands, boss phases in an arena); 13 models
+    baked and the Dawnshore+Weald bestiary (17 enemies, 20 spawners) authored through the
+    A1-d editor, published, frozen into seed migration 0013. Shared `ENEMY_MODEL_CLIPS`
+    records which clips each baked model owns — publish refuses an ability naming a clip
+    its rig lacks (a P5 Spore Lobber swing had been animating nothing). 372 tests green.

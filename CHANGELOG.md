@@ -5,6 +5,32 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — P9 bestiary: Dawnshore and Verdant Weald (2026-08-04)
+
+- **17 enemies now live**, up from 4: the Dawnshore and Verdant Weald rosters
+  exactly as NPCS_ENEMIES.md §4 casts them — Shore Glub, Meadow and Bog Blobs,
+  Cliff Pigeon, Bandit Forager, Spore Lobber, Young Mushnub and the **Mossback**
+  elite; then Weald Frog, Mushnub Warrior, Armabee Drone and Soldier, Gloom
+  Ghost, Weald Stalker, Outcast Hexer and the **Mushroom King**, the game's
+  first real boss. Authored through the panel's new Enemies editor and frozen
+  into seed migration 0013.
+- **Camps that ask a question.** 20 spawners walk the level curve inland from
+  the beach, and two are deliberately mixed: the bandit camp pairs a thrown-
+  knife ranged with a grunt, and the hexer circle puts a caster to interrupt, a
+  charger to sidestep and a warrior in your face at once — the "pick your
+  fight" pressure P9 is for.
+- Stats are not authored: HP, damage, armour and resist come from the shared
+  §5 curve, so a balance pass changes one formula rather than seventeen rows.
+  The one deliberate exception is the Mushroom King — the curve put his fight
+  at 48 s and COMBAT.md §12 wants 60–120, so he carries an explicit HP
+  override that lands him at ~87 s.
+- **Fixed — a swing that animated nothing.** The P5 Spore Lobber's panic swat
+  asked a mushnub rig for a `Punch` clip it does not have; the attack landed
+  and played no animation. The three Quaternius rig families have
+  non-interchangeable clip names, so the shared build now records which clips
+  each baked model actually owns and the publish pipeline REFUSES an ability
+  naming one its model lacks. That class of bug cannot ship again.
+
 ### Fixed — Playtest round: the roll, invisible vendors, weapons in hands (2026-08-04)
 
 - **The dodge roll no longer cancels itself (protocol v11).** Pressing dodge

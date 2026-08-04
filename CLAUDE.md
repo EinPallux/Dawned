@@ -186,6 +186,23 @@ characters `/stuck` home first and the walk-back is in a `finally`. New/changed 
 predicted roll is cut short). `pnpm check` green at **342 unit tests**; browser-p8,
 two-client and predict-lag pass.
 
+**P9 — Enemies & AI Depth (in progress, 2026-08-04).** A/B/C are built; D (client) and
+E (verification) remain. P9-A put the archetype vocabulary in shared — charge/self-shield
+kinds, interruptible casts, hp-threshold/once-per-life/phase conditions, boss phases +
+arena — and, crucially, the SELECTION RULES themselves (`selectableEnemyAbilities`,
+`pickEnemyAbility`, `bossPhaseAt`), so the AI and the panel's TTK preview cannot disagree.
+P9-B (protocol v12) completed the AI: charger lunges sweeping the segment travelled each
+tick into an overshoot punish, casts flagged interruptible, swarm surround rings, ranged
+stand-off from `ARCHETYPE_MOTION` clipped to what the kit can actually reach, bosses
+walking one-way phases inside an arena. P9-C baked 13 enemy models (3 → 16) and authored
+the Dawnshore + Weald bestiary — 17 enemies, 20 spawners, two deliberately mixed camps —
+through the panel's A1-d editor, published, frozen into seed migration 0013. The TTK
+simulator caught the Mushroom King at a 48 s kill (under COMBAT.md §12's 60 s floor) before
+he went live; he now carries an explicit HP override landing him near 87 s. A latent P5 bug
+surfaced with it: the Spore Lobber's panic swat asked a mushnub rig for a `Punch` clip it
+does not have, so the swing animated nothing — shared now records which clips each baked
+model owns (`ENEMY_MODEL_CLIPS`) and publish refuses the mistake. 372 unit tests green.
+
 ### Running it locally
 
 ```bash
