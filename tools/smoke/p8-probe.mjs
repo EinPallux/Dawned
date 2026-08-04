@@ -129,10 +129,12 @@ if (items.length === 0) {
 }
 const stackable = items.find((item) => item.stack > 1);
 if (!stackable) fail('no stackable item is published — the probe needs one to split');
+/** The fixture is levelled to PROBE_LEVEL below, so anything up to it is fair game. */
+const PROBE_LEVEL = 12;
 const weapon = items.find(
   (item) =>
     item.category === 'weapon' &&
-    item.requiresLevel <= 1 &&
+    item.requiresLevel <= PROBE_LEVEL &&
     (item.classLock.length === 0 || item.classLock.includes(CLASS_ID)),
 );
 
@@ -143,6 +145,10 @@ const character = await ensureCharacter(API_BASE, token, CHARACTER, CLASS_ID);
 // zero by selling nothing and simply accounting for what is already there.
 const client = new ProbeClient(token, character.id);
 await client.hello();
+// Gear carries level gates; the fixture is levelled so the equip leg is about
+// the paper-doll, not about the character being too young for its own sword.
+await ops('/ops/setlevel', { player: CHARACTER, level: PROBE_LEVEL });
+await sleep(400);
 const startCells = client.cells().size;
 const startGold = client.inventory.gold;
 ok(`hello sync: ${startCells} cells, ${startGold} gold, ${client.bags.bags.length} bags in sight`);

@@ -35,8 +35,19 @@ const toPosix = (value) => value.split(path.sep).join('/');
 
 const loadMap = async () => JSON.parse(await readFile(MAP_PATH, 'utf8'));
 
-/** Unique author/name slugs referenced by the map. */
-const uniqueIcons = (map) => [...new Set(Object.values(map.abilities))].sort();
+/**
+ * Unique author/name slugs referenced by the map, across every section
+ * (`abilities`, `items`, …). Sections are additive: a new content type gets a
+ * key here and its icons ride the same fetch/bake without touching this code.
+ */
+const uniqueIcons = (map) =>
+  [
+    ...new Set(
+      Object.entries(map)
+        .filter(([key]) => !key.startsWith('$'))
+        .flatMap(([, section]) => Object.values(section)),
+    ),
+  ].sort();
 
 export const fetchIcons = async () => {
   const map = await loadMap();
