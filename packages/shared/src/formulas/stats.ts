@@ -166,3 +166,93 @@ export const enemyStats = (
     magicResistPct: base.magicResistPct,
   };
 };
+
+/**
+ * How each archetype MOVES (NPCS_ENEMIES.md §1 behaviour signatures, P9).
+ *
+ * These are the numbers the doc states in prose, pinned once so the server
+ * steering and any editor preview read the same table instead of each
+ * re-deciding what "keeps 8–15 m, kites at 60% speed" means.
+ */
+export interface ArchetypeMotion {
+  /**
+   * Preferred stand-off band from the target, metres. The AI holds the middle
+   * of it: closes when the target leaves `max`, backs off inside `min`.
+   * `null` = close to weapon range like a Grunt.
+   */
+  band: { min: number; max: number } | null;
+  /** Speed multiplier while retreating out of the band. */
+  kiteSpeedMult: number;
+  /** Inside this, a ranged/caster type stops kiting and fights (panic melee). */
+  panicMeleeRange: number;
+  /**
+   * Swarm surround: pack members claim evenly spaced slots on a ring of this
+   * radius instead of all seeking the same point (§1 "surround behavior").
+   * 0 = no ring, seek directly.
+   */
+  surroundRadius: number;
+  /** Casters plant their feet to cast; chargers commit to a lane. */
+  holdsGroundToAttack: boolean;
+}
+
+export const ARCHETYPE_MOTION: Record<EnemyArchetype, ArchetypeMotion> = {
+  grunt: {
+    band: null,
+    kiteSpeedMult: 1,
+    panicMeleeRange: 0,
+    surroundRadius: 0,
+    holdsGroundToAttack: false,
+  },
+  ranged: {
+    band: { min: 8, max: 15 },
+    kiteSpeedMult: 0.6,
+    panicMeleeRange: 3,
+    surroundRadius: 0,
+    holdsGroundToAttack: false,
+  },
+  caster: {
+    band: { min: 10, max: 18 },
+    kiteSpeedMult: 0.6,
+    panicMeleeRange: 4,
+    surroundRadius: 0,
+    holdsGroundToAttack: true,
+  },
+  charger: {
+    band: null,
+    kiteSpeedMult: 1,
+    panicMeleeRange: 0,
+    surroundRadius: 0,
+    holdsGroundToAttack: true,
+  },
+  swarm: {
+    band: null,
+    kiteSpeedMult: 1,
+    panicMeleeRange: 0,
+    surroundRadius: 2.2,
+    holdsGroundToAttack: false,
+  },
+  dummy: {
+    band: null,
+    kiteSpeedMult: 1,
+    panicMeleeRange: 0,
+    surroundRadius: 0,
+    holdsGroundToAttack: false,
+  },
+};
+
+/**
+ * Where one member of a surrounding pack should stand: evenly spaced slots on
+ * the ring, so 6 Glubs form a circle instead of a conga line. `slot` is the
+ * member's index within its camp and `count` the camp size — both stable
+ * enough between decisions that the ring does not spin.
+ */
+export const surroundSlot = (
+  targetX: number,
+  targetZ: number,
+  slot: number,
+  count: number,
+  radius: number,
+): { x: number; z: number } => {
+  const angle = (slot / Math.max(1, count)) * Math.PI * 2;
+  return { x: targetX + Math.sin(angle) * radius, z: targetZ + Math.cos(angle) * radius };
+};
