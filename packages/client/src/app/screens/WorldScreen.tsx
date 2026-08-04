@@ -12,6 +12,8 @@ import { runWorld, type PanelId, type WorldHandle } from '../../game/run-world.j
 import { Button } from '../components/ui.js';
 import { CharacterPanel } from '../panels/CharacterPanel.js';
 import { SkillsPanel } from '../panels/SkillsPanel.js';
+import { InventoryPanel } from '../panels/InventoryPanel.js';
+import { VendorPanel } from '../panels/VendorPanel.js';
 
 interface OverlayState {
   title: string;
@@ -100,6 +102,22 @@ export const WorldScreen = (): React.JSX.Element => {
       {world && openPanel === 'skills' ? (
         <SkillsPanel
           bridge={world.progression}
+          onClose={() => {
+            world.setPanel(null);
+          }}
+        />
+      ) : null}
+      {world && openPanel === 'inventory' ? (
+        <InventoryPanel
+          bridge={world.inventory}
+          onClose={() => {
+            world.setPanel(null);
+          }}
+        />
+      ) : null}
+      {world && openPanel === 'vendor' ? (
+        <VendorPanel
+          bridge={world.inventory}
           onClose={() => {
             world.setPanel(null);
           }}

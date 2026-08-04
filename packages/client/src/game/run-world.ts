@@ -12,6 +12,7 @@ import {
   EntityEventKind,
   EntityFlag,
   EntityKind,
+  LOOT_REACH_M,
   HitFlag,
   MAP_VERSION,
   NoticeCode,
@@ -49,12 +50,24 @@ import { CombatSfx, sfxSlotOf } from '../audio/combat-sfx.js';
 import { loadEnemyDefs } from '../content/enemy-defs.js';
 import { loadAbilityDefs } from '../content/ability-defs.js';
 import { loadSkillNodeDefs } from '../content/skill-node-defs.js';
+import { loadItemDefs } from '../content/item-defs.js';
+import { LootBagManager } from '../world/loot-bags.js';
+import { VendorPostManager, loadVendorAnchors } from '../world/vendor-posts.js';
 import { loadIconUrls } from '../content/icon-urls.js';
 import { setAbilityNames } from '../app/panels/panel-format.js';
-import type { AbilityDef, EnemyDef } from '@dawned/shared';
+import { rarityTone, refusalText as itemRefusalText } from '../app/panels/item-format.js';
+import type {
+  AbilityDef,
+  EnemyDef,
+  InventorySyncMessage,
+  ItemDef,
+  ItemOp,
+  VendorPanelMessage,
+  WireLootBag,
+} from '@dawned/shared';
 
 /** The overlay panels P7 ships (UI_UX.md §4 grows this list per phase). */
-export type PanelId = 'character' | 'skills';
+export type PanelId = 'character' | 'skills' | 'inventory' | 'vendor';
 
 /**
  * What the React panels (CharacterPanel/SkillsPanel) read and drive — a thin
@@ -81,12 +94,35 @@ export interface ProgressionBridge {
   iconUrl: (slug: string) => string | undefined;
 }
 
+/**
+ * What the bag and vendor panels read and drive (P8-D). Same shape as the
+ * progression bridge: the connection owns the truth, React just renders it and
+ * sends intents — there is no client-side inventory state to disagree with.
+ */
+export interface InventoryBridge {
+  subscribe: (listener: () => void) => () => void;
+  version: () => number;
+  /** The authoritative pack (null until the first InventorySync). */
+  pack: () => InventorySyncMessage | null;
+  /** Bags we hold a share in, nearest first. */
+  bags: () => WireLootBag[];
+  /** The open vendor, or null. */
+  vendor: () => VendorPanelMessage | null;
+  itemDef: (itemId: string) => ItemDef | undefined;
+  iconUrl: (slug: string) => string | undefined;
+  /** Distance in metres to a bag, for the "too far" hint. */
+  distanceTo: (bagId: number) => number;
+  send: (op: ItemOp) => void;
+}
+
 export interface WorldHandle {
   dispose: () => void;
   /** Open/close an overlay panel (the React close buttons drive this). */
   setPanel: (panel: PanelId | null) => void;
   /** Data + actions for the React progression panels. */
   progression: ProgressionBridge;
+  /** Data + actions for the bag/vendor panels. */
+  inventory: InventoryBridge;
 }
 
 export interface WorldCallbacks {
@@ -242,6 +278,10 @@ export const runWorld = (
       },
       onRoster: (players) => {
         hud.setRoster(players, connection.selfId);
+        // Our own hands come off the roster too — the same message everybody
+        // else reads, so what we see on ourselves is what they see on us.
+        const self = players.find((player) => player.id === connection.selfId);
+        if (self) localView.setWeapons(self.mainhandModel ?? null, self.offhandModel ?? null);
       },
       onAbilityStart: (message) => {
         if (message.entityId === connection.selfId) return; // predicted at press
@@ -460,6 +500,46 @@ export const runWorld = (
           },
         });
       },
+      // --- items (P8-D) -----------------------------------------------------
+      onLootBags: (message) => {
+        lootBags.sync(message.bags, message.serverTimeMs);
+      },
+      onVendorPanel: (panel) => {
+        // The server opens and closes the conversation (walking away breaks
+        // the lease), so the panel follows it rather than the other way round.
+        setPanel(panel ? 'vendor' : null);
+      },
+      onItemNotice: (notice) => {
+        const def = notice.itemId ? connection.itemDefs.get(notice.itemId) : undefined;
+        const name = def?.name ?? notice.itemId ?? 'item';
+        const qty = notice.qty && notice.qty > 1 ? ` ×${notice.qty}` : '';
+        switch (notice.kind) {
+          case 'picked':
+            hud.toast(`${name}${qty}`, { tone: def ? rarityTone(def.rarity) : 'plain' });
+            sfx.play('pickup', 0.6);
+            break;
+          case 'gold':
+            hud.toast(`+${notice.gold ?? 0} gold`, { tone: 'gold' });
+            sfx.play('coin', 0.6);
+            break;
+          case 'bought':
+            hud.toast(`Bought ${name}${qty} — ${notice.gold ?? 0} gold`, { tone: 'gold' });
+            break;
+          case 'sold':
+            hud.toast(`Sold ${name}${qty} — +${notice.gold ?? 0} gold`, { tone: 'gold' });
+            sfx.play('coin', 0.5);
+            break;
+          case 'full':
+            hud.toast('Your pack is full.', { tone: 'red' });
+            break;
+          case 'refused':
+            hud.toast(itemRefusalText(notice.reason ?? ''), { tone: 'red' });
+            break;
+          case 'used':
+          case 'equipped':
+            break; // the sync itself is the feedback
+        }
+      },
     },
     terrain.sampler,
     (x, z) => terrain.isGroundReadyAt(x, z),
@@ -494,6 +574,50 @@ export const runWorld = (
     else togglePanel(key);
   };
 
+  /** The bag we could reach right now (ITEMS_LOOT §3: 4 m), nearest first. */
+  const nearestBag = (): { id: number; distance: number } | null => {
+    const self = connection.renderPosition();
+    let best: { id: number; distance: number } | null = null;
+    for (const bag of connection.lootBags) {
+      const distance = Math.hypot(bag.x - self.x, bag.z - self.z);
+      if (!best || distance < best.distance) best = { id: bag.id, distance };
+    }
+    return best;
+  };
+
+  input.onWorldKey = (key) => {
+    if (key === 'quickUse') {
+      // E drinks the leftmost usable consumable — the quick slot until the
+      // player can bind one themselves (UI_UX.md §4).
+      const pack = connection.inventory;
+      if (!pack) return;
+      const entry = pack.bag.find(([, stack]) => connection.itemDefs.get(stack.itemId)?.consumable);
+      if (!entry) {
+        hud.toast('Nothing to drink.', { tone: 'red' });
+        return;
+      }
+      connection.sendItemOp({ kind: 'use', from: entry[0] });
+      return;
+    }
+    // F: loot what is in reach, otherwise talk to the market post you stand at.
+    const bag = nearestBag();
+    if (bag && bag.distance <= LOOT_REACH_M) {
+      connection.sendItemOp(
+        key === 'lootAll'
+          ? { kind: 'loot', bagId: bag.id, index: null }
+          : { kind: 'loot', bagId: bag.id, index: 0 },
+      );
+      return;
+    }
+    const self = connection.renderPosition();
+    const vendor = vendorPosts.inReach(self.x, self.z);
+    if (vendor) {
+      connection.sendItemOp({ kind: 'vendorOpen', vendorId: vendor.id });
+      return;
+    }
+    if (bag) hud.toast('Too far from the bag.', { tone: 'red' });
+  };
+
   connection.predicted.maxStamina = maxStaminaFor(1, 0);
   connection.predicted.stamina = connection.predicted.maxStamina;
   connection.connect(gameSocketUrl(), token, characterId);
@@ -521,6 +645,16 @@ export const runWorld = (
   let enemyDefs = new Map<string, EnemyDef>();
   void loadEnemyDefs().then((defs) => {
     if (!disposed) enemyDefs = defs;
+  });
+  // The item catalogue: every bag cell, tooltip and vendor row reads names,
+  // icons and stat blocks from here (the wire carries only ids).
+  void loadItemDefs().then((defs) => {
+    if (!disposed) connection.setItemContent(defs);
+  });
+  const lootBags = new LootBagManager(scene.scene);
+  const vendorPosts = new VendorPostManager(scene.scene);
+  void loadVendorAnchors().then((vendors) => {
+    if (!disposed) vendorPosts.build(vendors, (x, z) => terrain.sampler.heightAt(x, z));
   });
   // Published ability + skill-node defs → the prediction layer (hotbar,
   // chains, costs, node folds), plus the icon wiring: baked game-icons urls
@@ -1146,6 +1280,7 @@ export const runWorld = (
     combatText.update(dtSeconds);
     projectiles.update(dtSeconds);
     vfx.update(dtSeconds);
+    lootBags.update(dtSeconds, now / 1000);
 
     ambience?.update(dtSeconds, position.x, position.z);
     updateWaterTime(now / 1000);
@@ -1188,6 +1323,19 @@ export const runWorld = (
         allyPlateId = ally.id;
       }
     }
+    // What `F` would do from here (P8-D): the bag in reach wins over the post
+    // you are standing in, because that is the order the key handler tries.
+    const interactBag = nearestBag();
+    const interactVendor = vendorPosts.inReach(position.x, position.z);
+    hud.setInteractPrompt(
+      interactBag && interactBag.distance <= LOOT_REACH_M
+        ? 'F — Loot  ·  Shift+F — Loot all'
+        : interactVendor
+          ? `F — Trade with ${interactVendor.name}`
+          : null,
+    );
+    hud.setGold(connection.inventory?.gold ?? null);
+
     const cast = connection.castView();
     hud.update({
       fps,
@@ -1282,6 +1430,8 @@ export const runWorld = (
       if (entry) {
         view.setName(entry.name);
         if (characterAssets) view.applyAppearance(characterAssets, entry.appearance);
+        // Held gear is public (§1): the roster is how everyone sees your sword.
+        view.setWeapons(entry.mainhandModel ?? null, entry.offhandModel ?? null);
       }
 
       view.setPose(remote.render.x, remote.render.y, remote.render.z, remote.render.yaw);
@@ -1374,15 +1524,42 @@ export const runWorld = (
     iconUrl: (slug) => (slug ? iconUrlMap.get(slug) : undefined),
   };
 
+  const inventory: InventoryBridge = {
+    subscribe: (listener) => connection.subscribeItems(listener),
+    version: () => connection.itemVersion,
+    pack: () => connection.inventory,
+    bags: () => {
+      const self = connection.renderPosition();
+      return [...connection.lootBags].sort(
+        (a, b) => Math.hypot(a.x - self.x, a.z - self.z) - Math.hypot(b.x - self.x, b.z - self.z),
+      );
+    },
+    vendor: () => connection.vendorPanel,
+    itemDef: (itemId) => connection.itemDefs.get(itemId),
+    iconUrl: (slug) => (slug ? iconUrlMap.get(slug) : undefined),
+    distanceTo: (bagId) => {
+      const bag = connection.lootBags.find((entry) => entry.id === bagId);
+      if (!bag) return Infinity;
+      const self = connection.renderPosition();
+      return Math.hypot(bag.x - self.x, bag.z - self.z);
+    },
+    send: (op) => {
+      connection.sendItemOp(op);
+    },
+  };
+
   return {
     dispose: () => {
       disposed = true;
       connection.disconnect();
       vfx.dispose();
+      lootBags.dispose();
+      vendorPosts.dispose();
       terrain.dispose();
       container.replaceChildren();
     },
     setPanel,
     progression,
+    inventory,
   };
 };

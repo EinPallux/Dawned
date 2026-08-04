@@ -12,6 +12,19 @@ import * as THREE from 'three';
 import { PLAYER_HEIGHT, PLAYER_RADIUS, type Appearance } from '@dawned/shared';
 import { headingFromVelocity, wrapAngle } from './anim-math.js';
 import { composeCharacter, type CharacterAssets, type ComposedCharacter } from './characters.js';
+import { HeldWeapons, handBones, loadWeaponModels } from './weapon-models.js';
+
+/**
+ * Weapon models load once for the whole session; views ask for them lazily so
+ * a character composed before the fetch lands simply re-hangs its gear when
+ * the roster next repeats itself.
+ */
+let weaponModelCache: Map<string, import('three/examples/jsm/loaders/GLTFLoader.js').GLTF> | null =
+  null;
+void loadWeaponModels().then((models) => {
+  weaponModelCache = models;
+});
+const weaponModels = () => weaponModelCache;
 
 /**
  * Locomotion tuning.
@@ -62,6 +75,12 @@ export class CharacterView {
   private silhouette: THREE.Mesh | null;
   private composed: ComposedCharacter | null = null;
   private appearanceKey = '';
+  /** Held gear (P8): what this character is currently showing in its hands. */
+  private weapons: HeldWeapons | null = null;
+  private weaponRefs: { mainhand: string | null; offhand: string | null } = {
+    mainhand: null,
+    offhand: null,
+  };
 
   private readonly lastPosition = new THREE.Vector3();
   private hasLastPosition = false;
@@ -144,10 +163,33 @@ export class CharacterView {
     this.appearanceKey = key;
     this.composed = next;
     this.group.add(next.group);
+    // A re-composed rig has brand-new bones: re-hang whatever it was holding.
+    this.weapons?.dispose();
+    this.weapons = null;
+    this.applyWeapons();
     this.currentClip = '';
     this.blocking = false; // fresh mixer — the stance overlay re-applies next frame
     this.castingClip = null;
     this.playClip('Idle_Loop');
+  }
+
+  /**
+   * Show these weapon models in the hands (roster refs; null = bare-handed).
+   * Idempotent — the roster re-broadcasts on every equip, and only the hand
+   * that actually changed is touched.
+   */
+  setWeapons(mainhand: string | null, offhand: string | null): void {
+    if (this.weaponRefs.mainhand === mainhand && this.weaponRefs.offhand === offhand) return;
+    this.weaponRefs = { mainhand, offhand };
+    this.applyWeapons();
+  }
+
+  private applyWeapons(): void {
+    const models = weaponModels();
+    if (!this.composed || !models) return;
+    this.weapons ??= new HeldWeapons(models, handBones(this.composed.group));
+    this.weapons.set('mainhand', this.weaponRefs.mainhand);
+    this.weapons.set('offhand', this.weaponRefs.offhand);
   }
 
   setPose(x: number, y: number, z: number, yaw: number): void {

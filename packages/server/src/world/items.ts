@@ -11,6 +11,8 @@
 
 import {
   BUYBACK_DEPTH,
+  LOOT_BAG_LIFETIME_MS,
+  LOOT_REACH_M,
   EQUIP_SLOTS,
   applyPlan,
   baseWeaponDamage,
@@ -43,10 +45,6 @@ import type { ServerEnemy } from './enemy.js';
 import type { CombatEvent } from './combat.js';
 import { applyEffect } from './effects.js';
 
-/** Loot bags live 60 s (ITEMS_LOOT.md §3). */
-export const LOOT_BAG_LIFETIME_MS = 60_000;
-/** How far a player may be from a bag to loot it. */
-export const LOOT_REACH_M = 4;
 /** Rarity order for "best rarity in the bag" (beam color). */
 const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 

@@ -17,6 +17,7 @@ import {
   validateVendorDef,
   type ItemDef,
   type ItemOp,
+  type ClassId,
   type LootTableDef,
   type VendorDef,
 } from '@dawned/shared';
@@ -158,7 +159,7 @@ const addTestPlayer = (
   overrides: {
     level?: number;
     gold?: number;
-    classId?: string;
+    classId?: ClassId;
     name?: string;
     at?: { x: number; z: number };
   } = {},

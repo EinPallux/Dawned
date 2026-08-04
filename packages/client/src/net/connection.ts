@@ -84,6 +84,7 @@ import {
   encodeChat,
   encodeHello,
   encodeInputIntent,
+  encodeItemOp,
   encodePing,
   noticeTextFor,
   peekOpcode,
@@ -96,6 +97,13 @@ import {
   type ComboChain,
   type EffectSyncEntry,
   type EffectSyncMessage,
+  type InventorySyncMessage,
+  type ItemDef,
+  type ItemNoticeMessage,
+  type ItemOp,
+  type LootBagsMessage,
+  type VendorPanelMessage,
+  type WireLootBag,
   type LevelUpMessage,
   type NodeAggregates,
   type ProgressSyncMessage,
@@ -194,6 +202,13 @@ export interface ConnectionEvents {
   onXpGained?: (message: XpGainedMessage) => void;
   /** Somebody leveled: self runs the §1.3 juice, remotes get the pillar. */
   onLevelUp?: (message: LevelUpMessage, oldLevel: number) => void;
+  // --- items (protocol v10) -------------------------------------------------
+  /** Bag traffic worth a toast: pickups, sales, refusals in words. */
+  onItemNotice?: (message: ItemNoticeMessage) => void;
+  /** The bags we can see changed — the world re-props them. */
+  onLootBags?: (message: LootBagsMessage) => void;
+  /** A vendor opened (or closed, when null) — the React panel follows. */
+  onVendorPanel?: (panel: VendorPanelMessage | null) => void;
 }
 
 interface PendingInput {
@@ -315,6 +330,21 @@ export class Connection {
   private readonly effectAttackSpeedPct = new Map<string, number>();
   /** Panels re-render on any progression change (React subscribes here). */
   private readonly progressListeners = new Set<() => void>();
+  // --- items (protocol v10) --------------------------------------------------
+  /**
+   * The authoritative pack. There is no client-side prediction here: a drag
+   * asks, the server answers with a whole new sync, and 20 Hz is fast enough
+   * that the grid feels immediate without a rollback layer to get wrong.
+   */
+  inventory: InventorySyncMessage | null = null;
+  /** Loot bags we hold a share in, as the server last described them. */
+  lootBags: WireLootBag[] = [];
+  /** The open vendor panel, or null when no conversation is running. */
+  vendorPanel: VendorPanelMessage | null = null;
+  /** Published item defs (fetched from /api/content/items). */
+  readonly itemDefs = new Map<string, ItemDef>();
+  private readonly itemListeners = new Set<() => void>();
+  itemVersion = 0;
   /** Monotonic change counter — the React panels' useSyncExternalStore
    * snapshot (the sheet object itself mutates in place between syncs). */
   progressVersion = 0;
@@ -887,6 +917,32 @@ export class Connection {
         this.events.onLevelUp?.(levelUp, oldLevel);
         return;
       }
+      // --- items (protocol v10) ---------------------------------------------
+      case ServerOp.InventorySync: {
+        // Adopt wholesale: this is both the initial pack and the correction
+        // that heals a drag the server refused.
+        this.inventory = decodeJsonEnvelope<InventorySyncMessage>(reader);
+        this.notifyItems();
+        return;
+      }
+      case ServerOp.LootBags: {
+        const message = decodeJsonEnvelope<LootBagsMessage>(reader);
+        this.lootBags = message.bags;
+        this.events.onLootBags?.(message);
+        this.notifyItems();
+        return;
+      }
+      case ServerOp.VendorPanel: {
+        const panel = decodeJsonEnvelope<VendorPanelMessage>(reader);
+        this.vendorPanel = panel.open ? panel : null;
+        this.events.onVendorPanel?.(this.vendorPanel);
+        this.notifyItems();
+        return;
+      }
+      case ServerOp.ItemNotice: {
+        this.events.onItemNotice?.(decodeJsonEnvelope<ItemNoticeMessage>(reader));
+        return;
+      }
       default:
         console.warn(`[net] ignoring unknown opcode 0x${opcode.toString(16)}`);
     }
@@ -913,6 +969,32 @@ export class Connection {
   private notifyProgress(): void {
     this.progressVersion++;
     for (const listener of this.progressListeners) listener();
+  }
+
+  /** Adopt the published item catalogue (fetched once per world entry). */
+  setItemContent(defs: ReadonlyMap<string, ItemDef>): void {
+    this.itemDefs.clear();
+    for (const [id, def] of defs) this.itemDefs.set(id, def);
+    this.notifyItems();
+  }
+
+  /** The bag/vendor panels subscribe here (same shape as progression). */
+  subscribeItems(listener: () => void): () => void {
+    this.itemListeners.add(listener);
+    return () => this.itemListeners.delete(listener);
+  }
+
+  private notifyItems(): void {
+    this.itemVersion++;
+    for (const listener of this.itemListeners) listener();
+  }
+
+  /**
+   * Send one item intent. Every op is a REQUEST — the answer is the next
+   * InventorySync, which is also how a refused drag heals itself.
+   */
+  sendItemOp(op: ItemOp): void {
+    this.sendRaw(encodeItemOp(op));
   }
 
   /** Allocated attribute points (zero spread until the first sync). */

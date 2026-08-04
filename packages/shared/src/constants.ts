@@ -257,3 +257,9 @@ export const AMBUSHER_CP_ICD_MS = 1000;
 
 /** Hotbar slot unlock levels (index 0 = slot 1; CLASSES.md header). */
 export const SLOT_UNLOCK_LEVELS = [1, 3, 6, 10, 14, 18, 22, 25] as const;
+
+/** Loot bags live 60 s at the corpse (ITEMS_LOOT.md §3). */
+export const LOOT_BAG_LIFETIME_MS = 60_000;
+/** How close you must stand to loot a bag — the client's `F` prompt uses the
+ * SAME number the server validates with, so the prompt never lies. */
+export const LOOT_REACH_M = 4;

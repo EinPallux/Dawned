@@ -60,7 +60,12 @@ export class InputController {
    * Panel keys (P7-D, UI_UX.md §4): C Character, K Skills, Esc close. Set by
    * run-world; fires on keydown (non-repeat) while no text field owns keys.
    */
-  onUiKey: ((key: 'character' | 'skills' | 'close') => void) | null = null;
+  onUiKey: ((key: 'character' | 'skills' | 'inventory' | 'close') => void) | null = null;
+  /**
+   * World interactions that are not abilities: `F` loots (Shift+F takes the
+   * whole bag) and talks to a vendor post, `E` drinks the quick-slot.
+   */
+  onWorldKey: ((key: 'loot' | 'lootAll' | 'quickUse') => void) | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -168,7 +173,12 @@ export class InputController {
     if (!event.repeat) {
       if (event.code === 'KeyC') this.onUiKey?.('character');
       else if (event.code === 'KeyK') this.onUiKey?.('skills');
+      else if (event.code === 'KeyI') this.onUiKey?.('inventory');
       else if (event.code === 'Escape') this.onUiKey?.('close');
+      // Items (P8-D): F loots the nearest bag (Shift+F takes all of it) or
+      // opens the vendor post you are standing at; E drinks the quick slot.
+      else if (event.code === 'KeyF') this.onWorldKey?.(event.shiftKey ? 'lootAll' : 'loot');
+      else if (event.code === 'KeyE') this.onWorldKey?.('quickUse');
     }
     // Space would scroll the page; the game owns it.
     if (event.code === 'Space') event.preventDefault();

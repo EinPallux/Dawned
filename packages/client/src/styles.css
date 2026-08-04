@@ -2539,3 +2539,277 @@ canvas.game {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- item toasts + panels (P8-D) ------------------------------------------ */
+.hud-toast[data-tone='red'] {
+  border-left-color: #d8453a;
+}
+.hud-toast[data-tone='uncommon'] {
+  border-left-color: #3fbf5a;
+}
+.hud-toast[data-tone='rare'] {
+  border-left-color: #3e8fe8;
+}
+.hud-toast[data-tone='epic'] {
+  border-left-color: #a44fe0;
+}
+.hud-toast[data-tone='legendary'] {
+  border-left-color: #f08a24;
+}
+
+/* --- Inventory + vendor (P8-D) -------------------------------------------- */
+.inv-body {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.inv-doll-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.inv-doll-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inv-doll-trinket {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+}
+.inv-doll-hint,
+.inv-bag-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--ink-dim, #8b93a3);
+  letter-spacing: 0.02em;
+}
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+/* Cells are cut squares, never rounded chips (UI_UX §2 anti-slop). */
+.inv-cell {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 38px;
+  background: rgba(10, 12, 18, 0.72);
+  border: 1px solid rgba(120, 130, 150, 0.28);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.inv-cell:hover {
+  border-color: var(--gold-bright, #e0c070);
+}
+.inv-cell--equip {
+  min-width: 44px;
+}
+.inv-cell--tiny {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  flex: none;
+}
+.inv-cell[data-junk='true'] {
+  background: rgba(60, 48, 24, 0.5);
+}
+.inv-cell-icon {
+  position: absolute;
+  inset: 5px;
+  background: linear-gradient(180deg, #f3ecd8, #c9c2ae);
+  -webkit-mask-image: var(--icon);
+  mask-image: var(--icon);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.inv-cell-mono {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--ink-dim, #8b93a3);
+}
+.inv-cell-qty {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  font-size: 11px;
+  font-style: normal;
+  color: #f3ecd8;
+  text-shadow: 0 1px 2px #000;
+}
+.inv-cell-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 10, 14, 0.62);
+}
+.inv-cell-slot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(139, 147, 163, 0.55);
+}
+.inv-bag-tools {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.inv-filter {
+  width: 120px;
+  background: rgba(10, 12, 18, 0.8);
+  border: 1px solid rgba(120, 130, 150, 0.3);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+.inv-tip {
+  position: fixed;
+  z-index: 60;
+  width: 280px;
+  padding: 10px 12px;
+  background: rgba(12, 14, 20, 0.97);
+  border: 1px solid rgba(150, 160, 180, 0.35);
+  clip-path: polygon(
+    10px 0,
+    100% 0,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    0 100%,
+    0 10px
+  );
+  pointer-events: none;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.inv-tip-name {
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+.inv-tip-type {
+  color: var(--ink-dim, #8b93a3);
+  text-transform: capitalize;
+}
+.inv-tip-damage {
+  color: #f3ecd8;
+  margin-top: 4px;
+}
+.inv-tip-stat {
+  display: flex;
+  justify-content: space-between;
+  color: #b9d4a8;
+}
+.inv-tip-stat em[data-sign='up'] {
+  color: #57c77b;
+  font-style: normal;
+}
+.inv-tip-stat em[data-sign='down'] {
+  color: #d8453a;
+  font-style: normal;
+}
+.inv-tip-effect {
+  margin-top: 4px;
+  color: #c9a3e8;
+}
+.inv-tip-req {
+  color: #d8453a;
+}
+.inv-tip-flavor {
+  margin-top: 6px;
+  color: #8b93a3;
+  font-style: italic;
+}
+.inv-tip-sell,
+.inv-tip-rolls,
+.inv-tip-compare {
+  margin-top: 4px;
+  color: var(--ink-dim, #8b93a3);
+  font-size: 11px;
+}
+.vd-greeting {
+  color: #8b93a3;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+.vd-tabs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.vd-rate {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-dim, #8b93a3);
+}
+.vd-rows {
+  max-height: 340px;
+  overflow-y: auto;
+}
+.vd-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 64px 76px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(120, 130, 150, 0.16);
+}
+.vd-name {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.vd-name em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--ink-dim, #8b93a3);
+  text-transform: capitalize;
+}
+.vd-price {
+  text-align: right;
+  color: var(--gold-bright, #e0c070);
+}
+.vd-empty {
+  color: var(--ink-dim, #8b93a3);
+  padding: 12px 0;
+}
+.hud-interact {
+  position: absolute;
+  left: 50%;
+  bottom: 24%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  background: rgba(10, 12, 18, 0.78);
+  border: 1px solid rgba(150, 160, 180, 0.35);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: #f3ecd8;
+  pointer-events: none;
+}
+.hud-purse {
+  align-self: center;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--gold-bright, #e0c070);
+  border-left: 1px solid rgba(150, 160, 180, 0.28);
+}

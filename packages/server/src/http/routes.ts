@@ -79,6 +79,24 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     return { items: [...content.items.values()] };
   });
 
+  /**
+   * Published vendors (P8): the client needs their anchors to stand a market
+   * post in the world and offer the `F` prompt. Stock and prices still come
+   * over the wire from the server when the panel actually opens — this is
+   * geography, not an authority on what anything costs.
+   */
+  app.get('/api/content/vendors', (_request, reply) => {
+    void reply.header('cache-control', 'no-cache');
+    return {
+      vendors: [...content.vendors.values()].map((vendor) => ({
+        id: vendor.id,
+        name: vendor.name,
+        kind: vendor.kind,
+        anchor: vendor.anchor,
+      })),
+    };
+  });
+
   /** Minimal public status for the login screen's server pip. */
   app.get('/api/status', () => ({
     online: true,
