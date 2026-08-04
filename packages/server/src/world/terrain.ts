@@ -8,7 +8,35 @@
 
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { ChunkTerrain, Walkgrid, decodeChunk, zonesFileSchema, type Zone } from '@dawned/shared';
+import { z } from 'zod';
+import {
+  ChunkTerrain,
+  MAP_VERSION,
+  Walkgrid,
+  decodeChunk,
+  zonesFileSchema,
+  type Zone,
+} from '@dawned/shared';
+
+const currentPointerSchema = z.object({ version: z.string().min(1) });
+
+/**
+ * Which baked map is live.
+ *
+ * The admin publish pipeline (A2) writes `<MAP_DIR>/current.json` LAST, after a
+ * bake has fully landed, so this file is the one place that says "this version
+ * is finished and safe to load". A dev checkout that has only ever run
+ * `pnpm world:generate` has no pointer, and falls back to the compiled-in
+ * `MAP_VERSION` — which is what that constant is still for.
+ */
+export const resolveMapVersion = async (mapRoot: string): Promise<string> => {
+  try {
+    const raw: unknown = JSON.parse(await readFile(path.join(mapRoot, 'current.json'), 'utf8'));
+    return currentPointerSchema.parse(raw).version;
+  } catch {
+    return MAP_VERSION;
+  }
+};
 
 export interface MapMeta {
   mapVersion: string;

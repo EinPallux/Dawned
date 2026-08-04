@@ -97,3 +97,9 @@ nothing beyond it.
     exposed a client bug — prediction resolved against un-streamed ground and fell to the
     sea floor; `stepMovement` asks `hasDataAt` first now (NETWORKING.md §3.2). 381 tests
     green.
+    **A2 game-side half (2026-08-04):** the live map is a published artifact, not a
+    constant — the server resolves `assets_baked/map/current.json`, reports it on
+    `/api/health`, and the client asks the server which bake to stream (NETWORKING.md
+    §3.4). `/ops/reload-map` swaps a new bake under the running world: enemies re-seed
+    from the spawners, players keep x/z and are re-seated, discovery progress is kept, a
+    bad bake throws before the swap. 418 tests green.

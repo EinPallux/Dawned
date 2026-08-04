@@ -184,6 +184,25 @@ appeared. The field was optional, so nothing could notice.
 > is the same as "one day it will be dropped". `AbilityStart.cast` is required now, so omitting it
 > is a compile error; the round-trip test asserts both `true` and `false`.
 
+### 3.4 As-built: the SERVER decides which map both sides walk on (A2)
+
+Until A2 the live map was a compiled-in constant (`MAP_VERSION`), so client and server agreed by
+construction. The map editor breaks that: publishing writes a NEW artifact directory and repoints
+`assets_baked/map/current.json`, and the game server hot-loads it via `/ops/reload-map`. A client
+that kept resolving the constant would stream last week's terrain and predict against ground the
+server no longer simulates — the worst class of desync, because both sides think they are right.
+
+> The map version is **served, not compiled**. The server resolves `current.json` at boot (falling
+> back to `MAP_VERSION` for a dev checkout that only ran `pnpm world:generate`), reports it on
+> `/api/health`, and the client asks for it there before streaming a single chunk. A republish
+> while a tab is open shows the same reload notice a new build does — swapping a whole world's
+> terrain, walkgrid, zones and placements underneath a live scene is not worth doing in place.
+
+The server-side swap (`World.applyMap`) keeps players where they stand and re-seats them on the new
+ground, and re-seeds every enemy from the spawners — a camp authored on a hill that is now a bay
+has to move with it. Discovery progress (`zonesSeen`) is deliberately NOT cleared: re-awarding it
+would make republishing the map a currency.
+
 ## 4. Combat Latency Model
 
 - **Ability start:** client plays wind-up/FX at press (prediction), server validates & broadcasts

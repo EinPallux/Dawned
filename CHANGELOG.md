@@ -5,6 +5,18 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the world can be republished without a deploy (2026-08-04, with Dawned-Admin A2)
+
+- **Which map is live is now a published artifact, not a compiled-in constant.**
+  The admin map editor bakes a new map version and the game picks it up: the
+  server reads the pointer, loads the new bake and swaps it in between ticks,
+  re-seeding every camp against the new ground. Nobody is disconnected — the
+  world says it changed and offers you the reload, the same way a new build
+  does.
+- Your character keeps its place through a republish: same spot, re-seated on
+  whatever the ground there is now. Zones you had already discovered stay
+  discovered (republishing the map is not a way to farm discovery XP).
+
 ### Verified — P9 closed: the Mushroom King fight measured end to end (2026-08-04)
 
 - **The boss fight lands where COMBAT.md says it should.** A level-12 warrior,

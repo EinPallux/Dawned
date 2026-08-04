@@ -142,14 +142,51 @@ export class World {
   private tickCounter = 0;
 
   constructor(
-    private readonly terrain: TerrainSampler = devTerrain,
-    private readonly spawn: SpawnPoint = { x: 0, y: 0, z: 0, yaw: 0 },
+    // Not `readonly`: a map publish swaps the ground under a running world
+    // (`applyMap`). Every system takes the sampler as an argument at call time,
+    // so nothing caches a stale one — keep it that way.
+    private terrain: TerrainSampler = devTerrain,
+    private spawn: SpawnPoint = { x: 0, y: 0, z: 0, yaw: 0 },
     private content: GameContent | null = null,
     private readonly rng: Rng = Math.random,
     /** Zone polygons (P7 zone-entry XP; baked zones.json, empty in tests). */
-    private readonly zonePolys: readonly Zone[] = [],
+    private zonePolys: readonly Zone[] = [],
   ) {
     if (content) this.populateFromSpawners();
+  }
+
+  /**
+   * Swap in a freshly published map (A2 publish → `/ops/reload-map`).
+   *
+   * Terrain, zone polygons and the spawn point are all replaced, then every
+   * enemy is despawned and re-seeded from the spawners: a camp authored on a
+   * hill that just became a bay has to move, and re-running the same seeding
+   * the boot path uses is the only way to guarantee the result matches what a
+   * restart would produce.
+   *
+   * Players are NOT moved. They keep their x/z and re-resolve their ground on
+   * the next tick — the same clamp that already handles walking off a ledge.
+   * Anyone the new terrain leaves under the ground gets pushed up by it; anyone
+   * left over open sea swims, which is honest and visible.
+   */
+  applyMap(next: { terrain: TerrainSampler; spawn: SpawnPoint; zones: readonly Zone[] }): {
+    enemies: number;
+  } {
+    this.terrain = next.terrain;
+    this.spawn = next.spawn;
+    this.zonePolys = next.zones;
+    for (const enemy of [...this.enemies.values()]) this.removeEnemy(enemy);
+    this.tickets.length = 0;
+    this.campIndex.clear();
+    this.populateFromSpawners();
+    for (const player of this.players.values()) {
+      const m = player.movement;
+      m.y = this.terrain.heightAt(m.x, m.z);
+    }
+    // `zonesSeen` is deliberately NOT cleared: discovery XP is progression the
+    // player already earned, and re-awarding it on every publish would make a
+    // map republish a currency.
+    return { enemies: this.enemies.size };
   }
 
   /** The progression slice of content the P7 systems consume. */

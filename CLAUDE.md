@@ -243,6 +243,17 @@ fall to −8 m; `stepMovement` now asks `hasDataAt` first and holds the column (
 §3.2). 381 unit tests green; two-client, roll-probe, predict-lag, p9-visuals, p9-load,
 browser-p9 and browser-p8 all pass on the same build.
 
+**A2 (map editor) game-side half, 2026-08-04.** The live map is no longer a compiled-in
+constant: the server resolves `assets_baked/map/current.json` at boot, reports it on
+`/api/health`, and the client asks the SERVER which bake to stream before fetching a chunk
+(NETWORKING.md §3.4 — the two must never walk on different maps; `MAP_VERSION` remains the
+fallback for a dev checkout that only ran `pnpm world:generate`). `/ops/reload-map` loads a
+newly published bake and swaps it under the running world (`World.applyMap`): enemies
+re-seed from the spawners against the new ground, players keep their x/z and are re-seated
+on it, discovery progress is kept (re-awarding it would make republishing a currency), and
+a bad bake throws BEFORE the swap so the old map stays live. Connected tabs get the same
+reload notice a new build gets. 418 unit tests green.
+
 ### Running it locally
 
 ```bash

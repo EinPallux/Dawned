@@ -7,6 +7,11 @@
  * "I have to open a private window to see the update". Rather than trusting
  * cache headers alone, the game says so and offers the reload.
  *
+ * The same poll carries the live MAP version (A2). A map publish swaps the
+ * ground under the running server; a tab that streamed the previous bake is
+ * standing on terrain the server no longer simulates, which is the same class
+ * of problem and gets the same answer.
+ *
  * Checks on mount, whenever the tab regains focus, and every few minutes —
  * cheap (one tiny uncached GET) and it means a friend who left the tab open
  * over a deploy finds out the moment they come back to it.
@@ -20,14 +25,24 @@ const POLL_MS = 150_000;
 
 export const BuildWatch = (): React.JSX.Element | null => {
   const [stale, setStale] = useState(false);
+  const [mapStale, setMapStale] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    // The map version this tab first saw. Not the compiled-in constant: the
+    // world screen resolves the live version from this same field, so "changed
+    // since we loaded" is the only comparison that means anything.
+    let seenMapVersion: string | null = null;
     const check = (): void => {
       void api
         .health()
         .then((health) => {
-          if (!cancelled && isStaleAgainst(health.buildId)) setStale(true);
+          if (cancelled) return;
+          if (isStaleAgainst(health.buildId)) setStale(true);
+          if (health.mapVersion) {
+            seenMapVersion ??= health.mapVersion;
+            if (health.mapVersion !== seenMapVersion) setMapStale(true);
+          }
         })
         .catch(() => {
           // Offline or mid-restart: not a staleness signal, try again later.
@@ -43,11 +58,17 @@ export const BuildWatch = (): React.JSX.Element | null => {
     };
   }, []);
 
-  if (!stale) return null;
+  if (!stale && !mapStale) return null;
   return (
     <div className="build-watch" role="status">
       <span className="build-watch__text">
-        A newer build of Dawned is live — this tab is still on <b>{BUILD_ID}</b>.
+        {stale ? (
+          <>
+            A newer build of Dawned is live — this tab is still on <b>{BUILD_ID}</b>.
+          </>
+        ) : (
+          <>The world has been republished — this tab is still on the old map.</>
+        )}
       </span>
       <button
         type="button"
