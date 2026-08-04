@@ -58,6 +58,7 @@ import { setAbilityNames } from '../app/panels/panel-format.js';
 import { rarityTone, refusalText as itemRefusalText } from '../app/panels/item-format.js';
 import type {
   AbilityDef,
+  DodgeRefusal,
   EnemyDef,
   InventorySyncMessage,
   ItemDef,
@@ -68,6 +69,16 @@ import type {
 
 /** The overlay panels P7 ships (UI_UX.md §4 grows this list per phase). */
 export type PanelId = 'character' | 'skills' | 'inventory' | 'vendor';
+
+/** What the HUD says when `V` cannot roll (COMBAT.md §7 gates the dodge). */
+const DODGE_REFUSAL_TEXT: Record<DodgeRefusal, string> = {
+  stamina: 'Not enough stamina to roll.',
+  cooldown: 'Still finding your feet.',
+  rooted: 'You cannot roll while held.',
+  swimming: 'No rolling in deep water.',
+  airborne: 'You cannot roll in mid-air.',
+  busy: 'Not while you are already moving like that.',
+};
 
 /**
  * What the React panels (CharacterPanel/SkillsPanel) read and drive — a thin
@@ -186,6 +197,10 @@ export const runWorld = (
   // all funnel through setPanel: it owns the pointer-lock handoff (panels need
   // the cursor; closing re-locks into mouselook) and tells the React shell.
   let openPanel: PanelId | null = null;
+  /** Edge tracker so one refused dodge press produces one message. */
+  let lastDodgeRefusal: string | null = null;
+  /** Edge tracker for the roll itself (its sound + buffer consume fire once). */
+  let wasRolling = false;
   /** Last few item notices, kept for the debug API (smoke diagnostics). */
   const recentNotices: string[] = [];
   function setPanel(panel: PanelId | null): void {
@@ -1159,6 +1174,19 @@ export const runWorld = (
         held: localView.weaponDebug,
       };
     },
+    /** World props: where the market posts ended up vs the ground under them. */
+    propsDebug: (): {
+      posts: { id: string; at: [number, number, number]; visible: boolean; seated: boolean }[];
+      selfY: number;
+      groundUnderSelf: number;
+    } => {
+      const self = connection.renderPosition();
+      return {
+        posts: vendorPosts.debug,
+        selfY: self.y,
+        groundUnderSelf: terrain.sampler.heightAt(self.x, self.z),
+      };
+    },
     /** Item truth + drivers (P8 smoke: loot, equip, vendor). */
     inventoryState: (): {
       gold: number;
@@ -1273,7 +1301,22 @@ export const runWorld = (
     for (const slot of input.takeSlotPresses()) {
       performSlotPress(slot);
     }
-    if (connection.predicted.rollTimeLeft > 0.5) sfx.play('dodge', 0.6);
+    // A roll STARTED (rising edge). Testing "still near its full duration"
+    // instead reads the timer at frame rate: one long frame steps several sim
+    // ticks at once and the whole window is skipped, so the roll goes silent
+    // and the tap buffer survives into a second roll.
+    if (connection.predicted.rollTimeLeft > 0 && !wasRolling) {
+      sfx.play('dodge', 0.6);
+      input.clearDodgeBuffer(); // the roll took — a leftover tap must not queue a second
+    }
+    wasRolling = connection.predicted.rollTimeLeft > 0;
+    // A dodge that could not start says so ONCE per press — silence here reads
+    // as "the roll is broken" when the real answer is stamina or the cooldown.
+    if (connection.dodgeRefusal !== null && connection.dodgeRefusal !== lastDodgeRefusal) {
+      hud.showRefusal(DODGE_REFUSAL_TEXT[connection.dodgeRefusal]);
+      sfx.play('deny', 0.7);
+    }
+    lastDodgeRefusal = connection.dodgeRefusal;
 
     // 2. Per-frame networking housekeeping (corrections, interpolation).
     connection.update(deltaMs);
@@ -1361,10 +1404,7 @@ export const runWorld = (
     projectiles.update(dtSeconds);
     vfx.update(dtSeconds);
     lootBags.update(dtSeconds, now / 1000);
-    vendorPosts.update(
-      (x, z) => terrain.sampler.heightAt(x, z),
-      (x, z) => terrain.isGroundReadyAt(x, z),
-    );
+    vendorPosts.update(terrain.sampler);
 
     ambience?.update(dtSeconds, position.x, position.z);
     updateWaterTime(now / 1000);

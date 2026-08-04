@@ -258,6 +258,15 @@ Design goal: downtime between pulls ≈ 3–6 s, never a food-eating simulator.
 - Dodge roll: 0.55 s, ~4.2 m, **i-frames from 0.05–0.35 s**, cancels casts (§4.5), 0.5 s internal
   cooldown. The single most important button in the game — tuned first, tuned often.
 
+**As-built (2026-08-04):** a refused roll is never silent. One shared rule (`dodgeRefusal` in
+`@dawned/shared`) answers _why_ — stamina, footing (the internal cooldown), held, deep water,
+mid-air, already busy — and the client turns that into a line above the hotbar plus the deny
+sound. It is the same rule the movement step gates on, so the words cannot contradict the sim
+(unit-tested for exactly that parity). A dodge tap also buffers for 220 ms: the roll is gated by
+stamina AND a cooldown, so a press a fraction of a second early used to vanish rather than land.
+The roll's own state rides the snapshot since protocol v11 — see NETWORKING.md §3.1 for why the
+alternative cancelled every roll about 150 ms in.
+
 ## 8. Enemy Telegraphs
 
 - Wind-up anims + **ground decals** (exact server shapes): red fill-up circle/cone/rect; fill = time

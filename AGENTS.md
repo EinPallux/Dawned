@@ -53,3 +53,16 @@ nothing beyond it.
     `I` = the bag alone), and stale-tab confusion is closed — client and server both carry
     a build id, a mismatch raises a reload notice, the HUD corner shows the build, API
     responses are `no-store` and every non-asset path is `no-cache`.
+    **Playtest round 2 (2026-08-04) — protocol v11:** the dodge roll cancelled itself
+    because the snapshot carried no roll state — once the server acked the one-input dodge
+    press, the replay could not re-create the 550 ms roll and the adopted correction cloned
+    `rollTimeLeft = 0` over the prediction (3 ticks survived of 11 at 80 ms RTT; 10 after
+    the fix). The self block now carries the roll; the general rule is in NETWORKING.md
+    §3.1 — **predicted state that outlives its trigger input MUST be on the wire.** Plus: a
+    refused roll names its reason (shared `dodgeRefusal` → HUD) and taps buffer 220 ms;
+    market posts wait for `ChunkTerrain.hasDataAt` instead of seating on an un-streamed
+    chunk's `OCEAN_FLOOR_Y` (that is why vendors were invisible); held weapons are scaled
+    per kind, gripped up the shaft, and bound to the bone in the skinned mesh's skeleton (a
+    composed rig has several `hand_r`). `two-client-sync.mjs` no longer drifts its fixtures
+    apart (both `/stuck` first, walk-back in a `finally`); new `roll-probe.mjs` and a roll
+    gate in `predict-lag.mjs`. 342 unit tests green.

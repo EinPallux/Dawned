@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dodgeCostOf,
+  dodgeRefusal,
   cloneMovementState,
   createMovementState,
   beginDash,
@@ -306,6 +308,104 @@ describe('client/server prediction parity', () => {
     for (const intent of intents.slice(5)) stepMovement(replayed, intent, TICK_DT, ground);
 
     expect(replayed).toEqual(continuous);
+  });
+
+  it('replays a roll that the server already acked (v11 roll fields)', () => {
+    // The roll runs 550 ms — 11 ticks — but the press that started it is one
+    // input, acked within a round trip. So a reconciliation mid-roll replays
+    // inputs that no longer contain the press, and can only continue the roll
+    // if the authoritative state CARRIES it. That is what the v11 snapshot
+    // roll block is for; without it the replay lands somewhere else entirely
+    // and the client cancels its own roll two frames in.
+    const press: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: InputButton.Dodge };
+    const coast: MovementIntent = { moveX: 0, moveZ: 1, yaw: 0, buttons: 0 };
+    const intents = [press, ...Array.from({ length: 8 }, () => coast)];
+
+    const continuous = createMovementState();
+    for (const intent of intents) stepMovement(continuous, intent, TICK_DT, ground);
+    expect(continuous.rollTimeLeft).toBeGreaterThan(0); // still mid-roll
+
+    // The server consumed the press and the two ticks after it.
+    const authoritative = createMovementState();
+    for (const intent of intents.slice(0, 3)) stepMovement(authoritative, intent, TICK_DT, ground);
+
+    const replayed = cloneMovementState(authoritative);
+    for (const intent of intents.slice(3)) stepMovement(replayed, intent, TICK_DT, ground);
+    expect(replayed).toEqual(continuous);
+
+    // And the counter-proof: drop the roll from the authoritative state (what
+    // the wire did before v11) and the replay walks instead of rolling.
+    const withoutRoll = cloneMovementState(authoritative);
+    withoutRoll.rollTimeLeft = 0;
+    withoutRoll.rollDirX = 0;
+    withoutRoll.rollDirZ = 0;
+    for (const intent of intents.slice(3)) stepMovement(withoutRoll, intent, TICK_DT, ground);
+    expect(withoutRoll.rollTimeLeft).toBe(0);
+    expect(Math.abs(withoutRoll.z - continuous.z)).toBeGreaterThan(0.5);
+  });
+});
+
+describe('dodgeRefusal — why a roll did not happen', () => {
+  // The HUD says these words out loud, so they have to be the SAME rule the
+  // step gates on: a press that produced no roll and no explanation is the
+  // bug the owner reported as "the roll does not always work".
+  const cost = dodgeCostOf();
+
+  it('permits a roll from a rested, grounded, uncontrolled character', () => {
+    expect(dodgeRefusal(createMovementState(), false, cost)).toBeNull();
+  });
+
+  it('names the stamina wall', () => {
+    const state = createMovementState();
+    state.stamina = cost - 1;
+    expect(dodgeRefusal(state, false, cost)).toBe('stamina');
+  });
+
+  it('names the cooldown a spammed second press hits', () => {
+    const state = createMovementState();
+    stepMovement(
+      state,
+      { moveX: 0, moveZ: 1, yaw: 0, buttons: InputButton.Dodge },
+      TICK_DT,
+      ground,
+    );
+    // Mid-roll reads as busy; once the roll ends the cooldown is what is left.
+    expect(dodgeRefusal(state, false, cost)).toBe('busy');
+    state.rollTimeLeft = 0;
+    expect(dodgeRefusal(state, false, cost)).toBe('cooldown');
+  });
+
+  it('names CC, water and air', () => {
+    const rooted = createMovementState();
+    expect(dodgeRefusal(rooted, true, cost)).toBe('rooted');
+    const swimming = createMovementState();
+    swimming.swimming = true;
+    expect(dodgeRefusal(swimming, false, cost)).toBe('swimming');
+    const airborne = createMovementState();
+    airborne.grounded = false;
+    expect(dodgeRefusal(airborne, false, cost)).toBe('airborne');
+  });
+
+  it('is exactly what stepMovement gates on', () => {
+    // Every refusal must actually prevent the roll, and a null must allow it.
+    const cases: (() => ReturnType<typeof createMovementState>)[] = [
+      () => createMovementState(),
+      () => Object.assign(createMovementState(), { stamina: 1 }),
+      () => Object.assign(createMovementState(), { swimming: true }),
+      () => Object.assign(createMovementState(), { grounded: false }),
+      () => Object.assign(createMovementState(), { rollCooldownMs: 300 }),
+    ];
+    for (const make of cases) {
+      const state = make();
+      const refused = dodgeRefusal(state, false, cost) !== null;
+      const result = stepMovement(
+        state,
+        { moveX: 0, moveZ: 1, yaw: 0, buttons: InputButton.Dodge },
+        TICK_DT,
+        ground,
+      );
+      expect(result.dodged).toBe(!refused);
+    }
   });
 });
 

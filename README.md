@@ -8,7 +8,8 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > playtest.** Live at [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
 > a streamed island, action combat, all four classes with their ability kits, levels 1–30 with
 > attributes and 96-node skill trees, and the full item loop (pack, paper-doll, loot bags,
-> vendors, visible weapons). Protocol v10. **Next: P9 — Enemies & AI Depth.**
+> vendors, visible weapons). Protocol v11 — the dodge roll now rides the snapshot, which is what
+> stopped reconciliation cancelling it mid-roll. **Next: P9 — Enemies & AI Depth.**
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an
 > authored island open world with levels 1–30, professions, quests, loot, chat, GM tools) — not an
 > MVP, not a prototype. The companion repo **[Dawned-Admin](../Dawned-Admin)** is the web panel

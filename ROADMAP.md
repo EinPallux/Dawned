@@ -449,6 +449,17 @@ fuzz tests green (no dupes under parallel op storms); icon build fails on any un
       pack/paper-doll/purse; the 5-seed × 4000-op inventory fuzz suite proves conservation; the
       icon bake now refuses duplicate item icons; earlier smokes (p8-probe, browser-p6/p7,
       two-client, browser-sync) green.
+- [x] Playtest fixes round 2 (2026-08-04, **protocol v11**): the dodge roll was being cancelled by
+      the client's own reconciliation — the snapshot carried no roll state, so once the server
+      acked the one-input dodge press the replay could not re-create the 550 ms roll and the
+      adopted correction cloned `rollTimeLeft = 0` over the prediction (3 of 11 ticks survived at
+      80 ms RTT; 10 after). The self block now carries the roll (NETWORKING.md §3.1 states the
+      general rule). Also: refused rolls name their reason and taps buffer 220 ms (COMBAT.md §7
+      as-built); market posts wait for `hasDataAt` instead of seating on an un-streamed chunk's
+      ocean floor (that is why vendors were invisible); held weapons are scaled per kind and bound
+      to the animated skeleton's `hand_r` (ITEMS_LOOT.md §"Visible gear"). New `roll-probe.mjs`;
+      `predict-lag.mjs` now gates the predicted roll's lifetime; `two-client-sync.mjs` no longer
+      drifts its own fixtures apart. `pnpm check` green at 342 unit tests, browser-p8 green.
 
 ## P9 — Enemies & AI Depth (L)
 

@@ -147,6 +147,14 @@ export class InputController {
     else this.held.delete('Mouse2');
   }
 
+  /** Dodge taps stay live this long (see sampleIntent). */
+  private dodgeBufferedUntil = 0;
+
+  /** Consume the buffer — the roll started, so a stale tap must not re-fire. */
+  clearDodgeBuffer(): void {
+    this.dodgeBufferedUntil = 0;
+  }
+
   get isPointerLocked(): boolean {
     return this.pointerLocked;
   }
@@ -242,7 +250,13 @@ export class InputController {
     let buttons = 0;
     if (active('ShiftLeft') || active('ShiftRight')) buttons |= InputButton.Sprint;
     if (active('Space')) buttons |= InputButton.Jump;
-    if (active('KeyV') || active('Mouse4')) buttons |= InputButton.Dodge;
+    // Dodge taps buffer briefly. The roll is gated by stamina AND a cooldown,
+    // so a press a fraction of a second early used to vanish — you pressed V,
+    // nothing happened, and nothing said why. Holding V already waits; this
+    // gives a tap the same short grace instead of demanding frame-perfection.
+    if (active('KeyV') || active('Mouse4'))
+      this.dodgeBufferedUntil = performance.now() + DODGE_BUFFER_MS;
+    if (performance.now() < this.dodgeBufferedUntil) buttons |= InputButton.Dodge;
     // Stance is HELD state (no tap latch): the server folds it per intent.
     if (this.held.has('Mouse2')) buttons |= InputButton.SecondaryAction;
 
@@ -250,6 +264,9 @@ export class InputController {
     return { moveX, moveZ, yaw: this.yaw, buttons };
   }
 }
+
+/** How long a `V` tap keeps asking for a roll (COMBAT.md §9 feel). */
+const DODGE_BUFFER_MS = 220;
 
 const clamp = (value: number, min: number, max: number): number =>
   value < min ? min : value > max ? max : value;

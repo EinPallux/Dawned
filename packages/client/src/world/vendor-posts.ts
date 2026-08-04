@@ -89,21 +89,42 @@ export class VendorPostManager {
   }
 
   /**
-   * Seat any post whose ground has arrived. Cheap after the first few frames —
-   * it walks a list that empties itself and then does nothing.
+   * Stand each post on the ground under it, once that ground is known.
+   *
+   * Deliberately NOT latched: a post that seats itself once and never looks
+   * again is a post buried forever the first time it guesses wrong. This asks
+   * the sampler whether it HAS the chunk (`hasDataAt`) rather than trusting a
+   * readiness proxy — an unloaded chunk answers `OCEAN_FLOOR_Y`, which is how
+   * all five Dawnhaven posts ended up eleven metres under the island while
+   * happily reporting themselves "seated". Five posts, one sampler read each,
+   * per frame: it re-levels itself if a chunk ever reloads.
    */
-  update(
-    heightAt: (x: number, z: number) => number,
-    isGroundReady: (x: number, z: number) => boolean,
-  ): void {
+  update(terrain: {
+    heightAt: (x: number, z: number) => number;
+    hasDataAt?: (x: number, z: number) => boolean;
+  }): void {
     for (const post of this.posts) {
-      if (post.seated || !post.vendor.anchor) continue;
-      const { x, z } = post.vendor.anchor;
-      if (!isGroundReady(x, z)) continue;
-      post.group.position.y = heightAt(x, z);
+      const anchor = post.vendor.anchor;
+      if (!anchor) continue;
+      if (terrain.hasDataAt && !terrain.hasDataAt(anchor.x, anchor.z)) {
+        post.group.visible = false;
+        post.seated = false;
+        continue;
+      }
+      post.group.position.y = terrain.heightAt(anchor.x, anchor.z);
       post.group.visible = true;
       post.seated = true;
     }
+  }
+
+  /** Where each post ended up — a post at the wrong height is invisible, not absent. */
+  get debug(): { id: string; at: [number, number, number]; visible: boolean; seated: boolean }[] {
+    return this.posts.map((post) => ({
+      id: post.vendor.id,
+      at: [post.group.position.x, post.group.position.y, post.group.position.z],
+      visible: post.group.visible,
+      seated: post.seated,
+    }));
   }
 
   /** Posts standing on real ground — a buried post is invisible, not absent. */

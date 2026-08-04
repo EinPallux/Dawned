@@ -598,6 +598,12 @@ export class Gateway {
               maxHp: player.maxHp,
               resource: Math.floor(player.resource.value),
               comboPoints: player.resource.comboPoints,
+              // v11: the roll, so the client's reconciliation can continue it
+              // instead of rebuilding "not rolling" from a state that never
+              // carried it. Direction is meaningless while not rolling.
+              rollTimeLeftMs: m.rollTimeLeft * 1000,
+              rollDirYaw: Math.atan2(m.rollDirX, m.rollDirZ),
+              rollCooldownMs: m.rollCooldownMs,
             },
             entities,
           },

@@ -27,7 +27,7 @@ round-trip). Every message: `u8 opcode` + payload. Cold-path messages (login han
 inventory ops, quest text) ride JSON envelopes (they're rare; readability wins). Hot path is pure
 binary.
 
-> **Implementation status (P8, protocol v10):** the tables below describe the full 0.1.0 target
+> **Implementation status (P8 + playtest fixes, protocol v11):** the tables below describe the full 0.1.0 target
 > protocol. Implemented in `packages/shared/src/protocol/`: Hello/InputIntent/Ping/Chat/
 > AbilityRequest (0x03) up; Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice plus the
 > combat fan-out — AbilityStart 0x8E, AbilityResolve 0x8F (per-hit target/amount/flags),
@@ -63,7 +63,9 @@ binary.
 > the session buyback shelf, with `open:false` closing the panel when the proximity lease
 > breaks; ItemNotice 0x9e — pickup/sale/refusal toasts, refusals carrying the shared
 > `InventoryRefusal` code; RosterEntry gained mainhandModel/offhandModel so held weapons are
-> visible to everyone). Snapshots remain **full-state
+> visible to everyone), v11 the dodge roll (the snapshot's self block gained rollTimeLeft u16
+> ms + rollDir u16 angle + rollCooldown u16 ms — without them reconciliation cancelled the
+> player's own roll ~150 ms in, see §3.1; +6 B per snapshot, self only). Snapshots remain **full-state
 > within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
 > (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
 > total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16
@@ -89,23 +91,23 @@ binary.
 
 ### 2.2 Server → Client
 
-| Op   | Message                                                           | Payload                                                                                                                                                                                                                                                                                           |
-| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0x81 | `Welcome`                                                         | JSON: character full state, world settings, content version hash, spawn pos, server tick                                                                                                                                                                                                          |
-| 0x82 | `Snapshot`                                                        | tick u16, lastInputSeq u16, **self block** (pos f32×3, vel, stamina, hp, resource, states), entity sections: ENTER (full: id, type, contentId, pos, yaw, hp%, rank, name idx…), UPDATE (bit-masked deltas: pos quantized i16 cell-relative, yaw u8, hp% u8, anim state u8, speed u8), LEAVE (ids) |
-| 0x83 | `AbilityStart`                                                    | caster u32, abilityId u16, castMs u16, aim, predicted flag                                                                                                                                                                                                                                        |
-| 0x84 | `AbilityResolve`                                                  | caster u32, abilityId u16, results[]: target u32, kind u8 (dmg/heal/shield/miss/immune), amount u24, crit flag, killed flag                                                                                                                                                                       |
-| 0x85 | `EffectApply/Remove`                                              | target u32, effectId u16, stacks u8, durMs u16                                                                                                                                                                                                                                                    |
-| 0x86 | `TelegraphSpawn`                                                  | shape u8, params (pos, radius/angle/len), durMs u16, hostileFlag                                                                                                                                                                                                                                  |
-| 0x87 | `ProjectileSpawn/Despawn`                                         | id u32, kind u16, origin, dir, speed                                                                                                                                                                                                                                                              |
-| 0x88 | `EntityEvent`                                                     | id u32, event u8 (death, levelup, dodge, jump, gatherStart/End, emote id…)                                                                                                                                                                                                                        |
-| 0x89 | `StateDelta` (self)                                               | JSON envelope: xp, level, points, quest counters, inventory diffs, gold, cooldown corrections                                                                                                                                                                                                     |
-| 0x8A | `LootBagContents` / `VendorList` / `DialogueNode` / `QuestUpdate` | JSON envelopes                                                                                                                                                                                                                                                                                    |
-| 0x8B | `ChatMessage`                                                     | JSON { channel, from, text, gmFlag, ts }                                                                                                                                                                                                                                                          |
-| 0x8C | `Pong`                                                            | clientTime f64, serverTime f64                                                                                                                                                                                                                                                                    |
-| 0x8D | `SystemNotice`                                                    | code u16 + JSON params (toasts, errors, announce)                                                                                                                                                                                                                                                 |
-| 0x8E | `ContentInvalidate`                                               | new content hash (client refetches bundle lazily)                                                                                                                                                                                                                                                 |
-| 0x8F | `WeatherState`                                                    | scope u8 (world/zone), zoneIdx u16, weather u8 (clear/overcast/rain/storm/rainbow), transitionMs u16                                                                                                                                                                                              |
+| Op   | Message                                                           | Payload                                                                                                                                                                                                                                                                                                                                                                        |
+| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0x81 | `Welcome`                                                         | JSON: character full state, world settings, content version hash, spawn pos, server tick                                                                                                                                                                                                                                                                                       |
+| 0x82 | `Snapshot`                                                        | tick u16, lastInputSeq u16, **self block** (pos f32×3, vel, stamina, hp, resource, states, **roll: timeLeft u16 ms + dir u16 angle + cooldown u16 ms — v11, see §4.1**), entity sections: ENTER (full: id, type, contentId, pos, yaw, hp%, rank, name idx…), UPDATE (bit-masked deltas: pos quantized i16 cell-relative, yaw u8, hp% u8, anim state u8, speed u8), LEAVE (ids) |
+| 0x83 | `AbilityStart`                                                    | caster u32, abilityId u16, castMs u16, aim, predicted flag                                                                                                                                                                                                                                                                                                                     |
+| 0x84 | `AbilityResolve`                                                  | caster u32, abilityId u16, results[]: target u32, kind u8 (dmg/heal/shield/miss/immune), amount u24, crit flag, killed flag                                                                                                                                                                                                                                                    |
+| 0x85 | `EffectApply/Remove`                                              | target u32, effectId u16, stacks u8, durMs u16                                                                                                                                                                                                                                                                                                                                 |
+| 0x86 | `TelegraphSpawn`                                                  | shape u8, params (pos, radius/angle/len), durMs u16, hostileFlag                                                                                                                                                                                                                                                                                                               |
+| 0x87 | `ProjectileSpawn/Despawn`                                         | id u32, kind u16, origin, dir, speed                                                                                                                                                                                                                                                                                                                                           |
+| 0x88 | `EntityEvent`                                                     | id u32, event u8 (death, levelup, dodge, jump, gatherStart/End, emote id…)                                                                                                                                                                                                                                                                                                     |
+| 0x89 | `StateDelta` (self)                                               | JSON envelope: xp, level, points, quest counters, inventory diffs, gold, cooldown corrections                                                                                                                                                                                                                                                                                  |
+| 0x8A | `LootBagContents` / `VendorList` / `DialogueNode` / `QuestUpdate` | JSON envelopes                                                                                                                                                                                                                                                                                                                                                                 |
+| 0x8B | `ChatMessage`                                                     | JSON { channel, from, text, gmFlag, ts }                                                                                                                                                                                                                                                                                                                                       |
+| 0x8C | `Pong`                                                            | clientTime f64, serverTime f64                                                                                                                                                                                                                                                                                                                                                 |
+| 0x8D | `SystemNotice`                                                    | code u16 + JSON params (toasts, errors, announce)                                                                                                                                                                                                                                                                                                                              |
+| 0x8E | `ContentInvalidate`                                               | new content hash (client refetches bundle lazily)                                                                                                                                                                                                                                                                                                                              |
+| 0x8F | `WeatherState`                                                    | scope u8 (world/zone), zoneIdx u16, weather u8 (clear/overcast/rain/storm/rainbow), transitionMs u16                                                                                                                                                                                                                                                                           |
 
 Quantization: entity positions sent as cell-relative i16 (1/64 m precision within AOI cell) — full
 f32 only on ENTER. Bandwidth estimate @20 players clustered worst-case: self 40 B + 25 entities × ~14 B
@@ -134,6 +136,27 @@ notice (client shows reload screen — deploys are seamless because the client i
 - Jump/fall: vertical is fully deterministic from terrain + gravity, predicted like the rest.
 - Dodge: client starts roll anim instantly + sends intent; server validates stamina/cooldown; a
   rejection (rare, only desync/cheat) snaps state back — honest clients never see it.
+
+### 3.1 As-built: state the replay cannot re-create (protocol v11)
+
+Reconciliation rebuilds the predicted state as `authoritative + replay(unacked inputs)`. That is
+only correct for state the inputs themselves produce. **A roll is not that**: it runs 550 ms — 11
+ticks — but is started by ONE input, and the server acks that input within a round trip. Once the
+press leaves the pending buffer, the replay walks where the player is rolling; the position error
+exceeds the 2 cm ignore threshold on the very next snapshot, the correction is adopted, and the
+clone takes `rollTimeLeft = 0` with it. The player's own roll is cancelled about 150 ms in
+(measured at 80 ms RTT), which reads in game as "the roll animation does not work".
+
+So the snapshot's self block carries the roll — time left, locked direction, internal cooldown —
+and the client seeds `authoritative` from it. The rule this establishes for anything added later:
+
+> Predicted state that outlives the input that started it MUST be on the wire, or reconciliation
+> will delete it. Ability dashes are the other case; they currently use a correction hold
+> (`correctionHoldUntilMs`) instead, which suppresses corrections for the dash's duration.
+
+`tools/smoke/predict-lag.mjs` runs the shipped reconciliation algorithm headlessly and now fails
+if a predicted roll is cut short; `tools/smoke/roll-probe.mjs` pins the server half (the timer
+counts down, the `Dodging` flag agrees with it, the roll carries `DODGE_DISTANCE_M`).
 
 ## 4. Combat Latency Model
 

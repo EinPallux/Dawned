@@ -154,6 +154,9 @@ describe('snapshots', () => {
       maxHp: 236,
       resource: 63, // v7: class resource floor (Rage/Energy/Mana)
       comboPoints: 4, // v7: Rogue CP (0 for other classes)
+      rollTimeLeftMs: 410, // v11: the roll, so reconciliation can continue it
+      rollDirYaw: -2.1,
+      rollCooldownMs: 355,
     },
     entities: Array.from({ length: entityCount }, (_, i) => ({
       id: i + 1,
@@ -184,6 +187,15 @@ describe('snapshots', () => {
     expect(decoded.self.resource).toBe(snapshot.self.resource);
     expect(decoded.self.comboPoints).toBe(snapshot.self.comboPoints);
     expect(decoded.self.yaw).toBeCloseTo(snapshot.self.yaw, 3);
+    // v11 roll block: the client rebuilds its predicted roll from these, so a
+    // dropped or mis-ordered field ends the roll a frame after it starts.
+    expect(decoded.self.rollTimeLeftMs).toBe(snapshot.self.rollTimeLeftMs);
+    expect(decoded.self.rollCooldownMs).toBe(snapshot.self.rollCooldownMs);
+    // The yaw is quantized into [0, 2π), so a negative angle comes back turned
+    // once around — same heading, different number. The client rebuilds the
+    // roll's unit direction from it, so that is what has to survive.
+    expect(Math.sin(decoded.self.rollDirYaw)).toBeCloseTo(Math.sin(snapshot.self.rollDirYaw), 3);
+    expect(Math.cos(decoded.self.rollDirYaw)).toBeCloseTo(Math.cos(snapshot.self.rollDirYaw), 3);
   });
 
   it('round-trips a full lobby of entities', () => {

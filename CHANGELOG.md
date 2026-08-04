@@ -5,6 +5,44 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — Playtest round: the roll, invisible vendors, weapons in hands (2026-08-04)
+
+- **The dodge roll no longer cancels itself (protocol v11).** Pressing dodge
+  played about 150 ms of a 550 ms roll and carried you roughly a metre of the
+  4.2 m before the gait snapped back — worst while moving, where the run cycle
+  resumed instantly and hid the roll completely. The roll was never the
+  animation's fault: a roll lasts 550 ms but is started by ONE input, which the
+  server acks within a round trip. Snapshots carried no roll state, so every
+  reconciliation after that ack rebuilt a not-rolling state and cloned it over
+  your prediction. The snapshot's self block now carries the roll — time left,
+  locked direction, cooldown — and the client continues it instead of cancelling
+  it. Measured through the shipped reconciliation algorithm at 80 ms RTT: 3
+  ticks before, 10 of a possible 11 after (`tools/smoke/predict-lag.mjs` now
+  gates this, and `tools/smoke/roll-probe.mjs` pins the server half).
+- **A roll that cannot happen now says why.** 25 stamina at 15/s behind a one
+  second delay means a second roll is ~2.7 s away, and nothing on screen said
+  so — the press just vanished. The HUD now names the reason (stamina, footing,
+  held, deep water, mid-air) and a dodge tap buffers for 220 ms, so a press a
+  fraction early lands instead of being dropped. Refusals are answered by a
+  shared rule both sides agree on, so the words can never contradict the sim.
+- **Vendors are visible again.** The Dawnhaven market posts anchored themselves
+  the first time the world asked for the ground height under them — which,
+  before their terrain chunk had streamed in, answered "ocean floor" and buried
+  them 8 m under. The terrain sampler can now say whether it actually HAS data
+  for a point, and posts stay hidden until it does, then stand on real ground.
+- **Weapons and shields sit in the hand properly.** Art packs are modelled at
+  their own heroic scale — the axe arrived 1.16 m long and the buckler 0.98 m,
+  which on a 1.75 m character read as a farm tool and a door. Held models are
+  now scaled to a real length for their kind (dagger 0.42 m … staff 1.35 m),
+  gripped a little way up the shaft rather than by the very end, and shields
+  ride across the forearm. They also hang off the bone that actually animates:
+  a composed rig carries several bones named `hand_r` and only one of them moves.
+- **Fixed — the two-client smoke drifted itself apart.** Its walk-back only ran
+  after the assertions passed, so any failing run left the walker 23 m further
+  out until the two fixtures were 130 m apart and could no longer see each
+  other — a failure that read as broken replication but was accumulated drift.
+  Both characters now `/stuck` home first and the walk-back runs in a `finally`.
+
 ### Changed — Character sheet, and knowing which build you are on (2026-08-04)
 
 - **Worn gear moved to the character sheet.** `C` is now the character screen
