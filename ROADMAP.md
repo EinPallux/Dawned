@@ -16,7 +16,7 @@
 | P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)      |
 | P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)      |
-| P6    | Classes II — Mage, Cleric, Status System | L    | 🟨 built — owner playtest |
+| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                        |
 | P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                        |
 | P9    | Enemies & AI Depth                       | L    | 🔲                        |
@@ -361,12 +361,13 @@ UI; interrupt system; Mana/potion economy pass; class balance pass #1 (dummy DPS
 **DoD:** all 4 classes solo the two test camps at level parity within tuning envelopes
 (CLASSES.md §5); status effects all render/report correctly; 4-player mixed session (tank pulls,
 cleric heals) plays clean at lag-lab settings.
-**Status (2026-08-03):** built end-to-end — shared caster/status core (protocol v8), server
-pipeline, both kits authored + published via the panel (seed migration 0007), client casters,
-`tools/smoke/browser-p6.mjs` green (mage kit, CC/DR/interrupt via the new `/ops/cc` GM
-primitive, two-client heals, envelopes, 4-player lag run). Potion economy is deferred to P8
-with the consumable system (mana economy itself shipped: costs/regen/Attunement, panel-tunable).
-Open: the owner's solo-camps parity playtest + feel signoff.
+**Status: ✅ closed 2026-08-04 (owner-verified — "classes are fine").** Shipped end-to-end:
+shared caster/status core (protocol v8), server pipeline, both kits authored + published via
+the panel (seed migration 0007), client casters, `tools/smoke/browser-p6.mjs` green (mage
+kit, CC/DR/interrupt via the new `/ops/cc` GM primitive, two-client heals, envelopes,
+4-player lag run). Potion economy is deferred to P8 with the consumable system (mana economy
+itself shipped: costs/regen/Attunement, panel-tunable). Heal magnitudes flagged for panel
+tuning as play data accumulates (heals scale on SP alone).
 
 ## P7 — Progression: XP, Stats & Skill Trees (M)
 

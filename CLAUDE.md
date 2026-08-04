@@ -83,32 +83,28 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 (`tools/smoke/two-client-sync.mjs`, `tools/smoke/browser-sync.mjs`), and reviewed (see the
 2026-08-02 review commit for netcode-robustness fixes).
 
-All 18 owner decisions to date are answered and folded (decision log in USER_QUESTIONS.md);
-Q19/Q20 (ground-cast UX, ally-heal targeting) shipped as their recommended defaults, still
-listed open for the owner's veto.
-**P0–P5 are ✅ complete (owner-verified; P3 and P5 closed 2026-08-03 after fix round 8 —
-"works perfectly"). P5 shipped with A1's abilities editor + publish v1 in parallel — all kit
-content flows through the panel + publish (hot reload, live-tunable), seeded for deploys by
-migrations 0005/0006 (never edit an applied migration — DATABASE.md §5). The P5 machine
-(evaluate → commit → tick on BOTH sides), resources, stances, buff runtime, HUD cluster and
-VFX v1 are the platform P6 extended.**
-**P6 — Classes II is 🟨 built end-to-end (2026-08-03), owner playtest pending.** Shipped:
-protocol v8 (groundAim, Rooted/Stunned/Untargetable flags, Interrupted event, Healed/Absorbed
-hits, shieldRemaining), shared channels + ground/teleport/ally targeting + CC-on-players with
-per-lane DR (cc.ts) + the status vocabulary (root/cleanse/refresh/zone/bonusVs/categories),
-the server heal/absorb/zone/homing pipeline with Attunement/Grace passives and the Focus
-stance, both caster kits (16 abilities) authored via the panel + published (seed migration
-0007), and the client caster layer per COMBAT.md §4.2: cast/channel bars with gather-pose
-loops, Q19 ground quick-cast (gold decals), Q20 ally heals (green plate), STUNNED/ROOTED
-ribbon + interrupt flash, shield chips/shimmer, palette-by-content VFX. New GM primitives
-`/ops/cc` and `/ops/hurt` (localhost + secret) drive the CC/heal paths until P9 enemies do.
-Verification: `tools/smoke/browser-p6.mjs` (mage kit, CC/DR/interrupt, two-client heals, DPS
-envelopes, 4-player lag-lab run + tick gate), browser-p5/p4 regression smokes green on v8,
-191 unit tests. **Owner items open: the P6 solo-camps parity playtest, and the A0 /admin
-login check at play.pathlands.cc/admin (non-blocking).** Deploys to production happen only when
-the owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is
-strict since the P1 deploy fix; it also bridges the GitHub PAT so the admin panel's pinned
-`@dawned/shared` git dependency installs on the private repos).
+All 20 owner decisions to date are answered and folded (decision log in USER_QUESTIONS.md;
+Q19/Q20 accepted with the P6 playtest).
+**P0–P6 are ✅ complete (owner-verified; P6 closed 2026-08-04 — "classes are fine"). The A0
+/admin login at play.pathlands.cc/admin is confirmed working, closing A0's last open item.
+The current phase is P7 — Progression (XP, stats, skill trees), with its A1 sync point:
+`content_xp_curve`/tree-node editors land in the panel this phase.**
+The platform under P7: the P5/P6 ability machine (evaluate → commit → tick on BOTH sides,
+casts/channels), class resources, stances, the buff/status runtime with CC + DR (protocol
+v8: groundAim, Rooted/Stunned/Untargetable, Interrupted, Healed/Absorbed, shieldRemaining),
+all 44 ability rows panel-authored + published (hot reload; seed migrations 0005–0007 —
+never edit an applied migration, DATABASE.md §5), the heal/absorb/zone/homing pipeline with
+Attunement/Grace passives + Block/Evasive/Focus stances, and the client caster layer per
+COMBAT.md §4.2 (cast/channel bars, Q19 ground quick-cast, Q20 ally heals + green plate,
+STUNNED/ROOTED ribbon, shield chips, palette-by-content VFX). GM primitives `/ops/cc` and
+`/ops/hurt` (localhost + secret) drive CC/heal paths until P9 enemies do. Verification
+stands at `tools/smoke/browser-p6.mjs` (mage kit, CC/DR/interrupt, two-client heals,
+envelopes, 4-player lag-lab run + tick gate p95 1.77 ms) plus all earlier smokes green in
+one session and 191 unit tests. Heal magnitudes are flagged for panel tuning (heals scale
+on SP alone). Deploys to production happen only when the owner merges to `main` and runs
+`deploy/UPDATE.sh` on the VPS (its migration step is strict since the P1 deploy fix; it
+also bridges the GitHub PAT so the admin panel's pinned `@dawned/shared` git dependency
+installs on the private repos).
 
 ### Running it locally
 

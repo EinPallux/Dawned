@@ -8,14 +8,18 @@
 
 ## Open questions
 
-| #   | Topic                      | Question + recommended default                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Where it lands                        |
-| --- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| Q19 | Ground-target cast UX (P6) | Meteor/Sanctuary aim at a point on the ground. Two common UIs: (a) **quick-cast at the crosshair's terrain point on press** (one press, action-game style — a range-clamped ground decal previews where it lands while the button is relevant), or (b) two-step: press shows a placement reticle, second press confirms. **Recommended: (a) quick-cast** — matches the game's no-hard-lock, reticle-driven combat; Meteor's 1.5 s telegraph already gives enemies (and you) the readable beat. **Shipped as recommended in P6-D** (crosshair terrain point, range-clamped; sky-aim falls back to max range along the aim); switching to (b) later is UI-only. | COMBAT.md §4 / UI_UX.md, P6-D reticle |
-| Q20 | Ally-heal targeting (P6)   | Cleric's Mend/Purify/Aegis are "ally-soft" with self fallback. Without tab-targeting, who gets the heal? **Recommended: the reticle cone picks the ally you're looking at (same soft-target sweep as enemies, allies filter); if nobody is under the reticle, the MOST INJURED party member in range; if none, yourself.** Feels like aiming, protects the panic self-heal, no extra keybinds. **Shipped as recommended in P6-B/D** (green ally plate under the reticle shows the would-be recipient); a "self-cast modifier key" can be added later if wanted.                                                                                               | COMBAT.md §4 as-built, P6-B/D         |
+_None — all 20 decisions to date are answered and folded (log below)._
 
 ---
 
 ## Decision log
+
+### 2026-08-04 — P6 casters (accepted with the owner's P6 playtest — "classes are fine")
+
+| #   | Topic                      | Decision                                                                                                                                                                                      | Folded into                            |
+| --- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Q19 | Ground-target cast UX (P6) | **Quick-cast at the crosshair's terrain point** (one press, range-clamped, sky-aim falls back to max range along the aim). A two-step placement reticle stays a UI-only option if ever wanted | COMBAT.md §4.2, run-world groundAimFor |
+| Q20 | Ally-heal targeting (P6)   | **Reticle ally → most injured in range → self**, with the green plate showing the would-be recipient. A "self-cast modifier key" can be added later if wanted                                 | COMBAT.md §4.2, Q20 pick server-side   |
 
 ### 2026-08-03 — P4 combat foundation (answered with the round-6 playtest feedback)
 
