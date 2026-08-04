@@ -94,6 +94,7 @@ export const WorldScreen = (): React.JSX.Element => {
       {world && openPanel === 'character' ? (
         <CharacterPanel
           bridge={world.progression}
+          items={world.inventory}
           onClose={() => {
             world.setPanel(null);
           }}

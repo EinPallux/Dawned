@@ -15,6 +15,7 @@ import {
   staminaRegenForEnd,
   type AttributeSpread,
   type ClassId,
+  type EquipmentBonus,
   type NodeAggregates,
   type NodeEffect,
   type SkillNodeDef,
@@ -262,12 +263,19 @@ export const derivedRows = (
   level: number,
   allocated: AttributeSpread,
   aggregates: NodeAggregates,
+  /**
+   * Worn gear's flat contributions (armor, crit). Attribute bonuses are folded
+   * into `allocated` by the caller BEFORE derivation — the same order the
+   * server uses, so a +5 VIT chest raises Max HP through the 12-per-VIT rule
+   * rather than as a bolted-on afterthought.
+   */
+  gear?: EquipmentBonus,
 ): DerivedRow[] => {
   const stats = playerStats(classId, level, allocated);
   const agg = aggregates.stats;
   const maxHp = Math.max(1, Math.round(stats.maxHp * (1 + agg.maxHpPct / 100)));
-  const armor = stats.armor * (1 + agg.armorPct / 100);
-  const crit = stats.critPct + agg.critPct;
+  const armor = (stats.armor + (gear?.stats.armor ?? 0)) * (1 + agg.armorPct / 100);
+  const crit = stats.critPct + agg.critPct + (gear?.stats.critPct ?? 0);
   const resourceType = RESOURCE_BY_CLASS[classId];
   const mods = neutralResourceMods();
   if (resourceType === 'energy') mods.maxFlat = agg.maxEnergyDelta;
@@ -297,7 +305,7 @@ export const derivedRows = (
     {
       label: 'Armor',
       value: armor.toFixed(1),
-      formula: 'gear + 0.5×STR, ×(1 + node %)',
+      formula: 'worn armor + 0.5×STR, ×(1 + node %)',
     },
     {
       label: `Max ${resourceType === 'mana' ? 'Mana' : resourceType === 'energy' ? 'Energy' : 'Rage'}`,

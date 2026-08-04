@@ -144,6 +144,11 @@ The design above shipped with these decisions worth writing down:
   little inside the radius so the press always lands within the server's copy
   of it, and reaching for a post that is genuinely too far now answers "Too far
   away." rather than a refusal about slots.
+- **The pack and the sheet are different screens** (owner call, 2026-08-04):
+  `I` is the bag, `C` is the character — worn gear, the rig wearing it, and the
+  stats it produces. Right-click equips from the bag and takes gear off the
+  sheet; the sheet folds gear through the shared `equipmentBonus` the server
+  derives with, so the numbers agree by construction.
 - **Visible gear is weapons only** (§1): the roster carries `mainhandModel` /
   `offhandModel`, the client hangs the baked model off the hand bone, and
   armour never changes the silhouette. Shields ride the forearm rather than

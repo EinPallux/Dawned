@@ -68,6 +68,24 @@ docs/design/GAME_DESIGN.md (what the game is), docs/tech/ARCHITECTURE.md (how it
 - Commit style: imperative, scoped (`combat: add stagger meter decay`), reference phase
   (`[P4]`) when applicable.
 
+### Freshness checklist (run it at the end of EVERY task, not only phase closes)
+
+Stale state is a bug the owner has to find. Before claiming anything done, check that each of
+these still tells the truth — and fix the ones that don't, in the same change:
+
+1. **ROADMAP.md** — the status table row AND the phase's own block/checklist.
+2. **CHANGELOG.md** `[Unreleased]` — anything player-visible.
+3. **README.md** — the status block at the top (phases built, what's live, what's next).
+4. **CLAUDE.md + AGENTS.md** — the "Current state" section in BOTH repos, mirrored.
+5. **Docs you touched the territory of** — design docs get an "as built" note when the shipped
+   thing deviates; tech docs get the new contract.
+6. **In-app strings** — nothing hardcodes a phase or version. The HUD corner reads its build id
+   from `build-info.ts` (Vite stamps the commit); keep it that way.
+7. **USER_QUESTIONS.md** — answered questions move to the decision log; new ones get a
+   recommended default.
+8. **Counts you quoted** — test counts, item counts, asset counts drift; re-read them from the
+   run you just did rather than copying the last number.
+
 ## Working with the owner
 
 The owner (solo, plays with friends) will edit content via Dawned-Admin and expects to extend the
@@ -130,8 +148,20 @@ unique item icons, and the whole T1–T2 catalogue (62 items, 5 loot tables, 5 v
 authored in the panel, published, and frozen into seed migration 0012. Dev lever:
 `/ops/grant` (item or gold). Verification: `tools/smoke/browser-p8.mjs` runs the DoD loop
 for real (grind → bag with an ITEM → take with the key → equip → model on the roster →
-tooltip → all 5 posts standing → trade → relog); `pnpm check` is green at 336 unit tests,
-and browser-p6/p7, p8-probe, two-client and browser-sync all pass in the same session.
+tooltip → the `C` sheet drawing its rig and worn slots → all 5 posts standing → trade →
+relog); `pnpm check` is green at 336 unit tests, and browser-p6/p7, p8-probe, two-client
+and browser-sync all pass in the same session.
+
+**Owner round after P8 (2026-08-04):** worn gear moved OUT of the pack and onto the
+character sheet (`C`) — name/level header, slot columns flanking the live rig (holding
+what you equipped), stat block with gear contributions marked, all folded through the
+shared `equipmentBonus` the server derives with. `I` is the bag alone. Alongside it, the
+"which build am I on?" problem is closed: the client bakes in its commit (Vite), the
+server reports its own at `/api/health`, a mismatch raises a reload notice, and the HUD
+corner shows the build instead of a hardcoded phase label. API responses are `no-store`
+(both repos) and Caddy marks every non-asset path `no-cache` — an SPA deep link used to
+be served with no cache header at all, which is why updates appeared in a private window
+first.
 
 ### Running it locally
 

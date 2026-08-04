@@ -8,6 +8,7 @@
 
 import type { ChatBroadcastMessage, RosterEntry } from '@dawned/shared';
 import type { SlotView } from '../net/connection.js';
+import { BUILD_ID } from '../build-info.js';
 
 /** Class resource palette (UI_UX.md §1 — vibrant, no pastel mush). */
 const RESOURCE_COLORS: Record<string, { fill: string; deep: string }> = {
@@ -199,7 +200,7 @@ export class Hud {
     this.root.className = 'hud';
     this.root.innerHTML = `
       <div class="hud-panel hud-topleft">
-        <div class="hud-title">DAWNED <span class="hud-dim">P3</span></div>
+        <div class="hud-title">DAWNED <span class="hud-dim">${BUILD_ID}</span></div>
         <div class="hud-status" data-status>connecting…</div>
         <pre class="hud-stats" data-stats></pre>
         <canvas class="hud-ping" width="220" height="44" data-ping></canvas>

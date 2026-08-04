@@ -81,6 +81,13 @@ export interface ProgressionBridge {
   version: () => number;
   classId: () => ClassId;
   level: () => number;
+  /** Who the sheet is about: name, looks and what the roster says you hold. */
+  identity: () => {
+    name: string;
+    appearance: Appearance;
+    mainhandModel: string | null;
+    offhandModel: string | null;
+  };
   /** The authoritative sheet (null until the first ProgressSync). */
   sheet: () => ProgressSyncMessage | null;
   nodeDefs: () => ReadonlyMap<string, SkillNodeDef>;
@@ -996,6 +1003,10 @@ export const runWorld = (
     },
     /** Full attack-press path for smokes (pointer lock is unreliable headless). */
     attack: (): boolean => performAttackPress(),
+    /** Smoke hook: send a chat line (the bots use `/stuck` to free themselves). */
+    say: (text: string): void => {
+      handleChatSubmit(text);
+    },
     /** Full hotbar-press path for smokes — identical to a 1–8 key press. */
     pressSlot: (slot: number): void => {
       performSlotPress(slot);
@@ -1579,6 +1590,15 @@ export const runWorld = (
     version: () => connection.progressVersion,
     classId: () => connection.classId,
     level: () => connection.selfLevel,
+    identity: () => {
+      const entry = connection.rosterEntryFor(connection.selfId);
+      return {
+        name: entry?.name ?? playerName,
+        appearance: entry?.appearance ?? appearance,
+        mainhandModel: entry?.mainhandModel ?? null,
+        offhandModel: entry?.offhandModel ?? null,
+      };
+    },
     sheet: () => connection.sheet,
     nodeDefs: () => connection.skillNodeDefs,
     ranks: () => connection.ranks,

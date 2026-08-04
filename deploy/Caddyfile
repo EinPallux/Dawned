@@ -6,7 +6,12 @@
 	encode zstd gzip
 
 	# --- game server: REST API + WebSocket -----------------------------------
+	# The game server sets `Cache-Control: no-store` on every response itself
+	# (packages/server/src/http/routes.ts); `defer` keeps this from fighting it
+	# if that ever regresses — an API answer served from cache is a bug that
+	# looks like "the update did not deploy".
 	handle /api/* {
+		header defer Cache-Control "no-store"
 		reverse_proxy 127.0.0.1:8081
 	}
 
@@ -51,9 +56,16 @@
 		@manifest path /assets/manifest.json
 		header @manifest Cache-Control "no-cache"
 
-		# index.html must never be cached, or players get stale bundles after a deploy.
-		@html path / /index.html
-		header @html Cache-Control "no-cache"
+		# Everything that is NOT a content-hashed asset is (or falls back to)
+		# index.html, and index.html must never be cached or players keep
+		# yesterday's bundle after a deploy — the "works in a private window"
+		# bug. Matching by negation covers deep links too: `try_files` rewrites
+		# /anything to /index.html AFTER the header directives have run, so a
+		# rule that matched only `/` and `/index.html` left every other route
+		# with no cache header at all, and browsers are free to invent a
+		# freshness lifetime when there is none.
+		@notasset not path /assets/*
+		header @notasset Cache-Control "no-cache"
 
 		try_files {path} /index.html
 		file_server

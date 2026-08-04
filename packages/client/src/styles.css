@@ -2165,94 +2165,6 @@ canvas.game {
   background: linear-gradient(90deg, var(--gold) 0%, transparent 90%);
   opacity: 0.5;
 }
-.pv-points {
-  margin-left: auto;
-  color: var(--muted);
-  letter-spacing: 0.04em;
-}
-.pv-points[data-live='true'] {
-  color: var(--gold-bright);
-}
-
-/* Attribute rows: value, base+alloc breakdown, +/- staging. */
-.pv-attr {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 8px;
-  border-bottom: 1px solid #2a3040;
-  font: 700 14px/1.3 var(--font-body);
-}
-.pv-attr-name {
-  width: 44px;
-  color: var(--muted);
-  letter-spacing: 0.08em;
-}
-.pv-attr-value {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  font-variant-numeric: tabular-nums;
-  font-size: 16px;
-}
-.pv-attr-staged {
-  color: var(--gold-bright);
-  font-style: normal;
-  font-size: 13px;
-}
-.pv-attr-base {
-  color: var(--muted);
-  font-style: normal;
-  font-weight: 600;
-  font-size: 11px;
-}
-.pv-attr-buttons {
-  margin-left: auto;
-  display: flex;
-  gap: 4px;
-}
-.pv-attr-buttons button {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  background: var(--panel-light);
-  border: 1px solid var(--hairline);
-  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
-  color: var(--parchment);
-  cursor: pointer;
-  font: 800 15px/1 var(--font-body);
-  transition:
-    border-color 80ms var(--ease),
-    color 80ms var(--ease);
-}
-.pv-attr-buttons button:hover:not(:disabled) {
-  border-color: var(--gold);
-  color: var(--gold-bright);
-}
-.pv-attr-buttons button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.pv-derived {
-  display: flex;
-  justify-content: space-between;
-  padding: 5px 8px;
-  border-bottom: 1px solid #2a3040;
-  font: 600 13px/1.4 var(--font-body);
-  color: var(--muted);
-  cursor: help;
-}
-.pv-derived b {
-  color: var(--parchment);
-  font-variant-numeric: tabular-nums;
-}
-.pv-derived .pv-gold {
-  color: var(--gold-bright);
-}
-
-.pv-actions,
 .pv-footer {
   display: flex;
   flex-wrap: wrap;
@@ -2558,37 +2470,22 @@ canvas.game {
 }
 
 /* --- Inventory + vendor (P8-D) -------------------------------------------- */
+/* The pack is one column now: worn gear moved to the character sheet, so the
+   old doll column would just be an empty gutter. */
 .inv-body {
-  display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-.inv-doll-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.inv-doll-col {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
-.inv-doll-trinket {
-  margin-top: 8px;
-  display: flex;
-  justify-content: center;
-}
-.inv-doll-hint,
 .inv-bag-hint {
   margin-top: 8px;
   font-size: 11px;
-  color: var(--ink-dim, #8b93a3);
+  color: var(--muted);
   letter-spacing: 0.02em;
 }
 .inv-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(var(--bag-cols, 8), 1fr);
   gap: 4px;
 }
 /* Cells are cut squares, never rounded chips (UI_UX §2 anti-slop). */
@@ -2607,9 +2504,6 @@ canvas.game {
 }
 .inv-cell:hover {
   border-color: var(--gold-bright, #e0c070);
-}
-.inv-cell--equip {
-  min-width: 44px;
 }
 .inv-cell--tiny {
   width: 30px;
@@ -2640,7 +2534,7 @@ canvas.game {
   place-items: center;
   font-size: 12px;
   text-transform: uppercase;
-  color: var(--ink-dim, #8b93a3);
+  color: var(--muted);
 }
 .inv-cell-qty {
   position: absolute;
@@ -2656,20 +2550,11 @@ canvas.game {
   inset: 0;
   background: rgba(8, 10, 14, 0.62);
 }
-.inv-cell-slot {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(139, 147, 163, 0.55);
-}
 .inv-bag-tools {
   display: flex;
   gap: 6px;
   align-items: center;
+  margin-left: auto;
 }
 .inv-filter {
   width: 120px;
@@ -2704,7 +2589,7 @@ canvas.game {
   letter-spacing: 0.02em;
 }
 .inv-tip-type {
-  color: var(--ink-dim, #8b93a3);
+  color: var(--muted);
   text-transform: capitalize;
 }
 .inv-tip-damage {
@@ -2740,7 +2625,7 @@ canvas.game {
 .inv-tip-rolls,
 .inv-tip-compare {
   margin-top: 4px;
-  color: var(--ink-dim, #8b93a3);
+  color: var(--muted);
   font-size: 11px;
 }
 .vd-greeting {
@@ -2757,7 +2642,7 @@ canvas.game {
 .vd-rate {
   margin-left: auto;
   font-size: 11px;
-  color: var(--ink-dim, #8b93a3);
+  color: var(--muted);
 }
 .vd-rows {
   max-height: 340px;
@@ -2781,7 +2666,7 @@ canvas.game {
 .vd-name em {
   font-style: normal;
   font-size: 10px;
-  color: var(--ink-dim, #8b93a3);
+  color: var(--muted);
   text-transform: capitalize;
 }
 .vd-price {
@@ -2789,7 +2674,7 @@ canvas.game {
   color: var(--gold-bright, #e0c070);
 }
 .vd-empty {
-  color: var(--ink-dim, #8b93a3);
+  color: var(--muted);
   padding: 12px 0;
 }
 .hud-interact {
@@ -2812,4 +2697,250 @@ canvas.game {
   font-size: 12px;
   color: var(--gold-bright, #e0c070);
   border-left: 1px solid rgba(150, 160, 180, 0.28);
+}
+
+/* --- Stale-build notice (build-info.ts) ---------------------------------- */
+/* Sits above everything, including panels: a tab running yesterday's bundle
+   has to be able to say so during a fight, not only on the login screen. */
+.build-watch {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px 8px 18px;
+  background: linear-gradient(180deg, #3a2f16, #241d0e);
+  border: 1px solid var(--gold);
+  border-top: none;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 12px 100%);
+  font-size: 13px;
+  color: var(--parchment);
+  box-shadow: 0 4px 16px #0008;
+}
+.build-watch__text b {
+  color: var(--gold);
+  font-weight: 600;
+}
+.build-watch__button {
+  padding: 4px 12px;
+  background: var(--gold);
+  color: #1a1608;
+  border: none;
+  font: 600 12px/1 var(--font-body);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.build-watch__button:hover {
+  filter: brightness(1.12);
+}
+
+/* --- Character sheet (`C`) ------------------------------------------------ */
+/* Slots flank the live rig; the stat block sits under both. The reference the
+   owner sent (2026-08-04) is the structure — the surface stays Cut Facets. */
+.cs-panel {
+  width: min(880px, calc(100vw - 48px));
+}
+.cs-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cs-points {
+  margin-left: 10px;
+  padding: 1px 8px;
+  background: var(--gold);
+  color: #1a1608;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.cs-doll {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 84px;
+  gap: 14px;
+  align-items: stretch;
+}
+.cs-slot-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cs-stage {
+  position: relative;
+  min-height: 300px;
+  background:
+    radial-gradient(120% 80% at 50% 12%, rgba(90, 116, 168, 0.22), transparent 70%),
+    linear-gradient(180deg, #161c2a, #0e1219);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(
+    10px 0,
+    100% 0,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    0 100%,
+    0 10px
+  );
+}
+/* CharacterStage renders <div class="stage"><canvas/></div>; both have to
+   fill the box or the canvas measures 0 and the rig never draws. */
+.cs-stage .stage,
+.cs-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cs-stage-under {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+.cs-slot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: rgba(10, 12, 18, 0.72);
+  border: 1px solid rgba(120, 130, 150, 0.28);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  padding: 0;
+  cursor: pointer;
+  color: var(--muted);
+  font: inherit;
+}
+.cs-stage-under .cs-slot {
+  width: 46px;
+}
+.cs-slot:hover {
+  border-color: var(--gold-bright, #e0c070);
+}
+.cs-slot[data-filled='true'] {
+  background: rgba(24, 30, 44, 0.85);
+}
+.cs-slot[data-rarity='uncommon'] {
+  border-color: #57c77b;
+}
+.cs-slot[data-rarity='rare'] {
+  border-color: #3e8fe8;
+}
+.cs-slot[data-rarity='epic'] {
+  border-color: #a44fe0;
+}
+.cs-slot[data-rarity='legendary'] {
+  border-color: #e0913a;
+}
+.cs-slot-icon {
+  position: absolute;
+  inset: 5px;
+  background-color: #e8e2d4;
+  -webkit-mask-image: var(--icon);
+  mask-image: var(--icon);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.cs-slot-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.62;
+  padding: 2px;
+  text-align: center;
+  line-height: 1.15;
+}
+.cs-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 26px;
+  padding-top: 4px;
+  border-top: 1px solid var(--hairline);
+}
+.cs-stat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cs-stat,
+.cs-derived {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(120, 130, 150, 0.1);
+}
+.cs-stat-name,
+.cs-derived > span {
+  flex: 1;
+  color: var(--muted);
+}
+.cs-stat-value,
+.cs-derived > b {
+  font-weight: 600;
+  color: var(--parchment);
+  font-variant-numeric: tabular-nums;
+}
+.cs-stat-gear {
+  margin-left: 4px;
+  color: #57c77b;
+  font-style: normal;
+  font-size: 11px;
+}
+.cs-stat-staged {
+  margin-left: 4px;
+  color: var(--gold);
+  font-style: normal;
+  font-size: 11px;
+}
+.cs-stat-base {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 10px;
+  opacity: 0.45;
+}
+.cs-stat-buttons {
+  display: flex;
+  gap: 3px;
+}
+.cs-stat-buttons button {
+  width: 20px;
+  height: 20px;
+  background: rgba(40, 50, 74, 0.9);
+  border: 1px solid var(--hairline);
+  color: var(--parchment);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.cs-stat-buttons button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.cs-stat-buttons button:not(:disabled):hover {
+  border-color: var(--gold);
+}
+.cs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline);
+}
+.cs-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
 }

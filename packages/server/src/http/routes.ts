@@ -10,6 +10,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { FastifyInstance, RawServerDefault } from 'fastify';
 import type { Logger } from 'pino';
 import { PROTOCOL_VERSION, TICK_RATE } from '@dawned/shared';
+import { BUILD_ID } from '../build-id.js';
 import type { Config } from '../config.js';
 import type { MetricsRing } from '../metrics/ring.js';
 import type { World } from '../world/world.js';
@@ -36,36 +37,49 @@ const LOCALHOST = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 export const registerRoutes = (app: App, deps: RouteDeps): void => {
   const { config, world, gateway, metrics, reloadContent } = deps;
+
+  /**
+   * Nothing this server answers may sit in a browser cache. Without an
+   * explicit header a browser is free to invent a freshness lifetime for a
+   * 200 response and serve it again without asking — which is how a player
+   * ends up looking at yesterday's ability list in a normal tab while a
+   * private window (empty cache) shows the truth. Session-bearing routes
+   * (`/api/characters`, auth) must not linger on disk either.
+   */
+  app.addHook('onSend', (_request, reply, payload, done) => {
+    void reply.header('cache-control', 'no-store');
+    done(null, payload);
+  });
   // Mutable so /ops/reload-content refreshes what the content routes serve.
   let content = deps.content;
 
-  app.get('/api/health', () => ({
-    status: 'ok',
-    protocolVersion: PROTOCOL_VERSION,
-    tickRate: TICK_RATE,
-    players: world.playerCount,
-    uptimeSec: Math.round(process.uptime()),
-  }));
+  app.get('/api/health', () => {
+    return {
+      status: 'ok',
+      buildId: BUILD_ID,
+      protocolVersion: PROTOCOL_VERSION,
+      tickRate: TICK_RATE,
+      players: world.playerCount,
+      uptimeSec: Math.round(process.uptime()),
+    };
+  });
 
   /**
    * Published enemy definitions (P4): the client renders enemies from the
    * same data rows the server simulates — ability clip names, hit capsules,
    * scales (content-as-data; the response only changes on publish).
    */
-  app.get('/api/content/enemies', (_request, reply) => {
-    void reply.header('cache-control', 'no-cache');
+  app.get('/api/content/enemies', () => {
     return { enemies: [...content.enemies.values()] };
   });
 
   /** Published ability definitions (P5): hotbar defs the client predicts with. */
-  app.get('/api/content/abilities', (_request, reply) => {
-    void reply.header('cache-control', 'no-cache');
+  app.get('/api/content/abilities', () => {
     return { abilities: [...content.abilities.values()] };
   });
 
   /** Published skill-tree nodes (P7): the trees the client draws + predicts. */
-  app.get('/api/content/skill-nodes', (_request, reply) => {
-    void reply.header('cache-control', 'no-cache');
+  app.get('/api/content/skill-nodes', () => {
     return { nodes: [...content.skillNodes.values()] };
   });
 
@@ -74,8 +88,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * catalogue every tooltip, bag cell and vendor row is drawn from. The wire
    * only ever carries item IDs; this is where they get their meaning.
    */
-  app.get('/api/content/items', (_request, reply) => {
-    void reply.header('cache-control', 'no-cache');
+  app.get('/api/content/items', () => {
     return { items: [...content.items.values()] };
   });
 
@@ -85,8 +98,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * over the wire from the server when the panel actually opens — this is
    * geography, not an authority on what anything costs.
    */
-  app.get('/api/content/vendors', (_request, reply) => {
-    void reply.header('cache-control', 'no-cache');
+  app.get('/api/content/vendors', () => {
     return {
       vendors: [...content.vendors.values()].map((vendor) => ({
         id: vendor.id,

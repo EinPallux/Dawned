@@ -23,6 +23,22 @@ server is the priority — admin build steps are niced, Postgres tuned small, no
 
 ## 2. Routing (Caddyfile draft)
 
+> **As built (2026-08-04) — the cache contract, because getting it wrong looks
+> like "the deploy did not happen":** hashed assets under `/assets/*` are
+> immutable; `assets/manifest.json` is `no-cache` (stable name, new hashes
+> inside after every bake); **everything else** the client handle serves is
+> `no-cache`, matched by negation — the SPA fallback rewrites `/anything` to
+> `/index.html` AFTER the header directives run, so a rule that matched only
+> `/` left deep links with no cache header at all, and a browser without one
+> may invent its own freshness lifetime. `/api/*` is `no-store`, set by the
+> game server on every response (and by the panel on its own). The deployed
+> Caddyfile is `deploy/Caddyfile`; `packages/server/src/deploy-contract.test.ts`
+> pins these rules so they cannot silently regress.
+>
+> Both halves also carry a build id — the client bakes in the commit at build
+> time, the server reads it at boot — and the client raises a reload notice
+> when they disagree. That is the backstop for any cache rule we get wrong.
+
 ```caddy
 play.pathlands.cc {
 	encode zstd gzip

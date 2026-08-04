@@ -7,9 +7,11 @@
 
 import type { Rng } from './damage.js';
 import {
+  EQUIP_SLOTS,
   ROLLS_BY_RARITY,
   type ArmorClass,
   type AttributeKey,
+  type EquipSlot,
   type ItemDef,
   type ItemSlot,
   type ItemStats,
@@ -167,4 +169,42 @@ export const totalItemStats = (
     total[key] = (total[key] ?? 0) + value;
   }
   return total;
+};
+
+/**
+ * What a worn set contributes: attributes (folded into the derived-stat pass
+ * exactly like allocated points), flat armor/crit, and the main hand's damage
+ * band. Recomputed on every equipment change, not cached — a set is 11 rows
+ * and the fold is arithmetic.
+ *
+ * Shared because BOTH sides need the same answer: the server derives the stats
+ * it fights with, and the character sheet shows the player what they are. A
+ * second implementation would be a sheet that lies.
+ */
+export interface EquipmentBonus {
+  stats: ItemStats;
+  /** Main-hand damage band; null = unarmed (the P4 baseline applies). */
+  weapon: { min: number; max: number } | null;
+}
+
+export const equipmentBonus = (
+  equipment: ReadonlyMap<EquipSlot, { itemId: string; rolled?: Record<string, number> | null }>,
+  defs: ReadonlyMap<string, ItemDef>,
+): EquipmentBonus => {
+  const stats: ItemStats = {};
+  let weapon: { min: number; max: number } | null = null;
+  for (const slot of EQUIP_SLOTS) {
+    const stack = equipment.get(slot);
+    if (!stack) continue;
+    const def = defs.get(stack.itemId);
+    if (!def) continue;
+    const total = totalItemStats(def, stack.rolled ?? null);
+    for (const [key, value] of Object.entries(total) as [keyof ItemStats, number][]) {
+      stats[key] = (stats[key] ?? 0) + value;
+    }
+    if (slot === 'mainhand' && def.weapon) {
+      weapon = { min: def.weapon.dmgMin, max: def.weapon.dmgMax };
+    }
+  }
+  return { stats, weapon };
 };

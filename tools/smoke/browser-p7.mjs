@@ -191,9 +191,13 @@ const main = async () => {
       // an unreachable ledge). Without these one bad line stalls the grind.
       unstickUntil: 0,
       unstickSign: 1,
+      lastXp: 0,
+      lastLevelSeen: 1,
+      lastProgressAt: now(),
+      lastStuckAt: 0,
+      stuckEscalations: 0,
       lastMoveCheckAt: now(),
       lastMovePos: null,
-      lastHitAt: now(),
     };
     const key = (type, code) =>
       window.dispatchEvent(new KeyboardEvent(type, { code, bubbles: true }));
@@ -202,7 +206,7 @@ const main = async () => {
       state.walking = on;
       key(on ? 'keydown' : 'keyup', 'KeyW');
     };
-    window.__p7bot = { deaths: 0, stop: false, mode: 'start', x: 0, z: 0 };
+    window.__p7bot = { deaths: 0, stucks: 0, stop: false, mode: 'start', x: 0, z: 0 };
     const timer = setInterval(() => {
       if (window.__p7bot.stop) {
         walk(false);
@@ -260,11 +264,33 @@ const main = async () => {
         .sort((a, b) => a.dist - b.dist);
       const target = enemies[0];
 
-      // A fight that lands nothing for 45 s is wedged — move on to the next
-      // camp; the loop returns here after the circuit.
-      if (target && target.dist <= 25 && now() - state.lastHitAt > 45000) {
+      // Wedged detection measures PROGRESS, not effort: swinging at a target
+      // you cannot reach keeps a swing timer fresh forever, which is exactly how
+      // a run once stood in one spot for twelve minutes "fighting". XP is the
+      // only honest signal that the grind is still a grind.
+      const xpNow = d.progressionState().sheet?.xp ?? 0;
+      const levelNow = d.progressionState().level;
+      if (xpNow !== state.lastXp || levelNow !== state.lastLevelSeen) {
+        state.lastXp = xpNow;
+        state.lastLevelSeen = levelNow;
+        state.lastProgressAt = now();
+        state.stuckEscalations = 0;
+      }
+      if (now() - state.lastProgressAt > 45000) {
+        state.lastProgressAt = now();
+        state.stuckEscalations++;
+        // First try the next camp; if THAT earns nothing either, the character
+        // is wedged in the world, so use the game's own remedy (P3 `/stuck`
+        // teleports to spawn on a cooldown — what a player would do).
+        if (state.stuckEscalations >= 2 && now() - state.lastStuckAt > 65000) {
+          state.lastStuckAt = now();
+          window.__p7bot.mode = 'stuck-command';
+          window.__p7bot.stucks++;
+          walk(false);
+          d.say('/stuck');
+          return;
+        }
         state.camp = (state.camp + 1) % camps.length;
-        state.lastHitAt = now();
         window.__p7bot.mode = 'skip-camp';
         const skip = camps[state.camp];
         steerTo(skip.x, skip.z);
@@ -306,7 +332,7 @@ const main = async () => {
         walk(true);
       } else {
         walk(false);
-        if (d.attack()) state.lastHitAt = now();
+        d.attack();
         const slot1 = d.abilityState().hotbar.find((s) => s.slot === 1);
         if (slot1 && slot1.cooldownMs === 0 && slot1.affordable) d.pressSlot(1);
       }
@@ -337,6 +363,7 @@ const main = async () => {
     await sleep(2000);
     const snap = await page.evaluate(() => ({
       sheet: window.__dawned.progressionState().sheet,
+      status: window.__dawned.connection.status,
       bot: window.__p7bot,
       toasts: [...document.querySelectorAll('.hud-toast')].map((t) => t.textContent ?? ''),
       xpFill: document.querySelector('.hud-xpbar-fill')?.style.width ?? '0%',
@@ -346,6 +373,13 @@ const main = async () => {
       ],
     }));
     const sheet = snap.sheet;
+    if (!sheet) {
+      // No sheet means no ProgressSync yet — i.e. the socket dropped and the
+      // client is re-entering. Say so and keep grinding; a genuine failure to
+      // come back shows up as the budget running out, not as a TypeError.
+      console.log(`   … no progress sheet (reconnecting?), status ${snap.status ?? '?'}`);
+      continue;
+    }
     if (sheet.xp !== lastXp || sheet.level !== lastLevel) sawXpTick = true;
     if (parseFloat(snap.xpFill) > 0) sawXpBarFill = true;
     if (snap.toasts.some((t) => t.includes('point banked'))) sawLevelToast = true;
@@ -400,12 +434,12 @@ const main = async () => {
     fail(
       `grind stalled at level ${final.sheet.level} after ${Math.round(
         (Date.now() - startedAt) / 1000,
-      )} s (deaths ${final.bot.deaths}, bot ${final.bot.mode} @ (${final.bot.x}, ${final.bot.z})) — DoD wants 1→10`,
+      )} s (deaths ${final.bot.deaths}, ${final.bot.stucks} /stuck, bot ${final.bot.mode} @ (${final.bot.x}, ${final.bot.z})) — DoD wants 1→10`,
     );
   }
   ok(
     `ground 1→10 legitimately in ${Math.round((Date.now() - startedAt) / 1000)} s ` +
-      `(deaths ${final.bot.deaths}, xpRate ${GRIND_XP_RATE})`,
+      `(deaths ${final.bot.deaths}, ${final.bot.stucks} /stuck, xpRate ${GRIND_XP_RATE})`,
   );
   if (!sawXpTick) fail('sheet xp never moved — XpGained pipeline dead');
   if (!sawXpBarFill) fail('XP bar never filled');

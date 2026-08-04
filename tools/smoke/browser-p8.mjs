@@ -348,6 +348,29 @@ const main = async () => {
   ok(`tooltip renders (${tooltip})`);
   await page.keyboard.press('Escape');
 
+  // --------------------------------------------------- 2b. character sheet
+  // Worn gear lives on `C`, not in the pack: the slot has to show the axe and
+  // the rig beside it has to actually render (a 0-height canvas draws nothing
+  // and looks exactly like "no character" — that regression shipped once).
+  await page.keyboard.press('KeyC');
+  await page.waitForSelector('.cs-doll', { timeout: 10000 });
+  const sheet = await until(
+    page,
+    () => {
+      const canvas = document.querySelector('.cs-stage canvas');
+      const slot = document.querySelector('.cs-slot[data-rarity]:not([data-rarity="none"])');
+      const filled = [...document.querySelectorAll('.cs-slot[data-filled="true"]')].length;
+      return canvas && canvas.height > 0 && slot
+        ? { height: canvas.height, filled, title: document.querySelector('.pv-title')?.textContent }
+        : null;
+    },
+    { label: 'the character sheet to draw its rig and gear' },
+  );
+  if (sheet.filled < 1) fail('the sheet shows no worn gear');
+  ok(`character sheet: ${sheet.filled} slot(s) worn, rig canvas ${sheet.height}px`);
+  await shoot(page, 'p8-03b-sheet.png');
+  await page.keyboard.press('Escape');
+
   // ------------------------------------------------------------- 3. vendor
   // Walk INTO the post, not to its edge: the server judges the lease on its
   // own copy of the position, which trails the predicted one while running.
