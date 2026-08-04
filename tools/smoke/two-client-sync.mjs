@@ -10,8 +10,13 @@
  *   3. the walking client's server-side position actually advances,
  *   4. the observer's view of the walker matches the walker's own view,
  *   5. server-authoritative movement stays inside the legal speed envelope.
- * The walker walks back afterwards so persisted positions stay near spawn
- * across repeated runs.
+ *
+ * Both characters `/stuck` back to the spawn ring first, and the walker walks
+ * back in a `finally`. Positions persist between runs, so without BOTH of those
+ * the smoke ratchets itself apart: a run that fails an assertion used to skip
+ * the walk-back and leave the walker 23 m further out, until the two were
+ * 130 m apart and the observer could no longer see the walker at all — a
+ * failure that looked like broken replication but was only accumulated drift.
  *
  * Usage: node tools/smoke/two-client-sync.mjs [ws://host:port/game]
  * Exits non-zero with a readable reason on any failure.
@@ -27,6 +32,7 @@ import {
   SPRINT_MULTIPLIER,
   TICK_MS,
   decodeSnapshot,
+  encodeChat,
   encodeHello,
   encodeInputIntent,
   decodeJsonEnvelope,
@@ -107,6 +113,10 @@ class TestClient {
     this.socket.send(encodeInputIntent({ seq: this.seq, moveX, moveZ, yaw, buttons }));
   }
 
+  sendChat(text) {
+    this.socket.send(encodeChat({ text }));
+  }
+
   close() {
     this.socket.close();
   }
@@ -125,13 +135,15 @@ const fail = (message) => {
 
 const ok = (message) => console.log(`✅ ${message}`);
 
+/** Live clients, at module scope so the cleanup below can reach them. */
+let walker;
+let observer;
+
 const main = async () => {
   console.log(`Dawned smoke test → ${URL}\n`);
 
   // REST fixtures: two accounts, one character each (world-unique names owned
   // by their accounts, so re-runs find them again).
-  let walker;
-  let observer;
   try {
     const [walkerToken, observerToken] = await Promise.all([
       ensureAccount(API_BASE, 'zz_smoke_walker', PASSWORD),
@@ -174,7 +186,23 @@ const main = async () => {
   await sleep(300);
   if (!walker.lastSnapshot) fail('walker received no snapshots');
   if (!observer.lastSnapshot) fail('observer received no snapshots');
+
+  // Both characters home to the spawn ring first. Positions persist, so where
+  // the previous run happened to leave them is not a starting condition this
+  // test may assume — and the whole point is that the two can SEE each other.
+  walker.sendChat('/stuck');
+  observer.sendChat('/stuck');
+  await sleep(1500);
+  const apart = Math.hypot(
+    walker.lastSnapshot.self.x - observer.lastSnapshot.self.x,
+    walker.lastSnapshot.self.z - observer.lastSnapshot.self.z,
+  );
+  ok(`both recalled to the spawn ring (${apart.toFixed(1)} m apart)`);
+
   const start = { ...walker.lastSnapshot.self };
+  // Whatever happens below, walk back: an assertion that throws must not leave
+  // this character further out than it started (that drift is what broke it).
+  walkedOut = true;
 
   // Walk north (into the island — the spawn beach is near the south coast),
   // sprinting, for WALK_TICKS ticks at tick rate.
@@ -221,22 +249,30 @@ const main = async () => {
   if (!backReference) fail('walker does not see the observer');
   ok('replication is symmetric (each client sees the other)');
 
-  // Walk back so the persisted position stays near spawn for the next run.
-  for (let i = 0; i < WALK_TICKS; i++) {
-    walker.sendInput(0, 1, InputButton.Sprint);
-    await sleep(TICK_MS);
-  }
-
-  walker.close();
-  observer.close();
-  await sleep(100);
-
   console.log('\n🌅 Smoke test passed — two authenticated clients, one authoritative world.\n');
 };
 
-main().catch((error) => {
-  console.error(
-    `\n❌ ${error instanceof SmokeFailure ? error.message : `unexpected error: ${error.stack ?? error.message}`}\n`,
-  );
-  process.exitCode = 1;
-});
+/** Set once the walker has left spawn, so the cleanup knows to bring it home. */
+let walkedOut = false;
+
+/** Walk the walker back and close both sockets — runs pass or fail. */
+const cleanup = async () => {
+  if (walker && walkedOut) {
+    for (let i = 0; i < WALK_TICKS; i++) {
+      walker.sendInput(0, 1, InputButton.Sprint);
+      await sleep(TICK_MS);
+    }
+  }
+  walker?.close();
+  observer?.close();
+  await sleep(100);
+};
+
+main()
+  .catch((error) => {
+    console.error(
+      `\n❌ ${error instanceof SmokeFailure ? error.message : `unexpected error: ${error.stack ?? error.message}`}\n`,
+    );
+    process.exitCode = 1;
+  })
+  .finally(cleanup);

@@ -14,6 +14,8 @@ import {
   BASIC_COMBOS,
   BinaryReader,
   DODGE_STAMINA_COST,
+  dodgeCostOf,
+  dodgeRefusal,
   FLURRY_EFFECT,
   EVASIVE_DODGE_DISCOUNT,
   EVASIVE_ENERGY_PER_S,
@@ -23,6 +25,7 @@ import {
   GRACE_CONSUMER_ABILITY,
   GRACE_EFFECT_ID,
   InputButton,
+  type DodgeRefusal,
   OOC_AFTER_MS,
   SPRINT_STAMINA_PER_SEC,
   actionForSlot,
@@ -1597,6 +1600,12 @@ export class Connection {
     return this.effectLists.get(entityId) ?? [];
   }
 
+  /**
+   * Why the last dodge press did nothing, or null. Cleared when the key is
+   * released so a held V does not spam the same complaint.
+   */
+  dodgeRefusal: DodgeRefusal | null = null;
+
   /** Whether the predicted stamina covers a dodge right now (V indicator). */
   dodgeReady(secondaryHeld: boolean): boolean {
     const cost = DODGE_STAMINA_COST + (this.modifiersNow(secondaryHeld).dodgeCostDelta ?? 0);
@@ -1656,6 +1665,17 @@ export class Connection {
     this.authoritative.swimming = (self.flags & EntityFlag.Swimming) !== 0;
     this.authoritative.fallPeakY = this.predicted.fallPeakY;
     this.authoritative.staminaIdleMs = this.predicted.staminaIdleMs;
+    // The roll, authoritative since v11. This USED to be left at zero, and
+    // that single omission is what made the dodge look broken: a roll runs
+    // 550 ms but its input is acked within a round trip, so once the press
+    // left the replay buffer every snapshot rebuilt a not-rolling state and
+    // step 4 cloned it over the prediction. The Roll clip died two frames in
+    // and the character slid the remaining 4 m in its walk cycle — worst
+    // while moving, where the gait resumed instantly and hid it completely.
+    this.authoritative.rollTimeLeft = self.rollTimeLeftMs / 1000;
+    this.authoritative.rollDirX = Math.sin(self.rollDirYaw);
+    this.authoritative.rollDirZ = Math.cos(self.rollDirYaw);
+    this.authoritative.rollCooldownMs = self.rollCooldownMs;
 
     // 1b. Vitals + death are authoritative-only — never predicted (v6).
     this.selfHp = self.hp;
@@ -1864,7 +1884,23 @@ export class Connection {
     // Bound the buffer: a very long stall should not replay thousands of steps.
     if (this.pendingInputs.length > 120) this.pendingInputs.shift();
 
+    const rollingBefore = this.predicted.rollTimeLeft > 0;
+    const dodgePressed = (intent.buttons & InputButton.Dodge) !== 0;
     const result = stepMovement(this.predicted, intent, TICK_DT, this.terrain, modifiers);
+    // A dodge press that produced no roll is the single most common "the game
+    // ignored me" moment: 25 stamina at 15/s behind a 1 s delay means a second
+    // roll is ~2.7 s away, and nothing on screen said so. Record WHY so the
+    // HUD can answer (run-world reads this on the edge).
+    if (dodgePressed && !rollingBefore && !result.dodged) {
+      // Same question `stepMovement` just answered — asked again for the words.
+      this.dodgeRefusal = dodgeRefusal(
+        this.predicted,
+        modifiers.rooted === true || modifiers.controlsLocked === true,
+        dodgeCostOf(modifiers),
+      );
+    } else if (!dodgePressed) {
+      this.dodgeRefusal = null;
+    }
     if (result.dodged) {
       // Dodge cancels the chain AND an active cast/channel for half its cost
       // back — the same §4.5 rule the server applies in its step. The refund

@@ -24,7 +24,7 @@ interface Manifest {
 /**
  * Where a held model sits relative to the hand bone.
  *
- * The weapons are modelled standing on their grip, shaft along +Y. A fist
+ * The weapons are modelled standing on their grip, long axis along +Y. A fist
  * holds a shaft along one fixed axis of the hand bone, so pointing the model's
  * +Y down that axis puts the handle in the palm in every pose the rig can
  * reach. The axis below is that direction, measured off the rig itself: world
@@ -37,14 +37,45 @@ const GRIP_ROTATION = new THREE.Quaternion().setFromUnitVectors(
   GRIP_AXIS,
 );
 /**
- * A shield is strapped to the arm rather than hung from a handle: same axis,
+ * A shield is strapped across the forearm, not hung from a handle: same axis,
  * standing the other way up so its face is out and its rim is not in the dirt.
  */
 const SHIELD_ROTATION = GRIP_ROTATION.clone().multiply(
   new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI),
 );
-const isShield = (ref: string): boolean => ref.includes('_shield_');
-const GRIP_SCALE = 0.9;
+
+/**
+ * How long a held thing should BE, in metres, for our ~1.75 m characters.
+ *
+ * Art packs are modelled at their own heroic scale — the axe arrives 1.16 m
+ * long and the "buckler" 0.98 m, which on a character reads as a farm tool and
+ * a door. Scaling each model so its longest dimension hits the target below
+ * keeps every pack in proportion without a per-item table: the kind comes from
+ * the manifest id the pipeline already assigns (`items_weapons_axe_a` → axe).
+ */
+const TARGET_LENGTH_M: Record<string, number> = {
+  dagger: 0.42,
+  wand: 0.46,
+  sword: 0.78,
+  axe: 0.76,
+  hammer: 0.8,
+  staff: 1.35,
+  shield: 0.5,
+};
+const DEFAULT_LENGTH_M = 0.78;
+
+/** `items_weapons_axe_a` → `axe`. Unknown shapes fall back to a one-hander. */
+const kindOf = (ref: string): string => ref.split('_')[2] ?? '';
+const isShield = (ref: string): boolean => kindOf(ref) === 'shield';
+
+/**
+ * How far UP the shaft the fist sits, as a fraction of the model's length.
+ * Seating the butt exactly at the bone reads as holding an axe by the very
+ * end of its handle; a hand belongs on the grip, a little way up.
+ */
+const GRIP_INSET = 0.07;
+/** A shield rides back along the forearm rather than balancing on the wrist. */
+const SHIELD_INSET = 0.05;
 
 // three.js discriminator flag, narrowed without `any` (characters.ts idiom).
 const isMesh = (object: THREE.Object3D): object is THREE.Mesh =>
@@ -89,7 +120,7 @@ export const loadWeaponModels = (): Promise<Map<string, GLTF>> => {
 export class HeldWeapons {
   private readonly held = new Map<
     'mainhand' | 'offhand',
-    { ref: string; object: THREE.Object3D }
+    { ref: string; object: THREE.Object3D; size: THREE.Vector3 }
   >();
 
   constructor(
@@ -119,22 +150,30 @@ export class HeldWeapons {
     // hangs the weapon in the air beside the hand.
     const model = gltf.scene.clone(true);
     const bounds = new THREE.Box3().setFromObject(model);
+    const shield = isShield(ref);
     model.position.set(
       model.position.x - (bounds.min.x + bounds.max.x) / 2,
       // Weapons hang from their grip; a shield straps across the forearm, so
       // it rides on its middle instead of standing on its rim.
-      model.position.y - (isShield(ref) ? (bounds.min.y + bounds.max.y) / 2 : bounds.min.y),
+      model.position.y - (shield ? (bounds.min.y + bounds.max.y) / 2 : bounds.min.y),
       model.position.z - (bounds.min.z + bounds.max.z) / 2,
     );
+    // Scale to the target length for its kind, then slide the fist up the
+    // shaft — both in the GROUP's space, so the model keeps its own proportions.
+    const size = bounds.getSize(new THREE.Vector3());
+    const longest = Math.max(size.x, size.y, size.z);
+    const target = TARGET_LENGTH_M[kindOf(ref)] ?? DEFAULT_LENGTH_M;
+    const scale = longest > 0 ? target / longest : 1;
     const object = new THREE.Group();
     object.add(model);
-    object.quaternion.copy(isShield(ref) ? SHIELD_ROTATION : GRIP_ROTATION);
-    object.scale.setScalar(GRIP_SCALE);
+    object.quaternion.copy(shield ? SHIELD_ROTATION : GRIP_ROTATION);
+    object.scale.setScalar(scale);
+    object.position.copy(GRIP_AXIS).multiplyScalar(-target * (shield ? SHIELD_INSET : GRIP_INSET));
     object.traverse((node) => {
       if (isMesh(node)) node.castShadow = true;
     });
     bone.add(object);
-    this.held.set(hand, { ref, object });
+    this.held.set(hand, { ref, object, size: bounds.getSize(new THREE.Vector3()) });
   }
 
   dispose(): void {
@@ -149,6 +188,7 @@ export class HeldWeapons {
     bone: string;
     boneAt: [number, number, number];
     modelAt: [number, number, number];
+    size: [number, number, number];
   }[] {
     const rows = [];
     const at = new THREE.Vector3();
@@ -163,6 +203,7 @@ export class HeldWeapons {
         bone: bone?.name ?? '<none>',
         boneAt,
         modelAt: [at.x, at.y, at.z] as [number, number, number],
+        size: [entry.size.x, entry.size.y, entry.size.z] as [number, number, number],
       });
     }
     return rows;

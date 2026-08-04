@@ -153,6 +153,19 @@ The design above shipped with these decisions worth writing down:
   `offhandModel`, the client hangs the baked model off the hand bone, and
   armour never changes the silhouette. Shields ride the forearm rather than
   hanging from a grip.
+  Two things a new weapon pack has to respect (learned the hard way, 2026-08-04):
+  **scale** — packs are modelled at their own heroic size (the first axe arrived
+  1.16 m long, the "buckler" 0.98 m, which on a 1.75 m character read as a farm
+  tool and a door), so held models are rescaled to a target length for their
+  KIND, derived from the manifest id the pipeline assigns (`items_weapons_axe_a`
+  → axe → 0.76 m; dagger 0.42, wand 0.46, sword 0.78, hammer 0.8, staff 1.35,
+  shield 0.5) and gripped a little way up the shaft, not by the very end; and
+  **which bone** — character composition rebinds every outfit and hair piece
+  onto the base skeleton but leaves each piece's own armature in the tree, so a
+  rig carries several bones named `hand_r` and only the one inside the visible
+  mesh's skeleton ever moves. Weapons are attached from that skeleton, never by
+  searching the node tree (a name search picks a bind-pose duplicate, which
+  reads in game as a weapon floating beside the character).
 - **The first catalogue** is 62 items across T1–T2 (ilvl 1–8), 5 loot tables
   and 5 Dawnhaven vendors, authored in Dawned-Admin and published — the
   formulas in §2 generated the numbers, the panel's budget meter checks them.

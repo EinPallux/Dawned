@@ -61,6 +61,18 @@ export class ChunkTerrain implements TerrainSampler {
     return chunk.heights[lz * CHUNK_VERTS + lx]!;
   }
 
+  /**
+   * True when the chunk covering this point has arrived. `heightAt` cannot say
+   * so itself: a missing chunk and real sea floor both read `OCEAN_FLOOR_Y`.
+   */
+  hasDataAt(x: number, z: number): boolean {
+    const gx = Math.min(Math.max(x - WORLD_ORIGIN_M, 0), MAX_VERTEX - 1e-6);
+    const gz = Math.min(Math.max(z - WORLD_ORIGIN_M, 0), MAX_VERTEX - 1e-6);
+    const cx = Math.min(Math.floor(gx / CHUNK_SIZE_M), WORLD_CHUNKS - 1);
+    const cy = Math.min(Math.floor(gz / CHUNK_SIZE_M), WORLD_CHUNKS - 1);
+    return this.chunks.has(chunkKey(cx, cy));
+  }
+
   heightAt(x: number, z: number): number {
     // Clamp into the last cell so the world edge has stable heights.
     const gx = Math.min(Math.max(x - WORLD_ORIGIN_M, 0), MAX_VERTEX - 1e-6);

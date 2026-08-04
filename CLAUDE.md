@@ -163,6 +163,28 @@ corner shows the build instead of a hardcoded phase label. API responses are `no
 be served with no cache header at all, which is why updates appeared in a private window
 first.
 
+**Playtest round 2 after P8 (2026-08-04) — protocol v11.** Three owner bugs, all fixed and
+verified: (1) **the dodge roll cancelled itself.** Not an animation bug — the snapshot
+carried no roll state, so once the server acked the dodge press (one input, ~1 RTT) the
+replay could no longer re-create the 550 ms roll, the position error blew past the 2 cm
+ignore threshold, and the adopted correction cloned `rollTimeLeft = 0` over the
+prediction. The self block now carries the roll (time left, locked direction, cooldown).
+Measured through the shipped reconciliation algorithm at 80 ms RTT: **3 ticks before, 10
+of 11 after.** A refused roll also says why now (shared `dodgeRefusal` → HUD line + deny
+sound) and a dodge tap buffers 220 ms. (2) **vendors were invisible** — the market posts
+seated themselves on `heightAt` before their chunk had streamed, which answers
+`OCEAN_FLOOR_Y`; `ChunkTerrain.hasDataAt` now distinguishes "no data" from "sea floor" and
+posts stay hidden until the ground is real. (3) **weapons sat wrong in the hand** — held
+models are scaled to a target length per kind and gripped up the shaft, shields ride the
+forearm, and everything hangs off the bone in the SKINNED MESH's skeleton (a composed rig
+has several `hand_r`; only one animates). Also fixed: `two-client-sync.mjs` drifted its own
+fixtures 130 m apart over many runs because the walk-back only ran on success — both
+characters `/stuck` home first and the walk-back is in a `finally`. New/changed smokes:
+`tools/smoke/roll-probe.mjs` (headless, pins the server half of the roll),
+`predict-lag.mjs` (mirrors connection.ts — it needed the same v11 fix, and now FAILS if a
+predicted roll is cut short). `pnpm check` green at **342 unit tests**; browser-p8,
+two-client and predict-lag pass.
+
 ### Running it locally
 
 ```bash

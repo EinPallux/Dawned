@@ -24,6 +24,7 @@ import { WebSocket } from 'ws';
 import {
   BinaryReader,
   ChunkTerrain,
+  DODGE_DURATION_S,
   EntityFlag,
   InputButton,
   MAP_VERSION,
@@ -37,6 +38,7 @@ import {
   decodeChunk,
   decodeJsonEnvelope,
   decodeSnapshot,
+  encodeChat,
   encodeHello,
   encodeInputIntent,
   peekOpcode,
@@ -107,6 +109,12 @@ const main = async () => {
   let snapshots = 0;
   let hardSnaps = 0;
   const corrections = [];
+  /**
+   * The correction gate measures act 1's sweep only. Act 2 recalls the probe
+   * with `/stuck`, and a deliberate ~1 km server-side teleport is not the
+   * rubber-banding this gate is looking for.
+   */
+  let gating = true;
 
   const cloneInto = (target, source) => Object.assign(target, cloneMovementState(source));
   const seqLE = (a, b) => ((b - a) & 0xffff) < 0x8000;
@@ -128,6 +136,13 @@ const main = async () => {
     authoritative.fallPeakY = predicted.fallPeakY;
     authoritative.staminaIdleMs = predicted.staminaIdleMs;
     authoritative.maxStamina = predicted.maxStamina;
+    // The roll, from the v11 self block — this mirror exists to match
+    // connection.ts, and leaving it at zero is exactly the bug that made a
+    // 550 ms roll die a fraction of a second in (see the roll segment below).
+    authoritative.rollTimeLeft = self.rollTimeLeftMs / 1000;
+    authoritative.rollDirX = Math.sin(self.rollDirYaw);
+    authoritative.rollDirZ = Math.cos(self.rollDirYaw);
+    authoritative.rollCooldownMs = self.rollCooldownMs;
 
     while (pending.length > 0 && seqLE(pending[0].seq, snapshot.lastInputSeq)) pending.shift();
     cloneInto(scratch, authoritative);
@@ -138,8 +153,10 @@ const main = async () => {
       scratch.y - predicted.y,
       scratch.z - predicted.z,
     );
-    corrections.push(error);
-    if (error > CORRECTION_SNAP_M) hardSnaps++;
+    if (gating) {
+      corrections.push(error);
+      if (error > CORRECTION_SNAP_M) hardSnaps++;
+    }
     if (error > 0.02) cloneInto(predicted, scratch);
   };
 
@@ -207,7 +224,69 @@ const main = async () => {
   await sleep(RUN_SECONDS * 1000);
   clearInterval(brain);
   await sleep(500);
+
+  // --- act 2: does a PREDICTED roll survive its own reconciliation? ---------
+  // A roll runs 550 ms — 11 ticks — but the press is one input, acked within a
+  // round trip. Once it leaves the pending buffer the replay cannot re-create
+  // it, so the roll only continues if the authoritative state carries it. When
+  // it did not, every roll was cancelled a fraction of a second in: the player
+  // pressed dodge, moved a metre instead of four, and the animation snapped
+  // back to the gait. Nothing in the correction stats above catches that — the
+  // replay agrees with itself, it is the PLAYER's roll that vanishes.
+  // Home first: 20 s of random sprint sweeps regularly ends in the sea, and a
+  // roll is refused in deep water by design (COMBAT.md §7).
+  gating = false;
+  socket.send(encodeChat({ text: '/stuck' }));
+  await sleep(3000);
+  if (predicted.swimming || !predicted.grounded) {
+    fail(`/stuck did not put the probe on dry ground (swimming=${predicted.swimming})`);
+  }
+
+  const rollLifetimes = [];
+  let rollTicks = 0;
+  const rollBrain = setInterval(() => {
+    tick++;
+    // Walk (never sprint — sprinting eats the stamina a roll needs) and press
+    // dodge every 3 s, which clears both the cooldown and the regen delay.
+    const dodging = tick % 60 === 0;
+    const intent = {
+      moveX: Math.sin(heading),
+      moveZ: Math.cos(heading),
+      yaw: heading,
+      buttons: dodging ? InputButton.Dodge : 0,
+    };
+    seq = (seq + 1) & 0xffff;
+    pending.push({ seq, intent: { ...intent } });
+    if (pending.length > 120) pending.shift();
+    stepMovement(predicted, intent, TICK_DT, terrain);
+    if (predicted.rollTimeLeft > 0) {
+      rollTicks++;
+    } else if (rollTicks > 0) {
+      rollLifetimes.push(rollTicks);
+      rollTicks = 0;
+    }
+    const frame = encodeInputIntent({ seq, ...intent });
+    delaySend(() => {
+      if (socket.readyState === WebSocket.OPEN) socket.send(frame);
+    });
+  }, TICK_MS);
+  await sleep(15_000);
+  clearInterval(rollBrain);
+  await sleep(500);
   socket.close();
+
+  const shortest = Math.min(...rollLifetimes);
+  ok(
+    `${rollLifetimes.length} predicted rolls, each lived ${rollLifetimes.join('/')} ticks ` +
+      `(a full ${DODGE_DURATION_S}s roll is ${Math.round(DODGE_DURATION_S / TICK_DT)})`,
+  );
+  if (rollLifetimes.length < 3) fail(`only ${rollLifetimes.length} rolls fired — expected 4+`);
+  if (shortest < 8) {
+    fail(
+      `a predicted roll was cut to ${shortest} ticks (${(shortest * TICK_DT * 1000).toFixed(0)} ms) ` +
+        `— reconciliation is cancelling the player's own roll`,
+    );
+  }
 
   corrections.sort((a, b) => a - b);
   const p50 = corrections[Math.floor(corrections.length * 0.5)] ?? 0;

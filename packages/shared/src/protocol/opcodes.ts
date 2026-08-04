@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 10; // v10 (P8): items — inventory, loot bags, vendors
+export const PROTOCOL_VERSION = 11; // v11: the dodge roll rides the snapshot's self block
 
 /** Client → server opcodes. */
 export const ClientOp = {

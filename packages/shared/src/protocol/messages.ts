@@ -344,6 +344,21 @@ export interface SnapshotSelf {
   resource: number;
   /** Rogue combo points 0..5; always 0 for other classes (v7). */
   comboPoints: number;
+  /**
+   * The dodge roll, authoritative (v11). Seconds left, the locked direction as
+   * a yaw, and the ms until another roll may start.
+   *
+   * The roll HAS to be on the wire: it lasts 550 ms but is started by a single
+   * input the server acks within a round trip, so the client's replay buffer
+   * stops holding the press long before the roll ends. Without these fields
+   * the client rebuilds "not rolling" from the authoritative state and cancels
+   * its own roll a frame or two in — which is what an owner sees as "the roll
+   * animation does not work". Sent for SELF only; other players read the roll
+   * off {@link EntityFlag.Dodging}.
+   */
+  rollTimeLeftMs: number;
+  rollDirYaw: number;
+  rollCooldownMs: number;
 }
 
 export interface SnapshotMessage {
@@ -372,7 +387,14 @@ export const encodeSnapshot = (msg: SnapshotMessage, writer?: BinaryWriter): Uin
     .u32(self.hp)
     .u32(self.maxHp)
     .u16(self.resource)
-    .u8(self.comboPoints);
+    .u8(self.comboPoints)
+    // v11 roll block. Both timers are already integers of milliseconds and fit
+    // u16 (550 ms roll, 500 ms cooldown); the direction is a unit vector, so a
+    // quantized angle carries it to ~0.0001 rad — far finer than the roll's
+    // own 4 m of travel can show.
+    .u16(Math.max(0, Math.min(65535, Math.round(self.rollTimeLeftMs))))
+    .u16(quantizeAngle(self.rollDirYaw))
+    .u16(Math.max(0, Math.min(65535, Math.round(self.rollCooldownMs))));
 
   w.u16(msg.entities.length);
   for (const entity of msg.entities) {
@@ -407,6 +429,9 @@ export const decodeSnapshot = (reader: BinaryReader): SnapshotMessage => {
     maxHp: reader.u32(),
     resource: reader.u16(),
     comboPoints: reader.u8(),
+    rollTimeLeftMs: reader.u16(),
+    rollDirYaw: dequantizeAngle(reader.u16()),
+    rollCooldownMs: reader.u16(),
   };
 
   const count = reader.u16();

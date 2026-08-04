@@ -96,6 +96,16 @@ export interface MovementIntent {
 export interface TerrainSampler {
   heightAt(x: number, z: number): number;
   /**
+   * Whether the sampler actually HAS data covering this point. Optional —
+   * samplers that are pure functions of position (dev/flat terrain) always do.
+   *
+   * A streaming sampler answers `OCEAN_FLOOR_Y` for chunks it has not received
+   * yet, which is indistinguishable from real sea floor. Anything that plants
+   * something on the ground (world props) must ask this first, or it plants it
+   * eleven metres under the island and never notices.
+   */
+  hasDataAt?(x: number, z: number): boolean;
+  /**
    * Whether a position may be entered (walkgrid: slope/water classes). Optional —
    * samplers without it (flat/dev terrain) are fully walkable. Enforced by
    * {@link stepMovement} only when moving FROM a walkable cell, so a character
@@ -127,6 +137,37 @@ export interface MovementStepResult {
   /** True on the tick a dodge roll started (drives anim/FX and cast cancels). */
   dodged: boolean;
 }
+
+/** Why a dodge press cannot start a roll, or null when it can. */
+export type DodgeRefusal = 'stamina' | 'cooldown' | 'rooted' | 'swimming' | 'airborne' | 'busy';
+
+/** The effective stamina a roll costs, after P7/buff modifiers. */
+export const dodgeCostOf = (modifiers?: MovementModifiers): number =>
+  Math.max(0, DODGE_STAMINA_COST + (modifiers?.dodgeCostDelta ?? 0));
+
+/**
+ * The dodge gate, as a question anyone can ask (COMBAT.md §7).
+ *
+ * `stepMovement` decides with this, and the client asks it again when a press
+ * produced no roll so the HUD can say WHY — one rule, two readers. Keeping the
+ * reason next to the gate is the point: a second copy in the UI would drift,
+ * and then the game would explain itself incorrectly, which is worse than
+ * saying nothing.
+ */
+export const dodgeRefusal = (
+  state: Readonly<MovementState>,
+  rooted: boolean,
+  dodgeCost: number,
+): DodgeRefusal | null => {
+  if (state.rollTimeLeft > 0) return 'busy';
+  if (rooted) return 'rooted'; // rooted/stunned: no dodging out of CC (Blink/cleanse do that)
+  if (state.dashTimeLeft > 0) return 'busy'; // a dash owns the body until it lands
+  if (state.swimming) return 'swimming';
+  if (!state.grounded) return 'airborne';
+  if (state.rollCooldownMs > 0) return 'cooldown';
+  if (state.stamina < dodgeCost) return 'stamina';
+  return null;
+};
 
 /**
  * Whether the character is inside the roll's invulnerability window
@@ -281,17 +322,10 @@ export function stepMovement(
   // facing — and steering is ignored until the roll ends. The cooldown runs
   // from roll START so spam can never queue back-to-back rolls.
   state.rollCooldownMs = Math.max(0, state.rollCooldownMs - dt * 1000);
-  const rollingBefore = state.rollTimeLeft > 0;
-  const dodgeCost = Math.max(0, DODGE_STAMINA_COST + (modifiers?.dodgeCostDelta ?? 0));
+  const dodgeCost = dodgeCostOf(modifiers);
   if (
-    !rollingBefore &&
-    !rooted && // rooted/stunned: no dodging out of CC (Blink/cleanse do that)
-    state.dashTimeLeft <= 0 && // a dash owns the body until it lands
-    state.grounded &&
-    !state.swimming &&
     (intent.buttons & InputButton.Dodge) !== 0 &&
-    state.rollCooldownMs <= 0 &&
-    state.stamina >= dodgeCost
+    dodgeRefusal(state, rooted, dodgeCost) === null
   ) {
     state.rollTimeLeft = DODGE_DURATION_S;
     state.rollCooldownMs = DODGE_COOLDOWN_MS;
