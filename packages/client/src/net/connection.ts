@@ -729,6 +729,15 @@ export class Connection {
           if (def) {
             this.abilityMachine.slots.delete(def.id);
             this.abilityMachine.gcdUntilMs = 0;
+            // A rejected CAST/CHANNEL press must also drop the predicted bar —
+            // otherwise the client "casts" a spell the server never started
+            // and the release fires pure fiction (P6).
+            if (
+              this.abilityMachine.cast?.abilityId === def.id ||
+              this.abilityMachine.channel?.abilityId === def.id
+            ) {
+              interruptCast(this.abilityMachine, 'stun', 0);
+            }
           }
         }
         this.events.onAbilityReject?.(reject.action, reject.reason);

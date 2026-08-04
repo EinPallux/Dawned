@@ -209,10 +209,25 @@ export const runWorld = (
       onAbilityResolve: (message) => {
         const mine = message.attackerId === connection.selfId;
         const fromSlotAbility = slotForAction(message.action) !== null;
+        let sawDamage = false;
         for (const hit of message.hits) {
           const crit = (hit.flags & HitFlag.Crit) !== 0;
           const killed = (hit.flags & HitFlag.Killed) !== 0;
+          const healed = (hit.flags & HitFlag.Healed) !== 0;
           const anchor = fctAnchor(hit.targetId);
+          if (mine) {
+            if (healed) healingDone += hit.amount;
+            else damageDealt += hit.amount;
+          }
+          // Heals float green with a soft holy sparkle — never a wound flash.
+          if (healed) {
+            if (anchor) {
+              combatText.spawn('heal', hit.amount, anchor.x, anchor.y, anchor.z);
+              vfx.burst(anchor.x, anchor.y - 0.7, anchor.z, 0x9fe8a8, 12, 1.8, 0.5);
+            }
+            continue;
+          }
+          sawDamage = true;
           if (anchor) {
             const kind =
               hit.targetId === connection.selfId ? 'incoming' : crit ? 'outgoing-crit' : 'outgoing';
@@ -240,10 +255,12 @@ export const runWorld = (
           enemyViews.get(hit.targetId)?.flash();
           if (killed) sfx.play('death');
         }
-        if (mine && message.hits.length > 0) {
+        if (mine && sawDamage) {
           // Contact confirmed: hit-stop + directional kick + impact layer (§9).
           // Slot abilities hit noticeably harder than basics — 90 ms freeze
           // and a stronger kick so "did that connect?" never needs the log.
+          // Pure-heal resolves deliberately skip the kick: mending an ally
+          // must not punch the healer's camera.
           const crit = message.hits.some((h) => (h.flags & HitFlag.Crit) !== 0);
           hitStopUntilMs = performance.now() + (fromSlotAbility ? 90 : 60);
           scene.addKick(input.yaw, (fromSlotAbility ? 1.3 : 1) * (crit ? 1.4 : 1));
@@ -390,6 +407,9 @@ export const runWorld = (
   });
   /** Attacker anim runs at 0.1× until this time — the §9 hit-stop. */
   let hitStopUntilMs = 0;
+  /** Lifetime damage/healing we dealt (smoke observability — DPS envelopes). */
+  let damageDealt = 0;
+  let healingDone = 0;
   /** Wall time the current death began (0 = alive) — drives the §10 beat. */
   let deathStartedMs = 0;
   /** The soul screen waits for the death clip + camera drift to land. */
@@ -702,6 +722,11 @@ export const runWorld = (
     castState: (): ReturnType<Connection['castView']> => connection.castView(),
     /** Attunement pip mirror (P6 smoke asserts). */
     attunement: (): number => connection.attunementCount,
+    /** Lifetime damage/healing dealt (P6 smoke: DPS envelopes, heal checks). */
+    scoreboard: (): { damageDealt: number; healingDone: number } => ({
+      damageDealt,
+      healingDone,
+    }),
     /** Ability layer truth for the P5 smoke asserts. */
     abilityState: (): {
       defsLoaded: number;

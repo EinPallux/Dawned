@@ -21,16 +21,17 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0–P5 complete (owner-verified 2026-08-03; P5 closed after fix rounds 7–8).
-  P5 shipped (protocol v7, alongside A1's abilities editor + publish v1): shared ability
-  machine both sides run, Rage/Energy+CP resources, server slot executor + buffs/DoTs + RMB
-  stances, 28 kit rows authored via the admin editor and published (hot reload; live-tune
-  proven), predicted client hotbar + combat HUD cluster + VFX v1, basics from content rows,
-  enemy projectile volleys + kiting AI, Spore Ridge ranged camp, migration 0005 deploy
-  seeds + 0006 presentation repair (never edit an applied migration — drizzle skips it
-  silently). Fix rounds 6–8 folded: ability icons, anim retiming, HUD state/refusal
-  readability, impact pass, cd-0 cast-once brick, un-mirrored VFX fans, upper-body swing
-  overlays while moving, dodge-roll priority. browser-p5 (22 asserts) + all earlier smokes
-  green in one session, 166 tests, tick p95 1.21 ms under ability fights. **Current phase:
-  P6 — Classes II (Mage, Cleric & status system).** Owner item open (non-blocking): the A0
-  /admin login check.
+- **State:** P0–P5 complete (owner-verified 2026-08-03; P5 closed after fix rounds 7–8 —
+  its machine/resources/stances/HUD/VFX platform and the panel-authored content flow with
+  seed migrations 0005/0006 are what P6 extended; never edit an applied migration,
+  DATABASE.md §5). **P6 — Classes II is 🟨 built (2026-08-03), owner playtest pending:**
+  protocol v8, shared channels + ground/teleport/ally targeting + CC-on-players with
+  per-lane DR + root/cleanse/refresh/zone/bonusVs vocabulary, server heal/absorb/zone/homing
+  pipeline + Attunement/Grace passives + Focus stance, both caster kits (16 abilities)
+  published via the panel (seed migration 0007), client casters per COMBAT.md §4.2
+  (cast/channel bars, Q19 ground quick-cast, Q20 ally heals + green plate, STUNNED/ROOTED
+  ribbon, shield chips, palette-by-content VFX). GM primitives `/ops/cc` + `/ops/hurt`
+  drive the CC/heal paths until P9. Verified: `tools/smoke/browser-p6.mjs` (mage kit,
+  CC/DR/interrupt, two-client heals, DPS envelopes, 4-player lag run + tick gate) plus the
+  P4/P5 regression smokes on v8. Owner items open: P6 solo-camps parity playtest; the A0
+  /admin login check (non-blocking).

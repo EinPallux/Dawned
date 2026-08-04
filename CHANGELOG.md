@@ -5,7 +5,7 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
-### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (in progress, 2026-08-03)
+### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (2026-08-03)
 
 - **Two new kits, 16 abilities, authored as live-tunable content:** Mage
   (Fireball, Ice Lance, Frost Nova, Blink, Ember Wave, Mana Shield, Arcane
@@ -39,6 +39,29 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 - **Caster VFX palettes:** fire abilities burst orange, frost ice-blue,
   arcane violet, cleric kits holy gold — derived from each ability's own
   effect data, so panel-made abilities color themselves.
+- **Verified end to end:** `tools/smoke/browser-p6.mjs` drives the mage kit,
+  the root/stun/DR/interrupt path, cross-client heals, class DPS envelopes
+  and a 4-player mixed session under lag-lab jitter against the tick budget.
+  Two GM primitives shipped for it (and for future moderation): `/ops/cc`
+  (stun/root a player) and `/ops/hurt` (stage a wounded heal target) —
+  localhost + ops secret only.
+
+### Fixed — P6 verification round (caught before anything shipped, 2026-08-03)
+
+- A dodge roll now cancels an active CHANNEL for half cost, not just casts
+  (server missed channels; the predicted client already did both).
+- The fractional `cast-while-moving` speed defined by the ability schema is
+  actually applied while the bar runs (it was validated but never folded
+  into movement) — on the server and in prediction, so no rubber-banding.
+- A server-rejected cast press now also drops the predicted cast bar — the
+  client no longer plays out a bar (and release flourish) for a spell the
+  server refused.
+- Blink and Purify break player roots: movement/any cleanses clear the hard
+  root timer, not just effect rows — without this, P9's enemy roots would
+  have been uncleansable.
+- Heals float green `+` numbers with a soft sparkle instead of rendering as
+  red incoming damage, and healing an ally no longer punches the healer's
+  camera with the contact kick.
 
 ### Fixed — P5 playtest round 8: cast-once brick, mirrored fans, missing icons, gliding attacks, dodge roll (2026-08-03)
 

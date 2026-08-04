@@ -164,6 +164,21 @@ Basic combo: `Holy Spark` 3-bolt chain (Spell_Simple retint; coef 0.5/0.5/0.75 m
 
 ---
 
+### As-built (P6 — Mage & Cleric kits live)
+
+All 16 caster slot abilities shipped as published `content_abilities` rows (authored through
+the panel editor, seed migration 0007 for fresh deploys), on the P5 machine extended per
+COMBAT.md §4.2: Fireball/Mend-style cast bars, the Arcane Barrage channel, Meteor/Sanctuary
+ground quick-casts (Q19), ally-soft heals (Q20), Blink's teleport + root break, Mana Shield's
+mana-per-point absorb and Aegis' pooled shield with the synced remaining number. Passives:
+Attunement (3rd landed bolt → +5 Mana, −0.5 s cooldowns) and Grace (Smite hits bank −0.1 s
+Mend stacks, max 3) run server-side with client mirrors; Focus is the mage's held RMB stance
+(0.6× move, +10 % bolt speed). Skill trees (§ tables above) remain P10 — the P6 kits are the
+tree-less baselines. `tools/smoke/browser-p6.mjs` runs a scripted 25 s rotation per class at
+L25 and gates that every kit sustains real damage end to end; the §5 ORDERING is a
+played-well property the bot can't measure (it pilots a mage far better than a rogue), so
+the percentages are validated by the owner's parity playtest and tuned via the panel.
+
 ## 5. Balance guardrails
 
 - Every class solos every 0.1.0 zone at level: verified per phase via scripted bot duels vs. zone

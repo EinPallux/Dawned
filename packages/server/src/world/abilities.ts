@@ -730,6 +730,12 @@ const applyAbilityEffects = (
       case 'cleanse': {
         for (const target of friendlies) {
           cleanseEffects(target, effect.category, effect.count, effect.all);
+          // Player roots live on a hard timer (applyCcToPlayer), not in the
+          // effect list — every cleanse category ('movement' and 'any' alike)
+          // breaks them too, or Blink would stop breaking roots the day P9
+          // enemies start casting them. Stuns stay uncleansable (DR is their
+          // only counterplay).
+          target.rootedUntilMs = 0;
         }
         break;
       }

@@ -48,6 +48,7 @@ import { ServerEnemy } from './enemy.js';
 import type { GameContent } from '../content/loader.js';
 import {
   advancePlayerContact,
+  applyCcToPlayer,
   applyDamageToEnemy,
   cancelComboOnDodge,
   handleAttackRequest,
@@ -302,10 +303,58 @@ export class World {
     };
   }
 
+  /** Ops-queued CC pokes (/ops/cc — GM primitive + P6 smoke). Applied at the
+   * next tick so they ride the normal event flush, never a half-tick state. */
+  private readonly pendingCc: {
+    playerId: number;
+    category: 'stun' | 'root';
+    durationMs: number;
+  }[] = [];
+
+  queueCc(name: string, category: 'stun' | 'root', durationMs: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() === name.toLowerCase()) {
+        this.pendingCc.push({ playerId: player.id, category, durationMs });
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Ops-queued HP set (/ops/hurt — GM primitive; deterministic heal tests
+   * until P9 enemies hurt players on demand). Marks combat so OOC regen
+   * does not immediately erase the wound. Never kills. */
+  private readonly pendingHurt: { playerId: number; fraction: number }[] = [];
+
+  queueHurt(name: string, fraction: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() === name.toLowerCase()) {
+        this.pendingHurt.push({ playerId: player.id, fraction });
+        return true;
+      }
+    }
+    return false;
+  }
+
   step(): CombatEvent[] {
     const events: CombatEvent[] = [];
     const nowMs = Date.now();
     this.tickCounter++;
+
+    // 0. External CC (the P9 enemy-cast entry point, driven by ops until then).
+    for (const cc of this.pendingCc.splice(0)) {
+      const ccTarget = this.players.get(cc.playerId);
+      if (ccTarget && !ccTarget.dead) {
+        applyCcToPlayer(ccTarget, cc.category, cc.durationMs, nowMs, events);
+      }
+    }
+    for (const hurt of this.pendingHurt.splice(0)) {
+      const target = this.players.get(hurt.playerId);
+      if (target && !target.dead) {
+        target.hp = Math.max(1, Math.round(target.maxHp * hurt.fraction));
+        target.lastCombatAtMs = nowMs;
+      }
+    }
 
     const aiCtx: AiContext = {
       players: this.players,
