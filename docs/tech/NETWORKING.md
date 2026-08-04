@@ -27,7 +27,7 @@ round-trip). Every message: `u8 opcode` + payload. Cold-path messages (login han
 inventory ops, quest text) ride JSON envelopes (they're rare; readability wins). Hot path is pure
 binary.
 
-> **Implementation status (P4, protocol v6):** the tables below describe the full 0.1.0 target
+> **Implementation status (P7, protocol v9):** the tables below describe the full 0.1.0 target
 > protocol. Implemented in `packages/shared/src/protocol/`: Hello/InputIntent/Ping/Chat/
 > AbilityRequest (0x03) up; Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice plus the
 > combat fan-out — AbilityStart 0x8E, AbilityResolve 0x8F (per-hit target/amount/flags),
@@ -43,7 +43,17 @@ binary.
 > wholesale on change; AbilityState 0x97 is the authoritative cooldown/resource correction
 > after slot rejects and on join/resume; hotbar slots ride the action byte via
 > SLOT_ACTION_BASE; the Blocking entity flag shows RMB stances on remotes; the
-> SecondaryAction input button carries held stances per intent). Snapshots remain **full-state
+> SecondaryAction input button carries held stances per intent), v8 casters (P6: ground-aim
+> flag+x/z on AbilityRequest; Rooted/Stunned/Untargetable entity flags; Interrupted entity
+> event; Healed/Absorbed hit flags; shieldRemaining on EffectSync entries), v9 progression
+> (P7: AllocateStats 0x04 — five u8 attribute deltas, AllocateSkill 0x05 — node id string,
+> Respec 0x06 — kind u8, up; ProgressSync 0x98 — the authoritative self sheet as a JSON
+> envelope {level, xp, xpToNext, gold, unspent points, allocated attributes, node ranks},
+> sent on join and after any progression change and doubling as the allocation-misprediction
+> correction; XpGained 0x99 — amount u32 + source u8 + absolute xp u32 + level u8 so a lost
+> packet can't desync the bar; LevelUp 0x9a — entityId u32 + level u8, fanned out so remotes
+> play the pillar; the 0x04–0x06 client opcodes supersede the target sketch below — P8's
+> interact/loot messages will take fresh numbers when they land). Snapshots remain **full-state
 > within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
 > (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
 > total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16

@@ -7,13 +7,19 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 8; // v8 (P6): casters — ground aim, heals, CC flags, absorbs
+export const PROTOCOL_VERSION = 9; // v9 (P7): progression — XP, level-ups, stat/skill allocation
 
 /** Client → server opcodes. */
 export const ClientOp = {
   Hello: 0x01,
   InputIntent: 0x02,
   AbilityRequest: 0x03,
+  /** Spend banked attribute points (staged deltas, confirmed in one send — v9). */
+  AllocateStats: 0x04,
+  /** Put one rank into a skill-tree node (v9). */
+  AllocateSkill: 0x05,
+  /** Mirror of Dawn respec: refund skills or re-open attributes (v9). */
+  Respec: 0x06,
   Ping: 0x08,
   Chat: 0x07,
 } as const;
@@ -39,6 +45,12 @@ export const ServerOp = {
   EffectSync: 0x96,
   /** Authoritative cooldown/resource correction for SELF (JSON envelope, v7). */
   AbilityState: 0x97,
+  /** Authoritative progression state for SELF (JSON envelope, v9). */
+  ProgressSync: 0x98,
+  /** An XP award landed (bar tick + FCT; binary, v9). */
+  XpGained: 0x99,
+  /** An entity leveled up (self: juice + refill; others: pillar VFX; v9). */
+  LevelUp: 0x9a,
 } as const;
 export type ServerOp = (typeof ServerOp)[keyof typeof ServerOp];
 
@@ -141,6 +153,24 @@ export const TelegraphShape = {
   Rect: 3,
 } as const;
 export type TelegraphShape = (typeof TelegraphShape)[keyof typeof TelegraphShape];
+
+/** Where an XP award came from ({@link ServerOp.XpGained}, PROGRESSION.md §1.1). */
+export const XpSource = {
+  Kill: 1,
+  Discovery: 2,
+  Quest: 3,
+  Gather: 4,
+  /** GM grant (/setlevel, events). */
+  Gm: 5,
+} as const;
+export type XpSource = (typeof XpSource)[keyof typeof XpSource];
+
+/** Respec flavors on the wire ({@link ClientOp.Respec}, PROGRESSION.md §6). */
+export const RespecWireKind = {
+  Skills: 1,
+  Stats: 2,
+} as const;
+export type RespecWireKind = (typeof RespecWireKind)[keyof typeof RespecWireKind];
 
 /**
  * Coded reasons the server rejects or ends something. The client maps these to

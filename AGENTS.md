@@ -10,7 +10,7 @@ nothing beyond it.
   (4 GB/1 core, Ubuntu 24.04, play.pathlands.cc). 0.1.0 must be a complete Early Access game, not
   an MVP. Companion repo: **Dawned-Admin** (editor/ops panel).
 - **Truth lives in `docs/`:** ROADMAP.md = what to build now (phase gates with DoD);
-  docs/design/* = game design; docs/tech/* = architecture/stack/security/deployment;
+  docs/design/_ = game design; docs/tech/_ = architecture/stack/security/deployment;
   docs/CONTENT_0.1.md = content contract; USER_QUESTIONS.md = pending owner decisions.
 - **Hard rules:** no shortcut/skeleton implementations · server-authoritative everything ·
   content-as-data (edited via Dawned-Admin, never hardcoded) · TS strict, no `any`, zod at
@@ -21,17 +21,17 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
-- **State:** P0–P5 complete (owner-verified 2026-08-03; P5 closed after fix rounds 7–8 —
-  its machine/resources/stances/HUD/VFX platform and the panel-authored content flow with
-  seed migrations 0005/0006 are what P6 extended; never edit an applied migration,
-  DATABASE.md §5). **P6 — Classes II is 🟨 built (2026-08-03), owner playtest pending:**
-  protocol v8, shared channels + ground/teleport/ally targeting + CC-on-players with
-  per-lane DR + root/cleanse/refresh/zone/bonusVs vocabulary, server heal/absorb/zone/homing
-  pipeline + Attunement/Grace passives + Focus stance, both caster kits (16 abilities)
-  published via the panel (seed migration 0007), client casters per COMBAT.md §4.2
-  (cast/channel bars, Q19 ground quick-cast, Q20 ally heals + green plate, STUNNED/ROOTED
-  ribbon, shield chips, palette-by-content VFX). GM primitives `/ops/cc` + `/ops/hurt`
-  drive the CC/heal paths until P9. Verified: `tools/smoke/browser-p6.mjs` (mage kit,
-  CC/DR/interrupt, two-client heals, DPS envelopes, 4-player lag run + tick gate) plus the
-  P4/P5 regression smokes on v8. Owner items open: P6 solo-camps parity playtest; the A0
-  /admin login check (non-blocking).
+- **State:** P0–P6 complete (owner-verified; P6 closed 2026-08-04 — "classes are fine";
+  A0 /admin login confirmed). **P7 — Progression is built end-to-end (P7-A…E, protocol
+  v9), owner playtest pending; its A1-b sync point landed (XP-curve + skill-tree editors
+  in the panel).** P7 on top of the P5/P6 caster platform: the XP pipeline (kill tag rule,
+  falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading level-ups + §1.3
+  juice), attribute allocation + all 96 skill-tree nodes as published rows (seed
+  migration 0010 — never edit an applied migration, DATABASE.md §5) with every effect
+  kind folding on BOTH sides (effective defs, movement/stamina/attack-speed/resource
+  prediction parity), respec, write-through persistence, the C/K panels + XP bar +
+  level-up juice + micro menu. Dev levers: `/setlevel`, `/ops/setlevel`, `/ops/cc`,
+  `/ops/hurt`. Verified: `tools/smoke/browser-p7.mjs` (legit 1→10 camp grind via the
+  published xpRate/xpMult levers, tier gates, respecs, UI, persistence), the node-effect
+  matrix test (every published node × rank), p7-probe/two-client/earlier smokes, 263 unit
+  tests. Heal magnitudes flagged for panel tuning.

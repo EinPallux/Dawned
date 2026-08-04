@@ -11,6 +11,8 @@
  */
 
 import {
+  ARCANE_SURGE_EFFECT,
+  FLURRY_EFFECT,
   MOVEMENT_CATEGORIES,
   armorMitigation,
   levelModifier,
@@ -18,6 +20,10 @@ import {
   type AbilityEffectMods,
   type EffectCategory,
 } from '@dawned/shared';
+
+// Re-exported for the server modules that import them from here — the ids
+// themselves live in shared since P7-D (the client predicts with them too).
+export { ARCANE_SURGE_EFFECT, FLURRY_EFFECT };
 
 export interface ActiveEffect {
   effectId: string;
@@ -174,23 +180,28 @@ const tickIntervalOf = (effect: ActiveEffect): number => {
 
 const pctToMult = (pct: number): number => 1 + pct / 100;
 
-/** Damage this entity DEALS, folded across buffs (× Dawned externally). */
+/** Damage this entity DEALS, folded across buffs ×stacks (× Dawned externally). */
 export const damageDealtMultOf = (host: EffectHost): number => {
   let mult = 1;
   for (const effect of host.effects) {
-    if (effect.mods.damageDealtPct) mult *= pctToMult(effect.mods.damageDealtPct);
+    if (effect.mods.damageDealtPct) {
+      mult *= pctToMult(effect.mods.damageDealtPct * effect.stacks);
+    }
   }
   return mult;
 };
 
 /**
  * Damage this entity TAKES from `attackerId` — folds general damageTaken
- * modifiers plus caster-scoped marks (Death Mark).
+ * modifiers (×stacks — Winter's Grasp stacks its −5%) plus caster-scoped
+ * marks (Death Mark).
  */
 export const damageTakenMultOf = (host: EffectHost, attackerId: number): number => {
   let mult = 1;
   for (const effect of host.effects) {
-    if (effect.mods.damageTakenPct) mult *= pctToMult(effect.mods.damageTakenPct);
+    if (effect.mods.damageTakenPct) {
+      mult *= pctToMult(effect.mods.damageTakenPct * effect.stacks);
+    }
     if (effect.markPct > 0 && effect.casterId === attackerId) mult *= pctToMult(effect.markPct);
   }
   return mult;
@@ -210,6 +221,24 @@ export const critBonusOf = (host: EffectHost): number => {
     if (effect.mods.critPct) bonus += effect.mods.critPct;
   }
   return bonus;
+};
+
+/** Armor multiplier from live effects ×stacks (P7: Colossus, Beacon). */
+export const armorMultOf = (host: EffectHost): number => {
+  let mult = 1;
+  for (const effect of host.effects) {
+    if (effect.mods.armorPct) mult *= 1 + (effect.mods.armorPct * effect.stacks) / 100;
+  }
+  return Math.max(0, mult);
+};
+
+/** Basic-swing speed multiplier (P7: Killer's Rhythm, Flurry). */
+export const attackSpeedMultOf = (host: EffectHost): number => {
+  let mult = 1;
+  for (const effect of host.effects) {
+    if (effect.mods.attackSpeedPct) mult *= 1 + effect.mods.attackSpeedPct / 100;
+  }
+  return Math.max(0.25, mult);
 };
 
 export const isKnockbackImmune = (host: EffectHost): boolean =>

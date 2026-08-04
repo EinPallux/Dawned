@@ -23,6 +23,7 @@ import {
   type ResourceState,
 } from '@dawned/shared';
 import { isUntargetable, type ActiveEffect } from './effects.js';
+import type { PlayerProgress } from './progression.js';
 
 /** A committed instant ability waiting for its contact frame. */
 export interface PendingAbility {
@@ -85,10 +86,16 @@ export class ServerPlayer {
   readonly movement: MovementState;
 
   // --- combat (P4) ---------------------------------------------------------
-  readonly stats: CombatStats;
+  /** Derived stats — rebuilt on level-up/allocation (progression.ts, P7). */
+  stats: CombatStats;
   /** Float internally for smooth regen; rounded at the wire. */
   hp: number;
-  readonly maxHp: number;
+  maxHp: number;
+  /** Character progression (P7): XP, gold, points, tree ranks + folds. */
+  progress: PlayerProgress;
+  /** Countdown of Flurry-empowered basics left (capstone rider). */
+  empoweredBasicsLeft = 0;
+  empoweredBasicsCp = 0;
   /** Class resource + combo points (P5) — ticked by the ability system. */
   readonly resource: ResourceState;
   /** Slot-ability timing/validation (P5) — same machine the client predicts. */
@@ -156,8 +163,12 @@ export class ServerPlayer {
     readonly accountId: number,
     readonly name: string,
     readonly classId: ClassId,
-    readonly level: number,
+    /** Mutable since P7 — level-ups happen live. */
+    public level: number,
     readonly appearance: Appearance,
+    /** Account role — gates /setlevel and future GM commands (P7). */
+    readonly role: 'player' | 'gm' | 'admin',
+    progress: PlayerProgress,
     spawnX: number,
     spawnY: number,
     spawnZ: number,
@@ -165,7 +176,10 @@ export class ServerPlayer {
     /** Persisted HP; null = full (fresh character or post-respawn save). */
     persistedHp: number | null = null,
   ) {
-    this.stats = playerStats(classId, level);
+    this.progress = progress;
+    // Baseline derivation; the world re-runs rebuildNodeFolds right after
+    // construction so node scalars and effective defs fold in.
+    this.stats = playerStats(classId, level, progress.allocated);
     this.maxHp = this.stats.maxHp;
     this.hp = persistedHp !== null ? Math.min(Math.max(persistedHp, 1), this.maxHp) : this.maxHp;
     this.resource = createResourceState(classId, this.stats.int);

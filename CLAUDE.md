@@ -83,32 +83,32 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 (`tools/smoke/two-client-sync.mjs`, `tools/smoke/browser-sync.mjs`), and reviewed (see the
 2026-08-02 review commit for netcode-robustness fixes).
 
-All 18 owner decisions to date are answered and folded (decision log in USER_QUESTIONS.md);
-Q19/Q20 (ground-cast UX, ally-heal targeting) shipped as their recommended defaults, still
-listed open for the owner's veto.
-**P0–P5 are ✅ complete (owner-verified; P3 and P5 closed 2026-08-03 after fix round 8 —
-"works perfectly"). P5 shipped with A1's abilities editor + publish v1 in parallel — all kit
-content flows through the panel + publish (hot reload, live-tunable), seeded for deploys by
-migrations 0005/0006 (never edit an applied migration — DATABASE.md §5). The P5 machine
-(evaluate → commit → tick on BOTH sides), resources, stances, buff runtime, HUD cluster and
-VFX v1 are the platform P6 extended.**
-**P6 — Classes II is 🟨 built end-to-end (2026-08-03), owner playtest pending.** Shipped:
-protocol v8 (groundAim, Rooted/Stunned/Untargetable flags, Interrupted event, Healed/Absorbed
-hits, shieldRemaining), shared channels + ground/teleport/ally targeting + CC-on-players with
-per-lane DR (cc.ts) + the status vocabulary (root/cleanse/refresh/zone/bonusVs/categories),
-the server heal/absorb/zone/homing pipeline with Attunement/Grace passives and the Focus
-stance, both caster kits (16 abilities) authored via the panel + published (seed migration
-0007), and the client caster layer per COMBAT.md §4.2: cast/channel bars with gather-pose
-loops, Q19 ground quick-cast (gold decals), Q20 ally heals (green plate), STUNNED/ROOTED
-ribbon + interrupt flash, shield chips/shimmer, palette-by-content VFX. New GM primitives
-`/ops/cc` and `/ops/hurt` (localhost + secret) drive the CC/heal paths until P9 enemies do.
-Verification: `tools/smoke/browser-p6.mjs` (mage kit, CC/DR/interrupt, two-client heals, DPS
-envelopes, 4-player lag-lab run + tick gate), browser-p5/p4 regression smokes green on v8,
-191 unit tests. **Owner items open: the P6 solo-camps parity playtest, and the A0 /admin
-login check at play.pathlands.cc/admin (non-blocking).** Deploys to production happen only when
-the owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is
-strict since the P1 deploy fix; it also bridges the GitHub PAT so the admin panel's pinned
-`@dawned/shared` git dependency installs on the private repos).
+21 owner decisions are answered and folded (decision log in USER_QUESTIONS.md); Q21 (P7
+tree-authoring defaults: tier-by-listed-order, linear per-rank ramps) is open with a
+keep-and-panel-tune recommendation implemented.
+**P0–P6 are ✅ complete (owner-verified; P6 closed 2026-08-04 — "classes are fine"; A0
+/admin login confirmed). P7 — Progression is ✅ built end-to-end (P7-A…E, 2026-08-04,
+protocol v9) — owner playtest pending; its A1-b sync point landed (XP-curve + skill-tree
+editors live in the panel).**
+What P7 shipped on top of the P5/P6 caster platform: the XP pipeline (kill XP with the tag
+rule, level falloff, per-enemy `xpMult` and the `xpRate` world lever, zone-discovery XP,
+cascading level-ups with the §1.3 refill/juice contract), attribute allocation and the
+96-node skill trees as published `content_skill_nodes` rows (seed migration 0010; all 7
+node-effect kinds fold live on BOTH sides — effective ability defs via shared
+`applyAbilityMods`, movement/stamina/attack-speed/resource scalars ride prediction), respec
+(25×/50×level gold), write-through persistence, and the client layer: bottom-edge XP bar,
+level-up juice (gold pillar, Celebration clip, flash frame with bar sparks, chime, unlock
+toasts), the `C`/`K` panels (staging with Confirm, suggested build, climbing lattices with
+data-generated tooltips) and the §3 micro menu with banked-point badges. Dev levers:
+`/setlevel` (gm/admin), `/ops/setlevel`, plus `/ops/cc` and `/ops/hurt` from P6.
+Verification: `tools/smoke/browser-p7.mjs` (a bot grinds 1→10 legitimately on the live
+camps — kills only, accelerated via the published xpRate/xpMult levers — then proves tier
+gates, capstone refusal, both respecs, UI evidence and relog persistence), the node-effect
+matrix test (`progression-content.test.ts`: every published node at every rank folds
+observably, refs legal), p7-probe/two-client/earlier smokes green, 263 unit tests. Heal
+magnitudes remain flagged for panel tuning. Deploys to production happen only when the
+owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (strict migrations; it also
+bridges the GitHub PAT for the admin panel's pinned `@dawned/shared` git dependency).
 
 ### Running it locally
 

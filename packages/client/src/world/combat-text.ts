@@ -10,13 +10,15 @@ const MAX_ON_SCREEN = 40;
 const LIFETIME_S = 1.1;
 const RISE_M = 1.4;
 
-export type CombatTextKind = 'outgoing' | 'outgoing-crit' | 'incoming' | 'heal';
+export type CombatTextKind = 'outgoing' | 'outgoing-crit' | 'incoming' | 'heal' | 'xp';
 
 const STYLES: Record<CombatTextKind, { fill: string; px: number; suffix: string }> = {
   outgoing: { fill: '#f2ead8', px: 34, suffix: '' },
   'outgoing-crit': { fill: '#ffd75e', px: 46, suffix: '!' },
   incoming: { fill: '#ff6a55', px: 34, suffix: '' },
   heal: { fill: '#7ed87e', px: 34, suffix: '' },
+  // XP purple (UI_UX.md §1 palette) — every award ticks visibly (§7 rule).
+  xp: { fill: '#a98fe8', px: 30, suffix: ' XP' },
 };
 
 interface FloatingText {
@@ -41,7 +43,7 @@ export class CombatTextManager {
       if (oldest) this.recycle(oldest.sprite);
     }
     const style = STYLES[kind];
-    const sign = kind === 'incoming' ? '−' : kind === 'heal' ? '+' : '';
+    const sign = kind === 'incoming' ? '−' : kind === 'heal' || kind === 'xp' ? '+' : '';
     const text = `${sign}${amount}${style.suffix}`;
 
     const sprite = this.pool.pop() ?? this.makeSprite();

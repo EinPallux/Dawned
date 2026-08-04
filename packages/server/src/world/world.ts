@@ -17,12 +17,19 @@ import {
   EntityKind,
   OOC_AFTER_MS,
   OOC_HP_REGEN_PER_S,
+  SPRINT_STAMINA_PER_SEC,
   TICK_DT,
   WORLD_BOUNDS,
+  XpSource,
   devTerrain,
+  discoveryXp,
+  pointInPolygon,
   stepMovement,
+  xpToNext,
   type Appearance,
+  type AttributeSpread,
   type ClassId,
+  type Zone,
   BASIC_COMBOS,
   EVASIVE_DODGE_DISCOUNT,
   EVASIVE_ENERGY_PER_S,
@@ -57,7 +64,25 @@ import {
   type ServerProjectile,
 } from './combat.js';
 import { handleSlotRequest, tickPlayerAbilities, tickZones, type GroundZone } from './abilities.js';
-import { dodgeCostDeltaOf, moveSpeedMultOf, tickEffects, type PeriodicTick } from './effects.js';
+import {
+  applyEffect,
+  dodgeCostDeltaOf,
+  moveSpeedMultOf,
+  tickEffects,
+  type PeriodicTick,
+} from './effects.js';
+import {
+  allocateSkill,
+  allocateStats,
+  awardKillXp,
+  awardXp,
+  createPlayerProgress,
+  effectiveDefOf,
+  rebuildNodeFolds,
+  respec,
+  setLevel,
+  type ProgressionContent,
+} from './progression.js';
 import { CORPSE_LINGER_MS, decide, enterCombat, move, type AiContext } from './enemy-ai.js';
 
 /** AOI radii (docs/tech/NETWORKING.md §5): 3×3 of 64 m cells ≈ 96 m, +8 m leave margin. */
@@ -104,8 +129,22 @@ export class World {
     private readonly spawn: SpawnPoint = { x: 0, y: 0, z: 0, yaw: 0 },
     private content: GameContent | null = null,
     private readonly rng: Rng = Math.random,
+    /** Zone polygons (P7 zone-entry XP; baked zones.json, empty in tests). */
+    private readonly zonePolys: readonly Zone[] = [],
   ) {
     if (content) this.populateFromSpawners();
+  }
+
+  /** The progression slice of content the P7 systems consume. */
+  progressionContent(): ProgressionContent {
+    // Content is loaded before the world exists in production; the empty
+    // fallback keeps tests without content honest (no curve = no level-ups).
+    return {
+      xpCurve: this.content?.xpCurve ?? [],
+      skillNodes: this.content?.skillNodes ?? new Map(),
+      abilities: this.content?.abilities ?? new Map(),
+      xpRate: this.content?.worldSettings.xpRate ?? 1,
+    };
   }
 
   get playerCount(): number {
@@ -243,6 +282,18 @@ export class World {
     position: { x: number; y: number; z: number; yaw: number } | null;
     /** Persisted HP; null/undefined = spawn at full. */
     hp?: number | null;
+    /** Account role (P7: gates /setlevel). Default player. */
+    role?: 'player' | 'gm' | 'admin';
+    /** Persisted progression (P7). Defaults = a fresh level-1 character. */
+    progression?: {
+      xp: number;
+      gold: number;
+      allocated: AttributeSpread;
+      unspentStatPoints: number;
+      unspentSkillPoints: number;
+      nodeRanks: Map<string, number>;
+      zonesSeen: Set<string>;
+    };
   }): ServerPlayer {
     const id = this.nextEntityId++;
     // A stale persisted position (map changed underneath it — e.g. the P1 flat
@@ -255,6 +306,17 @@ export class World {
     const groundY = this.terrain.heightAt(spawn.x, spawn.z);
     const y = persisted ? Math.max(spawn.y, groundY) : groundY;
 
+    const progress = createPlayerProgress(
+      spec.progression ?? {
+        xp: 0,
+        gold: 25,
+        allocated: { str: 0, agi: 0, int: 0, vit: 0, end: 0 },
+        unspentStatPoints: 0,
+        unspentSkillPoints: 0,
+        nodeRanks: new Map(),
+        zonesSeen: new Set(),
+      },
+    );
     const player = new ServerPlayer(
       id,
       spec.characterId,
@@ -263,12 +325,22 @@ export class World {
       spec.classId,
       spec.level,
       spec.appearance,
+      spec.role ?? 'player',
+      progress,
       spawn.x,
       y,
       spawn.z,
       spawn.yaw,
       spec.hp ?? null,
     );
+    // Fold the allocated tree into stats/pools/defs (never refills — the
+    // persisted HP survives the login). Re-apply the persisted HP after the
+    // fold: node HP% raises the cap, and the constructor clamped against the
+    // BASE max before the fold could widen it.
+    rebuildNodeFolds(player, this.progressionContent());
+    if (spec.hp !== null && spec.hp !== undefined) {
+      player.hp = Math.min(Math.max(spec.hp, 1), player.maxHp);
+    }
     this.players.set(id, player);
     return player;
   }
@@ -296,11 +368,53 @@ export class World {
    */
   applyContent(next: GameContent): { abilities: number; enemies: number; spawners: number } {
     this.content = next;
+    // Re-fold every online character: node aggregates reference content defs
+    // (abilities for effective defs, node rows for effects) that just changed.
+    const progression = this.progressionContent();
+    for (const player of this.players.values()) {
+      rebuildNodeFolds(player, progression);
+    }
     return {
       abilities: next.abilities.size,
       enemies: next.enemies.size,
       spawners: next.spawners.length,
     };
+  }
+
+  /** Gateway-queued progression requests (P7): applied at the next tick so
+   * their events ride the normal flush, never a half-tick state. */
+  private readonly pendingProgress: (
+    | { kind: 'stats'; playerId: number; deltas: AttributeSpread }
+    | { kind: 'skill'; playerId: number; nodeId: string }
+    | { kind: 'respec'; playerId: number; wireKind: number }
+    | { kind: 'setlevel'; playerId: number; level: number }
+  )[] = [];
+
+  queueAllocateStats(playerId: number, deltas: AttributeSpread): void {
+    this.pendingProgress.push({ kind: 'stats', playerId, deltas });
+  }
+
+  queueAllocateSkill(playerId: number, nodeId: string): void {
+    this.pendingProgress.push({ kind: 'skill', playerId, nodeId });
+  }
+
+  queueRespec(playerId: number, wireKind: number): void {
+    this.pendingProgress.push({ kind: 'respec', playerId, wireKind });
+  }
+
+  queueSetLevel(playerId: number, level: number): void {
+    this.pendingProgress.push({ kind: 'setlevel', playerId, level });
+  }
+
+  /** /ops/setlevel resolves by character name (admin panel path). */
+  queueSetLevelByName(name: string, level: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() === name.toLowerCase()) {
+        this.queueSetLevel(player.id, level);
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Ops-queued CC pokes (/ops/cc — GM primitive + P6 smoke). Applied at the
@@ -346,6 +460,23 @@ export class World {
       const ccTarget = this.players.get(cc.playerId);
       if (ccTarget && !ccTarget.dead) {
         applyCcToPlayer(ccTarget, cc.category, cc.durationMs, nowMs, events);
+      }
+    }
+    // 0b. Progression requests (P7): allocation clicks, respec, setlevel.
+    // Validation runs the shared rules; refusals still emit progress-dirty so
+    // the requester re-syncs (an honest client never predicted otherwise).
+    for (const request of this.pendingProgress.splice(0)) {
+      const requester = this.players.get(request.playerId);
+      if (!requester) continue;
+      const progression = this.progressionContent();
+      if (request.kind === 'stats') {
+        allocateStats(requester, request.deltas, events);
+      } else if (request.kind === 'skill') {
+        allocateSkill(requester, request.nodeId, progression, events);
+      } else if (request.kind === 'respec') {
+        respec(requester, request.wireKind, progression, events);
+      } else {
+        setLevel(requester, request.level, progression, events);
       }
     }
     for (const hurt of this.pendingHurt.splice(0)) {
@@ -399,16 +530,27 @@ export class World {
         const activeCastId =
           player.abilityMachine.cast?.abilityId ?? player.abilityMachine.channel?.abilityId ?? null;
         const castMoveRaw =
-          activeCastId === null ? true : this.content?.abilities.get(activeCastId)?.castWhileMoving;
+          activeCastId === null || this.content === null
+            ? true
+            : effectiveDefOf(player, activeCastId, this.content.abilities)?.castWhileMoving;
         const castMult = typeof castMoveRaw === 'number' ? castMoveRaw : 1;
+        // Node stat folds (P7): Fleet/Traveler speed, Acrobat dodges, Marathon
+        // sprints, END-scaled regen — the client folds the same aggregates.
+        const nodeStats = player.progress.aggregates.stats;
         const modifiers = {
           speedMult:
             moveSpeedMultOf(player) *
             (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) *
             (player.focusing ? FOCUS_MOVE_SPEED_MULT : 1) *
+            (1 + nodeStats.moveSpeedPct / 100) *
             whirlMult *
             castMult,
-          dodgeCostDelta: (evasive ? -EVASIVE_DODGE_DISCOUNT : 0) + dodgeCostDeltaOf(player),
+          dodgeCostDelta:
+            (evasive ? -EVASIVE_DODGE_DISCOUNT : 0) +
+            dodgeCostDeltaOf(player) +
+            nodeStats.dodgeStaminaCostDelta,
+          staminaRegenPerS: player.stats.staminaRegenPerS,
+          sprintStaminaPerS: SPRINT_STAMINA_PER_SEC + nodeStats.sprintStaminaPerSDelta,
           // Hard CC (P6): stun locks everything, root pins the feet — the
           // SHARED step enforces both so prediction agrees to the centimeter.
           rooted: player.isRooted(nowMs),
@@ -424,10 +566,11 @@ export class World {
         if (result.dodged) {
           cancelComboOnDodge(player);
           // A roll cancels an active cast OR channel for HALF the cost back
-          // (§4.5) — the client mirrors this in its predicted step.
+          // (§4.5) — the client mirrors this in its predicted step. The
+          // refund reads the EFFECTIVE cost (node cost discounts, P7).
           const casting = player.abilityMachine.cast ?? player.abilityMachine.channel;
-          if (casting) {
-            const castDef = this.content?.abilities.get(casting.abilityId);
+          if (casting && this.content) {
+            const castDef = effectiveDefOf(player, casting.abilityId, this.content.abilities);
             const interrupted = interruptCast(
               player.abilityMachine,
               'dodge',
@@ -525,6 +668,7 @@ export class World {
       this.rng,
       events,
       this.content?.abilities ?? null,
+      () => this.nextProjectileId++,
     );
     if (abilityDeps) tickZones(this.zones, abilityDeps);
 
@@ -549,21 +693,35 @@ export class World {
 
     // 3b. Deaths recorded during this tick (attacks + swings + falls).
     for (const event of events) {
-      if (event.type === 'enemy-died') this.onEnemyDeath(event.enemy, nowMs, events);
-      else if (event.type === 'player-died') this.onPlayerDeath(event.playerId, events);
+      if (event.type === 'enemy-died') {
+        this.onEnemyDeath(event.enemy, event.killerPlayerId, nowMs, events);
+      } else if (event.type === 'player-died') this.onPlayerDeath(event.playerId, events);
     }
 
     // 4. Spawner tickets + corpse cleanup.
     this.sweepCorpsesAndTickets(nowMs, events);
 
     // 5. Player vitals: out-of-combat regen (COMBAT.md §6.6) + resources +
-    // effect expiry (P5).
+    // effect expiry (P5) + progression checks (P7: zone discovery, HP procs).
     for (const player of this.players.values()) {
       const inCombat = nowMs - player.lastCombatAtMs <= OOC_AFTER_MS;
       if (!player.dead && player.hp < player.maxHp && !inCombat) {
         player.hp = Math.min(player.maxHp, player.hp + player.maxHp * OOC_HP_REGEN_PER_S * TICK_DT);
       }
       tickResource(player.resource, TICK_MS, inCombat);
+      // Zone first-entry XP (P7, §1.1 discovery): polygon check once a second
+      // per player, staggered by id — entering a zone is not a twitch event.
+      if (
+        !player.dead &&
+        this.zonePolys.length > 0 &&
+        (this.tickCounter + player.id) % 20 === 0 &&
+        player.level > 0
+      ) {
+        this.checkZoneDiscovery(player, events);
+      }
+      // Low-HP procs (P7: Second Wind, Guardian of Dawn) — threshold checks
+      // once per tick catch any crossing within 50 ms of the wound.
+      if (!player.dead && player.hp > 0) this.checkLowHpProcs(player, nowMs, events);
       this.periodicScratch.length = 0;
       tickEffects(player, nowMs, this.periodicScratch);
       // HoTs on players tick here (P6: Overflow-style riders; Sanctuary is a
@@ -615,19 +773,181 @@ export class World {
       }
     }
     for (const event of events) {
-      if (event.type === 'enemy-died') this.onEnemyDeath(event.enemy, nowMs, events);
+      if (event.type === 'enemy-died') {
+        this.onEnemyDeath(event.enemy, event.killerPlayerId, nowMs, events);
+      }
     }
 
     return events;
   }
 
-  private onEnemyDeath(enemy: ServerEnemy, nowMs: number, events: CombatEvent[]): void {
+  /** Plaguebearer: copy the killer-side poisons to the nearest living enemy. */
+  private jumpPoisonsOnDeath(dead: ServerEnemy, nowMs: number): void {
+    const poisons = dead.effects.filter((effect) => effect.category === 'poison');
+    if (poisons.length === 0) return;
+    for (const poison of poisons) {
+      const caster = this.players.get(poison.casterId);
+      if (!caster || !caster.progress.aggregates.passives.poisonJumpOnDeath) continue;
+      // Nearest living enemy within earshot of the corpse (8 m — the camp).
+      let nearest: ServerEnemy | null = null;
+      let nearestDistSq = 8 * 8;
+      for (const other of this.enemies.values()) {
+        if (other.id === dead.id || !other.alive || other.invulnerable) continue;
+        const distSq = (other.x - dead.x) ** 2 + (other.z - dead.z) ** 2;
+        if (distSq < nearestDistSq) {
+          nearest = other;
+          nearestDistSq = distSq;
+        }
+      }
+      if (!nearest) continue;
+      applyEffect(
+        nearest,
+        {
+          effectId: poison.effectId,
+          casterId: poison.casterId,
+          durationMs: Math.max(1000, Math.round(poison.expiresAtMs - nowMs)),
+          stacksMax: poison.stacksMax,
+          mods: poison.mods,
+          harmful: true,
+          category: 'poison',
+          tickDamage: poison.tickDamage,
+          tickSchool: poison.tickSchool,
+          tickEveryMs: 1000,
+        },
+        nowMs,
+      );
+    }
+  }
+
+  /** Zone polygon membership → first-entry discovery XP (P7, §1.1). */
+  private checkZoneDiscovery(player: ServerPlayer, events: CombatEvent[]): void {
+    const m = player.movement;
+    for (const zone of this.zonePolys) {
+      if (player.progress.zonesSeen.has(zone.id)) continue;
+      if (!pointInPolygon(m.x, m.z, zone.polygon)) continue;
+      player.progress.zonesSeen.add(zone.id);
+      const content = this.progressionContent();
+      awardXp(
+        player,
+        discoveryXp('zone', xpToNext(content.xpCurve, player.level)),
+        XpSource.Discovery,
+        content,
+        events,
+      );
+      events.push({
+        type: 'discovery',
+        playerId: player.id,
+        kind: 'zone',
+        refId: zone.id,
+        label: zone.name,
+      });
+    }
+  }
+
+  /** Second Wind / Guardian of Dawn: low-HP triggers with their ICDs (P7). */
+  private checkLowHpProcs(player: ServerPlayer, nowMs: number, events: CombatEvent[]): void {
+    const procs = player.progress.aggregates.procs;
+    if (procs.length === 0) return;
+    const fraction = player.maxHp > 0 ? (player.hp / player.maxHp) * 100 : 100;
+    for (const entry of procs) {
+      const proc = entry.proc;
+      if (proc.proc !== 'low_hp_heal' && proc.proc !== 'low_hp_free_cast') continue;
+      if (fraction >= proc.thresholdPct) continue;
+      const readyAt = player.progress.procReadyAtMs.get(entry.nodeId) ?? 0;
+      if (nowMs < readyAt) continue;
+      player.progress.procReadyAtMs.set(entry.nodeId, nowMs + proc.icdMs);
+      if (proc.proc === 'low_hp_heal') {
+        const amount = Math.min(
+          Math.max(1, Math.round((player.maxHp * proc.healPct) / 100)),
+          Math.round(player.maxHp - player.hp),
+        );
+        if (amount > 0) {
+          player.hp = Math.min(player.maxHp, player.hp + amount);
+          events.push({
+            type: 'ability-resolve',
+            attackerId: player.id,
+            action: 0,
+            step: 0,
+            hits: [{ targetId: player.id, amount, flags: HitFlag.Healed }],
+          });
+        }
+      } else {
+        // Guardian of Dawn: the target ability's shield effect lands free.
+        const def = this.content?.abilities.get(proc.abilityId);
+        const shield = def?.effects.find(
+          (effect): effect is Extract<(typeof def.effects)[number], { kind: 'shield' }> =>
+            effect.kind === 'shield',
+        );
+        if (def && shield) {
+          applyEffect(
+            player,
+            {
+              effectId: `shield_${def.id}`,
+              casterId: player.id,
+              durationMs: shield.durationMs,
+              stacksMax: 1,
+              mods: {},
+              harmful: false,
+              shieldPool: Math.max(1, Math.round(shield.coef * player.stats.sp)),
+            },
+            nowMs,
+          );
+        }
+      }
+    }
+  }
+
+  private onEnemyDeath(
+    enemy: ServerEnemy,
+    killerPlayerId: number | null,
+    nowMs: number,
+    events: CombatEvent[],
+  ): void {
     if (enemy.state === 'dead') return; // one death per enemy
     enemy.enterState('dead', nowMs);
     enemy.despawnAtMs = nowMs + CORPSE_LINGER_MS;
     enemy.swing = null;
     enemy.vx = 0;
     enemy.vz = 0;
+    // Kill XP to every tagged player (P7, §1.1) — BEFORE the ledger clears.
+    // Dummies pay nothing: infinite-respawn practice targets are not a farm.
+    if (enemy.def.archetype !== 'dummy') {
+      awardKillXp(
+        { damage: enemy.damageBy, healAssists: enemy.healAssists },
+        enemy.level,
+        enemy.def.rank,
+        enemy.def.xpMult,
+        this.players,
+        this.progressionContent(),
+        events,
+      );
+    }
+    // Killer's Rhythm-style on-kill buffs for whoever landed the blow (P7).
+    if (killerPlayerId !== null) {
+      const killer = this.players.get(killerPlayerId);
+      if (killer && !killer.dead) {
+        for (const entry of killer.progress.aggregates.procs) {
+          if (entry.proc.proc !== 'on_kill_buff') continue;
+          applyEffect(
+            killer,
+            {
+              effectId: entry.proc.effectId,
+              casterId: killer.id,
+              durationMs: entry.proc.durationMs,
+              stacksMax: 1,
+              mods: entry.proc.mods,
+              harmful: false,
+            },
+            nowMs,
+          );
+        }
+      }
+    }
+    // Plaguebearer (P7 capstone): the killer's poisons jump to the nearest
+    // living camp-mate in earshot when a poisoned target dies.
+    this.jumpPoisonsOnDeath(enemy, nowMs);
+    enemy.damageBy.clear();
+    enemy.healAssists.clear();
     events.push({
       type: 'entity-event',
       entityId: enemy.id,

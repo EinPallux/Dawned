@@ -11,15 +11,32 @@ import {
   abilityDefSchema,
   buildBasicChains,
   type ComboChain,
+  defaultWorldSettings,
+  defaultXpCurve,
   enemyDefSchema,
   spawnerDefSchema,
+  buildXpCurve,
   validateEnemyDef,
+  validateSkillNodeDef,
+  validateXpCurveEntry,
+  worldSettingsSchema,
   type AbilityDef,
   type ClassId,
   type EnemyDef,
+  type SkillNodeDef,
   type SpawnerDef,
+  type WorldSettings,
+  type XpCurve,
+  type XpCurveEntry,
 } from '@dawned/shared';
-import { contentAbilities, contentEnemies, contentSpawners } from '@dawned/shared/schema';
+import {
+  contentAbilities,
+  contentEnemies,
+  contentSkillNodes,
+  contentSpawners,
+  contentWorldSettings,
+  contentXpCurve,
+} from '@dawned/shared/schema';
 import type { Db } from '../db/client.js';
 
 export interface GameContent {
@@ -31,6 +48,12 @@ export interface GameContent {
   abilityBySlot: Map<string, AbilityDef>;
   /** Basic combo chains — content-sourced (falls back to code until 0005 seeds). */
   basicChains: Record<ClassId, ComboChain>;
+  /** Level curve (P7): published rows, or the formula defaults pre-seed. */
+  xpCurve: XpCurve;
+  /** Skill-tree nodes by id (P7): empty pre-seed — trees simply offer nothing. */
+  skillNodes: Map<string, SkillNodeDef>;
+  /** Published world settings (xpRate now; more keys as phases land). */
+  worldSettings: WorldSettings;
 }
 
 export const slotKey = (classId: ClassId, slot: number): string => `${classId}:${slot}`;
@@ -116,5 +139,84 @@ export const loadContent = async (db: Db): Promise<GameContent> => {
     console.warn('[content] basic-combo rows missing/incomplete — using shared BASIC_COMBOS');
   }
 
-  return { enemies, spawners, abilities, abilityBySlot, basicChains };
+  // XP curve (P7): published rows must be COMPLETE (levels 1..29 once each) —
+  // buildXpCurve throws into `problems` otherwise. A database that predates
+  // the P7 seed runs the formula defaults and says so.
+  let xpCurve: XpCurve = defaultXpCurve();
+  const curveRows = await db
+    .select()
+    .from(contentXpCurve)
+    .where(eq(contentXpCurve.status, 'published'));
+  if (curveRows.length > 0) {
+    const entries: XpCurveEntry[] = [];
+    for (const row of curveRows) {
+      try {
+        entries.push(validateXpCurveEntry(row.def));
+      } catch (error) {
+        problems.push((error as Error).message);
+      }
+    }
+    if (problems.length === 0) {
+      try {
+        xpCurve = buildXpCurve(entries);
+      } catch (error) {
+        problems.push((error as Error).message);
+      }
+    }
+  } else {
+    console.warn('[content] no published xp_curve rows — using formula defaults');
+  }
+
+  // Skill nodes (P7): every published row validates or the boot fails. An
+  // EMPTY set is legal (pre-seed databases) — the trees simply offer nothing.
+  const skillNodes = new Map<string, SkillNodeDef>();
+  const nodeRows = await db
+    .select()
+    .from(contentSkillNodes)
+    .where(eq(contentSkillNodes.status, 'published'));
+  for (const row of nodeRows) {
+    try {
+      const def = validateSkillNodeDef(row.def);
+      skillNodes.set(def.id, def);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+
+  // World settings: one published row per key; missing keys take schema
+  // defaults (xpRate 1.0). Unknown keys are a publish bug — fail loud.
+  let worldSettings: WorldSettings = defaultWorldSettings();
+  const settingRows = await db
+    .select()
+    .from(contentWorldSettings)
+    .where(eq(contentWorldSettings.status, 'published'));
+  if (settingRows.length > 0) {
+    const merged: Record<string, unknown> = {};
+    for (const row of settingRows) merged[row.key] = row.value;
+    const parsed = worldSettingsSchema.safeParse(merged);
+    if (parsed.success) {
+      worldSettings = parsed.data;
+    } else {
+      problems.push(
+        `world settings: ${parsed.error.issues[0]?.path.join('.') ?? '?'}: ${
+          parsed.error.issues[0]?.message ?? 'invalid'
+        }`,
+      );
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(`published content failed validation:\n  ${problems.join('\n  ')}`);
+  }
+
+  return {
+    enemies,
+    spawners,
+    abilities,
+    abilityBySlot,
+    basicChains,
+    xpCurve,
+    skillNodes,
+    worldSettings,
+  };
 };

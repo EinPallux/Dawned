@@ -43,6 +43,8 @@ import {
 } from '@dawned/shared';
 import type { GameContent } from '../content/loader.js';
 import {
+  ARCANE_SURGE_EFFECT,
+  FLURRY_EFFECT,
   applyEffect,
   cleanseEffects,
   removeEffect,
@@ -55,10 +57,13 @@ import {
 } from './effects.js';
 import {
   applyDamageToEnemy,
+  nodeCritBonusVs,
+  nodeDamageMultVs,
   rewindTicksFor,
   type CombatEvent,
   type ServerProjectile,
 } from './combat.js';
+import { effectiveDefOf } from './progression.js';
 import { slotKey } from '../content/loader.js';
 import type { ServerEnemy } from './enemy.js';
 import type { ServerPlayer } from './player.js';
@@ -114,11 +119,14 @@ export const handleSlotRequest = (
     reject(AbilityRejectReason.BadState);
     return;
   }
-  const def = content.abilityBySlot.get(slotKey(player.classId, slot));
-  if (!def) {
+  const authored = content.abilityBySlot.get(slotKey(player.classId, slot));
+  if (!authored) {
     reject(AbilityRejectReason.Locked);
     return;
   }
+  // Node-rewritten def (P7): cost/cooldown/cast/effects as THIS character
+  // plays them — the client folds the same transform from its synced ranks.
+  const def = effectiveDefOf(player, authored.id, content.abilities) ?? authored;
   if (player.movement.rollTimeLeft > 0 || player.movement.swimming) {
     reject(AbilityRejectReason.BadState);
     return;
@@ -168,6 +176,12 @@ export const handleSlotRequest = (
       removeEffect(player, GRACE_EFFECT_ID);
     }
   }
+  // Archmage surge (P7): a banked Blink makes the next real cast instant.
+  // The effect is synced, so the client's bar computes the same collapse.
+  if (def.castMs > 0 && player.effects.some((e) => e.effectId === ARCANE_SURGE_EFFECT)) {
+    castMsDelta = -def.castMs;
+    removeEffect(player, ARCANE_SURGE_EFFECT);
+  }
   const commit = commitUse(
     player.abilityMachine,
     def,
@@ -175,6 +189,7 @@ export const handleSlotRequest = (
     { yaw: aimYaw, pitch: aimPitch, targetId },
     { castMsDelta },
   );
+  applyOnUseRiders(player, def, comboPointsSpent, nowMs);
 
   if (commit.phase === 'cast' || commit.phase === 'channel') {
     events.push({
@@ -272,6 +287,104 @@ export const handleSlotRequest = (
   });
 };
 
+/**
+ * On-use riders from allocated nodes (P7): root breaks, cooldown resets,
+ * grants, basic-empowers — plus the class-wide spend/finisher passives.
+ * Runs right after a successful commit, before any resolve.
+ */
+const applyOnUseRiders = (
+  player: ServerPlayer,
+  def: AbilityDef,
+  comboPointsSpent: number,
+  nowMs: number,
+): void => {
+  const agg = player.progress.aggregates;
+  // Combo Flow: finishers refund energy per CP when spending enough.
+  const refund = agg.passives.finisherRefund;
+  if (refund && comboPointsSpent >= refund.minCp) {
+    gainResource(player.resource, Math.round(refund.energyPerCp * comboPointsSpent), true);
+  }
+  // Colossus-style stacks: accumulate the class resource spent, bank a stack
+  // per threshold crossed.
+  if (def.cost.amount > 0) {
+    for (const entry of agg.procs) {
+      const proc = entry.proc;
+      if (proc.proc !== 'resource_spent_stacks' || proc.resource !== def.cost.type) continue;
+      player.progress.resourceSpentAccum += def.cost.amount;
+      while (player.progress.resourceSpentAccum >= proc.perSpent) {
+        player.progress.resourceSpentAccum -= proc.perSpent;
+        applyEffect(
+          player,
+          {
+            effectId: proc.effectId,
+            casterId: player.id,
+            durationMs: proc.durationMs,
+            stacksMax: proc.stacksMax,
+            mods: proc.mods,
+            harmful: false,
+          },
+          nowMs,
+        );
+      }
+    }
+  }
+  const modsList = agg.abilityMods.get(def.id);
+  if (!modsList) return;
+  for (const mods of modsList) {
+    if (mods.breakMovementOnUse) {
+      // Steadfast Charge: shed roots/slows/chills on use.
+      cleanseEffects(player, 'movement', 10, true);
+      player.rootedUntilMs = 0;
+    }
+    if (mods.resetCooldownOf) {
+      // Backdraft: using this ability resets another's cooldown.
+      player.abilityMachine.slots.delete(mods.resetCooldownOf);
+    }
+    if (mods.onUseGrant) {
+      if (mods.onUseGrant.mana && player.resource.type === 'mana') {
+        gainResource(player.resource, mods.onUseGrant.mana, true);
+      }
+      const instant = mods.onUseGrant.nextCastInstant;
+      if (instant) {
+        const key = `surge_${def.id}`;
+        const readyAt = player.progress.procReadyAtMs.get(key) ?? 0;
+        if (nowMs >= readyAt) {
+          player.progress.procReadyAtMs.set(key, nowMs + instant.icdMs);
+          applyEffect(
+            player,
+            {
+              effectId: ARCANE_SURGE_EFFECT,
+              casterId: player.id,
+              durationMs: 10000,
+              stacksMax: 1,
+              mods: {},
+              harmful: false,
+            },
+            nowMs,
+          );
+        }
+      }
+    }
+    if (mods.empowerBasics) {
+      // Flurry: the next N basics swing faster and feed CP each.
+      player.empoweredBasicsLeft = mods.empowerBasics.count;
+      player.empoweredBasicsCp = mods.empowerBasics.comboPointsPer;
+      applyEffect(
+        player,
+        {
+          effectId: FLURRY_EFFECT,
+          casterId: player.id,
+          durationMs: 8000,
+          stacksMax: 1,
+          mods: { attackSpeedPct: mods.empowerBasics.attackSpeedPct },
+          harmful: false,
+        },
+        nowMs,
+      );
+    }
+  }
+};
+
 /** A live ground zone (P6 Sanctuary): ticks its effect on its team inside. */
 export interface GroundZone {
   casterId: number;
@@ -287,6 +400,10 @@ export interface GroundZone {
   tickCoef: number;
   casterSp: number;
   casterLevel: number;
+  /** Healing-done multiplier captured at spawn (Devotion, P7). */
+  healMult: number;
+  /** Extra mods granted to allies while inside (Beacon's armor, P7). */
+  allyMods: import('@dawned/shared').AbilityEffectMods | null;
 }
 
 export interface AbilityTickDeps {
@@ -317,7 +434,7 @@ export const tickPlayerAbilities = (
   // needed — the client runs the same shared machine and cancels identically;
   // P5 kits are all instants anyway (casts arrive with the P6 casters).
   if (ticked.released) {
-    const def = deps.content.abilities.get(ticked.released.abilityId);
+    const def = effectiveDefOf(player, ticked.released.abilityId, deps.content.abilities);
     if (def) {
       resolveAbility(
         player,
@@ -337,7 +454,7 @@ export const tickPlayerAbilities = (
   // Channel ticks (P6, Arcane Barrage): each tick releases one resolve —
   // for projectile channels that is one homing bolt at the press target.
   for (const tick of ticked.channelTicks) {
-    const def = deps.content.abilities.get(tick.abilityId);
+    const def = effectiveDefOf(player, tick.abilityId, deps.content.abilities);
     if (def) {
       resolveAbility(
         player,
@@ -638,6 +755,46 @@ const applyAbilityEffects = (
   const dealtMult = dawnedMult * buffMult * nextAttackMult;
   /** Friendly recipients: the resolved allies, or the caster for self kinds. */
   const friendlies = hitPlayers.length > 0 ? hitPlayers : [player];
+  const nodeAgg = player.progress.aggregates;
+  const abilityNodeMods = nodeAgg.abilityMods.get(def.id) ?? [];
+  // Perfect Kill (P7): a max-CP finisher guarantees the crit, on an ICD.
+  let forceCrit = false;
+  for (const mods of abilityNodeMods) {
+    const guaranteed = mods.guaranteedCritAtCp;
+    if (!guaranteed || comboPointsSpent < guaranteed.cp) continue;
+    const key = `gcrit_${def.id}`;
+    const readyAt = player.progress.procReadyAtMs.get(key) ?? 0;
+    if (nowMs >= readyAt) {
+      player.progress.procReadyAtMs.set(key, nowMs + guaranteed.icdMs);
+      forceCrit = true;
+    }
+  }
+  // Combustion/Caustic Burst (P7): consume matching effects for bonus coef.
+  // 'target' counts afflicted enemies once for the whole cast; 'stack'
+  // counts per-enemy stacks at their own roll. Both CONSUME what they read.
+  let consumedTargetsCoef = 0;
+  const perStackConsume: { category: string; coefPer: number; max: number }[] = [];
+  for (const mods of abilityNodeMods) {
+    const consume = mods.consumeBonus;
+    if (!consume) continue;
+    if (consume.per === 'target') {
+      let counted = 0;
+      for (const enemy of hitEnemies) {
+        if (counted >= consume.max) break;
+        const before = enemy.effects.length;
+        enemy.effects = enemy.effects.filter(
+          (active) => !(active.category === consume.category && active.casterId === player.id),
+        );
+        if (enemy.effects.length !== before) {
+          enemy.effectsDirty = true;
+          counted += 1;
+        }
+      }
+      consumedTargetsCoef += consume.coef * counted;
+    } else {
+      perStackConsume.push({ category: consume.category, coefPer: consume.coef, max: consume.max });
+    }
+  }
 
   const hits: ResolveHit[] = [];
   let anyKill = false;
@@ -645,13 +802,34 @@ const applyAbilityEffects = (
   for (const effect of def.effects) {
     switch (effect.kind) {
       case 'damage': {
-        const coef = effect.coef + effect.coefPerComboPoint * comboPointsSpent;
+        const coef =
+          effect.coef + effect.coefPerComboPoint * comboPointsSpent + consumedTargetsCoef;
         for (const enemy of hitEnemies) {
+          // Per-stack consumption (Caustic Burst) reads + strips THIS enemy.
+          let stackCoef = 0;
+          for (const consume of perStackConsume) {
+            let stacks = 0;
+            const before = enemy.effects.length;
+            for (const active of enemy.effects) {
+              if (active.category === consume.category && active.casterId === player.id) {
+                stacks += active.stacks;
+              }
+            }
+            stacks = Math.min(stacks, consume.max);
+            if (stacks > 0) {
+              enemy.effects = enemy.effects.filter(
+                (active) =>
+                  !(active.category === consume.category && active.casterId === player.id),
+              );
+              if (enemy.effects.length !== before) enemy.effectsDirty = true;
+              stackCoef += consume.coefPer * stacks;
+            }
+          }
           for (let h = 0; h < effect.hits; h++) {
             const staggerMult = nowMs < enemy.vulnerableUntilMs ? 1 + STAGGER_VULNERABILITY : 1;
             const rearCrit =
               player.classId === 'rogue' && isRearAttack(player, enemy)
-                ? AMBUSHER_REAR_CRIT_PCT
+                ? AMBUSHER_REAR_CRIT_PCT + nodeAgg.passives.ambusherRearCritDelta
                 : 0;
             // Conditional bonus vs status categories (Ice Lance +50% vs
             // chilled/rooted) — runtime CC states count alongside effect tags.
@@ -664,18 +842,25 @@ const applyAbilityEffects = (
                 : 1;
             const { amount, crit } = rollDamage(
               {
-                coef,
+                coef: coef + stackCoef,
                 weaponMin: weapon.min,
                 weaponMax: weapon.max,
                 power: effect.school === 'magic' ? player.stats.sp : player.stats.ap,
                 school: effect.school,
-                critPct: player.stats.critPct + rearCrit + critBonusOf(player),
+                critPct: forceCrit
+                  ? 1000
+                  : player.stats.critPct +
+                    rearCrit +
+                    critBonusOf(player) +
+                    nodeCritBonusVs(player, effect.school, def.id, enemy, nowMs),
                 attackerLevel: player.level,
                 targetLevel: enemy.level,
                 targetArmor: enemy.armor,
                 targetMagicResistPct: enemy.magicResistPct,
                 damageTakenMult: staggerMult * damageTakenMultOf(enemy, player.id),
-                damageDealtMult: dealtMult * bonusMult,
+                // School % + node conditionals (Executioner, Judgement…) — P7.
+                damageDealtMult:
+                  dealtMult * bonusMult * nodeDamageMultVs(player, effect.school, enemy, nowMs),
               },
               rng,
             );
@@ -704,7 +889,9 @@ const applyAbilityEffects = (
       }
       case 'stun':
       case 'knockdown': {
-        for (const enemy of hitEnemies) enemy.stunFor(effect.durationMs, nowMs);
+        // Relentless (P7): stuns/knockdowns you cause last longer.
+        const duration = effect.durationMs + nodeAgg.stats.ccDealtDurationDeltaMs;
+        for (const enemy of hitEnemies) enemy.stunFor(duration, nowMs);
         break;
       }
       case 'root': {
@@ -755,9 +942,14 @@ const applyAbilityEffects = (
       }
       case 'zone': {
         // Sanctuary: a ground zone at the resolve point; a long friendly
-        // telegraph decal is its world-space visual.
+        // telegraph decal is its world-space visual. Beacon's ally mods and
+        // the healer's +healing% ride along, captured at spawn (P7).
         const zx = groundX ?? player.movement.x;
         const zz = groundZ ?? player.movement.z;
+        let zoneAllyMods: GroundZone['allyMods'] = null;
+        for (const mods of abilityNodeMods) {
+          if (mods.zoneAllyMods) zoneAllyMods = mods.zoneAllyMods;
+        }
         deps.zones.push({
           casterId: player.id,
           x: zx,
@@ -771,6 +963,8 @@ const applyAbilityEffects = (
           tickCoef: effect.tick.coef,
           casterSp: player.stats.sp,
           casterLevel: player.level,
+          healMult: 1 + nodeAgg.stats.healingDonePct / 100,
+          allyMods: zoneAllyMods,
         });
         events.push({
           type: 'telegraph',
@@ -816,9 +1010,18 @@ const applyAbilityEffects = (
         const tickCountHeal = periodic
           ? Math.max(1, Math.floor(effect.durationMs / periodic.tickEveryMs))
           : 0;
-        const healPerTick =
+        // Heal ticks: SP-scaled coefTotal, plus the P7 pct-of-max-HP term
+        // (Immovable) computed against each TARGET's own pool at apply.
+        const healPerTickFor = (target: ServerPlayer): number =>
           periodic?.kind === 'heal'
-            ? Math.max(1, Math.round((periodic.coefTotal * player.stats.sp) / tickCountHeal))
+            ? Math.max(
+                1,
+                Math.round(
+                  (periodic.coefTotal * player.stats.sp +
+                    (periodic.pctMaxHpTotal / 100) * target.maxHp) /
+                    tickCountHeal,
+                ),
+              )
             : 0;
         const input = {
           effectId: effect.effectId,
@@ -828,19 +1031,22 @@ const applyAbilityEffects = (
           mods: effect.mods,
           harmful: effect.target === 'hit' && hitEnemies.length > 0,
           category: effect.category,
-          tickHeal: healPerTick,
           tickSchool: periodic?.school ?? ('physical' as const),
           tickEveryMs: periodic?.tickEveryMs,
         };
         if (effect.target === 'hit' && hitEnemies.length === 0 && hitPlayers.length > 0) {
           // Ally-targeted buff/HoT (P6): 'hit' on a friendly resolution.
           for (const target of hitPlayers) {
-            applyEffect(target, { ...input, harmful: false, tickDamage: 0 }, nowMs);
+            applyEffect(
+              target,
+              { ...input, harmful: false, tickDamage: 0, tickHeal: healPerTickFor(target) },
+              nowMs,
+            );
           }
           break;
         }
         if (effect.target === 'self') {
-          applyEffect(player, { ...input, tickDamage: 0 }, nowMs);
+          applyEffect(player, { ...input, tickDamage: 0, tickHeal: healPerTickFor(player) }, nowMs);
           if (effect.mods.threatDrop) {
             // Smoke Veil: AI sheds this player NOW (threat wipe-lite) — the
             // lingering effect keeps re-acquisition suppressed via targeting.
@@ -866,7 +1072,7 @@ const applyAbilityEffects = (
                     ),
                   )
                 : 0;
-            applyEffect(enemy, { ...input, tickDamage: mitigated }, nowMs);
+            applyEffect(enemy, { ...input, tickDamage: mitigated, tickHeal: 0 }, nowMs);
           }
         }
         break;
@@ -894,7 +1100,7 @@ const applyAbilityEffects = (
       case 'heal': {
         for (const target of friendlies) {
           if (target.dead) continue;
-          const healed = healPlayer(player, target, effect.coef, deps);
+          const healed = healPlayer(player, target, effect.coef, deps, def.id);
           hits.push({
             targetId: target.id,
             amount: healed,
@@ -927,6 +1133,67 @@ const applyAbilityEffects = (
     }
   }
 
+  // Post-loop node riders (P7):
+  for (const mods of abilityNodeMods) {
+    // Supernova: extra stun inside the epicenter of the ground circle.
+    if (mods.epicenterStun && def.targeting.kind === 'ground_aoe') {
+      const gx = groundX ?? player.movement.x;
+      const gz = groundZ ?? player.movement.z;
+      for (const enemy of hitEnemies) {
+        if (Math.hypot(enemy.x - gx, enemy.z - gz) <= mods.epicenterStun.radius) {
+          enemy.stunFor(mods.epicenterStun.durationMs, nowMs);
+        }
+      }
+    }
+    // Winter's Grasp on non-projectile paths: category-gated appends.
+    if (mods.addEffects && mods.addEffectsRequireCategories) {
+      for (const enemy of hitEnemies) {
+        const gate = mods.addEffectsRequireCategories;
+        if (
+          !hasCategory(enemy, gate) &&
+          !(gate.includes('root') && nowMs < enemy.rootedUntilMs) &&
+          !(gate.includes('stun') && nowMs < enemy.stunnedUntilMs)
+        ) {
+          continue;
+        }
+        for (const added of mods.addEffects) {
+          if (added.kind !== 'apply_effect' || added.target !== 'hit') continue;
+          applyEffect(
+            enemy,
+            {
+              effectId: added.effectId,
+              casterId: player.id,
+              durationMs: added.durationMs,
+              stacksMax: added.stacksMax,
+              mods: added.mods,
+              harmful: true,
+              category: added.category,
+            },
+            nowMs,
+          );
+        }
+      }
+    }
+    // Dawn's Embrace: a free follow-up cast lands at the caster's feet —
+    // the referenced ability's zone/heal effects resolve as if quick-cast.
+    if (mods.alsoCastFree) {
+      const freeDef = effectiveDefOf(player, mods.alsoCastFree, deps.content.abilities);
+      if (freeDef && freeDef.id !== def.id) {
+        applyAbilityEffects(
+          player,
+          freeDef,
+          actionOfDef(freeDef),
+          [],
+          [],
+          0,
+          player.movement.x,
+          player.movement.z,
+          deps,
+        );
+      }
+    }
+  }
+
   events.push({
     type: 'ability-resolve',
     attackerId: player.id,
@@ -939,33 +1206,92 @@ const applyAbilityEffects = (
 
 /**
  * Heal one player through the real pipeline (P6): SP scaling, crit roll
- * (1.5×), Cleric Grace (+15% self-heals), hp cap — and healing threat
- * (COMBAT.md §6.5: 0.5 per point to every enemy fighting the healer or the
- * healed). Returns the EFFECTIVE amount (overheal clipped).
+ * (1.5×), Cleric Grace (+15% self-heals), Devotion's +healing% (P7), hp cap
+ * — and healing threat (COMBAT.md §6.5: 0.5 per point to every enemy
+ * fighting the healer or the healed, which also records the P7 kill-tag
+ * assist). Overflow (P7) turns Mend overheal into a HoT. Returns the
+ * EFFECTIVE amount (overheal clipped).
  */
 export const healPlayer = (
   healer: ServerPlayer,
   target: ServerPlayer,
   coef: number,
   deps: AbilityTickDeps,
+  /** Source ability id — node riders like Overflow are ability-scoped. */
+  abilityId: string | null = null,
 ): number => {
-  let amount = coef * healer.stats.sp;
+  const agg = healer.progress.aggregates;
+  let amount = coef * healer.stats.sp * (1 + agg.stats.healingDonePct / 100);
   if (healer.classId === 'cleric' && target.id === healer.id) {
     amount *= 1 + GRACE_SELF_HEAL_PCT / 100;
   }
   if (deps.rng() * 100 < healer.stats.critPct + critBonusOf(healer)) {
     amount *= 1.5;
   }
-  const healed = Math.min(Math.round(amount), Math.round(target.maxHp - target.hp));
+  const rolled = Math.round(amount);
+  const healed = Math.min(rolled, Math.round(target.maxHp - target.hp));
+  // Overflow (P7): a slice of the overheal keeps healing over a few seconds.
+  if (abilityId && rolled > Math.max(0, healed)) {
+    for (const mods of agg.abilityMods.get(abilityId) ?? []) {
+      const overflow = mods.overhealToHot;
+      if (!overflow) continue;
+      const pool = Math.round(((rolled - Math.max(0, healed)) * overflow.pct) / 100);
+      if (pool < 1) continue;
+      const ticks = Math.max(1, Math.floor(overflow.durationMs / 1000));
+      applyEffect(
+        target,
+        {
+          effectId: `overflow_${abilityId}`,
+          casterId: healer.id,
+          durationMs: overflow.durationMs,
+          stacksMax: 1,
+          mods: {},
+          harmful: false,
+          tickHeal: Math.max(1, Math.round(pool / ticks)),
+          tickEveryMs: 1000,
+        },
+        deps.nowMs,
+      );
+    }
+  }
   if (healed <= 0) return 0;
+  // Captured BEFORE the heal marks combat (the heal itself must not count).
+  const inCombat = deps.nowMs - target.lastCombatAtMs <= 5000;
   target.hp = Math.min(target.maxHp, target.hp + healed);
   target.lastCombatAtMs = deps.nowMs;
-  // Healing threat: enemies already fighting either party notice the healer.
+  // Martyr's Pace (P7): healing yourself in combat buys a burst of speed.
+  if (target.id === healer.id) {
+    for (const entry of agg.procs) {
+      const proc = entry.proc;
+      if (proc.proc !== 'on_self_heal_buff') continue;
+      if (proc.inCombatOnly && !inCombat) continue;
+      applyEffect(
+        healer,
+        {
+          effectId: proc.effectId,
+          casterId: healer.id,
+          durationMs: proc.durationMs,
+          stacksMax: 1,
+          mods: proc.mods,
+          harmful: false,
+        },
+        deps.nowMs,
+      );
+    }
+  }
+  // Healing threat: enemies already fighting either party notice the healer —
+  // and the P7 kill-tag ledger remembers who kept the tagger standing.
   const threat = healed * 0.5;
   for (const enemy of deps.enemies.values()) {
     if (enemy.hp <= 0) continue;
     if (enemy.threat.has(healer.id) || enemy.threat.has(target.id)) {
       enemy.threat.set(healer.id, (enemy.threat.get(healer.id) ?? 0) + threat);
+      let healedWho = enemy.healAssists.get(healer.id);
+      if (!healedWho) {
+        healedWho = new Set();
+        enemy.healAssists.set(healer.id, healedWho);
+      }
+      healedWho.add(target.id);
     }
   }
   return healed;
@@ -992,10 +1318,27 @@ export const tickZones = (zones: GroundZone[], deps: AbilityTickDeps): void => {
       for (const p of players.values()) {
         if (p.dead) continue;
         if (Math.hypot(p.movement.x - zone.x, p.movement.z - zone.z) > zone.radius) continue;
-        // Zone ticks are deterministic (no crit — DoT/HoT rule, §6.2): SP was
-        // captured at spawn so the zone outlives its caster cleanly.
+        // Beacon (P7): allies inside carry the zone's extra mods — a short
+        // effect refreshed every tick, so leaving the circle sheds it fast.
+        if (zone.allyMods) {
+          applyEffect(
+            p,
+            {
+              effectId: `zoneaura_${zone.casterId}`,
+              casterId: zone.casterId,
+              durationMs: zone.tickEveryMs + 600,
+              stacksMax: 1,
+              mods: zone.allyMods,
+              harmful: false,
+            },
+            nowMs,
+          );
+        }
+        // Zone ticks are deterministic (no crit — DoT/HoT rule, §6.2): SP and
+        // the healer's +healing% were captured at spawn so the zone outlives
+        // its caster cleanly.
         const amount = Math.min(
-          Math.max(1, Math.round(zone.tickCoef * zone.casterSp)),
+          Math.max(1, Math.round(zone.tickCoef * zone.casterSp * zone.healMult)),
           Math.round(p.maxHp - p.hp),
         );
         if (amount <= 0) continue;
@@ -1007,6 +1350,12 @@ export const tickZones = (zones: GroundZone[], deps: AbilityTickDeps): void => {
             if (enemy.hp <= 0) continue;
             if (enemy.threat.has(caster.id) || enemy.threat.has(p.id)) {
               enemy.threat.set(caster.id, (enemy.threat.get(caster.id) ?? 0) + threat);
+              let healedWho = enemy.healAssists.get(caster.id);
+              if (!healedWho) {
+                healedWho = new Set();
+                enemy.healAssists.set(caster.id, healedWho);
+              }
+              healedWho.add(p.id);
             }
           }
         }
@@ -1020,8 +1369,35 @@ export const tickZones = (zones: GroundZone[], deps: AbilityTickDeps): void => {
           hits,
         });
       }
+    } else if (zone.team === 'enemies' && zone.tickKind === 'damage') {
+      // Scorched Ground (P7 node): deterministic burning field. Mitigated by
+      // magic resist + level mod once per tick, through the real damage path
+      // (threat + kill credit included).
+      const caster = players.get(zone.casterId) ?? null;
+      const hits: ResolveHit[] = [];
+      for (const enemy of deps.enemies.values()) {
+        if (!enemy.alive || enemy.invulnerable) continue;
+        if (Math.hypot(enemy.x - zone.x, enemy.z - zone.z) > zone.radius) continue;
+        const raw = zone.tickCoef * zone.casterSp;
+        const amount = Math.max(
+          1,
+          Math.round(
+            raw * (1 - enemy.magicResistPct / 100) * levelModifier(zone.casterLevel, enemy.level),
+          ),
+        );
+        hits.push(
+          applyDamageToEnemy(enemy, zone.casterId, caster, amount, false, 0, nowMs, events),
+        );
+      }
+      if (hits.length > 0) {
+        events.push({
+          type: 'ability-resolve',
+          attackerId: zone.casterId,
+          action: 0,
+          step: 0,
+          hits,
+        });
+      }
     }
-    // enemy-damaging zones (Scorched Ground tree node) arrive with P7 trees —
-    // the shape is stored; the tick branch lands with its first content user.
   }
 };

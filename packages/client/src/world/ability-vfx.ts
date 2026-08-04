@@ -190,6 +190,37 @@ export class AbilityVfxManager {
   }
 
   /**
+   * Gold pillar (P7 level-up, PROGRESSION.md §1.3): a column of light rising
+   * around the character for ~1.2 s — particles stream upward inside a tight
+   * radius, capped by a ground ring and a flash at the chest. Visible to
+   * everyone (bystanders get the same call on remote LevelUp).
+   */
+  pillar(x: number, y: number, z: number, color: THREE.ColorRepresentation = 0xf0c46b): void {
+    const c = new THREE.Color(color);
+    for (let i = 0; i < 46; i++) {
+      const particle = this.particles[this.cursor]!;
+      this.cursor = (this.cursor + 1) % MAX_PARTICLES;
+      const theta = Math.random() * Math.PI * 2;
+      const radius = 0.25 + Math.random() * 0.55;
+      particle.alive = true;
+      particle.x = x + Math.sin(theta) * radius;
+      particle.y = y + Math.random() * 0.4;
+      particle.z = z + Math.cos(theta) * radius;
+      particle.vx = 0;
+      particle.vy = 2.2 + Math.random() * 2.6;
+      particle.vz = 0;
+      particle.life = 0;
+      particle.maxLife = 0.8 + Math.random() * 0.5;
+      particle.size = 1;
+      particle.r = c.r;
+      particle.g = c.g;
+      particle.b = c.b;
+    }
+    this.ring(x, y, z, 1.6, color);
+    this.flash(x, y + 1.2, z, color, 2.2);
+  }
+
+  /**
    * Camera-facing impact flash: a bright sprite that pops and dies in ~150 ms.
    * THE contact read — bursts alone were too subtle on a real monitor.
    */

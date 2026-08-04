@@ -1117,9 +1117,9 @@
     "characters_ual1": {
       "id": "characters_ual1",
       "category": "characters",
-      "file": "assets_baked/characters/ual1.3e058224.glb",
-      "bytes": 2009704,
-      "sourceHash": "f4d61ed6426d2e82176961a3b0170290ee7dc1687696ba72182f366c14154c63",
+      "file": "assets_baked/characters/ual1.f1959b9d.glb",
+      "bytes": 2074608,
+      "sourceHash": "1a0d0dd207a68abed8bf2a8d0d493e7230b2319c751082baa85c3a261e9c8abb",
       "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
       "pack": "quaternius-ual1",
       "packName": "Quaternius Universal Animation Library 1 (PRO)",
@@ -1130,6 +1130,7 @@
       "triangles": 0,
       "bounds": null,
       "animations": [
+        "Celebration",
         "Counter_Angry",
         "Death01",
         "Hit_Chest",

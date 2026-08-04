@@ -5,6 +5,82 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — P7 Progression (in progress, 2026-08-04)
+
+- **Shared progression core (P7-A, protocol v9):** the level curve
+  (`round₁₀(90 × L^1.75)`, levels 1–30) now lives as editable
+  `content_xp_curve` rows with completeness validation; kill XP
+  (`8 + 6 × mobLevel^1.15`, ×1.5 elites / ×4 zone bosses, −10%/level
+  falloff beyond 3 below, 10% floor, per-enemy `xpMult` honored, never
+  rounds to 0), discovery basis-points and the `xpRate` world modifier are
+  unit-tested shared formulas. Derived stats fold player-allocated
+  attribute points (+3 banked per level) on top of the class spreads, and
+  END now scales stamina regen. The full skill-tree contract shipped as
+  content schema: 12 branches, tier gates (0/3/6/9/12 in-branch points OR
+  level 2/5/10/15/20 — whichever is later; capstones 8 points + L25), and
+  a closed per-rank effect vocabulary that expresses all 96 CLASSES.md
+  nodes (stat scalars, conditional damage, per-ability rewrites + on-use
+  riders, category effect mods, stance/passive tweaks, 8 proc shapes) with
+  allocation/gate/aggregation helpers both sides run. New wire messages:
+  AllocateStats/AllocateSkill/Respec up, ProgressSync/XpGained/LevelUp
+  down. Migration 0008 adds `character_skills`, `content_xp_curve`,
+  `content_skill_nodes`.
+- **Server progression live (P7-B):** kills pay XP to everyone tagged
+  (≥10% damage, or any heal on a tagger — Cleric-safe), scaled by rank,
+  level gap and the panel's xpRate; entering a zone for the first time pays
+  discovery XP with a chat toast; level-ups refill HP/stamina/resource and
+  bank +3 attribute / +1 skill points. The Character sheet's allocation and
+  the Mirror of Dawn respec (25×/50×level gold) are validated server-side
+  with the same shared rules the client predicts, persisted write-through,
+  and every one of the 7 skill-node effect kinds now folds into play
+  (stats, per-ability rewrites, conditionals, stances, passives, procs —
+  Second Wind, Colossus stacks, Righteous Echo, Flurry, auto-Aegis and
+  friends all run). Dev `/setlevel` (gm/admin) + `/ops/setlevel` ship for
+  the grind-free test path. Verified live: `tools/smoke/p7-probe.mjs`
+  (join sync → setlevel 10 → allocation → relog persistence) plus the P4
+  combat probe and the two-client smoke green on v9.
+- **The trees are content (P7-C, with Dawned-Admin A1):** the full XP
+  curve (29 rows) and all 96 skill-tree nodes from CLASSES.md are now
+  published, live-tunable rows authored through the panel's new Content →
+  Progression editors and its publish pipeline (diff → validate + tree
+  cross-checks → transactional copy → hot reload) — tier layout and
+  per-rank ramps follow the Q21 authoring defaults (USER_QUESTIONS.md).
+  Seed migration 0010 carries the whole progression content set to fresh
+  deploys, `GET /api/content/skill-nodes` serves the trees to the client
+  for P7-D, and heal-over-time ticks can now carry a %-of-max-HP part
+  (`periodic.pctMaxHpTotal` — how Immovable's 30% max-HP heal works for
+  SP-less warriors). The p7 probe now allocates against the published
+  trees and proves the tier-2 gate + skill-rank persistence on relog.
+- **Progression on screen (P7-D):** the thin XP bar rides the bottom edge
+  (segment ticks, hover numbers, purple `+N XP` floaters and a pulse on
+  every award), and leveling up fires the full juice contract — gold
+  pillar, the new `Celebration` animation when idle, a gold flash frame
+  with sparks bursting off the bar, a chime, chat toast, ability-unlock
+  toasts (click one to open Skills) and a banked-points note. `C` opens
+  the Character panel (attribute +/− staging with Confirm, the one-click
+  suggested build, derived stats that explain their formulas on hover,
+  gold + attribute respec); `K` opens Skills (ability tiles with unlock
+  levels + the three branches as climbing faceted lattices — invest by
+  click, connectors light up, capstone at the crown, tooltips generated
+  from the published node data with next-rank previews). A slim micro
+  menu sits above the XP bar with badge pips for banked points. Under
+  the hood the client folds allocated trees exactly like the server
+  (effective ability defs, movement/stamina/attack-speed/resource
+  scalars), so builds predict as tightly as fresh characters; discovery
+  and level-up moments also surface as slide-in toasts.
+- **Verified end to end (P7-E):** a bot warrior grinds 1→10 on the live
+  test camps through kills alone — accelerated by the published `xpRate`
+  world setting and per-enemy `xpMult` rows (both hot-reloaded and
+  restored, the owner's own tuning levers) — then proves the tier gates
+  open exactly with in-branch investment, the capstone refuses at low
+  level, both respec flavors refund fully and charge their gold, the XP
+  bar/toasts/badges stay live throughout, and everything survives a relog
+  (`tools/smoke/browser-p7.mjs`). A data-driven matrix test pins the
+  whole published tree: every one of the 96 nodes at every rank folds
+  into an observable runtime change, references only same-class published
+  abilities, produces machine-legal effective defs, and stays reachable
+  by level 30 (`progression-content.test.ts`).
+
 ### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (2026-08-03)
 
 - **Two new kits, 16 abilities, authored as live-tunable content:** Mage
@@ -398,6 +474,7 @@ impact, no icons. Root causes found and fixed:
   and the camera starts looking the way your character faces on entry.
 
 ### Added — Phase P3: movement, netcode core & chat v1 (built 2026-08-02; owner signoff pending)
+
 - **Swimming**: water deeper than 1.2 m carries you — movement pins to the surface,
   speed drops to ×0.55, sprint-swimming drains stamina faster, jumping is inert, and
   diving into deep water always negates fall damage. Enforced by the same shared
@@ -430,6 +507,7 @@ impact, no icons. Root causes found and fixed:
   `tools/smoke/predict-lag.mjs`, `tools/smoke/browser-p3.mjs`.
 
 ### Added — Phase P2: terrain & world streaming (verified on real hardware 2026-08-02)
+
 - **The Dawnlands gain real ground**: a ~1 km dev island (Dawnshore meadows and beaches,
   the wooded Verdant Weald, the stark Ashen Reach, an inland lake) generated deterministically
   by `pnpm world:generate` into committed map artifacts — 271 terrain chunks (~25 kB each:
@@ -457,6 +535,7 @@ impact, no icons. Root causes found and fixed:
   60 FPS validation is the owner's remaining DoD step (dev containers render via software GL).
 
 ### Added — Phase P1: accounts, characters & menus (live on the VPS 2026-08-02)
+
 - **Accounts & sessions (server)**: PostgreSQL 16 + Drizzle schema (`accounts`, `sessions`,
   `characters`, `bans`) with committed migrations; argon2id password hashing; registration
   (open, dormant invite-code toggle per Q8), login with per-IP throttles, failed-login lockouts
@@ -493,6 +572,7 @@ impact, no icons. Root causes found and fixed:
   token/session-fixation review); per-IP registration limit set to 10/day.
 
 ### Fixed — P1 VPS deploy
+
 - **Registration/login failed on the VPS with a raw SQL error on screen.** Root cause: the
   deploy scripts ran `pnpm db:migrate` without `DATABASE_URL` (the `dawned` user cannot read
   `/etc/dawned/game.env`), the migrator fell back to the dev-default URL and failed password
@@ -507,6 +587,7 @@ impact, no icons. Root causes found and fixed:
     password hash. Clients now get a generic message; the real error goes to the server log.
 
 ### Added — Phase P0: foundations & walking skeleton
+
 - **Monorepo**: pnpm workspaces (`packages/shared`, `packages/server`, `packages/client`,
   `tools`), TypeScript strict everywhere, ESLint 9 + Prettier, Vitest, a single `pnpm check`
   gate (typecheck + lint + format + tests + asset report) and a GitHub Actions workflow.
@@ -535,6 +616,7 @@ impact, no icons. Root causes found and fixed:
   replication, convergence, console errors).
 
 ### Fixed — P0 code review pass
+
 - **Alt-tab no longer gets you kicked**: the keep-alive ping ran on the render loop, which
   browsers stop entirely in hidden tabs — the server's idle sweep then dropped the player after
   30 s. Pinging now runs on an interval timer and the idle window is sized above Chrome's worst
@@ -567,12 +649,14 @@ impact, no icons. Root causes found and fixed:
   `deploy/FIRST_DEPLOY.md` — a beginner walkthrough for the first deployment with private repos.
 
 ### Fixed
+
 - Remote players rendered several metres behind their true position on slow clients: the
   interpolation clock was derived from ping/pong offsets, which skew badly when a stalled frame
   inflates the measured RTT. Interpolation is now driven off the snapshot stream with bounded
   lag/lead, so a slow or backgrounded client no longer drags every other player out of place.
 
 ### Added
+
 - Complete 0.1.0 planning documentation:
   - Design: game vision & pillars, world (the Dawnlands archipelago, 6 zones), action combat
     system, 4 classes × 8 abilities + skill trees, progression (levels/stats/XP), items & loot &
@@ -589,6 +673,7 @@ impact, no icons. Root causes found and fixed:
 - Companion planning in the Dawned-Admin repository (editor & ops panel).
 
 ### Changed
+
 - Folded all 16 initial owner decisions (2026-08-02) into the docs. Highlights: mouselook
   controls confirmed; jumping with light fall damage specced; English-only content; **open
   registration** (invite-code toggle kept available); admin panel at `/admin` with allowlist off;
@@ -599,5 +684,6 @@ impact, no icons. Root causes found and fixed:
   `WeatherState` protocol message). Full decision log: USER_QUESTIONS.md.
 
 ### Notes
+
 - Phase P0 shipped and verified live at play.pathlands.cc on 2026-08-02 (first deployment via
   `deploy/DEPLOY.sh` on the production VPS). Next phase: P1 — Accounts, Characters & Menus.

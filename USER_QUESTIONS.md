@@ -8,14 +8,30 @@
 
 ## Open questions
 
-| #   | Topic                      | Question + recommended default                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Where it lands                        |
-| --- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| Q19 | Ground-target cast UX (P6) | Meteor/Sanctuary aim at a point on the ground. Two common UIs: (a) **quick-cast at the crosshair's terrain point on press** (one press, action-game style — a range-clamped ground decal previews where it lands while the button is relevant), or (b) two-step: press shows a placement reticle, second press confirms. **Recommended: (a) quick-cast** — matches the game's no-hard-lock, reticle-driven combat; Meteor's 1.5 s telegraph already gives enemies (and you) the readable beat. **Shipped as recommended in P6-D** (crosshair terrain point, range-clamped; sky-aim falls back to max range along the aim); switching to (b) later is UI-only. | COMBAT.md §4 / UI_UX.md, P6-D reticle |
-| Q20 | Ally-heal targeting (P6)   | Cleric's Mend/Purify/Aegis are "ally-soft" with self fallback. Without tab-targeting, who gets the heal? **Recommended: the reticle cone picks the ally you're looking at (same soft-target sweep as enemies, allies filter); if nobody is under the reticle, the MOST INJURED party member in range; if none, yourself.** Feels like aiming, protects the panic self-heal, no extra keybinds. **Shipped as recommended in P6-B/D** (green ally plate under the reticle shows the would-be recipient); a "self-cast modifier key" can be added later if wanted.                                                                                               | COMBAT.md §4 as-built, P6-B/D         |
+### Q21 — P7 skill-tree authoring defaults (2026-08-04)
+
+CLASSES.md lists each branch's 8 nodes with per-rank effects but does not pin (a) which nodes sit
+in which unlock tier, or (b) how multi-rank "special" nodes scale per rank. Both shipped as
+authoring defaults in the 96 published node rows (every value is one panel edit away):
+
+- **Tier layout by listed order**: nodes 1–2 → tier 1 (0 pts/L2), 3–4 → tier 2 (3 pts/L5),
+  5–6 → tier 3 (6 pts/L10), node 7 → tier 4 (9 pts/L15), node 8 = capstone (8 pts + L25).
+- **Per-rank ramps are linear to the doc value at max rank** (e.g. Scorched Ground rank 1 burns
+  at half rate, Overflow rank 1 converts 15% of the doc's 30%).
+
+**Recommended default: keep both** — play the trees in the P7 playtest and re-tier/re-value
+individual nodes in the panel (Content → Progression) where they feel off. No code involved.
 
 ---
 
 ## Decision log
+
+### 2026-08-04 — P6 casters (accepted with the owner's P6 playtest — "classes are fine")
+
+| #   | Topic                      | Decision                                                                                                                                                                                      | Folded into                            |
+| --- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Q19 | Ground-target cast UX (P6) | **Quick-cast at the crosshair's terrain point** (one press, range-clamped, sky-aim falls back to max range along the aim). A two-step placement reticle stays a UI-only option if ever wanted | COMBAT.md §4.2, run-world groundAimFor |
+| Q20 | Ally-heal targeting (P6)   | **Reticle ally → most injured in range → self**, with the green plate showing the would-be recipient. A "self-cast modifier key" can be added later if wanted                                 | COMBAT.md §4.2, Q20 pick server-side   |
 
 ### 2026-08-03 — P4 combat foundation (answered with the round-6 playtest feedback)
 

@@ -22,6 +22,11 @@ import {
   playerStats,
   slotForAction,
   type Appearance,
+  type AttributeSpread,
+  type ClassId,
+  type ProgressSyncMessage,
+  type RespecKind,
+  type SkillNodeDef,
 } from '@dawned/shared';
 import { Connection } from '../net/connection.js';
 import { InputController } from '../input/input.js';
@@ -43,17 +48,53 @@ import { AbilityVfxManager, abilityVfxColor } from '../world/ability-vfx.js';
 import { CombatSfx, sfxSlotOf } from '../audio/combat-sfx.js';
 import { loadEnemyDefs } from '../content/enemy-defs.js';
 import { loadAbilityDefs } from '../content/ability-defs.js';
+import { loadSkillNodeDefs } from '../content/skill-node-defs.js';
 import { loadIconUrls } from '../content/icon-urls.js';
+import { setAbilityNames } from '../app/panels/panel-format.js';
 import type { AbilityDef, EnemyDef } from '@dawned/shared';
+
+/** The overlay panels P7 ships (UI_UX.md §4 grows this list per phase). */
+export type PanelId = 'character' | 'skills';
+
+/**
+ * What the React panels (CharacterPanel/SkillsPanel) read and drive — a thin
+ * facade over the connection so the panels never touch netcode internals.
+ * All prediction/validation stays in the connection (shared rules).
+ */
+export interface ProgressionBridge {
+  /** Re-render signal: fires on any progression change. Returns unsubscribe. */
+  subscribe: (listener: () => void) => () => void;
+  /** Monotonic change counter — the useSyncExternalStore snapshot. */
+  version: () => number;
+  classId: () => ClassId;
+  level: () => number;
+  /** The authoritative sheet (null until the first ProgressSync). */
+  sheet: () => ProgressSyncMessage | null;
+  nodeDefs: () => ReadonlyMap<string, SkillNodeDef>;
+  ranks: () => ReadonlyMap<string, number>;
+  /** Own hotbar rows for the K panel's ability tiles (authored defs). */
+  hotbar: () => { slot: number; def: AbilityDef | null; lockedUntilLevel: number }[];
+  allocateStats: (deltas: AttributeSpread) => void;
+  allocateSkill: (nodeId: string) => { ok: boolean; reason?: string };
+  respec: (kind: RespecKind) => void;
+  /** Baked icon url for a game-icons slug ('' slug → undefined → monogram). */
+  iconUrl: (slug: string) => string | undefined;
+}
 
 export interface WorldHandle {
   dispose: () => void;
+  /** Open/close an overlay panel (the React close buttons drive this). */
+  setPanel: (panel: PanelId | null) => void;
+  /** Data + actions for the React progression panels. */
+  progression: ProgressionBridge;
 }
 
 export interface WorldCallbacks {
   /** Fired for terminal conditions the shell should surface (overlays). */
   onNotice: (code: NoticeCode, friendlyText: string) => void;
   onDisconnected: () => void;
+  /** Panel open/close (keys, micro menu, click-outside) → React renders it. */
+  onPanelChange: (panel: PanelId | null) => void;
 }
 
 /** WebSocket URL: same origin in production, Vite proxy in dev. */
@@ -63,6 +104,10 @@ const gameSocketUrl = (): string => {
 };
 
 const HOTBAR_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+/** Level-up flourish (PROGRESSION.md §1.3): baked UAL clip, plays only when
+ * idle and stays escapable — moving cancels it instantly. */
+const CELEBRATION = { clip: 'Celebration', clipSeconds: 4.0, durationMs: 4000 };
 
 export const runWorld = (
   container: HTMLElement,
@@ -88,7 +133,36 @@ export const runWorld = (
     () => {
       connection.requestRespawn();
     },
+    (panel) => {
+      togglePanel(panel);
+    },
   );
+
+  // --- overlay panels (P7-D) ------------------------------------------------
+  // C/K/Esc, the micro menu, the React close buttons and a click on the world
+  // all funnel through setPanel: it owns the pointer-lock handoff (panels need
+  // the cursor; closing re-locks into mouselook) and tells the React shell.
+  let openPanel: PanelId | null = null;
+  function setPanel(panel: PanelId | null): void {
+    if (openPanel === panel) return;
+    openPanel = panel;
+    if (panel) {
+      document.exitPointerLock();
+    } else if (!input.textEntryActive) {
+      // Key/click handlers grant transient activation — same re-lock rule as
+      // the Alt-release path in input.ts.
+      void canvas.requestPointerLock();
+    }
+    callbacks.onPanelChange(panel);
+  }
+  function togglePanel(panel: PanelId): void {
+    setPanel(openPanel === panel ? null : panel);
+  }
+  // Clicking the world with a panel open means "back to the game" — the input
+  // layer's own mousedown handler re-locks in the same gesture.
+  canvas.addEventListener('mousedown', () => {
+    if (openPanel) setPanel(null);
+  });
 
   // Terrain: the manager owns the sampler the prediction step walks on. Chunks,
   // walkgrid and zones stream in asynchronously; simulation is gated below until
@@ -155,6 +229,11 @@ export const runWorld = (
       },
       onChat: (message) => {
         hud.addChat(message);
+        // Discovery lines double as toasts (UI_UX.md §2) — the XP amount
+        // rides the matching XpGained event's FCT.
+        if (message.system && message.text.startsWith('Discovered: ')) {
+          hud.toast(message.text, { tone: 'xp' });
+        }
         // Bubble above the speaker (system lines stay chat-log only).
         if (!message.system) {
           if (message.fromId === connection.selfId) localView.showBubble(message.text);
@@ -329,6 +408,58 @@ export const runWorld = (
       onProjectileEnd: (message) => {
         projectiles.end(message);
       },
+      onXpGained: (message) => {
+        // Every award ticks visibly (PROGRESSION.md §7): purple FCT over the
+        // character + a pulse on the bar itself.
+        const self = connection.renderPosition();
+        combatText.spawn('xp', message.amount, self.x, self.y + 2.1, self.z);
+        hud.xpPulse();
+      },
+      onLevelUp: (message, oldLevel) => {
+        if (message.entityId !== connection.selfId) {
+          // Bystanders see the pillar (the roster refresh renames the plate).
+          const remote = connection.remotes.get(message.entityId);
+          if (remote) vfx.pillar(remote.render.x, remote.render.y, remote.render.z);
+          return;
+        }
+        // The §1.3 juice contract, client half (refills are server-side and
+        // arrive with the next snapshot): pillar, Celebration when idle,
+        // HUD gold flash + bar burst, chime, chat toast, unlock toasts.
+        const self = connection.renderPosition();
+        vfx.pillar(self.x, self.y, self.z);
+        const moving =
+          Math.abs(connection.predicted.vx) > 0.05 || Math.abs(connection.predicted.vz) > 0.05;
+        if (!moving && !connection.selfDead) {
+          localView.playAttack(CELEBRATION.clip, CELEBRATION.clipSeconds, CELEBRATION.durationMs);
+        }
+        hud.levelUpJuice();
+        sfx.play('levelup');
+        hud.addChat({
+          from: '',
+          fromId: 0,
+          system: true,
+          text: `You have reached level ${message.level}!`,
+        });
+        // Ability unlocks crossed by this level-up (slots auto-equip — §4).
+        for (const slot of HOTBAR_SLOTS) {
+          const def = connection.slotView(slot).def;
+          if (def && def.unlockLevel > oldLevel && def.unlockLevel <= message.level) {
+            hud.toast(`New ability: ${def.name} — slot ${slot}`, {
+              tone: 'gold',
+              onClick: () => {
+                setPanel('skills');
+              },
+            });
+          }
+        }
+        // The banked-points pip, spoken once (§7: gentle, never a modal).
+        hud.toast(`+3 attribute · +1 skill point banked`, {
+          tone: 'gold',
+          onClick: () => {
+            setPanel('character');
+          },
+        });
+      },
     },
     terrain.sampler,
     (x, z) => terrain.isGroundReadyAt(x, z),
@@ -358,6 +489,10 @@ export const runWorld = (
   const input = new InputController(canvas, () => {
     hud.focusChat();
   });
+  input.onUiKey = (key) => {
+    if (key === 'close') setPanel(null);
+    else togglePanel(key);
+  };
 
   connection.predicted.maxStamina = maxStaminaFor(1, 0);
   connection.predicted.stamina = connection.predicted.maxStamina;
@@ -387,24 +522,31 @@ export const runWorld = (
   void loadEnemyDefs().then((defs) => {
     if (!disposed) enemyDefs = defs;
   });
-  // Published ability defs → the prediction layer (hotbar, chains, costs),
-  // plus the icon wiring: baked game-icons urls and the effectId → icon map
-  // (buff chips wear the icon of the ability that applied them).
-  void Promise.all([loadAbilityDefs(), loadIconUrls()]).then(([defs, iconUrls]) => {
-    if (disposed) return;
-    connection.setAbilityContent(defs);
-    const effectIcons = new Map<string, string>();
-    for (const def of defs) {
-      if (!def.icon) continue;
-      for (const effect of def.effects) {
-        if (effect.kind === 'apply_effect') {
-          effectIcons.set(effect.effectId, def.icon);
-          if (effect.mods.onHitApply) effectIcons.set(effect.mods.onHitApply.effectId, def.icon);
+  // Published ability + skill-node defs → the prediction layer (hotbar,
+  // chains, costs, node folds), plus the icon wiring: baked game-icons urls
+  // and the effectId → icon map (buff chips wear their ability's icon).
+  let iconUrlMap = new Map<string, string>();
+  void Promise.all([loadAbilityDefs(), loadSkillNodeDefs(), loadIconUrls()]).then(
+    ([defs, nodeDefs, iconUrls]) => {
+      if (disposed) return;
+      connection.setAbilityContent(defs);
+      connection.setSkillNodeContent(nodeDefs);
+      iconUrlMap = iconUrls;
+      // Node tooltips speak ability NAMES ("Whirlwind: −2 s cooldown").
+      setAbilityNames(new Map(defs.map((def) => [def.id, def.name])));
+      const effectIcons = new Map<string, string>();
+      for (const def of defs) {
+        if (!def.icon) continue;
+        for (const effect of def.effects) {
+          if (effect.kind === 'apply_effect') {
+            effectIcons.set(effect.effectId, def.icon);
+            if (effect.mods.onHitApply) effectIcons.set(effect.mods.onHitApply.effectId, def.icon);
+          }
         }
       }
-    }
-    hud.setIcons(iconUrls, effectIcons);
-  });
+      hud.setIcons(iconUrls, effectIcons);
+    },
+  );
   /** Attacker anim runs at 0.1× until this time — the §9 hit-stop. */
   let hitStopUntilMs = 0;
   /** Lifetime damage/healing we dealt (smoke observability — DPS envelopes). */
@@ -422,7 +564,9 @@ export const runWorld = (
   const performAttackPress = (): boolean => {
     const accepted = connection.requestBasicAttack(input.yaw, -input.pitch * 0.35);
     if (!accepted) return false;
-    localView.playAttack(accepted.def.clip, accepted.def.clipSeconds, accepted.def.durationMs);
+    // durationMs is attack-speed-scaled (P7 Flurry/Killer's Rhythm) — the
+    // swing anim keeps pace with the faster chain the server times.
+    localView.playAttack(accepted.def.clip, accepted.def.clipSeconds, accepted.durationMs);
     sfx.play('whoosh');
     return true;
   };
@@ -814,6 +958,54 @@ export const runWorld = (
         rollTimeLeft: connection.predicted.rollTimeLeft,
       };
     },
+    /** Living-enemy positions for the P7 grind bot (browser-p7 smoke). */
+    enemies: (): {
+      id: number;
+      name: string;
+      level: number;
+      x: number;
+      z: number;
+      hpFraction: number;
+      dead: boolean;
+    }[] =>
+      [...connection.remotes.values()]
+        .filter((remote) => remote.kind === EntityKind.Enemy && remote.enemyMeta)
+        .map((remote) => ({
+          id: remote.id,
+          name: remote.enemyMeta!.name,
+          level: remote.enemyMeta!.level,
+          x: remote.render.x,
+          z: remote.render.z,
+          hpFraction: remote.render.hpFraction,
+          dead: (remote.render.flags & EntityFlag.Dead) !== 0,
+        })),
+    /** Progression truth + drivers (P7 smoke: grind, allocation, panels). */
+    progressionState: (): {
+      sheet: ProgressSyncMessage | null;
+      level: number;
+      nodeDefsLoaded: number;
+      openPanel: PanelId | null;
+      maxStamina: number;
+      resourceMax: number;
+    } => ({
+      sheet: connection.sheet,
+      level: connection.selfLevel,
+      nodeDefsLoaded: connection.skillNodeDefs.size,
+      openPanel,
+      maxStamina: connection.predicted.maxStamina,
+      resourceMax: connection.resource.max,
+    }),
+    allocateStats: (deltas: AttributeSpread): void => {
+      connection.sendAllocateStats(deltas);
+    },
+    allocateSkill: (nodeId: string): { ok: boolean; reason?: string } =>
+      connection.sendAllocateSkill(nodeId),
+    respec: (kind: RespecKind): void => {
+      connection.sendRespec(kind);
+    },
+    setPanel: (panel: PanelId | null): void => {
+      setPanel(panel);
+    },
   };
 
   // --- loop ------------------------------------------------------------------
@@ -1043,6 +1235,16 @@ export const runWorld = (
       focusHeld: input.secondaryHeld && !connection.selfDead && connection.classId === 'mage',
       ccState: selfStunned ? 'stunned' : selfRooted ? 'rooted' : null,
       attunement: connection.classId === 'mage' ? connection.attunementCount : null,
+      progress: connection.sheet
+        ? {
+            level: connection.sheet.level,
+            xp: connection.sheet.xp,
+            xpToNext: connection.sheet.xpToNext,
+          }
+        : null,
+      unspentStatPoints: connection.sheet?.unspentStatPoints ?? 0,
+      unspentSkillPoints: connection.sheet?.unspentSkillPoints ?? 0,
+      openPanel,
     });
   };
 
@@ -1149,6 +1351,29 @@ export const runWorld = (
 
   requestAnimationFrame(frame);
 
+  const progression: ProgressionBridge = {
+    subscribe: (listener) => connection.subscribeProgress(listener),
+    version: () => connection.progressVersion,
+    classId: () => connection.classId,
+    level: () => connection.selfLevel,
+    sheet: () => connection.sheet,
+    nodeDefs: () => connection.skillNodeDefs,
+    ranks: () => connection.ranks,
+    hotbar: () =>
+      HOTBAR_SLOTS.map((slot) => {
+        const view = connection.slotView(slot);
+        return { slot, def: view.def, lockedUntilLevel: view.lockedUntilLevel };
+      }),
+    allocateStats: (deltas) => {
+      connection.sendAllocateStats(deltas);
+    },
+    allocateSkill: (nodeId) => connection.sendAllocateSkill(nodeId),
+    respec: (kind) => {
+      connection.sendRespec(kind);
+    },
+    iconUrl: (slug) => (slug ? iconUrlMap.get(slug) : undefined),
+  };
+
   return {
     dispose: () => {
       disposed = true;
@@ -1157,5 +1382,7 @@ export const runWorld = (
       terrain.dispose();
       container.replaceChildren();
     },
+    setPanel,
+    progression,
   };
 };

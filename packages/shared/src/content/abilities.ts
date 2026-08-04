@@ -153,14 +153,17 @@ const targetingSchema = z.discriminatedUnion('kind', [
  * Stat/behavior modifiers a buff or debuff can carry. All percentages are
  * SIGNED integers (−50 = half damage taken; +10 = 10% faster). Periodic
  * damage/heal rides the same envelope (bleeds, poisons, HoTs).
+ * Exported for skill-node effects (P7), which grant the same buff shapes.
  */
-const effectModsSchema = z
+export const effectModsSchema = z
   .object({
     damageDealtPct: z.number().int().min(-90).max(200).optional(),
     damageTakenPct: z.number().int().min(-90).max(200).optional(),
     moveSpeedPct: z.number().int().min(-90).max(100).optional(),
     armorPct: z.number().int().min(-90).max(200).optional(),
     critPct: z.number().int().min(-50).max(100).optional(),
+    /** Basic-combo/attack speed bonus in percent (Killer's Rhythm, Flurry — P7). */
+    attackSpeedPct: z.number().int().min(-50).max(100).optional(),
     knockbackImmune: z.boolean().optional(),
     /** Consumed by the caster's next damaging ability (Shadowstep/Smoke Veil). */
     nextAttackPct: z.number().int().min(0).max(200).optional(),
@@ -182,6 +185,12 @@ const effectModsSchema = z
         coefTotal: z.number().min(0).max(10),
         school: z.enum(['physical', 'magic']).default('physical'),
         tickEveryMs: z.number().int().min(250),
+        /**
+         * Heals only (P7, Immovable): total healing as a percent of the
+         * TARGET'S max HP spread over the duration — for effects on classes
+         * whose SP cannot carry a meaningful coefTotal. Adds to coefTotal.
+         */
+        pctMaxHpTotal: z.number().min(0).max(100).default(0),
       })
       .optional(),
     /** Attacks apply this debuff to victims while the buff runs (Poisoned Blades). */
@@ -204,8 +213,10 @@ const effectModsSchema = z
 /**
  * What happens at resolve. Ordered list; the server applies them in order to
  * every resolved target (or self, per `target`).
+ * Exported for skill-node `ability_mod.addEffects` (P7), which appends
+ * entries of this exact shape to an ability's effect list.
  */
-const effectSchema = z.discriminatedUnion('kind', [
+export const abilityEffectSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('damage'),
     coef: z.number().min(0).max(10),
@@ -347,7 +358,7 @@ export const abilityDefSchema = z
     castWhileMoving: z.union([z.boolean(), z.number().min(0.1).max(1)]).default(true),
 
     targeting: targetingSchema,
-    effects: z.array(effectSchema).min(1).max(8),
+    effects: z.array(abilityEffectSchema).min(1).max(8),
 
     anim: z.object({
       /** UAL clip name (baked); dual-wield retargets share the name. */
@@ -425,7 +436,7 @@ export const abilityDefSchema = z
 
 export type AbilityDef = z.infer<typeof abilityDefSchema>;
 export type AbilityTargeting = z.infer<typeof targetingSchema>;
-export type AbilityEffect = z.infer<typeof effectSchema>;
+export type AbilityEffect = z.infer<typeof abilityEffectSchema>;
 export type AbilityEffectMods = z.infer<typeof effectModsSchema>;
 
 /** Parse + throw with the row id in the message (boot/publish validation). */

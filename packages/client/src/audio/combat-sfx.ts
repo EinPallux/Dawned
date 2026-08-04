@@ -16,7 +16,8 @@ export type SfxSlot =
   | 'death'
   | 'dodge'
   | 'bolt'
-  | 'deny';
+  | 'deny'
+  | 'levelup';
 
 export const SFX_SLOTS: readonly SfxSlot[] = [
   'whoosh',
@@ -28,6 +29,7 @@ export const SFX_SLOTS: readonly SfxSlot[] = [
   'dodge',
   'bolt',
   'deny',
+  'levelup',
 ];
 
 /** Content `sfx` ids map straight onto slots; unknown ids fall back. */
@@ -156,6 +158,25 @@ export class CombatSfx {
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
         osc.start(now);
         osc.stop(now + 0.16);
+        break;
+      }
+      case 'levelup': {
+        // Bright rising triad shimmer (P7 §1.3 sound hook) — C5→E5→G5, each
+        // note a soft sine bloom. Real samples replace this at P14 (AUDIO.md).
+        for (const [i, freq] of [523.25, 659.25, 783.99].entries()) {
+          const osc = ctx.createOscillator();
+          const noteGain = ctx.createGain();
+          const at = now + i * 0.09;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, at);
+          osc.connect(noteGain).connect(gain);
+          noteGain.gain.setValueAtTime(0.0001, at);
+          noteGain.gain.exponentialRampToValueAtTime(0.12 * volume, at + 0.03);
+          noteGain.gain.exponentialRampToValueAtTime(0.001, at + 0.55);
+          osc.start(at);
+          osc.stop(at + 0.6);
+        }
+        gain.gain.setValueAtTime(1, now);
         break;
       }
     }
