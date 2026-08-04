@@ -276,6 +276,20 @@ export const paintSplatTexel = (
   }
 };
 
+/**
+ * Set a texel to EXACTLY one layer at full weight.
+ *
+ * Auto-splat and the "solo layer" tool want a hard assignment rather than a
+ * blend, and doing it by hand means touching eight bytes with the sum-to-255
+ * invariant in your head. Exposing this instead of the raw writer keeps the
+ * invariant impossible to break from outside.
+ */
+export const setSplatTexel = (splat: Uint8Array, texel: number, layer: number): void => {
+  for (let i = 0; i < SPLAT_LAYER_COUNT; i++) {
+    writeSplatRaw(splat, texel, i, i === layer ? 255 : 0);
+  }
+};
+
 /** A splat dab, optionally masked by the terrain it lands on. */
 export interface SplatStroke {
   x: number;

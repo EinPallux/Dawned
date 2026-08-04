@@ -15,6 +15,7 @@ export * from './world/chunk-codec.js';
 export * from './world/chunk-terrain.js';
 export * from './world/walkgrid.js';
 export * from './world/brush.js';
+export * from './world/terrain-geometry.js';
 export * from './content/zones.js';
 export * from './content/placements.js';
 export * from './content/world-settings.js';
