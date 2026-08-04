@@ -4,12 +4,16 @@
 community of friends (5–20 players), inspired by the feel of _Farever_, _Guild Wars 2_ and
 _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 
-> **Status (2026-08-04): phases P0–P8 are built; P0–P6 are owner-verified, P7 and P8 await
-> playtest.** Live at [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
+> **Status (2026-08-04): phases P0–P8 are complete and owner-verified; P9 (Enemies & AI Depth)
+> is built and measured, awaiting the owner's playtest.** Live at
+> [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
 > a streamed island, action combat, all four classes with their ability kits, levels 1–30 with
 > attributes and 96-node skill trees, and the full item loop (pack, paper-doll, loot bags,
-> vendors, visible weapons). Protocol v11 — the dodge roll now rides the snapshot, which is what
-> stopped reconciliation cancelling it mid-roll. **Next: P9 — Enemies & AI Depth.**
+> vendors, visible weapons). Protocol v12 — enemies come in five archetypes with a 17-strong
+> Dawnshore/Weald bestiary, and their fights are readable: boss frames with phase pips,
+> interruptible cast bars, telegraphed pools you walk out of, and absorb bubbles. The Mushroom
+> King measures **105 s** solo at level (the 60–120 s target), and 150 active AI cost the server
+> 4.2 ms of a 50 ms tick. **Next: the owner's P9 playtest, then P10 — Gathering Professions.**
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an
 > authored island open world with levels 1–30, professions, quests, loot, chat, GM tools) — not an
 > MVP, not a prototype. The companion repo **[Dawned-Admin](../Dawned-Admin)** is the web panel

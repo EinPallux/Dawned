@@ -25,11 +25,12 @@ nothing beyond it.
   README status block · CLAUDE/AGENTS current state in BOTH repos · design/tech docs you touched
   · no hardcoded phase or version strings in the app (the HUD reads `build-info.ts`) ·
   USER_QUESTIONS · any counts you quoted.
-- **State:** P0–P6 complete (owner-verified; P6 closed 2026-08-04 — "classes are fine";
-  A0 /admin login confirmed). **P7 — Progression and P8 — Items, Inventory, Loot &
-  Vendors are both built end-to-end (2026-08-04; protocol v9 then v10), owner playtest
-  pending; their A1 sync points landed in the panel (XP-curve + skill-tree editors, then
-  items + loot + vendors).** P7 on top of the P5/P6 caster platform: the XP pipeline
+- **State:** **P0–P8 all complete and owner-verified** (P6 closed 2026-08-04 — "classes
+  are fine"; P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested
+  everything so far and all seems fine"); their A1 sync points landed in the panel
+  (XP-curve + skill-tree editors, then items + loot + vendors). **P9 — Enemies & AI Depth
+  is the current phase.** ALL fine-tuning is deferred to the end of the project by the
+  owner's decision — never pause a phase to polish balance. P7 on top of the P5/P6 caster platform: the XP pipeline
   (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
   level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
   rows (seed migration 0010 — never edit an applied migration, DATABASE.md §5) with every
@@ -66,3 +67,33 @@ nothing beyond it.
     composed rig has several `hand_r`). `two-client-sync.mjs` no longer drifts its fixtures
     apart (both `/stuck` first, walk-back in a `finally`); new `roll-probe.mjs` and a roll
     gate in `predict-lag.mjs`. 342 unit tests green.
+    **P9 — Enemies & AI Depth (in progress):** A/B/C/D built, E (verification) left.
+    Shared owns the archetype vocabulary AND the selection rules
+    (`selectableEnemyAbilities`/`pickEnemyAbility`/`bossPhaseAt`) so AI and panel preview
+    agree; protocol v12 completed the AI (charger lunge + overshoot punish, interruptible
+    casts, swarm rings, kit-clipped stand-off bands, boss phases in an arena); 13 models
+    baked and the Dawnshore+Weald bestiary (17 enemies, 20 spawners) authored through the
+    A1-d editor, published, frozen into seed migration 0013. Shared `ENEMY_MODEL_CLIPS`
+    records which clips each baked model owns — publish refuses an ability naming a clip
+    its rig lacks (a P5 Spore Lobber swing had been animating nothing).
+    **P9-D (client)** made the fights readable: a boss frame with a pip per declared phase
+    and the announce read from the published def, enemy cast bars that shatter on an
+    interrupt, absorb bubbles for self-shields, drawn (not typed) rank marks + tints,
+    per-archetype wind-up audio with distance falloff. Closing it surfaced three holes,
+    all found by looking at screenshots rather than by a failing test: `ground_circle`
+    resolved as a melee cone instead of the circle it drew (it now lands on the target's
+    ground and tests that circle), `self_shield` granted nothing (now a real timed absorb
+    draining through the players' own `absorbFromShields`), and the gateway silently
+    dropped the protocol's `cast` flag (the field is required now — NETWORKING.md §3.3:
+    optional wire fields are a silent-failure trap). Nameplates no longer clip long names.
+    New dev levers `/ops/enemyhurt`, `/ops/tp` and `/ops/spawnwave`.
+    **P9-E closed the phase (built, awaiting the owner's playtest):** `browser-p9.mjs`
+    BUILDS its level-12 warrior first (all 33 attribute points, every legal node, T2 gear)
+    — an unspent level 12 does 30 dps where a built one does 78, and skipping that nearly
+    caused a wrong re-balance of the King. Measured **105.4 s, inside the §12 60–120 s
+    window**, one phase crossing, telegraphs throughout, plus a mixed-camp pull proving a
+    cast, a charge and melee at once. `p9-load.mjs` reaches 150 active AI with transient
+    spawn waves: **tick p95 4.19 ms of 25 ms, RSS 179 MB of 700**. The `/ops/tp` lever
+    exposed a client bug — prediction resolved against un-streamed ground and fell to the
+    sea floor; `stepMovement` asks `hasDataAt` first now (NETWORKING.md §3.2). 381 tests
+    green.

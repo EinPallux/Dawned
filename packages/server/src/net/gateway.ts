@@ -713,6 +713,7 @@ export class Gateway {
                 step: event.step,
                 durationMs: event.durationMs,
                 yaw: event.yaw,
+                cast: event.cast === true,
               }),
             );
           });

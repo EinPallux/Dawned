@@ -5,6 +5,103 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Verified — P9 closed: the Mushroom King fight measured end to end (2026-08-04)
+
+- **The boss fight lands where COMBAT.md says it should.** A level-12 warrior,
+  properly built and armed with published T2 gear, kills the Mushroom King in
+  **105 seconds** — inside the 60–120 s window a zone boss is supposed to
+  occupy. Along the way the frame adopts him on aggro, he crosses his phase
+  exactly once and says his line, his telegraphs draw throughout, and the frame
+  releases when he dies.
+- **The mixed camp does what it was built to do.** Pulling the hexer circle puts
+  an interruptible cast, a charge lane and melee on you at the same time — the
+  "which one do you answer first?" pressure the archetypes exist for.
+- **150 enemies do not cost the server anything to speak of.** With 150 active
+  AI and 20 players, the tick sits at **4.2 ms p95** against a 25 ms budget and
+  175 MB of RAM against 700 MB.
+- **Fixed — falling through the world after a teleport.** The client streams the
+  ground in chunks, and a chunk it has not received yet answers "sea floor" —
+  indistinguishable from actual sea floor. Prediction believed it, so anything
+  that moved you faster than the stream (a GM teleport) dropped the camera 8 m
+  under the island until the chunk landed. Movement now refuses to resolve
+  against ground it does not have.
+- New GM lever: `/ops/spawnwave` stands up a one-off wave of any enemy type
+  (world events; also how the load run reaches 150). Wave enemies never respawn,
+  so a test can never leave the world permanently heavier than it was authored.
+
+### Added — P9 fights you can read: boss frames, cast bars, shields (2026-08-04)
+
+- **Bosses get a frame.** Aggro a zone or world boss and a plate takes the top
+  of the screen: its name and level, its HP, and **a tick mark for every phase
+  threshold it will cross** — so the next beat is something you can see coming
+  rather than something that happens to you. Crossing one flashes the frame and
+  the boss says its line, and the words come from the published enemy row, so
+  the panel can rewrite a boss's shout without touching the game. The frame
+  belongs to the fight: it appears on engagement, not proximity, and releases
+  when the boss dies, leashes, or you leave its arena.
+- **Casters can be interrupted, and now you can tell.** An interruptible
+  wind-up draws a draining bar over the enemy's nameplate instead of reading as
+  a swing. Land a stun on it and the bar shatters red with a ring and a hit —
+  the payoff for reading it. Casts sound different from swings too, and every
+  enemy wind-up now has a voice that fades with distance, so a telegraph behind
+  you still reaches you.
+- **Elites and bosses are marked before you commit.** A drawn diamond for an
+  elite, a star for a zone boss, two for a world boss, each with its own tint —
+  next to the ×1.15 size an elite already had. The marks are drawn shapes, not
+  characters, so they cannot silently vanish on a machine whose fonts lack the
+  glyph.
+- **Enemy shields are visible.** A self-shielding elite wears an absorb bubble
+  and a chip with the pool left, and hits that the shield eats read as absorbed
+  instead of as damage that mysteriously did nothing.
+- **Fixed — a boss AoE that lied about where it would land.** `ground_circle`
+  abilities (the Mushroom King's spore rings, the Outcast Hexer's curse pool)
+  drew a circle on the ground and then resolved as a small melee cone in front
+  of the caster. The pool now lands on the target where they stood when the
+  cast began and hits exactly the circle it drew — so walking out of it is a
+  real answer, which is the whole mechanic.
+- **Fixed — a self-shield that shielded nothing.** The Mossback's Moss Ward
+  spent its wind-up and granted no absorb at all. It now grants a real, timed
+  pool that drains through the same code players' shields use, so "burst it
+  down or wait it out" works on both sides of a fight.
+- **Fixed — enemy cast bars could never appear.** The AI set the flag, the
+  protocol carried it, the client drew from it — and the one line in the middle
+  that copies the event onto the wire didn't include it. The field is now
+  required, so leaving it out is a compile error rather than a silent nothing.
+- **Fixed — nameplates clipped long names.** The plate canvas was 256 px wide
+  and centre-aligned, so anything past about seventeen characters lost both
+  ends: "Weald Stalker · 11" rendered as "Weald Stalker · 1", and the Mushroom
+  King's plate lost its level. Plates are wider now and shrink to fit whatever
+  a content row is named.
+- Dev levers for GMs and verification runs: `/ops/enemyhurt` (set a living
+  enemy's HP by content id, to reach a phase or a threshold without a full
+  fight) and `/ops/tp` (teleport a player to a position).
+
+### Added — P9 bestiary: Dawnshore and Verdant Weald (2026-08-04)
+
+- **17 enemies now live**, up from 4: the Dawnshore and Verdant Weald rosters
+  exactly as NPCS_ENEMIES.md §4 casts them — Shore Glub, Meadow and Bog Blobs,
+  Cliff Pigeon, Bandit Forager, Spore Lobber, Young Mushnub and the **Mossback**
+  elite; then Weald Frog, Mushnub Warrior, Armabee Drone and Soldier, Gloom
+  Ghost, Weald Stalker, Outcast Hexer and the **Mushroom King**, the game's
+  first real boss. Authored through the panel's new Enemies editor and frozen
+  into seed migration 0013.
+- **Camps that ask a question.** 20 spawners walk the level curve inland from
+  the beach, and two are deliberately mixed: the bandit camp pairs a thrown-
+  knife ranged with a grunt, and the hexer circle puts a caster to interrupt, a
+  charger to sidestep and a warrior in your face at once — the "pick your
+  fight" pressure P9 is for.
+- Stats are not authored: HP, damage, armour and resist come from the shared
+  §5 curve, so a balance pass changes one formula rather than seventeen rows.
+  The one deliberate exception is the Mushroom King — the curve put his fight
+  at 48 s and COMBAT.md §12 wants 60–120, so he carries an explicit HP
+  override that lands him at ~87 s.
+- **Fixed — a swing that animated nothing.** The P5 Spore Lobber's panic swat
+  asked a mushnub rig for a `Punch` clip it does not have; the attack landed
+  and played no animation. The three Quaternius rig families have
+  non-interchangeable clip names, so the shared build now records which clips
+  each baked model actually owns and the publish pipeline REFUSES an ability
+  naming one its model lacks. That class of bug cannot ship again.
+
 ### Fixed — Playtest round: the roll, invisible vendors, weapons in hands (2026-08-04)
 
 - **The dodge roll no longer cancels itself (protocol v11).** Pressing dodge

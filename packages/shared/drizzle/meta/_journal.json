@@ -92,6 +92,13 @@
       "when": 1785838085826,
       "tag": "0012_p8_item_seeds",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785838086826,
+      "tag": "0013_p9_bestiary_seeds",
+      "breakpoints": true
     }
   ]
 }

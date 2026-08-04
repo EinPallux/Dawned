@@ -19,6 +19,28 @@
 Rank multipliers (on base stats at level): Normal ×1 · Elite ×(HP 2.5, dmg 1.3) · Zone Boss ×(HP 8,
 dmg 1.6) · World Boss (Ashwing) ×(HP 20, dmg 1.9, stagger-immune outside mechanic windows).
 
+**As built (P9-D) — how each tell reaches the screen.** The archetype language above is only worth
+anything if a player can read it mid-fight, so each row has a concrete presentation:
+
+- **Caster** — an ability with `cast: true` draws a draining bar over the nameplate for its whole
+  wind-up (schema-enforced ≥ 800 ms, so the window is always reactable). Landing a stun shatters
+  the bar red with a ring and an impact hit; the bar holds broken for half a second, because the
+  interrupt is the payoff for reading it. Its `self_shield` shows as an absorb bubble plus a chip
+  with the pool remaining, and hits the shield eats read as absorbed rather than as damage that
+  did nothing.
+- **Charger** — the rect decal it draws is the exact lane the per-tick sweep will test, and the
+  overshoot stagger it ends in is the punish window (never 0 by schema).
+- **Elite / Boss** — the "named plate" is a **drawn** mark beside the name (a diamond for elite,
+  a star per boss tier) plus a per-rank tint; drawn as canvas paths, not characters, so a machine
+  without the glyph cannot silently erase an elite's only warning.
+- **Boss** — a top-of-screen frame on aggro (not on proximity): name, level, HP, and **a tick mark
+  for every declared phase threshold**, so the next beat is visible before it lands. Crossing one
+  flashes the frame and prints the phase's `announce` line, which is read from the published enemy
+  row on the client — the panel can rewrite a boss's shout with no protocol change. The frame
+  releases on death, on leash, and when the player leaves the arena.
+- Every enemy wind-up also has a **sound** scaled by distance (swings whoosh, casts and pools hum),
+  so a telegraph behind the camera still reaches the player.
+
 ## 2. AI Model (server-side, 10 Hz decisions, 20 Hz motion)
 
 FSM per enemy: `IDLE/PATROL → ALERT → COMBAT → RETURN(leash) → DEAD`.

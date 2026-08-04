@@ -275,6 +275,24 @@ alternative cancelled every roll about 150 ms in.
   gap-close or dodge-through; _full-arena + safe wedge_ = find the wedge (bosses only).
 - All decals render colorblind-safe (pattern + color, see UI_UX.md accessibility).
 
+**As built (P9).** Each enemy ability kind draws — and resolves as — exactly one shape, and the
+two must be read from the same fields or the decal becomes a lie:
+
+| Kind            | Decal                                             | Resolution                                       |
+| --------------- | ------------------------------------------------- | ------------------------------------------------ |
+| `melee_arc`     | cone at the enemy, `reach`/`angleDeg`             | arc at the enemy, same numbers                   |
+| `ground_circle` | circle **on the target's ground**, `circleRadius` | circle at that point, same radius, no target cap |
+| `charge_rect`   | rect, `chargeDistance`×`chargeWidth`              | per-tick sweep of the segment travelled          |
+| `projectile`    | none (the bolt is the tell)                       | sphere sweep, aimed at RELEASE                   |
+| `self_shield`   | none                                              | absorb pool on the caster, no hit at all         |
+
+The ground circle is placed where the TARGET stood when the cast began — walking out of it is the
+counterplay, and a circle centred on the caster would be unreachable from its own range band.
+A `cast` ability additionally draws a **bar over the enemy's nameplate** rather than reading as a
+swing: that bar is the promise that a stun will stop it, and breaking it shatters the bar red.
+Enemy absorbs (`self_shield`) wear a bubble and a pool chip, so "why did my burst do nothing" is
+answered on screen. Boss phase thresholds are ticked on the boss frame before they are crossed.
+
 ## 9. Feel & Juice Contract (Definition of Done for "smooth")
 
 Checklist every ability/enemy must pass before its phase closes:

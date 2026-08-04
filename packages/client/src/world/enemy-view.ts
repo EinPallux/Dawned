@@ -12,27 +12,74 @@ import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.j
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { EntityFlag, type EnemyDef, type EnemyMetaEntry } from '@dawned/shared';
 
+interface ClipSet {
+  idle: string;
+  move: string;
+  hit: string;
+  death: string;
+  alert: string;
+}
+
+const armature = (name: string): string => `CharacterArmature|${name}`;
+
+/**
+ * The Quaternius monster bundle rigs its models in exactly three families, and
+ * their clip names are NOT interchangeable — a walker has `Idle`/`Walk` where
+ * a floater has `Flying_Idle`/`Fast_Flying`, and the two spell the hit react
+ * differently (`HitRecieve` vs `HitReact` — the pack misspells one of them).
+ * Naming the families once beats fifteen near-identical literals and makes the
+ * mismatch impossible to introduce by copy-paste.
+ *
+ * Verified by reading the baked glTF animation lists, not by assumption.
+ */
+const WALKER: ClipSet = {
+  idle: armature('Idle'),
+  move: armature('Walk'),
+  hit: armature('HitRecieve'), // (sic — the pack misspells it in this family)
+  death: armature('Death'),
+  alert: armature('No'),
+};
+
+/** Floaters (glub, bees, ghosts): no Idle and no Walk exist on these rigs. */
+const FLOATER: ClipSet = {
+  idle: armature('Flying_Idle'),
+  move: armature('Fast_Flying'),
+  hit: armature('HitReact'),
+  death: armature('Death'),
+  alert: armature('No'),
+};
+
+/** The richest family (frog, orc, mushroom king): real Run + Weapon clips. */
+const HUMANOID: ClipSet = {
+  idle: armature('Idle'),
+  move: armature('Run'),
+  hit: armature('HitReact'),
+  death: armature('Death'),
+  alert: armature('No'),
+};
+
 /** Logical → actual clip names per baked model (verified against the bakes). */
-const MODEL_CLIPS: Record<
-  string,
-  { idle: string; move: string; hit: string; death: string; alert: string }
-> = {
-  enemies_glub: {
-    idle: 'CharacterArmature|Flying_Idle',
-    move: 'CharacterArmature|Fast_Flying',
-    hit: 'CharacterArmature|HitReact',
-    death: 'CharacterArmature|Death',
-    alert: 'CharacterArmature|No',
-  },
-  enemies_mushnub: {
-    idle: 'CharacterArmature|Idle',
-    move: 'CharacterArmature|Walk',
-    hit: 'CharacterArmature|HitRecieve', // (sic — the pack misspells it)
-    death: 'CharacterArmature|Death',
-    alert: 'CharacterArmature|No',
-  },
-  // skeleton_minion is baked but unmapped until P9 places it — an unmapped
-  // model renders statically rather than guessing clip names unverified.
+const MODEL_CLIPS: Record<string, ClipSet> = {
+  // Dawnshore
+  enemies_glub: FLOATER,
+  enemies_mushnub: WALKER,
+  enemies_green_blob: WALKER,
+  enemies_pink_blob: WALKER,
+  enemies_pigeon: WALKER,
+  enemies_orc: HUMANOID,
+  enemies_glub_evolved: FLOATER,
+  // Verdant Weald
+  enemies_frog: HUMANOID,
+  enemies_mushnub_evolved: WALKER,
+  enemies_armabee: FLOATER,
+  enemies_armabee_evolved: FLOATER,
+  enemies_ghost: FLOATER,
+  enemies_cat: WALKER,
+  enemies_wizard: WALKER,
+  enemies_mushroom_king: HUMANOID,
+  // skeleton_minion is baked but unmapped until something places it — an
+  // unmapped model renders statically rather than guessing clip names
+  // unverified.
 };
 
 interface ManifestAsset {
@@ -85,6 +132,63 @@ const loadAll = async (): Promise<EnemyAssets> => {
   return result;
 };
 
+/**
+ * Rank treatment on the nameplate (§1). An elite is 2.5× HP and a boss 8×, so
+ * "is this the same thing I just killed" has to be answerable at a glance,
+ * before committing. Size does half the job; the plate does the rest — a
+ * tinted name plus one drawn mark per rank tier.
+ */
+const RANK_TINT: Record<string, string> = {
+  normal: '#f0b7a8',
+  elite: '#e8c979',
+  zone_boss: '#f0a53a',
+  world_boss: '#ff8a3a',
+};
+
+/** How many marks a rank draws beside its name (0 = plain trash mob). */
+const RANK_MARKS: Record<string, number> = {
+  normal: 0,
+  elite: 1,
+  zone_boss: 1,
+  world_boss: 2,
+};
+
+/**
+ * The rank mark is DRAWN, not typed. It started life as the characters ◆ and
+ * ★, and in a headless Chromium with no font carrying them it rendered as
+ * nothing at all — an elite whose only tell is its plate came up looking like
+ * a trash mob. A canvas path cannot go missing on someone else's machine, and
+ * it looks the same everywhere, which is the entire point of a tell.
+ */
+const drawRankMark = (
+  ctx: CanvasRenderingContext2D,
+  rank: string,
+  x: number,
+  y: number,
+  r: number,
+): void => {
+  ctx.beginPath();
+  if (rank === 'elite') {
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r * 0.72, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r * 0.72, y);
+  } else {
+    // Five-point star: outer points every 72°, inner waist at 42% radius.
+    for (let i = 0; i < 10; i++) {
+      const radius = i % 2 === 0 ? r : r * 0.42;
+      const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+      const px = x + Math.cos(angle) * radius;
+      const py = y + Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.fill();
+};
+
 /** Seconds the corpse plays death + desaturates before sinking away. */
 const DEATH_SINK_AFTER_S = 3.5;
 const DEATH_SINK_SPEED = 0.6; // m/s downward
@@ -103,6 +207,14 @@ export class EnemyView {
   private hpBar: THREE.Sprite | null = null;
   private hpBarCtx: CanvasRenderingContext2D | null = null;
   private hpShown = -1;
+  /** Cast bar (P9 Casters) — built lazily; most enemies never cast. */
+  private castBar: THREE.Sprite | null = null;
+  private castBarCtx: CanvasRenderingContext2D | null = null;
+  private castEndsAt = 0;
+  private castTotal = 1;
+  private castBrokenUntil = 0;
+  /** Absorb bubble while a `self_shield` is live (null = none). */
+  private shieldMesh: THREE.Mesh | null = null;
 
   private flashLeft = 0;
   private deadFor = -1; // <0 = alive; ≥0 = seconds since death started
@@ -172,29 +284,63 @@ export class EnemyView {
     return ability ? `CharacterArmature|${ability.clip}` : '';
   }
 
+  /**
+   * Nameplate canvas. 384 and not 256: at 256 the plate silently CLIPPED every
+   * name past ~17 characters, centre-aligned so it ate both ends — "Weald
+   * Stalker · 11" rendered as "Weald Stalker · 1" and "★ Mushroom King · 12"
+   * (344 px) lost its star and its level. Found by reading a P9 screenshot.
+   */
+  private static readonly PLATE_W = 384;
+  private static readonly PLATE_H = 56;
+
   private buildPlates(): void {
     const height = 0.55;
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 56;
+    canvas.width = EnemyView.PLATE_W;
+    canvas.height = EnemyView.PLATE_H;
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      ctx.font = 'bold 26px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.lineWidth = 5;
       ctx.strokeStyle = 'rgba(21,26,38,0.92)';
+      // Rank has to read BEFORE the fight starts — walking into an elite by
+      // accident is the difference between a fight and a corpse run (§1: a
+      // named plate is the elite's whole tell, along with its size).
+      const marks = RANK_MARKS[this.meta.rank] ?? 0;
       const text = `${this.meta.name}  ·  ${this.meta.level}`;
-      ctx.strokeText(text, 128, 28);
-      ctx.fillStyle = '#f0b7a8'; // hostile tint, Cut Facets palette adjacent
-      ctx.fillText(text, 128, 28);
+      const tint = RANK_TINT[this.meta.rank] ?? '#f0b7a8';
+      // Shrink-to-fit on top of the wider canvas, so a long content name can
+      // never reintroduce the clip: the plate adapts, the text is never cut.
+      const cx = EnemyView.PLATE_W / 2;
+      const cy = EnemyView.PLATE_H / 2;
+      const markSpan = marks * 22;
+      const maxWidth = EnemyView.PLATE_W - 12 - markSpan * 2;
+      let size = 26;
+      ctx.font = `bold ${size}px system-ui, sans-serif`;
+      while (size > 15 && ctx.measureText(text).width > maxWidth) {
+        size -= 1;
+        ctx.font = `bold ${size}px system-ui, sans-serif`;
+      }
+      // Marks sit LEFT of the name; shift the text right by half their span so
+      // the whole plate stays optically centred over the enemy.
+      const textX = cx + markSpan / 2;
+      ctx.strokeText(text, textX, cy, maxWidth);
+      ctx.fillStyle = tint;
+      ctx.fillText(text, textX, cy, maxWidth);
+      const textLeft = textX - ctx.measureText(text).width / 2;
+      for (let i = 0; i < marks; i++) {
+        drawRankMark(ctx, this.meta.rank, textLeft - 12 - i * 22, cy, 9);
+      }
     }
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     this.label = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true }),
     );
-    this.label.scale.set((256 / 56) * height * 0.6, height * 0.6, 1);
+    // Aspect must follow the canvas or the text stretches — widening the
+    // canvas widens the plate in world space, it does not fatten the glyphs.
+    this.label.scale.set((EnemyView.PLATE_W / EnemyView.PLATE_H) * height * 0.6, height * 0.6, 1);
     this.label.position.y = this.plateHeight() + 0.45;
     this.group.add(this.label);
 
@@ -256,7 +402,11 @@ export class EnemyView {
    * settles — scaled to the wind-up alone it clamps on its last frame and the
    * enemy freezes mid-lunge for the whole recover (first camp playtest).
    */
-  playAbility(ordinal: number, durationMs: number): void {
+  playAbility(ordinal: number, durationMs: number, cast = false): void {
+    // A CAST is the Caster archetype's counterplay made visible: a bar the
+    // player can watch drain and decide to interrupt. Without it the wind-up
+    // is just an animation and the interrupt window may as well not exist.
+    if (cast) this.beginCast(durationMs);
     const name = this.clipForAbility(ordinal);
     const action = this.actions.get(name);
     if (!action) return;
@@ -264,6 +414,112 @@ export class EnemyView {
     const totalMs = spec ? spec.windupMs + spec.recoverMs : durationMs;
     const native = action.getClip().duration;
     this.playOnce(name, native / Math.max(totalMs / 1000, 0.15));
+  }
+
+  /**
+   * A cast bar is DRAWN over this enemy right now. Deliberately the sprite's
+   * own visibility and not just the timer: the P9 probe asserts on this, and
+   * "the timer is running" would still pass if the bar never rendered.
+   */
+  get isCasting(): boolean {
+    return this.castEndsAt > this.clock && this.castBar?.visible === true;
+  }
+
+  /** Start the cast bar; `update` drains it and hides it when it empties. */
+  private beginCast(durationMs: number): void {
+    this.castEndsAt = this.clock + durationMs / 1000;
+    this.castTotal = Math.max(0.1, durationMs / 1000);
+    if (!this.castBar) this.buildCastBar();
+    if (this.castBar) this.castBar.visible = true;
+  }
+
+  /**
+   * A `self_shield` absorb is up (P9). Without this the fight lies: a shielded
+   * elite eats a full burst and its HP bar simply stops, with nothing on
+   * screen saying why. The bubble is the same read players get from Aegis.
+   */
+  setShielded(shielded: boolean): void {
+    if (shielded === (this.shieldMesh !== null)) return;
+    if (!shielded) {
+      if (this.shieldMesh) {
+        this.group.remove(this.shieldMesh);
+        this.shieldMesh.geometry.dispose();
+        (this.shieldMesh.material as THREE.Material).dispose();
+        this.shieldMesh = null;
+      }
+      return;
+    }
+    const radius = Math.max(0.6, (this.def?.hitRadius ?? 0.5) * this.meta.scale * 1.5);
+    const mesh = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(radius, 1),
+      new THREE.MeshBasicMaterial({
+        color: 0x9fd8c8,
+        transparent: true,
+        opacity: 0.16,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    mesh.position.y = this.plateHeight() * 0.5;
+    mesh.scale.y = 1.2;
+    this.group.add(mesh);
+    this.shieldMesh = mesh;
+  }
+
+  /** An interrupt landed: shatter the bar rather than letting it fade out. */
+  breakCast(): void {
+    if (this.castEndsAt <= 0) return;
+    this.castEndsAt = 0;
+    this.drawCast(0, true);
+    // Leave the broken bar up for a beat — the player earned the feedback.
+    this.castBrokenUntil = this.clock + 0.5;
+  }
+
+  private buildCastBar(): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 12;
+    this.castBarCtx = canvas.getContext('2d');
+    const texture = new THREE.CanvasTexture(canvas);
+    this.castBar = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true }),
+    );
+    this.castBar.scale.set(1.2, 0.11, 1);
+    this.castBar.position.y = this.plateHeight() + 0.72;
+    this.castBar.visible = false;
+    this.group.add(this.castBar);
+  }
+
+  private drawCast(fraction: number, broken = false): void {
+    const ctx = this.castBarCtx;
+    if (!ctx || !this.castBar) return;
+    ctx.clearRect(0, 0, 128, 12);
+    ctx.fillStyle = 'rgba(21,26,38,0.85)';
+    ctx.fillRect(0, 0, 128, 12);
+    ctx.fillStyle = broken ? '#d8453a' : '#c9a34e';
+    ctx.fillRect(1, 1, Math.max(0, Math.min(1, fraction)) * 126, 10);
+    ctx.strokeStyle = 'rgba(240,242,246,0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, 127, 11);
+    const map = this.castBar.material.map;
+    if (map) map.needsUpdate = true;
+  }
+
+  /** Advance the cast bar. Called from `update` so it rides the render clock. */
+  private tickCast(): void {
+    if (!this.castBar) return;
+    if (this.castBrokenUntil > this.clock) return; // holding the shattered bar
+    if (this.castEndsAt <= 0) {
+      if (this.castBar.visible) this.castBar.visible = false;
+      return;
+    }
+    const left = this.castEndsAt - this.clock;
+    if (left <= 0) {
+      this.castEndsAt = 0;
+      this.castBar.visible = false;
+      return;
+    }
+    this.drawCast(1 - left / this.castTotal);
   }
 
   beginDeath(): void {
@@ -279,6 +535,9 @@ export class EnemyView {
     }
     if (this.label) this.label.visible = false;
     if (this.hpBar) this.hpBar.visible = false;
+    if (this.castBar) this.castBar.visible = false;
+    this.castEndsAt = 0;
+    this.setShielded(false); // a corpse holds no absorb
   }
 
   private playOnce(name: string, timeScale = 1): void {
@@ -327,6 +586,7 @@ export class EnemyView {
     this.clock += dt;
     this.group.position.set(render.x, render.y, render.z);
     this.group.rotation.y = render.yaw;
+    this.tickCast();
 
     const dead = (render.flags & EntityFlag.Dead) !== 0;
     if (dead) this.beginDeath();
@@ -384,5 +644,11 @@ export class EnemyView {
     this.label?.material.dispose();
     this.hpBar?.material.map?.dispose();
     this.hpBar?.material.dispose();
+    this.castBar?.material.map?.dispose();
+    this.castBar?.material.dispose();
+    if (this.shieldMesh) {
+      this.shieldMesh.geometry.dispose();
+      (this.shieldMesh.material as THREE.Material).dispose();
+    }
   }
 }

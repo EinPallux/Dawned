@@ -158,6 +158,32 @@ and the client seeds `authoritative` from it. The rule this establishes for anyt
 if a predicted roll is cut short; `tools/smoke/roll-probe.mjs` pins the server half (the timer
 counts down, the `Dodging` flag agrees with it, the roll carries `DODGE_DISTANCE_M`).
 
+### 3.2 As-built: never predict against ground you do not have (P9)
+
+The client streams chunks; `ChunkTerrain.heightAt` answers `OCEAN_FLOOR_Y` for a chunk it has not
+received, which is indistinguishable from real sea floor. The movement step used to resolve against
+that answer, so a client whose position outran its own stream predicted a fall to −8 m and put the
+camera under the island until the chunk landed. Normal walking never outruns the stream; a
+teleport does it instantly, which is how P9's `/ops/tp` exposed it.
+
+`stepMovement` now asks `hasDataAt` first and, over an unknown column, holds the vertical state
+(and resets the fall reference so arriving data cannot bill a phantom drop as fall damage) while
+horizontal movement and the roll/dash timers continue normally. The server's sampler always has
+data, so its behaviour is unchanged and the shared step stays the anti-desync layer.
+
+### 3.3 As-built: optional wire fields are a silent-failure trap (protocol v12)
+
+P9 added `cast` to `AbilityStart` so an interruptible enemy wind-up draws a bar instead of reading
+as a swing. The AI set it, the codec wrote and read it, the view consumed it — and the gateway,
+which rebuilds each event into its wire message field by field, simply did not copy it across. No
+test failed: the codec round-trip passed, the AI test passed, and enemy cast bars just never
+appeared. The field was optional, so nothing could notice.
+
+> A protocol field that some producer might forget should be REQUIRED on the message type, not
+> optional. Optional means "the compiler will not tell you", and in a hand-rolled encode path that
+> is the same as "one day it will be dropped". `AbilityStart.cast` is required now, so omitting it
+> is a compile error; the round-trip test asserts both `true` and `false`.
+
 ## 4. Combat Latency Model
 
 - **Ability start:** client plays wind-up/FX at press (prediction), server validates & broadcasts

@@ -260,6 +260,10 @@ export class World {
     this.enemies.set(enemy.id, enemy);
     if (enemy.campTag) {
       const camp = this.campIndex.get(enemy.campTag) ?? [];
+      // Ring slot = position in the camp at spawn, fixed for this life. A slot
+      // recomputed per decision would make a swarm's circle rotate every time
+      // a member died (P9, NPCS_ENEMIES.md §1 surround behavior).
+      enemy.surroundSlot = camp.length;
       camp.push(enemy);
       this.campIndex.set(enemy.campTag, camp);
     }
@@ -504,6 +508,80 @@ export class World {
   }
 
   /**
+   * Set a LIVING enemy's HP to a fraction of max (/ops/enemyhurt, P9). The GM
+   * primitive that makes boss phases and self-shield thresholds reachable in a
+   * verification run without a 90-second fight per beat. It drives HP only —
+   * the phase walk, the announce and the shield all come out of the normal AI,
+   * so what a run observes is the real mechanic and not a staged one.
+   */
+  queueEnemyHurt(typeId: string, fraction: number): number | null {
+    let best: ServerEnemy | null = null;
+    for (const enemy of this.enemies.values()) {
+      if (enemy.def.id !== typeId || !enemy.alive) continue;
+      // Ties go to the healthiest so repeated calls keep hitting the same one.
+      if (!best || enemy.hp > best.hp) best = enemy;
+    }
+    if (!best) return null;
+    this.pendingEnemyHurt.push({ enemyId: best.id, fraction });
+    return best.id;
+  }
+
+  private readonly pendingEnemyHurt: { enemyId: number; fraction: number }[] = [];
+
+  /**
+   * Spawn a one-off wave of enemies (/ops/spawnwave, P9). The GM primitive
+   * behind a world event, and how the load harness reaches the TECH_STACK
+   * budget number — the published bestiary only stands up 51 enemies and the
+   * budget is written for 150 active AI.
+   *
+   * The wave carries a synthetic spawner id that content does not contain, so
+   * `onEnemyDeath` finds no spawner and files no respawn ticket: killing a
+   * wave removes it for good, and a load run cannot leave the world permanently
+   * heavier than the owner authored it.
+   */
+  queueSpawnWave(enemyId: string, count: number, x: number, z: number, radius: number): number {
+    const def = this.content?.enemies.get(enemyId);
+    if (!def) return 0;
+    const spawner: SpawnerDef = {
+      id: `ops_wave_${this.nextEntityId}`,
+      x,
+      z,
+      radius,
+      kind: radius > 0 ? 'area' : 'point',
+      campTag: null,
+      entries: [{ enemyId, count, level: null }],
+      respawnMs: 0,
+      nightOnly: false,
+    };
+    for (let i = 0; i < count; i++) this.spawnEnemy(spawner, def, this.rollLevel(def, null));
+    return count;
+  }
+
+  /**
+   * Teleport an online player to a world position (/ops/tp, P9). Reaching a
+   * named camp or a boss arena is otherwise a two-minute walk in every smoke;
+   * the drop is grounded on the terrain the server itself samples, so the
+   * player lands legally rather than inside a hillside.
+   */
+  queueTeleport(name: string, x: number, z: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      const m = player.movement;
+      m.x = x;
+      m.z = z;
+      m.y = this.terrain.heightAt(x, z);
+      m.vx = 0;
+      m.vy = 0;
+      m.vz = 0;
+      m.grounded = true;
+      m.swimming = false;
+      m.fallPeakY = m.y;
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Ops-queued item/gold grants (/ops/grant — the GM primitive behind the
    * panel's future "grant item" button, and how the P8 smoke stages fixtures
    * that no loot table has to cooperate for). Runs the same planner a pickup
@@ -615,6 +693,15 @@ export class World {
         target.lastCombatAtMs = nowMs;
       }
     }
+    // Enemy HP pokes land BEFORE the AI runs this tick, so the phase check
+    // inside the AI sees the new fraction on the very next decision.
+    for (const hurt of this.pendingEnemyHurt.splice(0)) {
+      const target = this.enemies.get(hurt.enemyId);
+      if (target && target.alive) {
+        target.hp = Math.max(1, Math.round(target.maxHp * hurt.fraction));
+        target.lastDamagedAtMs = nowMs;
+      }
+    }
 
     const aiCtx: AiContext = {
       players: this.players,
@@ -626,6 +713,13 @@ export class World {
       enemiesByCamp: (tag) => this.campIndex.get(tag) ?? [],
       projectiles: this.projectiles,
       nextProjectileId: () => this.nextProjectileId++,
+      // Living pack-mates decide how wide a swarm's surround ring is. Counting
+      // the LIVING ones matters: as a pack is cut down the survivors close in
+      // rather than orbiting the gaps where their friends used to be.
+      packSize: (enemy) =>
+        enemy.campTag === null
+          ? 1
+          : (this.campIndex.get(enemy.campTag) ?? []).filter((mate) => mate.alive).length,
     };
 
     // 1. Player movement — re-simulated from client intents with the shared step.

@@ -2944,3 +2944,116 @@ canvas.game {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* ------------------------------------------------------------- boss frame */
+/* P9 (NPCS_ENEMIES.md §1): a boss fight has to read as a boss fight. Wide cut
+   plate at the top edge, phase thresholds ticked on the bar so the next beat
+   is visible before it lands, and the announce line under it. */
+
+.boss-frame {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(620px, 52vw);
+  padding: 8px 18px 10px;
+  /* Near-opaque on purpose: at 0.82 a world nameplate behind the plate bled
+     through and read as a second HP bar inside the boss frame. */
+  background: rgba(21, 26, 38, 0.96);
+  border: 1px solid var(--hairline);
+  border-top: 2px solid #7c221a;
+  clip-path: polygon(
+    14px 0,
+    calc(100% - 14px) 0,
+    100% 14px,
+    100% 100%,
+    calc(100% - 14px) 100%,
+    14px 100%,
+    0 100%,
+    0 14px
+  );
+  pointer-events: none;
+}
+
+.boss-frame[hidden] {
+  display: none;
+}
+
+.boss-frame-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #f0a89b;
+  text-shadow: 0 1px 3px #000a;
+}
+
+.boss-frame-track {
+  position: relative;
+  height: 14px;
+  margin-top: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  overflow: hidden;
+}
+
+.boss-frame-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(180deg, #e0563f, #7c221a);
+  transition: width 0.14s linear;
+}
+
+.boss-frame-pips {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* One tick per declared phase threshold — you can see the next one coming. */
+.boss-frame-pip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(237, 230, 212, 0.75);
+}
+
+.boss-frame-announce {
+  min-height: 15px;
+  margin-top: 5px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--gold-bright);
+  opacity: 0;
+  transition: opacity 0.18s var(--ease);
+}
+
+.boss-frame-announce.is-live {
+  opacity: 1;
+}
+
+/* Threshold crossed: the plate slams for a beat so the shout is not missable. */
+.boss-frame.is-phase {
+  animation: boss-frame-phase 0.5s var(--ease) 2;
+}
+
+@keyframes boss-frame-phase {
+  0% {
+    border-top-color: #7c221a;
+    background: rgba(21, 26, 38, 0.96);
+  }
+  30% {
+    border-top-color: var(--gold-bright);
+    background: rgba(124, 34, 26, 0.92);
+  }
+  100% {
+    border-top-color: #7c221a;
+    background: rgba(21, 26, 38, 0.96);
+  }
+}

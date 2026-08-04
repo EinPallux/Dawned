@@ -25,7 +25,15 @@ export interface PendingSwing {
   contactAtMs: number;
   /** Aim captured at wind-up start (heavies telegraph THIS, not tracking). */
   yaw: number;
+  /**
+   * Where the shape resolves FROM. The enemy's own feet for swings, charges
+   * and volleys; the target's ground for a `ground_circle`, which is a pool
+   * placed where they stood (P9). `y` matters because the hit test's vertical
+   * tolerance is measured from the origin, and a pool 14 m downhill is not at
+   * the caster's height.
+   */
   x: number;
+  y: number;
   z: number;
 }
 
@@ -82,6 +90,37 @@ export class ServerEnemy {
   lastDamagedAtMs = 0;
   /** Corpse timer: despawn + respawn ticket at this ms (dead state). */
   despawnAtMs = 0;
+
+  // --- P9 archetypes -------------------------------------------------------
+  /**
+   * Boss phase reached (0 = opening). One-WAY: a heal back over the threshold
+   * never rewinds it, so an announce cannot replay and a speed-up cannot undo
+   * itself mid-fight (shared `bossPhaseAt` takes this as its floor).
+   */
+  phaseIndex = 0;
+  /** `oncePerLife` abilities already spent this life (self-shields, openers). */
+  readonly spentAbilities = new Set<string>();
+  /**
+   * An in-flight Charger lunge. The charge is NOT resolved at contact like a
+   * swing — contact only starts it; damage happens along the lane as it
+   * travels, each victim once (`hitIds`), and overshooting leaves the enemy
+   * staggered for the punish window that makes the archetype fair.
+   */
+  charge: {
+    ability: EnemyAbilityDef;
+    dirX: number;
+    dirZ: number;
+    endsAtMs: number;
+    lastX: number;
+    lastZ: number;
+    hitIds: Set<number>;
+  } | null = null;
+  /**
+   * This member's slot on its pack's surround ring, assigned at spawn and
+   * stable for its life — recomputing it per decision would make the ring
+   * spin as the camp's membership changed.
+   */
+  surroundSlot = 0;
 
   // --- P5 ability interactions --------------------------------------------
   /** Live debuffs (EffectHost contract — world/effects.ts). */
@@ -158,6 +197,7 @@ export class ServerEnemy {
     if (this.state === 'dead' || this.invulnerable) return;
     this.stunnedUntilMs = Math.max(this.stunnedUntilMs, nowMs + durationMs);
     this.swing = null; // a stun always interrupts the wind-up
+    this.charge = null; // …and drops a lunge mid-flight
   }
 
   /** Root (P6, Frost Nova): pin the feet; attacks/turning keep working. */
@@ -203,6 +243,9 @@ export class ServerEnemy {
     this.effectsDirty = true;
     this.tauntedById = null;
     this.tauntedUntilMs = 0;
+    this.phaseIndex = 0;
+    this.spentAbilities.clear();
+    this.charge = null;
     this.vx = 0;
     this.vz = 0;
     this.enterState('idle', nowMs);

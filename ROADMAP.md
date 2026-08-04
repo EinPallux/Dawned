@@ -8,24 +8,24 @@
 >
 > **Status legend:** 🔲 not started · 🟨 in progress · ✅ done — update this file as phases move.
 
-| Phase | Name                                     | Size | Status                     |
-| ----- | ---------------------------------------- | ---- | -------------------------- |
-| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02)  |
-| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02)  |
-| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)       |
-| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)       |
-| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)       |
-| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)       |
-| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)       |
-| P7    | Progression — XP, Stats, Skill Trees     | M    | 🟨 built, playtest pending |
-| P8    | Items, Inventory, Loot & Vendors         | L    | 🟨 built, playtest pending |
-| P9    | Enemies & AI Depth                       | L    | 🔲                         |
-| P10   | Gathering Professions                    | M    | 🔲                         |
-| P11   | Quests, POIs & Interactables             | L    | 🔲                         |
-| P12   | World Building (the Dawnlands)           | XL   | 🔲                         |
-| P13   | GM Suite & Live Ops                      | M    | 🔲                         |
-| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                         |
-| P15   | Release 0.1.0                            | M    | 🔲                         |
+| Phase | Name                                     | Size | Status                    |
+| ----- | ---------------------------------------- | ---- | ------------------------- |
+| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
+| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
+| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
+| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)      |
+| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)      |
+| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
+| P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
+| P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
+| P9    | Enemies & AI Depth                       | L    | ✅ built (2026-08-04)     |
+| P10   | Gathering Professions                    | M    | 🔲                        |
+| P11   | Quests, POIs & Interactables             | L    | 🔲                        |
+| P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
+| P13   | GM Suite & Live Ops                      | M    | 🔲                        |
+| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
+| P15   | Release 0.1.0                            | M    | 🔲                        |
 
 ---
 
@@ -380,7 +380,9 @@ screen, grows with later phases); `content_xp_curve`/nodes editable via A1 edito
 **DoD:** grind a character 1→10 legitimately on test camps; trees allocate/respec correctly incl.
 all Warrior/Rogue/Mage/Cleric node effects verified by targeted tests; unspent-point UX per design.
 
-**Status: ✅ built end-to-end 2026-08-04 (P7-A…E) — protocol v9; owner playtest pending.**
+**Status: ✅ complete (owner-verified 2026-08-04 — "I tested everything so far and all seems
+fine") — protocol v9.** Fine-tuning of the shipped numbers (heal magnitudes, node tiers/values)
+is deliberately deferred to the end of the project and is all panel work, no code.
 
 - [x] Shared progression core (P7-A): `content_xp_curve` (formula-exact defaults, panel-editable) + the full 96-node skill-tree contract (tiers/gates/capstones, 7-effect-kind vocabulary,
       allocation + aggregation helpers both sides run); protocol v9 (AllocateStats/Skill/Respec ↑,
@@ -418,7 +420,8 @@ unique icon, rarity frames); first 60 real items authored (T1–T2 bands) via ad
 fuzz tests green (no dupes under parallel op storms); icon build fails on any unmapped item
 (enforced); 60 items reviewed in-game.
 
-**Status: ✅ built end-to-end 2026-08-04 (P8-A…E) — protocol v10; owner playtest pending.**
+**Status: ✅ complete (owner-verified 2026-08-04, after two playtest fix rounds) — protocol v10,
+then v11 with the roll fix.**
 
 - [x] Shared item core (P8-A): item/loot-table/vendor zod schemas, the §2 budget formulas
       (`statBudget`, `weaponDamageFor`, `baseArmorFor`, `itemValue`, `sellPriceFor`,
@@ -472,6 +475,41 @@ across Dawnshore+Weald as the template set; Mushroom King (first real boss) comp
 **DoD:** Mushroom King solo fight hits COMBAT.md boss targets (60–120 s, 3+ mechanics, readable);
 mixed camps (grunt+ranged+caster) create the intended "pick your fight" pressure; AI CPU within
 budget at 150 active.
+
+**Status (2026-08-04): all five slices built and the DoD measured — awaiting the owner's playtest.**
+
+- [x] Shared archetype + boss core (P9-A): charge/self-shield ability kinds, interruptible casts,
+      hp-threshold/once-per-life/phase conditions, boss phases + arena leash, and the SHARED
+      selection rules (`selectableEnemyAbilities`, `pickEnemyAbility`, `bossPhaseAt`) the AI and
+      the panel's TTK preview both run.
+- [x] Server AI (P9-B, protocol v12): charger lunge with per-tick segment sweeps and the
+      overshoot punish, caster casts flagged interruptible, swarm surround rings, ranged/caster
+      stand-off from `ARCHETYPE_MOTION` clipped to what the kit can reach, bosses walking one-way
+      phases inside their arena.
+- [x] Content (P9-C, with Dawned-Admin A1-d): 13 new enemy models baked (3 → 16), the Dawnshore + Weald bestiary (17 enemies, 20 spawners incl. two mixed camps) authored through the
+      Enemies editor and published, frozen into seed migration 0013. The TTK simulator caught the
+      Mushroom King at a 48 s kill — under the §12 floor — before he ever went live.
+- [x] Client (P9-D): the boss frame (name/level, HP, a pip per declared phase, the announce
+      banner), enemy cast bars that shatter red on an interrupt, absorb bubbles for self-shields,
+      rank marks + tints on nameplates, per-archetype wind-up audio with distance falloff, and
+      phase VFX. Rect charge decals and the ×1.15 elite scale were already live from P4/P9-B.
+      Three server holes surfaced closing it: `ground_circle` resolved as a melee cone instead of
+      the circle it drew, `self_shield` granted nothing at all, and the gateway dropped the
+      protocol's `cast` flag so no enemy cast bar could ever appear. Dev levers `/ops/enemyhurt`
+      and `/ops/tp` landed with the probe that found them.
+- [x] Verification (P9-E): `tools/smoke/browser-p9.mjs` builds a level-12 warrior properly
+      (spends all 33 attribute points and every legal skill node — an UNSPENT level 12 fights at
+      38 % of a built one's damage, which is the trap the first measuring run fell into), stands
+      the King up, and times the kill. **Measured 105.4 s at 78 effective dps — inside COMBAT.md
+      §12's 60–120 s window**, with the phase crossed exactly once, telegraphs drawn throughout
+      and the frame released on death. The same run then pulls the hexer circle and proves all
+      three archetypes act at once: an interruptible cast, a charge and melee in your face.
+      `tools/smoke/p9-load.mjs` tops the world up to 150 active AI with transient waves, drives
+      the 20-bot swarm through them and reads the server's own histogram: **tick p95 4.19 ms
+      against the 25 ms budget, RSS 179 MB against 700 MB**.
+      Closing it also fixed a client bug the new `/ops/tp` lever exposed: the movement step
+      predicted against un-streamed ground and dropped the camera to the sea floor
+      (NETWORKING.md §3.2).
 
 ## P10 — Gathering Professions (M) ⚙A3 node placement tools required
 
