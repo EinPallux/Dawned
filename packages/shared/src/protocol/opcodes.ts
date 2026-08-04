@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 11; // v11: the dodge roll rides the snapshot's self block
+export const PROTOCOL_VERSION = 12; // v12 (P9): enemy casts + boss phases
 
 /** Client → server opcodes. */
 export const ClientOp = {
@@ -158,6 +158,12 @@ export const EntityEventKind = {
   Flinch: 8,
   /** A cast/channel was broken (stun/interrupt) — cast bar shatters (v8). */
   Interrupted: 9,
+  /**
+   * A boss crossed an HP threshold into phase `a` (v12, P9). The fight visibly
+   * changes here — the client flashes the boss frame and the announce line
+   * rides the normal chat/bubble path right behind it.
+   */
+  Phase: 10,
 } as const;
 export type EntityEventKind = (typeof EntityEventKind)[keyof typeof EntityEventKind];
 

@@ -1,18 +1,40 @@
 /**
- * Enemy AI v1 — the Grunt archetype FSM (docs/design/NPCS_ENEMIES.md §2):
+ * Enemy AI — the archetype FSM (docs/design/NPCS_ENEMIES.md §1–§2):
  * IDLE → ALERT (0.5 s beat) → COMBAT (threat target, steering, weighted
  * attacks) → RETURN (invulnerable leash sprint, full reset) → DEAD.
  *
  * Decisions run at 10 Hz staggered by entity id parity (half the enemies per
- * 20 Hz tick); motion integrates every tick. Swarm-typed enemies run this
- * same FSM in P4 — the surround/pack behaviors arrive with P9's archetypes.
- * Dummies never leave IDLE and reset their HP once out of combat.
+ * 20 Hz tick); motion integrates every tick. Dummies never leave IDLE and
+ * reset their HP once out of combat.
+ *
+ * P9 completed the archetype language on top of P4's Grunt FSM:
+ *   - Ranged/Caster hold the §1 stand-off band, kite at 60% and panic-melee
+ *     when a player closes (the band comes from shared ARCHETYPE_MOTION).
+ *   - Caster casts are interruptible on purpose — that window IS its
+ *     counterplay, so a stun or an Interrupt drops the cast, not just the swing.
+ *   - Charger lines up, telegraphs a rect, LUNGES along the locked lane
+ *     hitting each victim once, and overshoots into a stagger — the punish.
+ *   - Swarm members take evenly spaced slots on a ring around the target
+ *     rather than all seeking the same point.
+ *   - Bosses walk their phases (shared `bossPhaseAt`) and never leave the arena.
+ * WHICH ability fires is not decided here: `selectableEnemyAbilities` and
+ * `pickEnemyAbility` live in shared so the panel's TTK preview and the live
+ * fight can never disagree about what an enemy would do.
  */
 
 import {
+  ARCHETYPE_MOTION,
   EntityEventKind,
+  PLAYER_HEIGHT,
+  PLAYER_RADIUS,
   TelegraphShape,
   angleDelta,
+  bossPhaseAt,
+  dashSweepHits,
+  pickEnemyAbility,
+  selectableEnemyAbilities,
+  surroundSlot,
+  type BossPhaseState,
   type EnemyAbilityDef,
   type Rng,
   type TerrainSampler,
@@ -42,6 +64,8 @@ const SEPARATION_RADIUS = 1.1;
 const DUMMY_RESET_MS = 5000;
 /** Dead enemies sink away this long after the death beat (loot arrives P8). */
 export const CORPSE_LINGER_MS = 10_000;
+/** A charge that hits nothing still ends: cap its flight so it cannot run on. */
+const CHARGE_MAX_MS = 3000;
 
 export interface AiContext {
   players: ReadonlyMap<number, ServerPlayer>;
@@ -55,6 +79,8 @@ export interface AiContext {
   /** Live projectile pool + id source — Ranged-archetype volleys (P5). */
   projectiles: ServerProjectile[];
   nextProjectileId: () => number;
+  /** How many living pack-mates share this enemy's camp (swarm ring size). */
+  packSize: (enemy: ServerEnemy) => number;
 }
 
 /** One 10 Hz decision for one enemy. */
@@ -165,13 +191,51 @@ export const enterCombat = (enemy: ServerEnemy, targetId: number, ctx: AiContext
   }
 };
 
+/**
+ * Advance the boss phase if HP crossed a threshold this decision, announcing
+ * the new phase once. Returns the folded modifiers for everything below.
+ */
+const updatePhase = (enemy: ServerEnemy, ctx: AiContext): BossPhaseState => {
+  const phase = bossPhaseAt(enemy.def, enemy.hp / enemy.maxHp, enemy.phaseIndex);
+  if (phase.index > enemy.phaseIndex) {
+    enemy.phaseIndex = phase.index;
+    // A phase change is a beat the player must SEE: the shout goes out as an
+    // entity event so the client can flash the frame and play the line.
+    ctx.events.push({
+      type: 'entity-event',
+      entityId: enemy.id,
+      event: EntityEventKind.Phase,
+      a: phase.index,
+      b: 0,
+      c: 0,
+    });
+    // The announce LINE is not on the wire: the client already holds this
+    // enemy's published def (it loads them for nameplates and telegraphs), so
+    // it reads the text for the phase index itself. One less message, and the
+    // words stay content the panel can edit without a protocol change.
+    //
+    // A new phase clears the current wind-up: the transition is its own beat,
+    // not something a half-finished swing rides through.
+    enemy.swing = null;
+    enemy.charge = null;
+  }
+  return phase;
+};
+
 const decideCombat = (enemy: ServerEnemy, ctx: AiContext): void => {
   if (ctx.nowMs < enemy.stunnedUntilMs) return;
+  // A lunge owns the body until it lands (see `move`).
+  if (enemy.charge) return;
 
-  // Leash on range from HOME (camp radius) — exploit-proof reset (§2).
+  const phase = updatePhase(enemy, ctx);
+
+  // Leash on range from HOME (camp radius) — exploit-proof reset (§2). A boss
+  // with an arena uses that instead: it must never be pulled out of its fight
+  // area, whatever the threat table says.
   const homeDx = enemy.x - enemy.homeX;
   const homeDz = enemy.z - enemy.homeZ;
-  if (homeDx * homeDx + homeDz * homeDz > enemy.def.leashRadius ** 2) {
+  const leash = enemy.def.arenaRadius > 0 ? enemy.def.arenaRadius : enemy.def.leashRadius;
+  if (homeDx * homeDx + homeDz * homeDz > leash * leash) {
     beginReturn(enemy, ctx);
     return;
   }
@@ -203,31 +267,20 @@ const decideCombat = (enemy: ServerEnemy, ctx: AiContext): void => {
 
   if (enemy.swing || ctx.nowMs < enemy.recoverUntilMs) return;
 
-  // Attack selection: weighted pick among ready abilities in range (§2).
+  // Attack selection runs through the SHARED gate (§2), so the panel's TTK
+  // preview and this fight are answering the same question with one function.
   const dx = target.movement.x - enemy.x;
   const dz = target.movement.z - enemy.z;
   const dist = Math.hypot(dx, dz);
-  const ready = enemy.def.abilities.filter(
-    (ability) =>
-      (enemy.cooldowns.get(ability.id) ?? 0) <= ctx.nowMs &&
-      dist >= ability.rangeMin &&
-      dist <= ability.rangeMax,
-  );
-  if (ready.length > 0) {
-    const ability = weightedPick(ready, ctx.rng);
-    startSwing(enemy, ability, target, ctx);
-  }
-};
-
-const weightedPick = (abilities: readonly EnemyAbilityDef[], rng: Rng): EnemyAbilityDef => {
-  let total = 0;
-  for (const ability of abilities) total += ability.weight;
-  let roll = rng() * total;
-  for (const ability of abilities) {
-    roll -= ability.weight;
-    if (roll <= 0) return ability;
-  }
-  return abilities[abilities.length - 1]!;
+  const ready = selectableEnemyAbilities(enemy.def.abilities, {
+    distance: dist,
+    hpFraction: enemy.hp / enemy.maxHp,
+    phase: enemy.phaseIndex,
+    onCooldown: (id) => (enemy.cooldowns.get(id) ?? 0) > ctx.nowMs,
+    spent: (id) => enemy.spentAbilities.has(id),
+  });
+  const ability = pickEnemyAbility(ready, ctx.rng());
+  if (ability) startSwing(enemy, ability, target, ctx, phase);
 };
 
 const startSwing = (
@@ -235,6 +288,7 @@ const startSwing = (
   ability: EnemyAbilityDef,
   target: ServerPlayer,
   ctx: AiContext,
+  phase: BossPhaseState,
 ): void => {
   const yaw = Math.atan2(target.movement.x - enemy.x, target.movement.z - enemy.z);
   enemy.yaw = yaw;
@@ -248,6 +302,9 @@ const startSwing = (
     z: enemy.z,
   };
   enemy.cooldowns.set(ability.id, ctx.nowMs + ability.windupMs + ability.cooldownMs);
+  // Once-per-life is spent at COMMIT, not at contact: an interrupted opener
+  // is still spent, which is what makes interrupting one worth doing.
+  if (ability.oncePerLife) enemy.spentAbilities.add(ability.id);
   const abilityIndex = Math.max(0, enemy.def.abilities.indexOf(ability));
   ctx.events.push({
     type: 'ability-start',
@@ -256,20 +313,61 @@ const startSwing = (
     step: 0,
     durationMs: ability.windupMs,
     yaw,
+    // A cast shows a BAR over the nameplate instead of reading as a wind-up:
+    // the player's cue that this one can be stopped (§1 Caster counterplay).
+    cast: ability.cast,
   });
   if (ability.telegraph) {
-    // The decal previews the EXACT server shape (COMBAT.md §5/§8 hard rule).
+    // The decal previews the EXACT server shape (COMBAT.md §5/§8 hard rule) —
+    // so the shape follows the ability's kind, never a fixed cone.
     ctx.events.push({
       type: 'telegraph',
       casterId: enemy.id,
-      shape: TelegraphShape.Cone,
+      shape: telegraphShapeOf(ability),
       x: enemy.x,
       z: enemy.z,
       yaw,
-      size: ability.reach,
-      spread: (ability.angleDeg * Math.PI) / 180,
+      size: telegraphSizeOf(ability),
+      spread: telegraphSpreadOf(ability),
       impactInMs: ability.windupMs,
     });
+  }
+  void phase; // phase modifiers apply at resolve/recovery, not at commit
+};
+
+/** The decal a wound-up ability draws — the same shape the server will test. */
+const telegraphShapeOf = (ability: EnemyAbilityDef): number => {
+  switch (ability.kind) {
+    case 'charge_rect':
+      return TelegraphShape.Rect;
+    case 'ground_circle':
+      return TelegraphShape.Circle;
+    default:
+      return TelegraphShape.Cone;
+  }
+};
+
+/** Decal length: how far the shape reaches from the caster. */
+const telegraphSizeOf = (ability: EnemyAbilityDef): number => {
+  switch (ability.kind) {
+    case 'charge_rect':
+      return ability.chargeDistance;
+    case 'ground_circle':
+      return ability.circleRadius;
+    default:
+      return ability.reach;
+  }
+};
+
+/** Cone half-angle in radians, or a rect's half-width in metres. */
+const telegraphSpreadOf = (ability: EnemyAbilityDef): number => {
+  switch (ability.kind) {
+    case 'charge_rect':
+      return ability.chargeWidth;
+    case 'ground_circle':
+      return 0;
+    default:
+      return (ability.angleDeg * Math.PI) / 180;
   }
 };
 
@@ -299,11 +397,26 @@ export const move = (
 ): void => {
   if (enemy.state === 'dead') return;
 
+  // A lunge in flight owns the body: travel the locked lane, hit each victim
+  // once, and end in the overshoot stagger that pays for the archetype.
+  if (enemy.charge) {
+    advanceCharge(enemy, ctx);
+    settleOnGround(enemy, ctx);
+    return;
+  }
+
   // Swing contact fires even while the FSM is between decisions.
   if (enemy.swing && ctx.nowMs >= enemy.swing.contactAtMs) {
     const swing = enemy.swing;
     enemy.swing = null;
-    enemy.recoverUntilMs = ctx.nowMs + swing.ability.recoverMs;
+    const phase = bossPhaseAt(enemy.def, enemy.hp / enemy.maxHp, enemy.phaseIndex);
+    enemy.recoverUntilMs = ctx.nowMs + swing.ability.recoverMs * phase.recoverMult;
+    // A charge does not RESOLVE at contact — contact is when it launches.
+    if (swing.ability.kind === 'charge_rect') {
+      beginCharge(enemy, swing.ability, swing.yaw, ctx);
+      settleOnGround(enemy, ctx);
+      return;
+    }
     resolveEnemySwing(
       enemy,
       swing.ability,
@@ -364,21 +477,49 @@ export const move = (
       const dx = target.movement.x - enemy.x;
       const dz = target.movement.z - enemy.z;
       const dist = Math.hypot(dx, dz);
-      const band = volleyBand(enemy);
-      if (band && dist < band.min) {
-        // Ranged kite (NPCS_ENEMIES.md §1): back off at 60% speed when the
-        // target closes inside the volley band — panic-melee stays in the
-        // weighted attack pick, movement just reopens the distance.
+      const motion = ARCHETYPE_MOTION[enemy.def.archetype];
+      // The stand-off band comes from the archetype, narrowed to what this
+      // enemy's kit can actually reach — a "ranged" row whose only projectile
+      // flies 10 m must not hold at 15 and never fire.
+      const band = standoffBand(enemy, motion.band);
+      const phase = bossPhaseAt(enemy.def, enemy.hp / enemy.maxHp, enemy.phaseIndex);
+      const moveSpeed = enemy.def.moveSpeed * phase.speedMult;
+
+      if (band && dist < motion.panicMeleeRange) {
+        // Cornered: stop kiting and fight. Backing away from someone already
+        // in your face just feeds them free hits (§1 "panic-melee inside 3 m").
+        desiredX = 0;
+        desiredZ = 0;
+      } else if (band && dist < band.min) {
+        // Kite: reopen the band at the archetype's retreat speed.
         desiredX = -dx / dist;
         desiredZ = -dz / dist;
-        speed = enemy.def.moveSpeed * 0.6;
+        speed = moveSpeed * motion.kiteSpeedMult;
       } else if (band) {
         // Hold mid-band; approach only when the target drifts out of range.
         const hold = (band.min + band.max) / 2;
         if (dist > hold) {
           desiredX = dx / dist;
           desiredZ = dz / dist;
-          speed = enemy.def.moveSpeed;
+          speed = moveSpeed;
+        }
+      } else if (motion.surroundRadius > 0) {
+        // Swarm: head for YOUR slot on the ring, not the target's feet — six
+        // Glubs form a circle instead of a queue behind one another.
+        const slot = surroundSlot(
+          target.movement.x,
+          target.movement.z,
+          enemy.surroundSlot,
+          Math.max(1, ctx.packSize(enemy)),
+          motion.surroundRadius,
+        );
+        const sx = slot.x - enemy.x;
+        const sz = slot.z - enemy.z;
+        const slotDist = Math.hypot(sx, sz);
+        if (slotDist > 0.4) {
+          desiredX = sx / slotDist;
+          desiredZ = sz / slotDist;
+          speed = moveSpeed;
         }
       } else {
         // Melee: stop just inside the shortest ready-ability reach.
@@ -386,7 +527,7 @@ export const move = (
         if (dist > desired) {
           desiredX = dx / dist;
           desiredZ = dz / dist;
-          speed = enemy.def.moveSpeed;
+          speed = moveSpeed;
         }
       }
       enemy.yaw = Math.atan2(dx, dz);
@@ -440,6 +581,132 @@ const settleOnGround = (enemy: ServerEnemy, ctx: AiContext): void => {
   enemy.y = ctx.terrain.heightAt(enemy.x, enemy.z);
 };
 
+/**
+ * Launch a Charger down the lane it just telegraphed. The direction is the
+ * one the DECAL showed, not a fresh bearing: a charge that re-aims at release
+ * would make the telegraph a lie and the sidestep pointless.
+ */
+const beginCharge = (
+  enemy: ServerEnemy,
+  ability: EnemyAbilityDef,
+  yaw: number,
+  ctx: AiContext,
+): void => {
+  const travelMs = Math.min(CHARGE_MAX_MS, (ability.chargeDistance / ability.chargeSpeed) * 1000);
+  enemy.charge = {
+    ability,
+    dirX: Math.sin(yaw),
+    dirZ: Math.cos(yaw),
+    endsAtMs: ctx.nowMs + travelMs,
+    lastX: enemy.x,
+    lastZ: enemy.z,
+    hitIds: new Set(),
+  };
+  enemy.yaw = yaw;
+};
+
+/**
+ * One tick of a lunge: sweep the segment travelled since last tick so a fast
+ * charge cannot tunnel THROUGH a player between ticks, damage each victim at
+ * most once, and stop on a wall or at the end of the lane — either way into
+ * the overshoot stagger, which is the whole counterplay to this archetype.
+ */
+const advanceCharge = (enemy: ServerEnemy, ctx: AiContext): void => {
+  const charge = enemy.charge;
+  if (!charge) return;
+  const { ability } = charge;
+  const stepX = charge.dirX * ability.chargeSpeed * ctx.dt;
+  const stepZ = charge.dirZ * ability.chargeSpeed * ctx.dt;
+  const nextX = enemy.x + stepX;
+  const nextZ = enemy.z + stepZ;
+  const walkable = ctx.terrain.walkableAt?.bind(ctx.terrain);
+  const blocked = walkable !== undefined && walkable(enemy.x, enemy.z) && !walkable(nextX, nextZ);
+  if (!blocked) {
+    enemy.x = nextX;
+    enemy.z = nextZ;
+  }
+  enemy.vx = blocked ? 0 : charge.dirX * ability.chargeSpeed;
+  enemy.vz = blocked ? 0 : charge.dirZ * ability.chargeSpeed;
+
+  // Sweep from where we were to where we are — the whole segment, so nobody
+  // is skipped by a 14 m/s lunge crossing 0.7 m per tick.
+  const victims = [...ctx.players.values()].filter(
+    (player) => !player.dead && !charge.hitIds.has(player.id),
+  );
+  if (victims.length > 0) {
+    const hit = chargeSweepHits(
+      charge.lastX,
+      charge.lastZ,
+      enemy.x,
+      enemy.z,
+      ability,
+      enemy,
+      victims,
+    );
+    for (const player of hit) {
+      charge.hitIds.add(player.id);
+      resolveEnemySwing(
+        enemy,
+        // The lane already decided WHO is hit; resolve damage on each victim
+        // with a point-blank arc so one code path applies mitigation/threat.
+        { ...ability, kind: 'melee_arc', reach: 1.2, angleDeg: 360 },
+        enemy.yaw,
+        player.movement.x,
+        player.movement.z,
+        [player],
+        ctx.nowMs,
+        ctx.rng,
+        ctx.events,
+        undefined,
+        undefined,
+        player.id,
+      );
+    }
+  }
+  charge.lastX = enemy.x;
+  charge.lastZ = enemy.z;
+
+  if (blocked || ctx.nowMs >= charge.endsAtMs) {
+    enemy.charge = null;
+    enemy.vx = 0;
+    enemy.vz = 0;
+    // Overshoot: the punish window. It rides the stagger channel so the
+    // client already plays the stumble and the Staggered flag already reads.
+    enemy.stunnedUntilMs = Math.max(enemy.stunnedUntilMs, ctx.nowMs + ability.overshootMs);
+    enemy.recoverUntilMs = Math.max(enemy.recoverUntilMs, ctx.nowMs + ability.overshootMs);
+    ctx.events.push({
+      type: 'entity-event',
+      entityId: enemy.id,
+      event: EntityEventKind.Stagger,
+      a: ability.overshootMs,
+      b: 0,
+      c: 0,
+    });
+  }
+};
+
+/** Players inside the swept lane this tick (shared capsule sweep). */
+const chargeSweepHits = (
+  fromX: number,
+  fromZ: number,
+  toX: number,
+  toZ: number,
+  ability: EnemyAbilityDef,
+  enemy: ServerEnemy,
+  players: readonly ServerPlayer[],
+): ServerPlayer[] => {
+  const targets = players.map((p) => ({
+    x: p.movement.x,
+    y: p.movement.y,
+    z: p.movement.z,
+    radius: PLAYER_RADIUS,
+    height: PLAYER_HEIGHT,
+  }));
+  return dashSweepHits(fromX, enemy.y, fromZ, toX, toZ, ability.chargeWidth / 2, targets).map(
+    (index) => players[index]!,
+  );
+};
+
 /** Preferred combat range: just inside the shortest ready melee reach. */
 const desiredRange = (enemy: ServerEnemy): number => {
   let best = 1.6;
@@ -449,14 +716,24 @@ const desiredRange = (enemy: ServerEnemy): number => {
   return best;
 };
 
-/** The projectile range band a Ranged enemy holds (null = pure melee kit). */
-const volleyBand = (enemy: ServerEnemy): { min: number; max: number } | null => {
-  let min = Infinity;
-  let max = 0;
+/**
+ * Where a stand-off archetype actually holds: its §1 band, clipped to the
+ * reach of the kit it was given. A row tagged `ranged` whose only projectile
+ * flies 10 m would otherwise hover at 15 m and never attack — the doc's band
+ * is the intent, the content is the truth.
+ */
+const standoffBand = (
+  enemy: ServerEnemy,
+  band: { min: number; max: number } | null,
+): { min: number; max: number } | null => {
+  if (!band) return null;
+  let reach = 0;
   for (const ability of enemy.def.abilities) {
-    if (ability.kind !== 'projectile') continue;
-    min = Math.min(min, Math.max(ability.rangeMin, 3));
-    max = Math.max(max, ability.rangeMax);
+    if (ability.kind === 'projectile' || ability.kind === 'ground_circle') {
+      reach = Math.max(reach, ability.rangeMax);
+    }
   }
-  return max > 0 ? { min, max } : null;
+  if (reach <= 0) return null; // tagged ranged but carries no ranged attack
+  const max = Math.min(band.max, reach);
+  return { min: Math.min(band.min, max - 1), max };
 };

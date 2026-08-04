@@ -146,6 +146,8 @@ export type CombatEvent =
       step: number;
       durationMs: number;
       yaw: number;
+      /** The wind-up is an interruptible cast, not a swing (v12 Casters). */
+      cast?: boolean;
     }
   | {
       type: 'ability-resolve';

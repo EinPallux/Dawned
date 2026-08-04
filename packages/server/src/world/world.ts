@@ -260,6 +260,10 @@ export class World {
     this.enemies.set(enemy.id, enemy);
     if (enemy.campTag) {
       const camp = this.campIndex.get(enemy.campTag) ?? [];
+      // Ring slot = position in the camp at spawn, fixed for this life. A slot
+      // recomputed per decision would make a swarm's circle rotate every time
+      // a member died (P9, NPCS_ENEMIES.md §1 surround behavior).
+      enemy.surroundSlot = camp.length;
       camp.push(enemy);
       this.campIndex.set(enemy.campTag, camp);
     }
@@ -626,6 +630,13 @@ export class World {
       enemiesByCamp: (tag) => this.campIndex.get(tag) ?? [],
       projectiles: this.projectiles,
       nextProjectileId: () => this.nextProjectileId++,
+      // Living pack-mates decide how wide a swarm's surround ring is. Counting
+      // the LIVING ones matters: as a pack is cut down the survivors close in
+      // rather than orbiting the gaps where their friends used to be.
+      packSize: (enemy) =>
+        enemy.campTag === null
+          ? 1
+          : (this.campIndex.get(enemy.campTag) ?? []).filter((mate) => mate.alive).length,
     };
 
     // 1. Player movement — re-simulated from client intents with the shared step.
