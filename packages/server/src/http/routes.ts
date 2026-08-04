@@ -315,6 +315,37 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
   });
 
   /**
+   * Spawn a transient wave of enemies (P9). GM primitive for world events, and
+   * how the load harness reaches the 150-active-AI budget the published
+   * bestiary does not by itself stand up. Wave enemies never respawn.
+   */
+  app.post('/ops/spawnwave', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as
+      | { enemyId?: unknown; count?: unknown; x?: unknown; z?: unknown; radius?: unknown }
+      | undefined;
+    const enemyId = typeof body?.enemyId === 'string' ? body.enemyId.trim() : '';
+    const count =
+      typeof body?.count === 'number' ? Math.min(200, Math.max(1, Math.floor(body.count))) : 1;
+    const x = typeof body?.x === 'number' ? body.x : NaN;
+    const z = typeof body?.z === 'number' ? body.z : NaN;
+    const radius =
+      typeof body?.radius === 'number' ? Math.min(120, Math.max(0, body.radius)) : 12;
+    if (!enemyId || !Number.isFinite(x) || !Number.isFinite(z)) {
+      return reply.code(400).send({ error: 'enemyId, x and z required' });
+    }
+    const spawned = world.queueSpawnWave(enemyId, count, x, z, radius);
+    if (spawned === 0) return reply.code(404).send({ error: 'unknown enemy id' });
+    return reply.send({ ok: true, enemyId, spawned });
+  });
+
+  /**
    * Teleport an online player (P9). Every verification run otherwise opens
    * with a two-minute walk to whichever camp or arena it is about to test.
    */

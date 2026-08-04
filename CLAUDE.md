@@ -219,7 +219,7 @@ it now applies a timed pool that drains through the same `absorbFromShields` pla
 and enemy damage runs through it (full absorb ⇒ `HitFlag.Absorbed`, threat/tag still count
 the full swing); (3) the gateway rebuilt `AbilityStart` field-by-field and never copied
 `cast`, so no enemy cast bar could ever appear — the field is REQUIRED on the message type
-now, which turns that omission into a compile error (NETWORKING.md §3.2). Also fixed:
+now, which turns that omission into a compile error (NETWORKING.md §3.3). Also fixed:
 nameplates clipped every name past ~17 chars (256 px canvas, centre-aligned). New dev
 levers `/ops/enemyhurt` and `/ops/tp` (ARCHITECTURE.md §3 table). 377 unit tests green;
 two-client, roll-probe, predict-lag, p8-probe and browser-p8 all pass on the same build.

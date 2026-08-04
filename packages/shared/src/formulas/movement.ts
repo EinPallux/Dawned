@@ -442,12 +442,28 @@ export function stepMovement(
   state.z = clamp(state.z, -WORLD_BOUNDS, WORLD_BOUNDS);
 
   // 9. Water & ground resolution + fall damage.
+  //
+  // Over a column the sampler has NO data for, there is no ground to resolve
+  // against: `heightAt` answers OCEAN_FLOOR_Y, which is indistinguishable from
+  // real sea floor, and predicting against it drops the character eleven metres
+  // under the island. Only a streaming client can be in that state (the server
+  // always holds the whole map), and only when it outruns its own stream — a
+  // teleport does it instantly. Hold the vertical state and let the next
+  // snapshot supply the truth; horizontal movement continues normally.
+  const hasGround = terrain.hasDataAt?.(state.x, state.z) !== false;
   const groundY = terrain.heightAt(state.x, state.z);
   const waterLevel = terrain.waterLevelAt?.(state.x, state.z) ?? null;
   const swimmable = waterLevel !== null && waterLevel - groundY > SWIM_DEPTH;
   const surfaceY = waterLevel !== null ? waterLevel - SWIM_SURFACE_OFFSET : 0;
 
-  if (swimmable && state.y <= surfaceY) {
+  if (!hasGround) {
+    // Nothing to resolve against: hold the column, keep the fall reference at
+    // the current height so arriving data cannot bill a phantom drop as fall
+    // damage, and fall through to the timers below (a roll must keep counting
+    // down on both sides, or the client and server disagree about its length).
+    state.vy = 0;
+    state.fallPeakY = state.y;
+  } else if (swimmable && state.y <= surfaceY) {
     // Surface swim: pinned just under the waterline. Entering from a fall is a
     // soft splash — swimmable water negates fall damage entirely (COMBAT.md §5).
     state.y = surfaceY;

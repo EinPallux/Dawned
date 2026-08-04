@@ -529,6 +529,35 @@ export class World {
   private readonly pendingEnemyHurt: { enemyId: number; fraction: number }[] = [];
 
   /**
+   * Spawn a one-off wave of enemies (/ops/spawnwave, P9). The GM primitive
+   * behind a world event, and how the load harness reaches the TECH_STACK
+   * budget number — the published bestiary only stands up 51 enemies and the
+   * budget is written for 150 active AI.
+   *
+   * The wave carries a synthetic spawner id that content does not contain, so
+   * `onEnemyDeath` finds no spawner and files no respawn ticket: killing a
+   * wave removes it for good, and a load run cannot leave the world permanently
+   * heavier than the owner authored it.
+   */
+  queueSpawnWave(enemyId: string, count: number, x: number, z: number, radius: number): number {
+    const def = this.content?.enemies.get(enemyId);
+    if (!def) return 0;
+    const spawner: SpawnerDef = {
+      id: `ops_wave_${this.nextEntityId}`,
+      x,
+      z,
+      radius,
+      kind: radius > 0 ? 'area' : 'point',
+      campTag: null,
+      entries: [{ enemyId, count, level: null }],
+      respawnMs: 0,
+      nightOnly: false,
+    };
+    for (let i = 0; i < count; i++) this.spawnEnemy(spawner, def, this.rollLevel(def, null));
+    return count;
+  }
+
+  /**
    * Teleport an online player to a world position (/ops/tp, P9). Reaching a
    * named camp or a boss arena is otherwise a two-minute walk in every smoke;
    * the drop is grounded on the terrain the server itself samples, so the

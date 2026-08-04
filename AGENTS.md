@@ -84,6 +84,6 @@ nothing beyond it.
     resolved as a melee cone instead of the circle it drew (it now lands on the target's
     ground and tests that circle), `self_shield` granted nothing (now a real timed absorb
     draining through the players' own `absorbFromShields`), and the gateway silently
-    dropped the protocol's `cast` flag (the field is required now — NETWORKING.md §3.2:
+    dropped the protocol's `cast` flag (the field is required now — NETWORKING.md §3.3:
     optional wire fields are a silent-failure trap). Nameplates no longer clip long names.
     New dev levers `/ops/enemyhurt` and `/ops/tp`. 377 tests green.

@@ -669,3 +669,54 @@ describe('hard CC on players (P6, COMBAT.md §6.4)', () => {
     expect(Math.hypot(state.vx, state.vz)).toBeCloseTo(DODGE_DISTANCE_M / DODGE_DURATION_S, 4);
   });
 });
+
+/**
+ * A streaming client can outrun its own chunk stream — a teleport does it
+ * instantly. Over a column it has no data for, `heightAt` answers
+ * OCEAN_FLOOR_Y, which reads exactly like real sea floor, and predicting
+ * against that drops the character under the island until the chunk lands.
+ */
+describe('terrain the sampler does not have yet (P9)', () => {
+  /** Terrain that pretends everything past z = 100 has not streamed in. */
+  const streaming = {
+    heightAt: (_x: number, z: number) => (z > 100 ? -8 : 0),
+    hasDataAt: (_x: number, z: number) => z <= 100,
+  };
+
+  it('holds the column instead of falling to the sea floor', () => {
+    const state = createMovementState(0, 0, 120);
+    state.grounded = true;
+    for (let i = 0; i < 20; i++) stepMovement(state, idle, TICK_DT, streaming);
+    expect(state.y).toBe(0); // NOT -8
+    expect(state.vy).toBe(0);
+  });
+
+  it('bills no fall damage when the ground finally arrives', () => {
+    const state = createMovementState(0, 0, 120);
+    for (let i = 0; i < 20; i++) stepMovement(state, idle, TICK_DT, streaming);
+    // The chunk lands: same position, but now the sampler has it (and it is
+    // 6 m lower than where the character was held).
+    const arrived = { heightAt: () => -6, hasDataAt: () => true };
+    const result = stepMovement(state, idle, TICK_DT, arrived);
+    expect(result.fallDamageFraction).toBe(0);
+    expect(result.fallDistance).toBe(0);
+  });
+
+  it('still counts a roll down while over unknown ground', () => {
+    const state = createMovementState(0, 0, 120);
+    stepMovement(state, { ...forward, buttons: InputButton.Dodge }, TICK_DT, streaming);
+    const started = state.rollTimeLeft;
+    expect(started).toBeGreaterThan(0);
+    stepMovement(state, idle, TICK_DT, streaming);
+    // The timer is shared state; freezing it here would desync every roll that
+    // crossed a streaming boundary.
+    expect(state.rollTimeLeft).toBeLessThan(started);
+  });
+
+  it('leaves a sampler without hasDataAt (server, dev terrain) untouched', () => {
+    const state = createMovementState(0, 5, 0);
+    state.grounded = false;
+    stepMovement(state, idle, TICK_DT, ground);
+    expect(state.y).toBeLessThan(5); // gravity, exactly as before
+  });
+});
