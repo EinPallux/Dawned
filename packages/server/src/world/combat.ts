@@ -47,7 +47,6 @@ import {
   gainResource,
   payResource,
   arcHits,
-  baseWeaponDamage,
   interruptCast,
   isDodgeInvulnerable,
   rollDamage,
@@ -75,6 +74,7 @@ import {
   manaShieldRateOf,
   removeEffect,
 } from './effects.js';
+import { playerWeaponDamage } from './items.js';
 import type { ServerPlayer } from './player.js';
 import type { ServerEnemy } from './enemy.js';
 
@@ -196,7 +196,26 @@ export type CombatEvent =
   /** Progression state changed: gateway sends ProgressSync + persists. */
   | { type: 'progress-dirty'; playerId: number }
   /** First-time discovery: gateway persists the row + toasts the finder. */
-  | { type: 'discovery'; playerId: number; kind: 'zone'; refId: string; label: string };
+  | { type: 'discovery'; playerId: number; kind: 'zone'; refId: string; label: string }
+  // --- items (P8) ----------------------------------------------------------
+  /** Bag/paper-doll/purse changed — resend the authoritative sheet + persist. */
+  | { type: 'inventory-dirty'; playerId: number }
+  /** The set of bags this player can see changed (spawn, loot, despawn). */
+  | { type: 'loot-dirty'; playerId: number }
+  /** Toast-worthy bag traffic (pickup, sale, refusal) — ITEMS_LOOT.md §3. */
+  | {
+      type: 'item-notice';
+      playerId: number;
+      kind: 'picked' | 'gold' | 'sold' | 'bought' | 'full' | 'refused' | 'used' | 'equipped';
+      itemId?: string;
+      qty?: number;
+      gold?: number;
+      reason?: string;
+    }
+  /** A vendor panel should open/refresh (or close, when the lease broke). */
+  | { type: 'vendor-panel'; playerId: number; vendorId: string; open: boolean }
+  /** The paper-doll changed: re-derive stats and re-broadcast the loadout. */
+  | { type: 'equipment-changed'; playerId: number };
 
 export interface ServerProjectile {
   id: number;
@@ -407,7 +426,7 @@ export const advancePlayerContact = (
 
   const combo = chains[player.classId];
   const stepDef = combo.steps[contact.step]!;
-  const weapon = baseWeaponDamage(player.level);
+  const weapon = playerWeaponDamage(player);
   // Node folds (P7): school % rides the fire-time multiplier for bolts;
   // melee rolls use nodeDamageMultVs (school + per-target conditionals).
   const nodeAgg = player.progress.aggregates;

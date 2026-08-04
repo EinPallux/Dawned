@@ -69,6 +69,16 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     return { nodes: [...content.skillNodes.values()] };
   });
 
+  /**
+   * Published item definitions (P8): names, icons, rarity, stat blocks — the
+   * catalogue every tooltip, bag cell and vendor row is drawn from. The wire
+   * only ever carries item IDs; this is where they get their meaning.
+   */
+  app.get('/api/content/items', (_request, reply) => {
+    void reply.header('cache-control', 'no-cache');
+    return { items: [...content.items.values()] };
+  });
+
   /** Minimal public status for the login screen's server pip. */
   app.get('/api/status', () => ({
     online: true,
@@ -211,5 +221,42 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       return reply.code(404).send({ error: 'player not online' });
     }
     return reply.send({ ok: true, fraction });
+  });
+
+  /**
+   * Grant items or gold to an online player (P8). GM primitive behind the
+   * panel's future "grant item" button and the P8 smoke's fixtures — it runs
+   * the same planner a pickup does, so a full bag refuses like a full bag.
+   */
+  app.post('/ops/grant', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as
+      { player?: unknown; itemId?: unknown; qty?: unknown; gold?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const itemId = typeof body?.itemId === 'string' ? body.itemId.trim() : '';
+    const qty =
+      typeof body?.qty === 'number' ? Math.min(999, Math.max(1, Math.floor(body.qty))) : 1;
+    const gold =
+      typeof body?.gold === 'number'
+        ? Math.min(1_000_000, Math.max(-1_000_000, Math.floor(body.gold)))
+        : 0;
+    if (!player || (!itemId && gold === 0)) {
+      return reply.code(400).send({ error: 'player and itemId or gold required' });
+    }
+    if (itemId && !world.hasItem(itemId)) {
+      return reply.code(404).send({ error: 'unknown item id' });
+    }
+    const delivered = itemId
+      ? world.queueGrant(player, itemId, qty)
+      : world.queueGrantGold(player, gold);
+    if (!delivered) return reply.code(404).send({ error: 'player not online' });
+    if (itemId && gold !== 0) world.queueGrantGold(player, gold);
+    return reply.send({ ok: true, ...(itemId ? { itemId, qty } : {}), ...(gold ? { gold } : {}) });
   });
 };

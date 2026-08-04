@@ -265,6 +265,14 @@ export interface RosterEntry {
   classId: ClassId;
   level: number;
   appearance: Appearance;
+  /**
+   * Visible loadout (v10): baked model refs for what the character holds.
+   * Armor never changes the look (ITEMS_LOOT.md §1) — only these two do, so
+   * the roster (already the appearance channel) carries them and every
+   * client attaches the same models to the same sockets.
+   */
+  mainhandModel?: string | null;
+  offhandModel?: string | null;
 }
 
 export interface WelcomeMessage {
@@ -825,9 +833,12 @@ export const decodeLevelUp = (reader: BinaryReader): LevelUpMessage => ({
 // messages, and their shapes are heterogeneous by nature.
 // ---------------------------------------------------------------------------
 
-/** One owned stack on the wire (bag cell or paper-doll slot). */
+/**
+ * One owned stack on the wire (bag cell or paper-doll slot). The cell IS the
+ * identity here — row ids stay server-side, where they are rewritten on every
+ * flush and would only give the client something false to key on.
+ */
 export interface WireStack {
-  id: number;
   itemId: string;
   qty: number;
   /** Rolled attributes for gear; absent for stackables. */
@@ -879,6 +890,11 @@ export const encodeLootBags = (msg: LootBagsMessage, writer?: BinaryWriter): Uin
 /** An opened vendor: priced stock + this session's buyback shelf (§6). */
 export interface VendorPanelMessage {
   vendorId: string;
+  /**
+   * false = close the panel. The lease is proximity-based: walking away from
+   * the post ends the conversation server-side, so the UI must follow.
+   */
+  open: boolean;
   name: string;
   kind: string;
   greeting: string;

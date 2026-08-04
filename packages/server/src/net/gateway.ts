@@ -28,10 +28,15 @@ import {
   encodeAbilityStart,
   encodeAbilityState,
   encodeEffectSync,
+  encodeInventorySync,
+  encodeItemNotice,
   encodeLevelUp,
+  encodeLootBags,
   encodeProgressSync,
+  encodeVendorPanel,
   encodeXpGained,
   exportCooldowns,
+  parseItemOp,
   slotForAction,
   encodeChatBroadcast,
   encodeEnemyMeta,
@@ -47,7 +52,11 @@ import {
   peekOpcode,
   type ChatMessage,
   type EnemyMetaEntry,
+  type InventorySyncMessage,
+  type LootBagsMessage,
   type SnapshotEntity,
+  type VendorPanelMessage,
+  type WireStack,
 } from '@dawned/shared';
 import type { Logger } from '../logger.js';
 import type { Config } from '../config.js';
@@ -59,6 +68,13 @@ import { CharacterService, toAppearance } from '../characters/service.js';
 import { Session } from './session.js';
 import type { CombatEvent } from '../world/combat.js';
 import { progressSyncOf } from '../world/progression.js';
+import {
+  bagsFor,
+  inventoryRows,
+  shareRarity,
+  vendorBuyPrice,
+  type LootBag,
+} from '../world/items.js';
 
 const MAX_CHAT_LENGTH = 200;
 /** Position write-behind cadence (docs/tech/DATABASE.md §2). */
@@ -214,6 +230,19 @@ export class Gateway {
         this.world.queueRespec(player.id, decodeRespec(reader).kind);
         return;
       }
+      case ClientOp.ItemOp: {
+        const player = session.player;
+        if (session.state !== 'playing' || !player || !session.allowGeneric()) return;
+        // The only client-authored JSON in the protocol: zod decides whether it
+        // is an item op at all, the world decides whether it is legal.
+        const op = parseItemOp(decodeJsonEnvelope(reader));
+        if (!op) {
+          player.violations++;
+          return;
+        }
+        this.world.queueItemOp(player.id, op);
+        return;
+      }
       default:
         throw new ProtocolError(`unknown opcode 0x${opcode.toString(16)}`);
     }
@@ -306,10 +335,11 @@ export class Gateway {
         }
       }
 
-      // Progression state (P7): skill ranks + seen zones ride separate tables.
-      const [nodeRanks, zonesSeen] = await Promise.all([
+      // Progression state (P7) + the pack (P8) ride separate tables.
+      const [nodeRanks, zonesSeen, inventory] = await Promise.all([
         this.characters.loadSkills(character.id),
         this.characters.loadDiscoveries(character.id, 'zone'),
+        this.characters.loadInventory(character.id),
       ]);
       if (!session.isIn('authenticating')) return;
 
@@ -341,6 +371,7 @@ export class Gateway {
           nodeRanks,
           zonesSeen,
         },
+        inventory,
       });
     }
     session.player = player;
@@ -370,6 +401,10 @@ export class Gateway {
     session.send(
       encodeProgressSync(progressSyncOf(player, this.world.progressionContent()), session.writer),
     );
+    // …then the pack (P8). A reattaching player also gets their bags back:
+    // the 60 s timer kept running while their socket was gone.
+    this.sendInventory(session);
+    this.sendLootBags(session);
 
     if (reattached) {
       this.log.info(
@@ -466,6 +501,34 @@ export class Gateway {
         }
         this.world.queueSetLevel(player.id, level);
         this.log.info({ by: player.name, level }, '/setlevel');
+        return;
+      }
+      case '/grant': {
+        if (player.role !== 'gm' && player.role !== 'admin') {
+          this.sendSystemChatTo(session, `Unknown command: ${command}`);
+          return;
+        }
+        const parts = text.split(/\s+/).slice(1);
+        const what = parts[0] ?? '';
+        const amount = parts[1] === undefined ? 1 : Number(parts[1]);
+        if (!what || !Number.isInteger(amount) || amount === 0) {
+          this.sendSystemChatTo(session, 'Usage: /grant <item_id|gold> <qty> [character]');
+          return;
+        }
+        const name = parts.length > 2 ? parts.slice(2).join(' ') : player.name;
+        const gold = what.toLowerCase() === 'gold';
+        if (!gold && !this.world.hasItem(what)) {
+          this.sendSystemChatTo(session, `No published item "${what}".`);
+          return;
+        }
+        const queued = gold
+          ? this.world.queueGrantGold(name, amount)
+          : this.world.queueGrant(name, what, Math.min(999, Math.abs(amount)));
+        if (!queued) {
+          this.sendSystemChatTo(session, `No character named "${name}" is online.`);
+          return;
+        }
+        this.log.info({ by: player.name, target: name, what, amount }, '/grant');
         return;
       }
       case '/stuck': {
@@ -777,8 +840,173 @@ export class Gateway {
             });
           break;
         }
+        // --- items (P8) ------------------------------------------------------
+        case 'inventory-dirty': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          // The sync IS the correction: whatever the client predicted, this is
+          // what it owns now. Items are rare enough for write-through.
+          this.sendInventory(target);
+          this.persistInventory(target.player);
+          this.persistProgress(target.player); // gold lives on the character row
+          break;
+        }
+        case 'loot-dirty': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (target) this.sendLootBags(target);
+          break;
+        }
+        case 'item-notice': {
+          const target = this.findSessionByPlayer(event.playerId);
+          target?.send(
+            encodeItemNotice({
+              kind: event.kind,
+              ...(event.itemId === undefined ? {} : { itemId: event.itemId }),
+              ...(event.qty === undefined ? {} : { qty: event.qty }),
+              ...(event.gold === undefined ? {} : { gold: event.gold }),
+              ...(event.reason === undefined ? {} : { reason: event.reason }),
+            }),
+          );
+          break;
+        }
+        case 'vendor-panel': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (target?.player) this.sendVendorPanel(target, event.vendorId, event.open);
+          break;
+        }
+        case 'equipment-changed': {
+          // Held gear is visible to everyone (ITEMS_LOOT.md §1) — the roster is
+          // the appearance channel, so a weapon swap is a roster change.
+          this.broadcastRoster();
+          break;
+        }
       }
     }
+  }
+
+  /** Wire form of one stack (the DB id is never sent — cells are the identity). */
+  private wireStack(stack: {
+    itemId: string;
+    qty: number;
+    rolled: Record<string, number> | null;
+  }): WireStack {
+    return stack.rolled
+      ? { itemId: stack.itemId, qty: stack.qty, rolled: stack.rolled }
+      : { itemId: stack.itemId, qty: stack.qty };
+  }
+
+  /** Authoritative bag + paper-doll + purse for one session (v10). */
+  private sendInventory(session: Session): void {
+    const player = session.player;
+    if (!player) return;
+    const now = Date.now();
+    const items = player.items;
+    const equipment: Record<string, WireStack> = {};
+    for (const [slot, stack] of items.inventory.equipment) {
+      equipment[slot] = this.wireStack(stack);
+    }
+    const cooldowns: Record<string, number> = {};
+    for (const [lane, readyAt] of items.cooldowns) {
+      if (readyAt > now) cooldowns[lane] = readyAt;
+    }
+    const message: InventorySyncMessage = {
+      bag: [...items.inventory.bag].map(([slot, stack]) => [slot, this.wireStack(stack)]),
+      equipment,
+      gold: player.progress.gold,
+      cooldowns,
+      serverTimeMs: now,
+    };
+    session.send(encodeInventorySync(message, session.writer));
+  }
+
+  /** This player's own instanced view of every bag they have a share in (§3). */
+  private sendLootBags(session: Session): void {
+    const player = session.player;
+    if (!player) return;
+    const defs = this.world.itemContent().items;
+    const bags: LootBag[] = bagsFor(this.world.lootBags, player.id);
+    const message: LootBagsMessage = {
+      bags: bags.map((bag) => {
+        const share = bag.shares.get(player.id);
+        return {
+          id: bag.id,
+          x: bag.x,
+          y: bag.y,
+          z: bag.z,
+          rarity: share ? shareRarity(share, defs) : 'common',
+          items: (share?.items ?? []).map((entry, index) => ({
+            index,
+            itemId: entry.itemId,
+            qty: entry.qty,
+            ...(entry.rolled ? { rolled: entry.rolled } : {}),
+          })),
+          gold: share?.gold ?? 0,
+          expiresAtMs: bag.expiresAtMs,
+        };
+      }),
+      serverTimeMs: Date.now(),
+    };
+    session.send(encodeLootBags(message, session.writer));
+  }
+
+  /** Priced stock + this session's buyback shelf — the server owns every price. */
+  private sendVendorPanel(session: Session, vendorId: string, open: boolean): void {
+    const player = session.player;
+    if (!player) return;
+    const content = this.world.itemContent();
+    const vendor = content.vendors.get(vendorId);
+    if (!vendor || !open) {
+      session.send(
+        encodeVendorPanel(
+          {
+            vendorId,
+            open: false,
+            name: '',
+            kind: '',
+            greeting: '',
+            stock: [],
+            buyback: [],
+            sellMult: 0,
+          },
+          session.writer,
+        ),
+      );
+      return;
+    }
+    const message: VendorPanelMessage = {
+      vendorId: vendor.id,
+      open: true,
+      name: vendor.name,
+      kind: vendor.kind,
+      greeting: vendor.greeting,
+      stock: vendor.stock.flatMap((entry) => {
+        const def = content.items.get(entry.itemId);
+        if (!def) return []; // unpublished ref: the shelf just stays empty
+        return [{ itemId: entry.itemId, price: vendorBuyPrice(vendor, def) }];
+      }),
+      buyback: player.items.buyback.map((entry, index) => ({
+        index,
+        itemId: entry.itemId,
+        qty: entry.qty,
+        price: entry.price,
+      })),
+      sellMult: vendor.sellMult,
+    };
+    session.send(encodeVendorPanel(message, session.writer));
+  }
+
+  /** Serialized write-through of the whole pack (rows are replaced wholesale). */
+  private persistInventory(player: ServerPlayer): void {
+    const rows = inventoryRows(player.items).map((row) => ({
+      container: row.container,
+      slot: row.slot,
+      stack: { ...row.stack },
+    }));
+    player.items.persistChain = player.items.persistChain
+      .then(() => this.characters.saveInventory(player.characterId, rows))
+      .catch((error: unknown) => {
+        this.log.error({ err: error, character: player.characterId }, 'inventory save failed');
+      });
   }
 
   /** Serialized write-through of xp/level/gold/points for one character. */

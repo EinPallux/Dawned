@@ -99,6 +99,16 @@ transactions (those are write-through).
 > alert beat of the camp you spawn next to — if events went first. Enemy AI runs at 10 Hz by
 > id parity (half the brains per tick); enemy `EnemyMeta` announcements piggyback the
 > snapshot path so meta always precedes the first snapshot containing that enemy.
+>
+> **As built (P7/P8):** the same queue-then-drain shape carries UI-cadence intents.
+> Progression clicks (P7) and item ops (P8) are validated at the gateway, queued, and
+> applied at the TOP of the next `world.step()` (sections 0b/0c) so their effects and
+> events ride the normal flush instead of landing mid-tick. Item ops run the shared
+> planner in `world/items.ts`; an equipment change re-prices the worn set and re-folds
+> derived stats immediately, so the very next damage roll in the same tick already uses
+> the new weapon. Every item outcome — including a refusal — emits `inventory-dirty`,
+> which the gateway answers with a full `InventorySync` and a write-through save
+> serialized per character (the same `persistChain` pattern progression uses).
 
 **Content cache:** published content (items, enemies, abilities, loot, quests, zones, spawn layers,
 walkgrid, node placements) loads at boot from PG + baked files; `/ops/reload-content` (admin-panel

@@ -49,6 +49,9 @@ import {
   type SnapshotEntity,
   type SpawnerDef,
   type TerrainSampler,
+  type EquipSlot,
+  type ItemOp,
+  type ItemStack,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
 import { ServerEnemy } from './enemy.js';
@@ -82,8 +85,22 @@ import {
   respec,
   setLevel,
   type ProgressionContent,
+  rebuildPlayerDerived,
+  killTaggers,
 } from './progression.js';
 import { CORPSE_LINGER_MS, decide, enterCombat, move, type AiContext } from './enemy-ai.js';
+import {
+  applyItemOp,
+  createPlayerItems,
+  expireLootBags,
+  grantGold,
+  grantItem,
+  refreshEquipmentBonus,
+  rollEnemyLoot,
+  sweepVendorLeases,
+  type ItemContent,
+  type LootBag,
+} from './items.js';
 
 /** AOI radii (docs/tech/NETWORKING.md §5): 3×3 of 64 m cells ≈ 96 m, +8 m leave margin. */
 const AOI_ENTER_SQ = 96 * 96;
@@ -146,6 +163,19 @@ export class World {
       xpRate: this.content?.worldSettings.xpRate ?? 1,
     };
   }
+
+  /** Published item/loot/vendor rows (empty maps until P8 content lands). */
+  itemContent(): ItemContent {
+    return {
+      items: this.content?.items ?? new Map(),
+      lootTables: this.content?.lootTables ?? new Map(),
+      vendors: this.content?.vendors ?? new Map(),
+    };
+  }
+
+  /** Live loot bags by id — the gateway reads them to build LootBags. */
+  readonly lootBags = new Map<number, LootBag>();
+  private nextLootBagId = 1;
 
   get playerCount(): number {
     return this.players.size;
@@ -294,6 +324,11 @@ export class World {
       nodeRanks: Map<string, number>;
       zonesSeen: Set<string>;
     };
+    /** Persisted bag + paper-doll (P8); absent = an empty pack. */
+    inventory?: {
+      bag: Map<number, ItemStack>;
+      equipment: Map<EquipSlot, ItemStack>;
+    };
   }): ServerPlayer {
     const id = this.nextEntityId++;
     // A stale persisted position (map changed underneath it — e.g. the P1 flat
@@ -317,6 +352,7 @@ export class World {
         zonesSeen: new Set(),
       },
     );
+    const items = createPlayerItems(progress.gold, spec.inventory);
     const player = new ServerPlayer(
       id,
       spec.characterId,
@@ -327,12 +363,15 @@ export class World {
       spec.appearance,
       spec.role ?? 'player',
       progress,
+      items,
       spawn.x,
       y,
       spawn.z,
       spawn.yaw,
       spec.hp ?? null,
     );
+    // Worn gear contributes to the very same fold, so price it first.
+    refreshEquipmentBonus(player.items, this.itemContent().items);
     // Fold the allocated tree into stats/pools/defs (never refills — the
     // persisted HP survives the login). Re-apply the persisted HP after the
     // fold: node HP% raises the cap, and the constructor clamped against the
@@ -371,8 +410,13 @@ export class World {
     // Re-fold every online character: node aggregates reference content defs
     // (abilities for effective defs, node rows for effects) that just changed.
     const progression = this.progressionContent();
+    const items = this.itemContent().items;
     for (const player of this.players.values()) {
       rebuildNodeFolds(player, progression);
+      // Worn gear caches its contribution; a re-published item row (or a
+      // retuned stat block) has to land on characters already wearing it.
+      refreshEquipmentBonus(player.items, items);
+      rebuildPlayerDerived(player, false);
     }
     return {
       abilities: next.abilities.size,
@@ -389,6 +433,15 @@ export class World {
     | { kind: 'respec'; playerId: number; wireKind: number }
     | { kind: 'setlevel'; playerId: number; level: number }
   )[] = [];
+
+  /** Item intents (P8) ride the tick like progression clicks do. */
+  private readonly pendingItemOps: { playerId: number; op: ItemOp }[] = [];
+
+  queueItemOp(playerId: number, op: ItemOp): void {
+    // Bounded: a spamming client fills its own queue, not the server's heap.
+    if (this.pendingItemOps.length > 512) return;
+    this.pendingItemOps.push({ playerId, op });
+  }
 
   queueAllocateStats(playerId: number, deltas: AttributeSpread): void {
     this.pendingProgress.push({ kind: 'stats', playerId, deltas });
@@ -450,6 +503,44 @@ export class World {
     return false;
   }
 
+  /**
+   * Ops-queued item/gold grants (/ops/grant — the GM primitive behind the
+   * panel's future "grant item" button, and how the P8 smoke stages fixtures
+   * that no loot table has to cooperate for). Runs the same planner a pickup
+   * does, so a full bag refuses exactly like a full bag.
+   */
+  private readonly pendingGrants: (
+    | { playerId: number; kind: 'item'; itemId: string; qty: number }
+    | { playerId: number; kind: 'gold'; amount: number }
+  )[] = [];
+
+  queueGrant(name: string, itemId: string, qty: number): boolean {
+    return this.queueForName(name, (id) =>
+      this.pendingGrants.push({ playerId: id, kind: 'item', itemId, qty }),
+    );
+  }
+
+  queueGrantGold(name: string, amount: number): boolean {
+    return this.queueForName(name, (id) =>
+      this.pendingGrants.push({ playerId: id, kind: 'gold', amount }),
+    );
+  }
+
+  private queueForName(name: string, queue: (playerId: number) => void): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() === name.toLowerCase()) {
+        queue(player.id);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** True when the id exists in published content — /ops/grant checks first. */
+  hasItem(itemId: string): boolean {
+    return this.itemContent().items.has(itemId);
+  }
+
   step(): CombatEvent[] {
     const events: CombatEvent[] = [];
     const nowMs = Date.now();
@@ -479,6 +570,44 @@ export class World {
         setLevel(requester, request.level, progression, events);
       }
     }
+    // 0c. Item requests (P8): drags, equips, loot, vendor trades. Each runs
+    // the shared planner; a refusal still resyncs the requester. Equipment
+    // changes re-fold derived stats so the next damage roll uses the new gear.
+    if (this.pendingItemOps.length > 0 || this.pendingGrants.length > 0) {
+      const itemDeps = {
+        content: this.itemContent(),
+        bags: this.lootBags,
+        nowMs,
+        events,
+      };
+      for (const grant of this.pendingGrants.splice(0)) {
+        const receiver = this.players.get(grant.playerId);
+        if (!receiver) continue;
+        if (grant.kind === 'gold') {
+          grantGold(receiver, grant.amount, itemDeps);
+        } else {
+          grantItem(receiver, grant.itemId, grant.qty, itemDeps);
+        }
+      }
+      for (const request of this.pendingItemOps.splice(0)) {
+        const requester = this.players.get(request.playerId);
+        if (!requester) continue;
+        const result = applyItemOp(requester, request.op, itemDeps);
+        if (result.equipmentChanged) {
+          refreshEquipmentBonus(requester.items, itemDeps.content.items);
+          rebuildPlayerDerived(requester, false);
+          events.push({ type: 'equipment-changed', playerId: requester.id });
+        }
+      }
+    }
+
+    // Bags rot after 60 s (§3); whoever could see one re-syncs.
+    for (const playerId of expireLootBags(this.lootBags, nowMs)) {
+      events.push({ type: 'loot-dirty', playerId });
+    }
+    // A vendor conversation ends when you walk away from the post (§6).
+    sweepVendorLeases(this.players.values(), this.itemContent().vendors, events);
+
     for (const hurt of this.pendingHurt.splice(0)) {
       const target = this.players.get(hurt.playerId);
       if (target && !target.dead) {
@@ -922,6 +1051,30 @@ export class World {
         events,
       );
     }
+    // Loot (P8, ITEMS_LOOT.md §3–4): one INDEPENDENT roll per tagger, all
+    // parcelled into a single bag at the corpse. Same tag rule as the XP
+    // above, so nobody is paid experience but skipped for drops.
+    if (enemy.def.archetype !== 'dummy' && enemy.def.loot) {
+      const taggers = [...killTaggers({ damage: enemy.damageBy, healAssists: enemy.healAssists })]
+        .map((playerId) => this.players.get(playerId))
+        .filter((player): player is ServerPlayer => player !== undefined && !player.dead);
+      const bag = rollEnemyLoot(
+        enemy,
+        taggers,
+        this.itemContent(),
+        this.rng,
+        nowMs,
+        this.nextLootBagId,
+      );
+      if (bag) {
+        this.nextLootBagId++;
+        this.lootBags.set(bag.id, bag);
+        for (const playerId of bag.shares.keys()) {
+          events.push({ type: 'loot-dirty', playerId });
+        }
+      }
+    }
+
     // Killer's Rhythm-style on-kill buffs for whoever landed the blow (P7).
     if (killerPlayerId !== null) {
       const killer = this.players.get(killerPlayerId);
@@ -1193,12 +1346,21 @@ export class World {
   }
 
   roster(): RosterEntry[] {
-    return Array.from(this.players.values(), (player) => ({
-      id: player.id,
-      name: player.name,
-      classId: player.classId,
-      level: player.level,
-      appearance: player.appearance,
-    }));
+    const defs = this.itemContent().items;
+    return Array.from(this.players.values(), (player) => {
+      // Visible weapons ride the roster (ITEMS_LOOT.md §1): armour never
+      // changes the silhouette, held gear always does — for everyone.
+      const mainhand = player.items.inventory.equipment.get('mainhand');
+      const offhand = player.items.inventory.equipment.get('offhand');
+      return {
+        id: player.id,
+        name: player.name,
+        classId: player.classId,
+        level: player.level,
+        appearance: player.appearance,
+        mainhandModel: mainhand ? (defs.get(mainhand.itemId)?.modelRef ?? null) : null,
+        offhandModel: offhand ? (defs.get(offhand.itemId)?.modelRef ?? null) : null,
+      };
+    });
   }
 }

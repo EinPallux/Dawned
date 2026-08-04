@@ -5,6 +5,42 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — P8 Items, Inventory, Loot & Vendors (in progress, 2026-08-04)
+
+- **Shared item core (P8-A, protocol v10):** items, loot tables and vendors
+  are now content schemas (`content_items` / `content_loot_tables` /
+  `content_vendors`) with the ITEMS_LOOT.md §2 budgets as shared formulas —
+  stat budget by slot weight × ilvl × rarity, free armour per armour class,
+  weapon damage bands, prices, kill gold and the per-rarity roll count the
+  panel ƒ-suggests and publish warns about. Loot tables nest, gate by killer
+  level, and carry `nothing` as a first-class weighted entry so drop rates
+  read honestly; the roller is cycle- and depth-guarded and is the SAME code
+  the admin simulator will run. The inventory itself is a plan/apply model:
+  every mutation (move, split, sort, equip, unequip, use, drop, loot, vendor
+  trade) is planned as a list of cell writes and applied atomically — moves
+  rewrite cells and never mint, only add/remove change totals. A 5-seed ×
+  4000-op fuzz suite asserts conservation after every single step (it caught
+  a real dupe in `planSort` on its first run). New wire traffic: `ItemOp` up
+  (the one client-authored JSON envelope, zod-gated), `InventorySync`,
+  `LootBags`, `VendorPanel` and `ItemNotice` down.
+- **Server item runtime (P8-B):** the pack is live and authoritative.
+  Equipment folds into the derived-stat pass exactly like allocated points
+  (so +5 VIT really is +60 HP), the equipped main hand replaces the implied
+  training-gear damage band at every damage site, and held weapons ride the
+  roster so everyone sees them — armour never changes the silhouette. Kills
+  drop a bag with one INDEPENDENT roll per tagged player (same tag rule as
+  XP: ≥10% damage or any heal on a tagger), 60 s lifetime, 4 m reach, gold
+  auto-picked, overflow left behind rather than eaten. Consumables run
+  shared cooldown lanes; vendors price every trade server-side with a
+  10-deep session buyback shelf and a proximity lease that closes the panel
+  when you walk away. The pack persists write-through per change (bag,
+  paper-doll and purse survive a relog), and GM primitives `/grant` and
+  `/ops/grant` deliver items or gold through the same planner a pickup uses.
+  Published items are served at `/api/content/items`. Migration 0011 adds
+  `character_items` + the three content tables. Verified by 20 new server
+  tests and `tools/smoke/p8-probe.mjs` (join sync → grants → drags with a
+  refusal that still resyncs → equip → relog).
+
 ### Added — P7 Progression (in progress, 2026-08-04)
 
 - **Shared progression core (P7-A, protocol v9):** the level curve

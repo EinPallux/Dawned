@@ -88,9 +88,10 @@ cross-ref checks: every loot ref exists, every spawner enemy exists, every quest
 not by FKs across draft tables (drafts may be temporarily dangling while editing — the validator
 is the gate, and the game only ever sees validated snapshots).
 
-> **As built (P4/P5/P7):** five content tables are live — `content_enemies`,
+> **As built (P4/P5/P7/P8):** eight content tables are live — `content_enemies`,
 > `content_spawners`, `content_abilities` (P5), `content_xp_curve` and
-> `content_skill_nodes` (P7, migration 0008), each `PK(id, status)` with the whole
+> `content_skill_nodes` (P7, migration 0008), `content_items`, `content_loot_tables`
+> and `content_vendors` (P8, migration 0011), each `PK(id, status)` with the whole
 > definition in one `def JSONB` column validated by the shared zod schemas
 > (`@dawned/shared/content`). The xp-curve rows are `xp_l01..xp_l29`
 > (`{level, xpToNext}`; publish cross-checks levels 1..29 exactly once); skill-node rows
@@ -98,7 +99,12 @@ is the gate, and the game only ever sees validated snapshots).
 > vocabulary (stat / conditional_damage / ability_mod / effect_mod / stance_mod /
 > passive_mod / proc — shared/src/content/skill-nodes.ts). `character_skills`
 > (character_id, node_id, ranks — PK(char,node), migration 0008) stores allocations exactly
-> as sketched in §2. The draft/published split is the PK's status axis from day
+> as sketched in §2. The P8 trio keeps the same one-def-per-row shape rather than the
+> child tables sketched above: loot entries live inside a table's `def` (they are only
+> ever read as a whole weighted list) and vendor stock inside a vendor's, so a publish
+> copies one row per concept and the editor edits one document. `character_items`
+> (migration 0011) matches §2 exactly, with UNIQUE(character_id, container, slot) making
+> two stacks in one cell unrepresentable. The draft/published split is the PK's status axis from day
 > one; the server loads **published rows only** at boot and refuses to start on a row that
 > fails validation (fail loud beats simulating weird content). The P4 enemies/camps ship as
 > published seed rows in migration 0003; the P5 ability kits were authored THROUGH the

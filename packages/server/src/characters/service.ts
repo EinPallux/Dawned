@@ -9,17 +9,21 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import {
   characterDiscoveries,
+  characterItems,
   characterSkills,
   characters,
   type CharacterRow,
 } from '@dawned/shared/schema';
 import {
+  EQUIP_SLOTS,
   MAX_CHARACTERS_PER_ACCOUNT,
   createCharacterRequestSchema,
   type Appearance,
   type AttributeSpread,
   type CharacterSummary,
   type CreateCharacterRequest,
+  type EquipSlot,
+  type ItemStack,
 } from '@dawned/shared';
 import { isUniqueViolation, type Db } from '../db/client.js';
 
@@ -217,6 +221,66 @@ export class CharacterService {
         .filter(([, rank]) => rank > 0)
         .map(([nodeId, rank]) => ({ characterId, nodeId, ranks: rank }));
       if (values.length > 0) await tx.insert(characterSkills).values(values);
+    });
+  }
+
+  /**
+   * Load the bag + paper-doll (P8). Cells address themselves (`container` +
+   * `slot`), so the map rebuilds exactly as it was saved — no ordering
+   * assumptions, no reindexing.
+   */
+  async loadInventory(characterId: number): Promise<{
+    bag: Map<number, ItemStack>;
+    equipment: Map<EquipSlot, ItemStack>;
+  }> {
+    const rows = await this.db
+      .select()
+      .from(characterItems)
+      .where(eq(characterItems.characterId, characterId));
+    const bag = new Map<number, ItemStack>();
+    const equipment = new Map<EquipSlot, ItemStack>();
+    for (const row of rows) {
+      const stack: ItemStack = {
+        id: row.id,
+        itemId: row.itemId,
+        qty: row.qty,
+        rolled: (row.rolledStats as ItemStack['rolled']) ?? null,
+      };
+      if (row.container === 'inventory') {
+        bag.set(row.slot, stack);
+      } else {
+        const slot = EQUIP_SLOTS[row.slot];
+        if (slot) equipment.set(slot, stack);
+      }
+    }
+    return { bag, equipment };
+  }
+
+  /**
+   * Write-through inventory flush (DATABASE.md §2): one transaction, taking
+   * the character row lock first so two concurrent flushes for the same
+   * character serialize instead of interleaving. The rows are replaced
+   * wholesale — with at most 59 cells that is cheaper than diffing, and it
+   * makes a half-applied write impossible.
+   */
+  async saveInventory(
+    characterId: number,
+    rows: { container: 'inventory' | 'equipment'; slot: number; stack: ItemStack }[],
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM characters WHERE id = ${characterId} FOR UPDATE`);
+      await tx.delete(characterItems).where(eq(characterItems.characterId, characterId));
+      if (rows.length === 0) return;
+      await tx.insert(characterItems).values(
+        rows.map((row) => ({
+          characterId,
+          itemId: row.stack.itemId,
+          container: row.container,
+          slot: row.slot,
+          qty: row.stack.qty,
+          rolledStats: row.stack.rolled ?? null,
+        })),
+      );
     });
   }
 

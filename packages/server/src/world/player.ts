@@ -24,6 +24,7 @@ import {
 } from '@dawned/shared';
 import { isUntargetable, type ActiveEffect } from './effects.js';
 import type { PlayerProgress } from './progression.js';
+import type { PlayerItems } from './items.js';
 
 /** A committed instant ability waiting for its contact frame. */
 export interface PendingAbility {
@@ -93,6 +94,8 @@ export class ServerPlayer {
   maxHp: number;
   /** Character progression (P7): XP, gold, points, tree ranks + folds. */
   progress: PlayerProgress;
+  /** Bag, paper-doll, consumable lanes and vendor session (P8). */
+  items: PlayerItems;
   /** Countdown of Flurry-empowered basics left (capstone rider). */
   empoweredBasicsLeft = 0;
   empoweredBasicsCp = 0;
@@ -169,6 +172,7 @@ export class ServerPlayer {
     /** Account role — gates /setlevel and future GM commands (P7). */
     readonly role: 'player' | 'gm' | 'admin',
     progress: PlayerProgress,
+    items: PlayerItems,
     spawnX: number,
     spawnY: number,
     spawnZ: number,
@@ -177,6 +181,7 @@ export class ServerPlayer {
     persistedHp: number | null = null,
   ) {
     this.progress = progress;
+    this.items = items;
     // Baseline derivation; the world re-runs rebuildNodeFolds right after
     // construction so node scalars and effective defs fold in.
     this.stats = playerStats(classId, level, progress.allocated);

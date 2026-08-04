@@ -18,7 +18,7 @@
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)       |
 | P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)       |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | 🟨 built, playtest pending |
-| P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                         |
+| P8    | Items, Inventory, Loot & Vendors         | L    | 🚧 in progress (A+B done)  |
 | P9    | Enemies & AI Depth                       | L    | 🔲                         |
 | P10   | Gathering Professions                    | M    | 🔲                         |
 | P11   | Quests, POIs & Interactables             | L    | 🔲                         |

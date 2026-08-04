@@ -469,14 +469,11 @@ describe('items (v10)', () => {
   it('carries the whole self inventory through InventorySync', () => {
     const message = {
       bag: [
-        [0, { id: 11, itemId: 'item_weapon_sword_dawnsteel', qty: 1, rolled: { str: 4 } }],
-        [3, { id: 12, itemId: 'item_consumable_potion_minor', qty: 7, rolled: null }],
-      ] as [
-        number,
-        { id: number; itemId: string; qty: number; rolled: Record<string, number> | null },
-      ][],
+        [0, { itemId: 'item_weapon_sword_dawnsteel', qty: 1, rolled: { str: 4 } }],
+        [3, { itemId: 'item_consumable_potion_minor', qty: 7, rolled: null }],
+      ] as [number, { itemId: string; qty: number; rolled: Record<string, number> | null }][],
       equipment: {
-        chest: { id: 9, itemId: 'item_armor_chest_padded', qty: 1, rolled: { vit: 5 } },
+        chest: { itemId: 'item_armor_chest_padded', qty: 1, rolled: { vit: 5 } },
       },
       gold: 412,
       cooldowns: { potion: 8200 },
@@ -508,6 +505,7 @@ describe('items (v10)', () => {
 
     const panel = {
       vendorId: 'vendor_general_dawnhaven',
+      open: true,
       name: 'General Goods',
       kind: 'general',
       greeting: 'Dawn finds you well.',
