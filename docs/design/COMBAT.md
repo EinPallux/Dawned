@@ -129,6 +129,48 @@ Decisions of record from the build:
 - **Resources re-base from snapshots** (floor compare, fractional regen preserved) with an
   in-flight-spend hold so a paid cost never bounces back onto the globe during its round trip.
 
+### 4.2 As-built (P6, protocol v8 — casters & the status layer)
+
+P6 grew the same contract instead of adding a second one. Schema additions: `channel`
+(duration + tick cadence — a release per tick instead of one at the end), `ground_aoe`
+targeting (radius/maxRange/telegraphMs; the request carries a `groundAim` point,
+quick-cast per Q19 — schema-rejects castMs/channel combos so the press point can never go
+stale), `teleport`, projectile `homing`, and effects `root`, `cleanse` (by category),
+`refresh` (DoT clock reset), `zone` (ground field ticking heal/damage on a team), damage
+`bonusVs` (percent vs categorized targets), apply_effect `category`
+(stun/root/slow/chill/burn/poison/bleed/buff) and the `untargetable` / `manaShieldPerPoint`
+mods. Decisions of record:
+
+- **Casts and channels live in the machine, on both sides.** `castWhileMoving` is
+  `false` (moving > 150 ms cancels, full cost lost) or a fraction — the walk-speed
+  multiplier while the bar runs, folded into the movement modifiers by server and
+  prediction alike. Dodge cancels either for half cost; a stun cancels for free plus the
+  `Interrupted` event so the bar shatters on every screen.
+- **Hard CC on players is shared-step state.** Roots pin the feet (`rooted` modifier —
+  turning stays free, dodge/jump refused), stuns freeze facing and gate every attack
+  request (`controlsLocked`). Both ride entity flags, so prediction agrees within one
+  RTT. Diminishing returns per category lane (chill shares the slow lane): full → half →
+  immune inside a 10 s window; immunity never extends the window. Player roots sit on a
+  hard timer, and movement/any `cleanse` clears that timer too (Blink breaks roots;
+  Purify breaks an ally's) — stuns are deliberately uncleansable. Until P9 enemies cast
+  control themselves, `/ops/cc` (localhost + secret, the future GM /stun) drives this
+  path — it is how the P6 smoke exercises it.
+- **Absorbs intercept in order:** pooled shields oldest-first, then Mana Shield (drains
+  mana at its per-point rate, drops when it can't pay), then HP. Fully-absorbed hits skip
+  the flinch and carry the `Absorbed` flag; shield chips sync their remaining pool
+  (`shieldRemaining`) so the number on screen is the server's.
+- **Heals are resolves with the `Healed` flag** (green FCT, no camera kick), crit-capable
+  (deterministic zone ticks excepted), overheal clipped, and they generate half-value
+  threat against enemies that know either party. Ally targeting per Q20: the aimed ally
+  wins, else the most injured in range, else self — the client's green plate is a hint,
+  the server re-picks.
+- **Class passives live server-side with cosmetic client mirrors:** mage Attunement
+  (every 3rd landed basic bolt refunds 5 mana + 500 ms cooldown shave; the HUD pips
+  count locally from resolve traffic), cleric Grace (Smite hits bank stacks that shorten
+  the next Mend bar by 100 ms each — BOTH sides compute the delta from the synced stacks,
+  so the predicted bar matches the authoritative release). The mage Focus stance joins
+  Block/Evasive as held intent: 0.6× move speed, +10 % projectile velocity.
+
 ## 5. Hit Detection Shapes (server truth)
 
 | Shape        | Used by                  | Check                                                                                                                  |

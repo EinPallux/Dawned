@@ -85,6 +85,12 @@ export class CharacterView {
   private actionEscapable = false;
   private dead = false;
   private blocking = false;
+  /** Held casting loop clip (P6) — outranks the block stance on the overlay. */
+  private castingClip: string | null = null;
+  /** Auto-clear deadline for timed casting loops (remotes); 0 = held open. */
+  private castingUntil = 0;
+  /** Absorb-shield shimmer (P6): a soft bubble while a pooled shield holds. */
+  private shieldMesh: THREE.Mesh | null = null;
 
   private bubble: THREE.Sprite | null = null;
   private bubbleExpiresAt = 0;
@@ -140,6 +146,7 @@ export class CharacterView {
     this.group.add(next.group);
     this.currentClip = '';
     this.blocking = false; // fresh mixer — the stance overlay re-applies next frame
+    this.castingClip = null;
     this.playClip('Idle_Loop');
   }
 
@@ -203,7 +210,69 @@ export class CharacterView {
   setBlocking(blocking: boolean): void {
     if (blocking === this.blocking) return;
     this.blocking = blocking;
-    this.composed?.setLoopOverlay(blocking && !this.dead ? 'Idle_Shield_Loop' : null, 0.75, 0.09);
+    this.refreshLoopOverlay();
+  }
+
+  /**
+   * Casting loop (P6): the two-hand gather pose while a cast bar or channel
+   * runs, on the same held-overlay channel as the block stance — casting
+   * outranks the shield (a cleric casting Mend mid-guard reads as casting).
+   * `autoClearMs` lets remotes time out on their AbilityStart duration; the
+   * local player clears explicitly on release/interrupt.
+   */
+  setCasting(clip: string | null, autoClearMs = 0): void {
+    const until = clip !== null && autoClearMs > 0 ? this.clock + autoClearMs / 1000 : 0;
+    if (clip === this.castingClip) {
+      this.castingUntil = until;
+      return;
+    }
+    this.castingClip = clip;
+    this.castingUntil = until;
+    this.refreshLoopOverlay();
+  }
+
+  /** One overlay loop slot, casting > blocking (both walk underneath). */
+  private refreshLoopOverlay(): void {
+    if (this.dead) {
+      this.composed?.setLoopOverlay(null, 0.75, 0.09);
+      return;
+    }
+    if (this.castingClip !== null) {
+      this.composed?.setLoopOverlay(this.castingClip, 0.9, 0.08);
+    } else {
+      this.composed?.setLoopOverlay(this.blocking ? 'Idle_Shield_Loop' : null, 0.75, 0.09);
+    }
+  }
+
+  /**
+   * Absorb-shield shimmer (P6, Aegis): a faint faceted bubble while a pooled
+   * shield holds — the chip has the number, the bubble carries the read.
+   */
+  setShielded(shielded: boolean, color = 0xf0df9a): void {
+    if (shielded === (this.shieldMesh !== null)) return;
+    if (!shielded) {
+      if (this.shieldMesh) {
+        this.group.remove(this.shieldMesh);
+        this.shieldMesh.geometry.dispose();
+        (this.shieldMesh.material as THREE.Material).dispose();
+        this.shieldMesh = null;
+      }
+      return;
+    }
+    const mesh = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.85, 1),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.14,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    mesh.position.y = PLAYER_HEIGHT * 0.55;
+    mesh.scale.y = 1.25;
+    this.group.add(mesh);
+    this.shieldMesh = mesh;
   }
 
   /** Death/respawn presentation — the server owns WHEN (Dead flag/events). */
@@ -213,10 +282,11 @@ export class CharacterView {
     if (dead) {
       this.actionUntil = 0;
       this.composed?.cancelOverlays(0.1); // no swing riding the corpse
-      if (this.blocking) {
-        this.blocking = false;
-        this.composed?.setLoopOverlay(null, 0.75, 0.09);
-      }
+      this.blocking = false;
+      this.castingClip = null;
+      this.castingUntil = 0;
+      this.composed?.setLoopOverlay(null, 0.75, 0.09);
+      this.setShielded(false);
       this.playClip('Death01', { once: true, fadeSeconds: 0.1 });
     } else {
       this.currentClip = '';
@@ -263,9 +333,20 @@ export class CharacterView {
     this.lastYaw = this.yaw;
     this.hasLastYaw = true;
 
+    // Timed casting loops (remotes) expire on their AbilityStart duration.
+    if (this.castingClip !== null && this.castingUntil > 0 && this.clock >= this.castingUntil) {
+      this.setCasting(null);
+    }
+
     if (this.composed) {
       this.selectClip(flags);
       this.composed.mixer.update(dtSeconds);
+    }
+
+    // Shield shimmer: a slow breathing pulse so it reads alive, not painted.
+    if (this.shieldMesh) {
+      const pulse = 1 + Math.sin(this.clock * 2.4) * 0.04;
+      this.shieldMesh.scale.set(pulse, 1.25 * pulse, pulse);
     }
 
     this.wasGrounded = flags.grounded;
@@ -511,6 +592,7 @@ export class CharacterView {
   dispose(scene: THREE.Scene): void {
     scene.remove(this.group);
     this.clearBubble();
+    this.setShielded(false);
     this.composed?.dispose();
     if (this.silhouette) {
       this.silhouette.geometry.dispose();

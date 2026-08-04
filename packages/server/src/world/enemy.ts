@@ -57,6 +57,8 @@ export class ServerEnemy {
   readonly staggerGainFactor: number;
   /** Staggered (HitReact stun) until this wall-clock ms. */
   stunnedUntilMs = 0;
+  /** Rooted in place until (P6, Frost Nova) — AI keeps acting, feet pinned. */
+  rootedUntilMs = 0;
   /** +10% damage taken until this wall-clock ms (the stagger payoff window). */
   vulnerableUntilMs = 0;
 
@@ -150,6 +152,12 @@ export class ServerEnemy {
     this.swing = null; // a stun always interrupts the wind-up
   }
 
+  /** Root (P6, Frost Nova): pin the feet; attacks/turning keep working. */
+  rootFor(durationMs: number, nowMs: number): void {
+    if (this.state === 'dead' || this.invulnerable) return;
+    this.rootedUntilMs = Math.max(this.rootedUntilMs, nowMs + durationMs);
+  }
+
   /** Interrupt effect: cancel the current wind-up, brief recover. */
   interruptSwing(nowMs: number): void {
     if (this.swing) {
@@ -178,6 +186,7 @@ export class ServerEnemy {
     this.cooldowns.clear();
     this.stagger.meter = 0;
     this.stunnedUntilMs = 0;
+    this.rootedUntilMs = 0;
     this.vulnerableUntilMs = 0;
     this.recoverUntilMs = 0;
     this.effects = [];

@@ -104,29 +104,48 @@ export interface AbilityRequestMessage {
   aimPitch: number;
   /** Soft-target entity at press (0 = none) — Death Mark, Shadowstep (v7). */
   targetId: number;
+  /**
+   * Ground-aim world point for ground_aoe abilities (v8): the crosshair's
+   * terrain hit, range-clamped client-side, re-validated server-side against
+   * the def's maxRange. null for every other targeting kind.
+   */
+  groundAim: { x: number; z: number } | null;
 }
 
 export const encodeAbilityRequest = (
   msg: AbilityRequestMessage,
   writer?: BinaryWriter,
 ): Uint8Array => {
-  const w = (writer ?? new BinaryWriter(16)).reset();
+  const w = (writer ?? new BinaryWriter(24)).reset();
   w.u8(ClientOp.AbilityRequest)
     .u16(msg.seq)
     .u8(msg.action)
     .u16(quantizeAngle(msg.aimYaw))
     .i8(Math.round((Math.max(-1.55, Math.min(1.55, msg.aimPitch)) / (Math.PI / 2)) * 127))
     .u32(msg.targetId);
+  // Ground aim (v8): flag byte + world x/z as f32 (how positions travel).
+  if (msg.groundAim) {
+    w.u8(1).f32(msg.groundAim.x).f32(msg.groundAim.z);
+  } else {
+    w.u8(0);
+  }
   return w.toUint8Array();
 };
 
-export const decodeAbilityRequest = (reader: BinaryReader): AbilityRequestMessage => ({
-  seq: reader.u16(),
-  action: reader.u8(),
-  aimYaw: dequantizeAngle(reader.u16()),
-  aimPitch: (reader.i8() / 127) * (Math.PI / 2),
-  targetId: reader.u32(),
-});
+export const decodeAbilityRequest = (reader: BinaryReader): AbilityRequestMessage => {
+  const base = {
+    seq: reader.u16(),
+    action: reader.u8(),
+    aimYaw: dequantizeAngle(reader.u16()),
+    aimPitch: (reader.i8() / 127) * (Math.PI / 2),
+    targetId: reader.u32(),
+  };
+  const hasGroundAim = reader.u8() === 1;
+  return {
+    ...base,
+    groundAim: hasGroundAim ? { x: reader.f32(), z: reader.f32() } : null,
+  };
+};
 
 export interface PingMessage {
   clientTimeMs: number;
@@ -378,6 +397,10 @@ export const HitFlag = {
   Crit: 1 << 0,
   Killed: 1 << 1,
   Staggered: 1 << 2,
+  /** `amount` healed instead of damaged (v8) — FCT renders the heal style. */
+  Healed: 1 << 3,
+  /** `amount` was absorbed by a shield (v8) — FCT shows the absorb read. */
+  Absorbed: 1 << 4,
 } as const;
 export type HitFlag = (typeof HitFlag)[keyof typeof HitFlag];
 
@@ -620,6 +643,8 @@ export interface EffectSyncEntry {
   remainingMs: number;
   /** True for hostile effects (red seam on the bar; debuff row). */
   harmful: boolean;
+  /** Absorb pool left on shield effects (v8) — the chip shows the number. */
+  shieldRemaining?: number;
 }
 
 /**

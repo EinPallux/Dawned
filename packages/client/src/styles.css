@@ -1485,6 +1485,109 @@ canvas.game {
   text-shadow: 0 1px 1px rgba(237, 230, 212, 0.4);
 }
 
+/* Channel bars (P6) drain in arcane violet; pips mark each fired bolt. */
+.hud-cast[data-kind='channel'] .hud-cast-fill {
+  background: linear-gradient(180deg, #c8a8ff, #7a5cc8);
+}
+
+.hud-cast-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud-cast-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(21, 26, 38, 0.55);
+}
+
+.hud-cast-tick[data-done='true'] {
+  background: rgba(237, 230, 212, 0.85);
+  box-shadow: 0 0 4px rgba(200, 168, 255, 0.9);
+}
+
+/* Stun broke the cast: the bar slams red for a beat (P6). */
+.hud-cast.is-interrupted .hud-cast-fill {
+  background: linear-gradient(180deg, #e0563f, #7c221a);
+  animation: hud-low-pulse 0.22s var(--ease) 3;
+}
+
+/* Hard-CC ribbon: why your inputs are dead, in one word, mid-screen. */
+.hud-cc {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  padding: 4px 22px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--parchment);
+  background: rgba(21, 26, 38, 0.88);
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  pointer-events: none;
+}
+
+.hud-cc[data-cc='stunned'] {
+  border-top: 2px solid #e0a63f;
+  border-bottom: 2px solid #e0a63f;
+  text-shadow: 0 0 12px rgba(224, 166, 63, 0.8);
+}
+
+.hud-cc[data-cc='rooted'] {
+  border-top: 2px solid #8fd8ff;
+  border-bottom: 2px solid #8fd8ff;
+  text-shadow: 0 0 12px rgba(143, 216, 255, 0.8);
+}
+
+/* Focus stance (P6): the mage's reticle tightens while slow-strafing. */
+.hud-reticle {
+  transition:
+    transform 140ms var(--ease),
+    box-shadow 140ms var(--ease);
+}
+
+.hud-reticle[data-focus='true'] {
+  transform: translate(-50%, -50%) rotate(45deg) scale(0.7);
+  box-shadow: 0 0 0 3px rgba(176, 138, 255, 0.45);
+}
+
+/* Attunement pips (P6): two facets under the mana globe; both lit = next
+   bolt refunds. */
+.hud-attune {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.hud-attune-pip {
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg) scale(0.85);
+  background: rgba(237, 230, 212, 0.14);
+  outline: 1px solid rgba(237, 230, 212, 0.3);
+  transition:
+    background 120ms var(--ease),
+    transform 120ms var(--ease);
+}
+
+.hud-attune-pip[data-lit='true'] {
+  background: #b08aff;
+  transform: rotate(45deg) scale(1);
+  box-shadow: 0 0 5px rgba(176, 138, 255, 0.8);
+}
+
 /* --------------------------------------------------------- effect rows */
 
 .hud-effects {
@@ -1562,6 +1665,12 @@ canvas.game {
   font-size: 8.5px;
   color: var(--muted);
   line-height: 1.1;
+}
+
+/* Absorb chips wear their remaining pool, bright — the number IS the state. */
+.hud-effect-s.is-shield {
+  color: var(--gold-bright);
+  font-weight: 800;
 }
 
 .hud-target-effects {
@@ -1659,6 +1768,15 @@ canvas.game {
   height: 100%;
   background: #b8433a;
   transition: width 120ms steps(4);
+}
+
+/* Ally plate (P6): the heal's would-be recipient reads green, never red. */
+.hud-target[data-friendly='true'] .hud-target-name {
+  color: #a8e8b4;
+}
+
+.hud-target[data-friendly='true'] .hud-target-hp-fill {
+  background: #3f9e57;
 }
 
 .hud-death[hidden] {

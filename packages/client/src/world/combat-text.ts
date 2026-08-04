@@ -41,7 +41,8 @@ export class CombatTextManager {
       if (oldest) this.recycle(oldest.sprite);
     }
     const style = STYLES[kind];
-    const text = `${kind === 'incoming' ? '−' : ''}${amount}${style.suffix}`;
+    const sign = kind === 'incoming' ? '−' : kind === 'heal' ? '+' : '';
+    const text = `${sign}${amount}${style.suffix}`;
 
     const sprite = this.pool.pop() ?? this.makeSprite();
     const canvas = (sprite.material.map as THREE.CanvasTexture).image;

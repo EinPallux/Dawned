@@ -237,6 +237,7 @@ describe('combat messages (protocol v6)', () => {
       aimYaw: -2.4,
       aimPitch: 0.3,
       targetId: 4021,
+      groundAim: null,
     });
     expect(peekOpcode(packet)).toBe(ClientOp.AbilityRequest);
     const decoded = decodeAbilityRequest(body(packet));
@@ -246,6 +247,22 @@ describe('combat messages (protocol v6)', () => {
     expect(Math.sin(decoded.aimYaw)).toBeCloseTo(Math.sin(-2.4), 3);
     expect(decoded.aimPitch).toBeCloseTo(0.3, 1);
     expect(decoded.targetId).toBe(4021);
+    expect(decoded.groundAim).toBeNull();
+  });
+
+  it('round-trips an AbilityRequest ground aim point (v8)', () => {
+    const packet = encodeAbilityRequest({
+      seq: 5,
+      action: 9,
+      aimYaw: 0.5,
+      aimPitch: -0.4,
+      targetId: 0,
+      groundAim: { x: -123.25, z: 987.5 },
+    });
+    const decoded = decodeAbilityRequest(body(packet));
+    expect(decoded.groundAim).not.toBeNull();
+    expect(decoded.groundAim?.x).toBeCloseTo(-123.25, 2);
+    expect(decoded.groundAim?.z).toBeCloseTo(987.5, 2);
   });
 
   it('round-trips AbilityStart', () => {

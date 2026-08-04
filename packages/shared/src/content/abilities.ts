@@ -25,6 +25,30 @@ const abilityIdSchema = z
   .max(64)
   .regex(/^ability_[a-z0-9_]+$/, 'ability ids look like ability_<class>_<name>');
 
+/**
+ * Status categories (P6, COMBAT.md §6.4): the handle for cleanse filters,
+ * CC diminishing returns (stun/root/slow share DR within their category) and
+ * conditional damage (Ice Lance vs chilled). `chill` IS a slow for DR/cleanse
+ * purposes but keeps its own tag for kit synergies.
+ */
+export const effectCategorySchema = z.enum([
+  'stun',
+  'root',
+  'slow',
+  'chill',
+  'burn',
+  'poison',
+  'bleed',
+  'buff',
+]);
+export type EffectCategory = z.infer<typeof effectCategorySchema>;
+
+/** Categories the CC diminishing-returns tracker cares about (players). */
+export const CC_DR_CATEGORIES = ['stun', 'root', 'slow'] as const;
+
+/** What "cleanse movement impairment" strips (Blink breaks roots/slows). */
+export const MOVEMENT_CATEGORIES: readonly EffectCategory[] = ['root', 'slow', 'chill'];
+
 /** Mirrors the canonical ClassId union (data/appearance.ts) for zod parsing. */
 export const classIdSchema = z.enum(['warrior', 'mage', 'rogue', 'cleric']);
 
@@ -82,6 +106,8 @@ const targetingSchema = z.discriminatedUnion('kind', [
     radius: z.number().min(0.05).max(2),
     maxRange: z.number().min(3).max(60),
     pierce: z.boolean().default(false),
+    /** Curve toward the press-time soft-target (Arcane Barrage bolts). */
+    homing: z.boolean().default(false),
   }),
   z.object({
     kind: z.literal('dash'),
@@ -104,6 +130,23 @@ const targetingSchema = z.discriminatedUnion('kind', [
     range: z.number().min(3).max(40),
     fallbackSelf: z.boolean().default(true),
   }),
+  z.object({
+    /**
+     * Ground-target circle at the crosshair's terrain point, range-clamped
+     * (Meteor, Sanctuary). telegraphMs > 0 shows the decal and delays the
+     * resolve (dodgeable); 0 resolves at contact like any instant.
+     */
+    kind: z.literal('ground_aoe'),
+    radius: z.number().min(1).max(12),
+    maxRange: z.number().min(5).max(40),
+    telegraphMs: z.number().int().min(0).max(4000).default(0),
+    maxTargets: z.number().int().min(1).max(20).default(10),
+  }),
+  z.object({
+    /** Forward teleport along aim (Mage Blink) — walkability decides landing. */
+    kind: z.literal('teleport'),
+    distance: z.number().min(3).max(20),
+  }),
 ]);
 
 /**
@@ -125,6 +168,13 @@ const effectModsSchema = z
     dodgeCostDelta: z.number().int().min(-25).max(0).optional(),
     /** Threat wipe-lite (Smoke Veil): AI retargets away for the duration. */
     threatDrop: z.boolean().optional(),
+    /** AI drops target + soft-target skips the bearer (Blink's 0.3 s). */
+    untargetable: z.boolean().optional(),
+    /**
+     * Mana Shield: incoming damage drains Mana at this rate per point instead
+     * of HP, until Mana runs out (or the buff is recast/expires).
+     */
+    manaShieldPerPoint: z.number().min(0.5).max(10).optional(),
     /** Periodic damage/heal: total coefficient spread across the duration. */
     periodic: z
       .object({
@@ -166,10 +216,53 @@ const effectSchema = z.discriminatedUnion('kind', [
     staggerBonus: z.number().int().min(0).max(100).default(0),
     /** Finisher scaling: adds coef × combo points SPENT (Eviscerate). */
     coefPerComboPoint: z.number().min(0).max(3).default(0),
+    /** Conditional bonus vs targets bearing a category (Ice Lance +50% vs chilled/rooted). */
+    bonusVs: z
+      .object({
+        categories: z.array(effectCategorySchema).min(1).max(4),
+        pct: z.number().int().min(5).max(200),
+      })
+      .optional(),
   }),
   z.object({ kind: z.literal('stun'), durationMs: z.number().int().min(200).max(4000) }),
   z.object({ kind: z.literal('knockdown'), durationMs: z.number().int().min(500).max(4000) }),
+  z.object({
+    /** Pin in place (movement zeroed, turning free) — Frost Nova. */
+    kind: z.literal('root'),
+    durationMs: z.number().int().min(500).max(6000),
+  }),
   z.object({ kind: z.literal('interrupt') }),
+  z.object({
+    /**
+     * Strip effects from the target (Purify 1 debuff; Blink's movement break;
+     * Dawnlight all). `category: movement` = root/slow/chill only.
+     */
+    kind: z.literal('cleanse'),
+    category: z.enum(['any', 'movement']).default('any'),
+    count: z.number().int().min(1).max(10).default(1),
+    all: z.boolean().default(false),
+  }),
+  z.object({
+    /** Reset matching DoT durations on hit targets (Ember Wave refreshes burns). */
+    kind: z.literal('refresh'),
+    category: effectCategorySchema,
+  }),
+  z.object({
+    /**
+     * Persistent ground zone at the resolve point (Sanctuary): ticks its
+     * effect on everyone of `team` inside. Requires ground_aoe targeting.
+     */
+    kind: z.literal('zone'),
+    radius: z.number().min(1).max(12),
+    durationMs: z.number().int().min(1000).max(20000),
+    tickEveryMs: z.number().int().min(250),
+    team: z.enum(['allies', 'enemies']),
+    tick: z.object({
+      kind: z.enum(['heal', 'damage']),
+      coef: z.number().min(0).max(3),
+      school: z.enum(['physical', 'magic']).default('magic'),
+    }),
+  }),
   z.object({
     kind: z.literal('taunt'),
     durationMs: z.number().int().min(1000).max(8000),
@@ -188,6 +281,8 @@ const effectSchema = z.discriminatedUnion('kind', [
     effectId: z.string().min(1).max(64),
     durationMs: z.number().int().min(500).max(60000),
     stacksMax: z.number().int().min(1).max(10).default(1),
+    /** Status family — drives cleanse filters, CC DR and bonusVs checks. */
+    category: effectCategorySchema.default('buff'),
     mods: effectModsSchema.default({}),
   }),
   z.object({
@@ -287,6 +382,26 @@ export const abilityDefSchema = z
     }
     if (def.cost.type === 'energy' && def.classId !== 'rogue') {
       ctx.addIssue({ code: 'custom', message: 'energy costs are Rogue-only' });
+    }
+    if (def.cost.type === 'mana' && def.classId !== 'mage' && def.classId !== 'cleric') {
+      ctx.addIssue({ code: 'custom', message: 'mana costs are Mage/Cleric-only' });
+    }
+    if (
+      def.effects.some((effect) => effect.kind === 'zone') &&
+      def.targeting.kind !== 'ground_aoe'
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'zone effects need ground_aoe targeting (the zone spawns at the ground point)',
+      });
+    }
+    if (def.targeting.kind === 'ground_aoe' && (def.castMs > 0 || def.channel !== null)) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'ground_aoe abilities are instants in 0.1.0 (the press-time ground point would go ' +
+          'stale under a cast bar — use telegraphMs for the delay)',
+      });
     }
     if (def.channel !== null && def.castMs > 0) {
       ctx.addIssue({ code: 'custom', message: 'an ability is a cast OR a channel, not both' });

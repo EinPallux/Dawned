@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 7; // v7 (P5): slot abilities — resource/CP in self, effects, casts
+export const PROTOCOL_VERSION = 8; // v8 (P6): casters — ground aim, heals, CC flags, absorbs
 
 /** Client → server opcodes. */
 export const ClientOp = {
@@ -70,6 +70,12 @@ export const EntityFlag = {
   Leashing: 1 << 8,
   /** RMB stance held (Warrior/Cleric shield up) — remotes loop the stance clip (v7). */
   Blocking: 1 << 9,
+  /** Rooted in place (v8) — remotes pin locomotion; soft-target unaffected. */
+  Rooted: 1 << 10,
+  /** Stunned: full control loss (v8) — remotes play the dazed hold. */
+  Stunned: 1 << 11,
+  /** Untargetable window (Blink) — AI drops target, soft-target skips (v8). */
+  Untargetable: 1 << 12,
 } as const;
 export type EntityFlag = (typeof EntityFlag)[keyof typeof EntityFlag];
 
@@ -123,6 +129,8 @@ export const EntityEventKind = {
   Dawned: 7,
   /** Light-hit flinch on a victim (upper-body blend on remotes). */
   Flinch: 8,
+  /** A cast/channel was broken (stun/interrupt) — cast bar shatters (v8). */
+  Interrupted: 9,
 } as const;
 export type EntityEventKind = (typeof EntityEventKind)[keyof typeof EntityEventKind];
 

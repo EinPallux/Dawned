@@ -13,6 +13,7 @@ import {
   DAWNED_DURATION_MS,
   EntityEventKind,
   EntityFlag,
+  HitFlag,
   EntityKind,
   OOC_AFTER_MS,
   OOC_HP_REGEN_PER_S,
@@ -26,6 +27,7 @@ import {
   EVASIVE_DODGE_DISCOUNT,
   EVASIVE_ENERGY_PER_S,
   EVASIVE_MOVE_SPEED_PCT,
+  FOCUS_MOVE_SPEED_MULT,
   InputButton,
   TICK_MS,
   gainResource,
@@ -46,6 +48,7 @@ import { ServerEnemy } from './enemy.js';
 import type { GameContent } from '../content/loader.js';
 import {
   advancePlayerContact,
+  applyCcToPlayer,
   applyDamageToEnemy,
   cancelComboOnDodge,
   handleAttackRequest,
@@ -53,8 +56,8 @@ import {
   type CombatEvent,
   type ServerProjectile,
 } from './combat.js';
-import { handleSlotRequest, tickPlayerAbilities } from './abilities.js';
-import { moveSpeedMultOf, tickEffects, type PeriodicTick } from './effects.js';
+import { handleSlotRequest, tickPlayerAbilities, tickZones, type GroundZone } from './abilities.js';
+import { dodgeCostDeltaOf, moveSpeedMultOf, tickEffects, type PeriodicTick } from './effects.js';
 import { CORPSE_LINGER_MS, decide, enterCombat, move, type AiContext } from './enemy-ai.js';
 
 /** AOI radii (docs/tech/NETWORKING.md §5): 3×3 of 64 m cells ≈ 96 m, +8 m leave margin. */
@@ -86,6 +89,8 @@ export class World {
   private readonly players = new Map<number, ServerPlayer>();
   readonly enemies = new Map<number, ServerEnemy>();
   private readonly projectiles: ServerProjectile[] = [];
+  /** Live ground zones (P6 Sanctuary) — ticked in step, culled on expiry. */
+  private readonly zones: GroundZone[] = [];
   private readonly tickets: RespawnTicket[] = [];
   private readonly campIndex = new Map<string, ServerEnemy[]>();
   private nextEntityId = 1;
@@ -298,10 +303,58 @@ export class World {
     };
   }
 
+  /** Ops-queued CC pokes (/ops/cc — GM primitive + P6 smoke). Applied at the
+   * next tick so they ride the normal event flush, never a half-tick state. */
+  private readonly pendingCc: {
+    playerId: number;
+    category: 'stun' | 'root';
+    durationMs: number;
+  }[] = [];
+
+  queueCc(name: string, category: 'stun' | 'root', durationMs: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() === name.toLowerCase()) {
+        this.pendingCc.push({ playerId: player.id, category, durationMs });
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Ops-queued HP set (/ops/hurt — GM primitive; deterministic heal tests
+   * until P9 enemies hurt players on demand). Marks combat so OOC regen
+   * does not immediately erase the wound. Never kills. */
+  private readonly pendingHurt: { playerId: number; fraction: number }[] = [];
+
+  queueHurt(name: string, fraction: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() === name.toLowerCase()) {
+        this.pendingHurt.push({ playerId: player.id, fraction });
+        return true;
+      }
+    }
+    return false;
+  }
+
   step(): CombatEvent[] {
     const events: CombatEvent[] = [];
     const nowMs = Date.now();
     this.tickCounter++;
+
+    // 0. External CC (the P9 enemy-cast entry point, driven by ops until then).
+    for (const cc of this.pendingCc.splice(0)) {
+      const ccTarget = this.players.get(cc.playerId);
+      if (ccTarget && !ccTarget.dead) {
+        applyCcToPlayer(ccTarget, cc.category, cc.durationMs, nowMs, events);
+      }
+    }
+    for (const hurt of this.pendingHurt.splice(0)) {
+      const target = this.players.get(hurt.playerId);
+      if (target && !target.dead) {
+        target.hp = Math.max(1, Math.round(target.maxHp * hurt.fraction));
+        target.lastCombatAtMs = nowMs;
+      }
+    }
 
     const aiCtx: AiContext = {
       players: this.players,
@@ -325,9 +378,10 @@ export class World {
           player.movement.vz = 0;
           continue;
         }
-        // RMB stances (P5, CLASSES.md): shield up for Warrior/Cleric with the
-        // perfect-block window stamped on the raise EDGE; Evasive for Rogues
-        // (speed + dodge discount, 3 Energy/s while held and affordable).
+        // RMB stances (P5/P6, CLASSES.md): shield up for Warrior/Cleric with
+        // the perfect-block window stamped on the raise EDGE; Evasive for
+        // Rogues (speed + dodge discount, 3 Energy/s while held and
+        // affordable); Focus for Mages (slow-strafe, faster bolts).
         const secondaryHeld = (intent.buttons & InputButton.SecondaryAction) !== 0;
         const blockClass = player.classId === 'warrior' || player.classId === 'cleric';
         if (blockClass) {
@@ -338,11 +392,27 @@ export class World {
         }
         const evasive = secondaryHeld && player.classId === 'rogue' && player.resource.value >= 1;
         if (evasive) payResource(player.resource, EVASIVE_ENERGY_PER_S * TICK_DT);
+        player.focusing = secondaryHeld && player.classId === 'mage';
         const whirlMult = player.pendingAbility?.def.anim.moveSpeedMult ?? 1;
+        // A fractional castWhileMoving is the walk-speed multiplier while its
+        // cast/channel runs (schema contract) — the client folds the same def.
+        const activeCastId =
+          player.abilityMachine.cast?.abilityId ?? player.abilityMachine.channel?.abilityId ?? null;
+        const castMoveRaw =
+          activeCastId === null ? true : this.content?.abilities.get(activeCastId)?.castWhileMoving;
+        const castMult = typeof castMoveRaw === 'number' ? castMoveRaw : 1;
         const modifiers = {
           speedMult:
-            moveSpeedMultOf(player) * (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) * whirlMult,
-          dodgeCostDelta: evasive ? -EVASIVE_DODGE_DISCOUNT : 0,
+            moveSpeedMultOf(player) *
+            (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) *
+            (player.focusing ? FOCUS_MOVE_SPEED_MULT : 1) *
+            whirlMult *
+            castMult,
+          dodgeCostDelta: (evasive ? -EVASIVE_DODGE_DISCOUNT : 0) + dodgeCostDeltaOf(player),
+          // Hard CC (P6): stun locks everything, root pins the feet — the
+          // SHARED step enforces both so prediction agrees to the centimeter.
+          rooted: player.isRooted(nowMs),
+          controlsLocked: player.isStunned(nowMs),
         };
         const result: MovementStepResult = stepMovement(
           player.movement,
@@ -353,8 +423,9 @@ export class World {
         );
         if (result.dodged) {
           cancelComboOnDodge(player);
-          // A roll cancels an active cast for HALF the cost back (§4.5).
-          const casting = player.abilityMachine.cast;
+          // A roll cancels an active cast OR channel for HALF the cost back
+          // (§4.5) — the client mirrors this in its predicted step.
+          const casting = player.abilityMachine.cast ?? player.abilityMachine.channel;
           if (casting) {
             const castDef = this.content?.abilities.get(casting.abilityId);
             const interrupted = interruptCast(
@@ -397,6 +468,7 @@ export class World {
             request.aimYaw,
             request.aimPitch,
             request.targetId,
+            request.groundAim,
             this.content,
             this.enemies,
             this.terrain,
@@ -424,6 +496,10 @@ export class World {
           rng: this.rng,
           nowMs,
           events,
+          terrain: this.terrain,
+          projectiles: this.projectiles,
+          nextProjectileId: () => this.nextProjectileId++,
+          zones: this.zones,
         }
       : null;
     for (const player of this.players.values()) {
@@ -448,7 +524,9 @@ export class World {
       nowMs,
       this.rng,
       events,
+      this.content?.abilities ?? null,
     );
+    if (abilityDeps) tickZones(this.zones, abilityDeps);
 
     // 3. Enemy AI: decisions at 10 Hz (id parity vs tick parity), motion at 20 Hz.
     for (const enemy of this.enemies.values()) {
@@ -488,7 +566,21 @@ export class World {
       tickResource(player.resource, TICK_MS, inCombat);
       this.periodicScratch.length = 0;
       tickEffects(player, nowMs, this.periodicScratch);
-      // No hostile DoTs on players in P5 content — expiry/dirty only.
+      // HoTs on players tick here (P6: Overflow-style riders; Sanctuary is a
+      // ZONE, not an effect). Hostile DoTs on players arrive with P9 casters.
+      for (const tick of this.periodicScratch) {
+        if (tick.heal <= 0 || player.dead) continue;
+        const amount = Math.min(tick.heal, Math.round(player.maxHp - player.hp));
+        if (amount <= 0) continue;
+        player.hp = Math.min(player.maxHp, player.hp + amount);
+        events.push({
+          type: 'ability-resolve',
+          attackerId: tick.effect.casterId,
+          action: 0,
+          step: 0,
+          hits: [{ targetId: player.id, amount, flags: HitFlag.Healed }],
+        });
+      }
     }
 
     // 5b. Enemy effects: bleeds/poisons tick through the real damage path
@@ -701,7 +793,7 @@ export class World {
           y: m.y,
           z: m.z,
           yaw: m.yaw,
-          flags: player.flags,
+          flags: player.flagsAt(Date.now()),
           hpFraction: player.maxHp > 0 ? player.hp / player.maxHp : 0,
           distSq,
           isPlayer: true,
@@ -718,6 +810,7 @@ export class World {
         let flags = 0;
         if (enemy.state === 'combat') flags |= EntityFlag.InCombat;
         if (Date.now() < enemy.stunnedUntilMs) flags |= EntityFlag.Staggered;
+        if (Date.now() < enemy.rootedUntilMs) flags |= EntityFlag.Rooted;
         if (enemy.state === 'dead') flags |= EntityFlag.Dead;
         if (enemy.state === 'return') flags |= EntityFlag.Leashing;
         if (Math.abs(enemy.vx) > 0.05 || Math.abs(enemy.vz) > 0.05) flags |= EntityFlag.Moving;

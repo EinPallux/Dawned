@@ -225,6 +225,17 @@ export interface MovementModifiers {
   speedMult?: number;
   /** Added to the dodge stamina cost (Evasive Stance −10). Never below 0. */
   dodgeCostDelta?: number;
+  /**
+   * Rooted (P6, COMBAT.md §6.4): feet pinned — no walking, dodging or
+   * jumping; turning stays free (aim your Blink out). Gravity still applies.
+   */
+  rooted?: boolean;
+  /**
+   * Stunned: full control loss — implies rooted and additionally freezes
+   * facing. The shared step enforces it so prediction and authority agree
+   * about a CC'd body to the centimeter.
+   */
+  controlsLocked?: boolean;
 }
 
 export function stepMovement(
@@ -242,12 +253,18 @@ export function stepMovement(
     dodged: false,
   };
 
+  // 0. Hard CC (P6): stun locks everything including facing; root pins the
+  // feet but turning stays free. Both block walking/dodge/jump; gravity and
+  // an in-flight roll/dash still play out (CC never teleports a body).
+  const stunned = modifiers?.controlsLocked === true;
+  const rooted = stunned || modifiers?.rooted === true;
+
   // 1. Facing follows the client's aim directly (combat re-validates aim from P4).
-  state.yaw = intent.yaw;
+  if (!stunned) state.yaw = intent.yaw;
 
   // 2. Normalize the movement axes; a stick/keys diagonal must not outrun a straight line.
-  let dirX = clamp(intent.moveX, -1, 1);
-  let dirZ = clamp(intent.moveZ, -1, 1);
+  let dirX = rooted ? 0 : clamp(intent.moveX, -1, 1);
+  let dirZ = rooted ? 0 : clamp(intent.moveZ, -1, 1);
   const dirLength = Math.sqrt(dirX * dirX + dirZ * dirZ);
   if (dirLength > 1) {
     dirX /= dirLength;
@@ -264,6 +281,7 @@ export function stepMovement(
   const dodgeCost = Math.max(0, DODGE_STAMINA_COST + (modifiers?.dodgeCostDelta ?? 0));
   if (
     !rollingBefore &&
+    !rooted && // rooted/stunned: no dodging out of CC (Blink/cleanse do that)
     state.dashTimeLeft <= 0 && // a dash owns the body until it lands
     state.grounded &&
     !state.swimming &&
@@ -342,9 +360,9 @@ export function stepMovement(
   }
 
   // 5. Jump (free — costs no stamina, per docs/design/COMBAT.md §7). Not
-  // available mid-roll: the roll owns the character until it completes.
+  // available mid-roll (the roll owns the character) or under root/stun.
   const wasGrounded = state.grounded;
-  if (!rolling && state.grounded && (intent.buttons & InputButton.Jump) !== 0) {
+  if (!rolling && !rooted && state.grounded && (intent.buttons & InputButton.Jump) !== 0) {
     state.vy = JUMP_VELOCITY;
     state.grounded = false;
     state.fallPeakY = state.y;

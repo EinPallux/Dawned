@@ -83,34 +83,32 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 (`tools/smoke/two-client-sync.mjs`, `tools/smoke/browser-sync.mjs`), and reviewed (see the
 2026-08-02 review commit for netcode-robustness fixes).
 
-All 18 owner decisions to date are answered and folded (decision log in USER_QUESTIONS.md).
-**P0–P4 are ✅ complete (owner-verified; P4 closed 2026-08-03 after the 10-minute demo).
-P5 — Classes I (ability framework, Warrior & Rogue) is built and verified in dev
-(2026-08-03, protocol v7), with A1's abilities editor + publish v1 shipped in parallel.**
-P5 shipped: the `content_abilities` schema + deterministic ability machine (evaluate →
-commit → tick) that BOTH sides run, class resources (Rage/Energy+CP/Mana), the server slot
-executor with lag-rewound targeting + buff/debuff runtime + RMB stances (Block with
-perfect-block riposte; Evasive), all 28 kit rows authored THROUGH the admin editor and
-published via publish v1 (hot reload, no restart — live-tune DoD proven end-to-end), the
-predicted client ability layer + combat HUD cluster (twin globes, radials, CP pips, buff
-chips, cast bar) + ability VFX v1, basics migrated to content rows, enemy projectile volleys
-with ranged kiting AI, and the Spore Ridge ranged test camp. Migration 0005 seeds all P5
-content for deploys (`ON CONFLICT DO NOTHING` — never reverts panel tuning); migration 0006
-repairs presentation fields (icons + retimed anims) on databases seeded before fix round 7 —
-never edit an applied migration, drizzle skips it silently (DATABASE.md §5). Owner playtest
-fix rounds 6–8 are folded: real game-icons for every ability, anim retiming out of
-fast-forward, HUD cooldown/castability states + refusals in words, an impact pass, the cd-0
-cast-once brick, un-mirrored VFX fans, bone-masked upper-body swing overlays while moving
-(no more gliding LMB spam), and dodge-roll priority (CHANGELOG has details). Verification:
-`tools/smoke/browser-p5.mjs` (22 asserts across Warrior/Rogue/ranged-camp phases), all P0–P4
-smokes green in the same server session, 166 unit tests, tick p95 1.21 ms under ability
-fights (<15 ms gate). **Owner items open (ROADMAP status blocks): the P5 DoD demo runs
-(clear Glub camp + Spore Ridge with each full kit at `/netsim 100 20`) + §9 checklist against
-the kits + HUD look check; plus the P3 real-hardware group session and the A0 /admin login
-check (both non-blocking).** Deploys to production happen only when the owner merges to
-`main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is strict since the P1
-deploy fix; it now also bridges the GitHub PAT so the admin panel's pinned `@dawned/shared`
-git dependency installs on the private repos).
+All 18 owner decisions to date are answered and folded (decision log in USER_QUESTIONS.md);
+Q19/Q20 (ground-cast UX, ally-heal targeting) shipped as their recommended defaults, still
+listed open for the owner's veto.
+**P0–P5 are ✅ complete (owner-verified; P3 and P5 closed 2026-08-03 after fix round 8 —
+"works perfectly"). P5 shipped with A1's abilities editor + publish v1 in parallel — all kit
+content flows through the panel + publish (hot reload, live-tunable), seeded for deploys by
+migrations 0005/0006 (never edit an applied migration — DATABASE.md §5). The P5 machine
+(evaluate → commit → tick on BOTH sides), resources, stances, buff runtime, HUD cluster and
+VFX v1 are the platform P6 extended.**
+**P6 — Classes II is 🟨 built end-to-end (2026-08-03), owner playtest pending.** Shipped:
+protocol v8 (groundAim, Rooted/Stunned/Untargetable flags, Interrupted event, Healed/Absorbed
+hits, shieldRemaining), shared channels + ground/teleport/ally targeting + CC-on-players with
+per-lane DR (cc.ts) + the status vocabulary (root/cleanse/refresh/zone/bonusVs/categories),
+the server heal/absorb/zone/homing pipeline with Attunement/Grace passives and the Focus
+stance, both caster kits (16 abilities) authored via the panel + published (seed migration
+0007), and the client caster layer per COMBAT.md §4.2: cast/channel bars with gather-pose
+loops, Q19 ground quick-cast (gold decals), Q20 ally heals (green plate), STUNNED/ROOTED
+ribbon + interrupt flash, shield chips/shimmer, palette-by-content VFX. New GM primitives
+`/ops/cc` and `/ops/hurt` (localhost + secret) drive the CC/heal paths until P9 enemies do.
+Verification: `tools/smoke/browser-p6.mjs` (mage kit, CC/DR/interrupt, two-client heals, DPS
+envelopes, 4-player lag-lab run + tick gate), browser-p5/p4 regression smokes green on v8,
+191 unit tests. **Owner items open: the P6 solo-camps parity playtest, and the A0 /admin
+login check at play.pathlands.cc/admin (non-blocking).** Deploys to production happen only when
+the owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (its migration step is
+strict since the P1 deploy fix; it also bridges the GitHub PAT so the admin panel's pinned
+`@dawned/shared` git dependency installs on the private repos).
 
 ### Running it locally
 

@@ -205,6 +205,7 @@ export class Gateway {
       targetId: request.targetId,
       aimYaw: request.aimYaw,
       aimPitch: request.aimPitch,
+      groundAim: request.groundAim,
     });
   }
 
@@ -446,7 +447,7 @@ export class Gateway {
               vz: m.vz,
               yaw: m.yaw,
               stamina: m.stamina,
-              flags: player.flags,
+              flags: player.flagsAt(Date.now()),
               hp: Math.round(player.hp),
               maxHp: player.maxHp,
               resource: Math.floor(player.resource.value),
@@ -481,6 +482,8 @@ export class Gateway {
           stacks: effect.stacks,
           remainingMs: Math.max(0, Math.round(effect.expiresAtMs - nowMs)),
           harmful: effect.harmful,
+          // Absorb pool on shield chips (v8) — omitted for everything else.
+          ...(effect.shieldPool > 0 ? { shieldRemaining: Math.round(effect.shieldPool) } : {}),
         })),
       });
       for (const session of this.sessions.values()) {

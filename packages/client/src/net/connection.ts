@@ -9,12 +9,17 @@
 import {
   AbilityRejectReason,
   ActionId,
+  ATTUNEMENT_EVERY,
   BASIC_COMBOS,
   BinaryReader,
   DODGE_STAMINA_COST,
   EVASIVE_DODGE_DISCOUNT,
   EVASIVE_ENERGY_PER_S,
   EVASIVE_MOVE_SPEED_PCT,
+  FOCUS_MOVE_SPEED_MULT,
+  GRACE_CAST_REDUCTION_MS,
+  GRACE_CONSUMER_ABILITY,
+  GRACE_EFFECT_ID,
   InputButton,
   OOC_AFTER_MS,
   actionForSlot,
@@ -36,6 +41,7 @@ import {
   tickResource,
   COMBO_LINK_WINDOW_FRACTION,
   COMBO_RESET_MS,
+  EntityEventKind,
   EntityFlag,
   GCD_MS,
   INTERP_DELAY_MS,
@@ -187,6 +193,17 @@ export interface SlotView {
   lockedUntilLevel: number;
 }
 
+/**
+ * Something the shared machine did between frames (P6): a cast released, a
+ * channel ticked/ended, or movement broke the cast. Drained once per frame by
+ * run-world, which owns the presentation (release anim, VFX, refusal words) —
+ * the connection only times.
+ */
+export interface MachineEvent {
+  kind: 'released' | 'channel-tick' | 'channel-ended' | 'move-canceled';
+  def: AbilityDef | null;
+}
+
 export class Connection {
   private socket: WebSocket | null = null;
   private readonly events: ConnectionEvents;
@@ -276,6 +293,14 @@ export class Connection {
   private resourceHoldUntilMs = 0;
   /** Enemy identity by entity id — arrives once per enemy via EnemyMeta. */
   private readonly enemyMetas = new Map<number, EnemyMetaEntry>();
+  /** Machine happenings since the last frame (see {@link MachineEvent}). */
+  private readonly machineEvents: MachineEvent[] = [];
+  /**
+   * Mage Attunement mirror: landed basic bolts mod 3 (COMBAT/CLASSES P6).
+   * Cosmetic pips only — the mana refund itself arrives via snapshot re-base,
+   * so a rare miscount never desyncs anything that matters.
+   */
+  attunementCount = 0;
   /** Last authoritative state received from the server. */
   private readonly authoritative: MovementState = createMovementState();
   /** Scratch state used while replaying unacked inputs. */
@@ -358,6 +383,9 @@ export class Connection {
     this.abilityMachine.slots.clear();
     this.abilityMachine.gcdUntilMs = 0;
     this.abilityMachine.cast = null;
+    this.abilityMachine.channel = null;
+    this.machineEvents.length = 0;
+    this.attunementCount = 0;
     this.effectLists.clear();
     this.abilityMoveMultUntilMs = 0;
     this.abilityMoveMult = 1;
@@ -671,6 +699,16 @@ export class Connection {
         ) {
           this.lastCombatAtMs = performance.now();
         }
+        // Attunement pips: the server counts our LANDED basic bolts the same
+        // way (combat.ts) — every third one refunds mana + shaves cooldowns.
+        if (
+          this.classId === 'mage' &&
+          resolve.attackerId === this.selfId &&
+          resolve.action === (ActionId.BasicAttack as number) &&
+          resolve.hits.length > 0
+        ) {
+          this.attunementCount = (this.attunementCount + 1) % ATTUNEMENT_EVERY;
+        }
         this.events.onAbilityResolve?.(resolve);
         return;
       }
@@ -691,6 +729,15 @@ export class Connection {
           if (def) {
             this.abilityMachine.slots.delete(def.id);
             this.abilityMachine.gcdUntilMs = 0;
+            // A rejected CAST/CHANNEL press must also drop the predicted bar —
+            // otherwise the client "casts" a spell the server never started
+            // and the release fires pure fiction (P6).
+            if (
+              this.abilityMachine.cast?.abilityId === def.id ||
+              this.abilityMachine.channel?.abilityId === def.id
+            ) {
+              interruptCast(this.abilityMachine, 'stun', 0);
+            }
           }
         }
         this.events.onAbilityReject?.(reject.action, reject.reason);
@@ -704,6 +751,13 @@ export class Connection {
           }
           if (message.event === 8 /* Flinch */) {
             this.lastCombatAtMs = performance.now();
+          }
+          if (message.event === (EntityEventKind.Interrupted as number)) {
+            // A stun broke our cast server-side (P6): mirror it on the local
+            // machine — no refund, the server kept the cost — and drop the
+            // predicted chain like the server's applyCcToPlayer does.
+            interruptCast(this.abilityMachine, 'stun', 0);
+            this.cancelPredictedCombo();
           }
         }
         this.events.onEntityEvent?.(message);
@@ -752,6 +806,8 @@ export class Connection {
   requestBasicAttack(aimYaw: number, aimPitch: number): { step: number; def: ComboStep } | null {
     if (this.status !== 'playing' || this.selfDead) return null;
     if (this.predicted.rollTimeLeft > 0 || this.predicted.swimming) return null;
+    // Stunned gates attacks at request level, same as the server (P6).
+    if ((this.selfFlags & EntityFlag.Stunned) !== 0) return null;
     // Content-sourced chain (P5): the SAME rows the server validates with —
     // panel-tuned step timing stays predicted correctly.
     const combo = this.basicChains[this.classId];
@@ -782,6 +838,7 @@ export class Connection {
           aimYaw,
           aimPitch,
           targetId: 0,
+          groundAim: null,
         }),
       );
     }
@@ -856,14 +913,24 @@ export class Connection {
     aimYaw: number,
     aimPitch: number,
     target: { id: number; radius: number } | null,
+    groundAim: { x: number; z: number } | null = null,
   ):
-    | { ok: true; def: AbilityDef; phase: 'instant' | 'cast'; contactDelayMs: number }
+    | { ok: true; def: AbilityDef; phase: 'instant' | 'cast' | 'channel'; contactDelayMs: number }
     | { ok: false; reason: AbilityRejectReason | null } {
     const def = this.slotDefs.get(slot);
     if (!def) return { ok: false, reason: null };
     if (this.status !== 'playing') return { ok: false, reason: null };
     if (this.predicted.rollTimeLeft > 0 || this.predicted.swimming) {
       return { ok: false, reason: AbilityRejectReason.BadState };
+    }
+    // Stunned refuses every slot press at request level (server parity, P6).
+    if ((this.selfFlags & EntityFlag.Stunned) !== 0) {
+      return { ok: false, reason: AbilityRejectReason.BadState };
+    }
+    // Ground casts need their point (run-world's reticle always supplies one
+    // in-range; a missing point is the server's NoTarget refusal).
+    if (def.targeting.kind === 'ground_aoe' && !groundAim) {
+      return { ok: false, reason: AbilityRejectReason.NoTarget };
     }
     const targetId = target?.id ?? 0;
     const verdict = evaluateUse(this.abilityMachine, def, {
@@ -874,13 +941,30 @@ export class Connection {
     });
     if (!verdict.ok) return { ok: false, reason: verdict.reason };
 
+    // Cleric Grace (P6): banked stacks shave the Mend bar. The stacks are a
+    // synced self-effect, so this computes the SAME delta the server applies
+    // at commit — the predicted bar and the authoritative release agree.
+    let castMsDelta = 0;
+    if (this.classId === 'cleric' && def.id === GRACE_CONSUMER_ABILITY) {
+      const grace = this.effectLists
+        .get(this.selfId)
+        ?.find((effect) => effect.effectId === GRACE_EFFECT_ID);
+      if (grace) castMsDelta = -GRACE_CAST_REDUCTION_MS * grace.stacks;
+    }
+
     // Mirror the server's order exactly: finisher CP measured before commit.
     if (def.comboFinisher) spendComboPoints(this.resource);
-    const commit = commitUse(this.abilityMachine, def, this.resource, {
-      yaw: aimYaw,
-      pitch: aimPitch,
-      targetId,
-    });
+    const commit = commitUse(
+      this.abilityMachine,
+      def,
+      this.resource,
+      {
+        yaw: aimYaw,
+        pitch: aimPitch,
+        targetId,
+      },
+      { castMsDelta },
+    );
     // Snapshots that predate the server consuming this request must not
     // bounce the paid cost back onto the globe (one round trip + slack).
     this.resourceHoldUntilMs = performance.now() + Math.max(120, this.rttMs * 1.5) + 150;
@@ -902,6 +986,10 @@ export class Connection {
       this.correctionHoldUntilMs = now + contactDelayMs + this.rttMs + 150;
     } else if (def.targeting.kind === 'blink_behind') {
       this.predictBlink(def.targeting.maxRange, aimYaw, target);
+      this.correctionHoldUntilMs = now + this.rttMs + 150;
+    } else if (def.targeting.kind === 'teleport') {
+      // Mage Blink: the same forward hop the server executes at commit.
+      this.predictTeleport(def.targeting.distance, aimYaw);
       this.correctionHoldUntilMs = now + this.rttMs + 150;
     }
 
@@ -925,10 +1013,28 @@ export class Connection {
           aimYaw,
           aimPitch,
           targetId,
+          groundAim: def.targeting.kind === 'ground_aoe' ? groundAim : null,
         }),
       );
     }
     return { ok: true, def, phase: commit.phase, contactDelayMs };
+  }
+
+  /**
+   * Predict Mage Blink's forward hop — the exact server rule (abilities.ts):
+   * a straight jump along aim, landing only where the walkgrid allows.
+   */
+  private predictTeleport(distance: number, aimYaw: number): void {
+    const m = this.predicted;
+    const destX = m.x + Math.sin(aimYaw) * distance;
+    const destZ = m.z + Math.cos(aimYaw) * distance;
+    if (!this.terrain.walkableAt || this.terrain.walkableAt(destX, destZ)) {
+      m.x = destX;
+      m.z = destZ;
+      m.y = this.terrain.heightAt(destX, destZ);
+      m.vx = 0;
+      m.vz = 0;
+    }
   }
 
   /**
@@ -986,8 +1092,23 @@ export class Connection {
       speedMult *= 1 + EVASIVE_MOVE_SPEED_PCT / 100;
       dodgeCostDelta -= EVASIVE_DODGE_DISCOUNT;
     }
+    // Focus stance (P6): the mage's held slow-strafe, same fold as world.step.
+    if (secondaryHeld && this.classId === 'mage') speedMult *= FOCUS_MOVE_SPEED_MULT;
+    // Casting/channeling with a fractional castWhileMoving walks slower — the
+    // def is the same row the server reads, so both sides slow identically.
+    const activeCastId =
+      this.abilityMachine.cast?.abilityId ?? this.abilityMachine.channel?.abilityId ?? null;
+    if (activeCastId !== null) {
+      const castMove = this.abilityDefs.get(activeCastId)?.castWhileMoving;
+      if (typeof castMove === 'number') speedMult *= castMove;
+    }
     if (now < this.abilityMoveMultUntilMs) speedMult *= this.abilityMoveMult;
-    return { speedMult, dodgeCostDelta };
+    // Hard CC (P6): both sides read the flags the server stamped — the shared
+    // step pins the feet (root) or freezes everything (stun) identically. The
+    // one-RTT window before the flag lands resolves through normal corrections.
+    const stunned = (this.selfFlags & EntityFlag.Stunned) !== 0;
+    const rooted = stunned || (this.selfFlags & EntityFlag.Rooted) !== 0;
+    return { speedMult, dodgeCostDelta, rooted, controlsLocked: stunned };
   }
 
   // --- HUD state (polled per frame) ----------------------------------------
@@ -1020,16 +1141,54 @@ export class Connection {
     };
   }
 
-  /** Active cast for the bar (null = none; all P5 kits are instants). */
-  castView(): { name: string; fraction: number; remainingMs: number } | null {
-    const cast = this.abilityMachine.cast;
-    if (!cast) return null;
-    const elapsed = this.abilityMachine.nowMs - cast.startedAtMs;
-    return {
-      name: this.abilityDefs.get(cast.abilityId)?.name ?? '',
-      fraction: Math.min(1, elapsed / cast.castMs),
-      remainingMs: Math.max(0, cast.castMs - elapsed),
-    };
+  /**
+   * Active cast OR channel for the bar (null = none). Casts fill toward
+   * release; channels drain toward their end with a pip per tick (P6).
+   */
+  castView(): {
+    kind: 'cast' | 'channel';
+    name: string;
+    fraction: number;
+    remainingMs: number;
+    ticks: number;
+    ticksDone: number;
+  } | null {
+    const machine = this.abilityMachine;
+    const cast = machine.cast;
+    if (cast) {
+      const elapsed = machine.nowMs - cast.startedAtMs;
+      return {
+        kind: 'cast',
+        name: this.abilityDefs.get(cast.abilityId)?.name ?? '',
+        fraction: Math.min(1, elapsed / cast.castMs),
+        remainingMs: Math.max(0, cast.castMs - elapsed),
+        ticks: 0,
+        ticksDone: 0,
+      };
+    }
+    const channel = machine.channel;
+    if (channel) {
+      const elapsed = machine.nowMs - channel.startedAtMs;
+      return {
+        kind: 'channel',
+        name: this.abilityDefs.get(channel.abilityId)?.name ?? '',
+        fraction: Math.min(1, elapsed / channel.durationMs),
+        remainingMs: Math.max(0, channel.durationMs - elapsed),
+        ticks: Math.floor(channel.durationMs / channel.tickEveryMs),
+        ticksDone: Math.floor(
+          (channel.nextTickAtMs - channel.startedAtMs) / channel.tickEveryMs - 1,
+        ),
+      };
+    }
+    return null;
+  }
+
+  /** Drain machine happenings since last frame (run-world's anim/VFX layer). */
+  takeMachineEvents(): MachineEvent[] {
+    if (this.machineEvents.length === 0) return this.machineEvents;
+    const drained = [...this.machineEvents];
+    this.machineEvents.length = 0;
+    return drained;
   }
 
   /** Authoritative buff/debuff list for an entity (self, target plates). */
@@ -1059,6 +1218,7 @@ export class Connection {
         aimYaw: 0,
         aimPitch: 0,
         targetId: 0,
+        groundAim: null,
       }),
     );
   }
@@ -1305,10 +1465,10 @@ export class Connection {
 
     const result = stepMovement(this.predicted, intent, TICK_DT, this.terrain, modifiers);
     if (result.dodged) {
-      // Dodge cancels the chain AND an active cast for half its cost back —
-      // the same §4.5 rule the server applies in its step.
+      // Dodge cancels the chain AND an active cast/channel for half its cost
+      // back — the same §4.5 rule the server applies in its step.
       this.cancelPredictedCombo();
-      const casting = this.abilityMachine.cast;
+      const casting = this.abilityMachine.cast ?? this.abilityMachine.channel;
       if (casting) {
         const castDef = this.abilityDefs.get(casting.abilityId);
         const interrupted = interruptCast(this.abilityMachine, 'dodge', castDef?.cost.amount ?? 0);
@@ -1341,7 +1501,24 @@ export class Connection {
     // compare against accumulated nowMs, so the cadence difference is safe).
     if (this.status === 'playing') {
       const moving = Math.abs(this.predicted.vx) > 0.05 || Math.abs(this.predicted.vz) > 0.05;
-      tickAbilityMachine(this.abilityMachine, dtMs, moving);
+      const ticked = tickAbilityMachine(this.abilityMachine, dtMs, moving);
+      // Machine happenings → the per-frame event queue run-world drains for
+      // presentation (release anim at cast end, channel tick flashes, the
+      // "moved" cancel words). The defs resolve here so the drain stays dumb.
+      if (ticked.released) {
+        this.machineEvents.push({
+          kind: 'released',
+          def: this.abilityDefs.get(ticked.released.abilityId) ?? null,
+        });
+      }
+      for (const tick of ticked.channelTicks) {
+        this.machineEvents.push({
+          kind: 'channel-tick',
+          def: this.abilityDefs.get(tick.abilityId) ?? null,
+        });
+      }
+      if (ticked.channelEnded) this.machineEvents.push({ kind: 'channel-ended', def: null });
+      if (ticked.moveCanceled) this.machineEvents.push({ kind: 'move-canceled', def: null });
       // Resource regen/decay between snapshots — same shared formula, with a
       // client-tracked combat clock (resolves/flinches mark it below). The
       // floor re-base on every snapshot keeps any drift under one unit.

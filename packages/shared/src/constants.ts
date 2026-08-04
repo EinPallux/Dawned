@@ -217,6 +217,31 @@ export const EVASIVE_MOVE_SPEED_PCT = 10;
 export const EVASIVE_DODGE_DISCOUNT = 10;
 export const EVASIVE_ENERGY_PER_S = 3;
 
+/** Cleric Grace passive (CLASSES.md §4): self-healing bonus percent. */
+export const GRACE_SELF_HEAL_PCT = 15;
+/** Grace: each Holy Smite hit shaves this off the next Mend cast (stacks 3). */
+export const GRACE_CAST_REDUCTION_MS = 100;
+export const GRACE_MAX_STACKS = 3;
+/** The Smite that feeds Grace / the Mend it accelerates (content ids — a
+ * panel rename of either row must update these, CLASSES.md §4). */
+export const GRACE_TRIGGER_ABILITY = 'ability_cleric_holy_smite';
+export const GRACE_CONSUMER_ABILITY = 'ability_cleric_mend';
+export const GRACE_EFFECT_ID = 'grace';
+/** Grace stacks idle out after this long without a Smite hit. */
+export const GRACE_STACK_DURATION_MS = 10000;
+
+/** Mage Attunement passive (CLASSES.md §2): every Nth landed basic bolt. */
+export const ATTUNEMENT_EVERY = 3;
+export const ATTUNEMENT_MANA_REFUND = 5;
+export const ATTUNEMENT_CDR_MS = 500;
+
+/** Mage Focus stance (RMB hold): slow-strafe + faster bolts. */
+export const FOCUS_MOVE_SPEED_MULT = 0.6;
+export const FOCUS_PROJECTILE_SPEED_PCT = 10;
+
+/** Homing bolts (Arcane Barrage) steer at most this fast, rad/s. */
+export const HOMING_TURN_RATE_RAD_S = 4;
+
 /** Rogue Ambusher passive: rear arc and crit bonus (CLASSES.md §3). */
 export const AMBUSHER_REAR_ARC_DEG = 120;
 export const AMBUSHER_REAR_CRIT_PCT = 15;

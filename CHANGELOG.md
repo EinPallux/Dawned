@@ -5,6 +5,64 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (2026-08-03)
+
+- **Two new kits, 16 abilities, authored as live-tunable content:** Mage
+  (Fireball, Ice Lance, Frost Nova, Blink, Ember Wave, Mana Shield, Arcane
+  Barrage, Meteor) and Cleric (Holy Smite, Mend, Hammer of Wrath, Radiant
+  Burst, Sanctuary, Purify, Aegis, Dawnlight), each with its own game-icon,
+  published through the admin panel like the P5 kits (seed migration 0007
+  covers fresh deploys).
+- **Cast bars and channels:** casting abilities show a fill-up bar (gather
+  pose on the rig while it runs, release anim + bolt at the end); Arcane
+  Barrage drains a violet channel bar with a pip per bolt. Moving cancels
+  casts that demand standing still — with words, not silence — and abilities
+  with a cast-while-moving fraction walk you at that speed while the bar
+  runs (both sides, no rubber-banding). Dodge still cancels for half cost.
+- **Ground quick-cast (Q19):** Meteor and Sanctuary fire at the terrain
+  point under the crosshair (range-clamped, sky-aim falls back to max
+  range). Your own decals draw gold — enemy telegraphs stay red.
+- **Ally heals with a green plate (Q20):** Mend/Purify/Aegis pick the ally
+  under your reticle (green target plate shows who), fall back to the most
+  injured in range, then yourself. Absorb shields shimmer on the shielded
+  body and their chip counts the pool down; heals float green numbers.
+- **Hard crowd control on players:** roots pin your feet (turning free),
+  stuns freeze everything and interrupt your cast (red bar flash +
+  INTERRUPTED / ROOTED / STUNNED ribbon says why input is dead). Repeated
+  CC in the same 10 s window halves, then immunizes — server-authoritative
+  with client prediction parity, so none of it rubber-bands.
+- **Class passives & stances in the HUD:** mage Attunement pips under the
+  mana globe (every third landed bolt refunds mana), cleric Grace stacks
+  shorten the next Mend bar (both sides compute the same bar), and the mage
+  Focus stance (hold RMB) slow-strafes with a tightened reticle and faster
+  bolts.
+- **Caster VFX palettes:** fire abilities burst orange, frost ice-blue,
+  arcane violet, cleric kits holy gold — derived from each ability's own
+  effect data, so panel-made abilities color themselves.
+- **Verified end to end:** `tools/smoke/browser-p6.mjs` drives the mage kit,
+  the root/stun/DR/interrupt path, cross-client heals, class DPS envelopes
+  and a 4-player mixed session under lag-lab jitter against the tick budget.
+  Two GM primitives shipped for it (and for future moderation): `/ops/cc`
+  (stun/root a player) and `/ops/hurt` (stage a wounded heal target) —
+  localhost + ops secret only.
+
+### Fixed — P6 verification round (caught before anything shipped, 2026-08-03)
+
+- A dodge roll now cancels an active CHANNEL for half cost, not just casts
+  (server missed channels; the predicted client already did both).
+- The fractional `cast-while-moving` speed defined by the ability schema is
+  actually applied while the bar runs (it was validated but never folded
+  into movement) — on the server and in prediction, so no rubber-banding.
+- A server-rejected cast press now also drops the predicted cast bar — the
+  client no longer plays out a bar (and release flourish) for a spell the
+  server refused.
+- Blink and Purify break player roots: movement/any cleanses clear the hard
+  root timer, not just effect rows — without this, P9's enemy roots would
+  have been uncleansable.
+- Heals float green `+` numbers with a soft sparkle instead of rendering as
+  red incoming damage, and healing an ally no longer punches the healer's
+  camera with the contact kick.
+
 ### Fixed — P5 playtest round 8: cast-once brick, mirrored fans, missing icons, gliding attacks, dodge roll (2026-08-03)
 
 - **"I can only cast a spell one time" — real, and nasty.** Committing any
