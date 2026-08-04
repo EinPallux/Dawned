@@ -68,6 +68,18 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   (effective ability defs, movement/stamina/attack-speed/resource
   scalars), so builds predict as tightly as fresh characters; discovery
   and level-up moments also surface as slide-in toasts.
+- **Verified end to end (P7-E):** a bot warrior grinds 1→10 on the live
+  test camps through kills alone — accelerated by the published `xpRate`
+  world setting and per-enemy `xpMult` rows (both hot-reloaded and
+  restored, the owner's own tuning levers) — then proves the tier gates
+  open exactly with in-branch investment, the capstone refuses at low
+  level, both respec flavors refund fully and charge their gold, the XP
+  bar/toasts/badges stay live throughout, and everything survives a relog
+  (`tools/smoke/browser-p7.mjs`). A data-driven matrix test pins the
+  whole published tree: every one of the 96 nodes at every rank folds
+  into an observable runtime change, references only same-class published
+  abilities, produces machine-legal effective defs, and stays reachable
+  by level 30 (`progression-content.test.ts`).
 
 ### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (2026-08-03)
 
@@ -462,6 +474,7 @@ impact, no icons. Root causes found and fixed:
   and the camera starts looking the way your character faces on entry.
 
 ### Added — Phase P3: movement, netcode core & chat v1 (built 2026-08-02; owner signoff pending)
+
 - **Swimming**: water deeper than 1.2 m carries you — movement pins to the surface,
   speed drops to ×0.55, sprint-swimming drains stamina faster, jumping is inert, and
   diving into deep water always negates fall damage. Enforced by the same shared
@@ -494,6 +507,7 @@ impact, no icons. Root causes found and fixed:
   `tools/smoke/predict-lag.mjs`, `tools/smoke/browser-p3.mjs`.
 
 ### Added — Phase P2: terrain & world streaming (verified on real hardware 2026-08-02)
+
 - **The Dawnlands gain real ground**: a ~1 km dev island (Dawnshore meadows and beaches,
   the wooded Verdant Weald, the stark Ashen Reach, an inland lake) generated deterministically
   by `pnpm world:generate` into committed map artifacts — 271 terrain chunks (~25 kB each:
@@ -521,6 +535,7 @@ impact, no icons. Root causes found and fixed:
   60 FPS validation is the owner's remaining DoD step (dev containers render via software GL).
 
 ### Added — Phase P1: accounts, characters & menus (live on the VPS 2026-08-02)
+
 - **Accounts & sessions (server)**: PostgreSQL 16 + Drizzle schema (`accounts`, `sessions`,
   `characters`, `bans`) with committed migrations; argon2id password hashing; registration
   (open, dormant invite-code toggle per Q8), login with per-IP throttles, failed-login lockouts
@@ -557,6 +572,7 @@ impact, no icons. Root causes found and fixed:
   token/session-fixation review); per-IP registration limit set to 10/day.
 
 ### Fixed — P1 VPS deploy
+
 - **Registration/login failed on the VPS with a raw SQL error on screen.** Root cause: the
   deploy scripts ran `pnpm db:migrate` without `DATABASE_URL` (the `dawned` user cannot read
   `/etc/dawned/game.env`), the migrator fell back to the dev-default URL and failed password
@@ -571,6 +587,7 @@ impact, no icons. Root causes found and fixed:
     password hash. Clients now get a generic message; the real error goes to the server log.
 
 ### Added — Phase P0: foundations & walking skeleton
+
 - **Monorepo**: pnpm workspaces (`packages/shared`, `packages/server`, `packages/client`,
   `tools`), TypeScript strict everywhere, ESLint 9 + Prettier, Vitest, a single `pnpm check`
   gate (typecheck + lint + format + tests + asset report) and a GitHub Actions workflow.
@@ -599,6 +616,7 @@ impact, no icons. Root causes found and fixed:
   replication, convergence, console errors).
 
 ### Fixed — P0 code review pass
+
 - **Alt-tab no longer gets you kicked**: the keep-alive ping ran on the render loop, which
   browsers stop entirely in hidden tabs — the server's idle sweep then dropped the player after
   30 s. Pinging now runs on an interval timer and the idle window is sized above Chrome's worst
@@ -631,12 +649,14 @@ impact, no icons. Root causes found and fixed:
   `deploy/FIRST_DEPLOY.md` — a beginner walkthrough for the first deployment with private repos.
 
 ### Fixed
+
 - Remote players rendered several metres behind their true position on slow clients: the
   interpolation clock was derived from ping/pong offsets, which skew badly when a stalled frame
   inflates the measured RTT. Interpolation is now driven off the snapshot stream with bounded
   lag/lead, so a slow or backgrounded client no longer drags every other player out of place.
 
 ### Added
+
 - Complete 0.1.0 planning documentation:
   - Design: game vision & pillars, world (the Dawnlands archipelago, 6 zones), action combat
     system, 4 classes × 8 abilities + skill trees, progression (levels/stats/XP), items & loot &
@@ -653,6 +673,7 @@ impact, no icons. Root causes found and fixed:
 - Companion planning in the Dawned-Admin repository (editor & ops panel).
 
 ### Changed
+
 - Folded all 16 initial owner decisions (2026-08-02) into the docs. Highlights: mouselook
   controls confirmed; jumping with light fall damage specced; English-only content; **open
   registration** (invite-code toggle kept available); admin panel at `/admin` with allowlist off;
@@ -663,5 +684,6 @@ impact, no icons. Root causes found and fixed:
   `WeatherState` protocol message). Full decision log: USER_QUESTIONS.md.
 
 ### Notes
+
 - Phase P0 shipped and verified live at play.pathlands.cc on 2026-08-02 (first deployment via
   `deploy/DEPLOY.sh` on the production VPS). Next phase: P1 — Accounts, Characters & Menus.

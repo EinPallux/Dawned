@@ -958,6 +958,27 @@ export const runWorld = (
         rollTimeLeft: connection.predicted.rollTimeLeft,
       };
     },
+    /** Living-enemy positions for the P7 grind bot (browser-p7 smoke). */
+    enemies: (): {
+      id: number;
+      name: string;
+      level: number;
+      x: number;
+      z: number;
+      hpFraction: number;
+      dead: boolean;
+    }[] =>
+      [...connection.remotes.values()]
+        .filter((remote) => remote.kind === EntityKind.Enemy && remote.enemyMeta)
+        .map((remote) => ({
+          id: remote.id,
+          name: remote.enemyMeta!.name,
+          level: remote.enemyMeta!.level,
+          x: remote.render.x,
+          z: remote.render.z,
+          hpFraction: remote.render.hpFraction,
+          dead: (remote.render.flags & EntityFlag.Dead) !== 0,
+        })),
     /** Progression truth + drivers (P7 smoke: grind, allocation, panels). */
     progressionState: (): {
       sheet: ProgressSyncMessage | null;

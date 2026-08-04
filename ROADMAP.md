@@ -8,24 +8,24 @@
 >
 > **Status legend:** 🔲 not started · 🟨 in progress · ✅ done — update this file as phases move.
 
-| Phase | Name                                     | Size | Status                    |
-| ----- | ---------------------------------------- | ---- | ------------------------- |
-| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
-| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
-| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
-| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)      |
-| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
-| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)      |
-| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
-| P7    | Progression — XP, Stats, Skill Trees     | M    | 🟨 in progress            |
-| P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                        |
-| P9    | Enemies & AI Depth                       | L    | 🔲                        |
-| P10   | Gathering Professions                    | M    | 🔲                        |
-| P11   | Quests, POIs & Interactables             | L    | 🔲                        |
-| P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
-| P13   | GM Suite & Live Ops                      | M    | 🔲                        |
-| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
-| P15   | Release 0.1.0                            | M    | 🔲                        |
+| Phase | Name                                     | Size | Status                     |
+| ----- | ---------------------------------------- | ---- | -------------------------- |
+| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02)  |
+| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02)  |
+| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)       |
+| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)       |
+| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)       |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)       |
+| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)       |
+| P7    | Progression — XP, Stats, Skill Trees     | M    | 🟨 built, playtest pending |
+| P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                         |
+| P9    | Enemies & AI Depth                       | L    | 🔲                         |
+| P10   | Gathering Professions                    | M    | 🔲                         |
+| P11   | Quests, POIs & Interactables             | L    | 🔲                         |
+| P12   | World Building (the Dawnlands)           | XL   | 🔲                         |
+| P13   | GM Suite & Live Ops                      | M    | 🔲                         |
+| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                         |
+| P15   | Release 0.1.0                            | M    | 🔲                         |
 
 ---
 
@@ -380,7 +380,31 @@ screen, grows with later phases); `content_xp_curve`/nodes editable via A1 edito
 **DoD:** grind a character 1→10 legitimately on test camps; trees allocate/respec correctly incl.
 all Warrior/Rogue/Mage/Cleric node effects verified by targeted tests; unspent-point UX per design.
 
-## P8 — Items, Inventory, Loot & Vendors (L) ⚙A1 item/loot editors required
+**Status: ✅ built end-to-end 2026-08-04 (P7-A…E) — protocol v9; owner playtest pending.**
+
+- [x] Shared progression core (P7-A): `content_xp_curve` (formula-exact defaults, panel-editable) + the full 96-node skill-tree contract (tiers/gates/capstones, 7-effect-kind vocabulary,
+      allocation + aggregation helpers both sides run); protocol v9 (AllocateStats/Skill/Respec ↑,
+      ProgressSync/XpGained/LevelUp ↓); migrations 0008/0009.
+- [x] Server progression (P7-B): kill XP with tag rule + falloff + per-enemy `xpMult` + `xpRate`,
+      zone-discovery XP, cascading level-ups with the §1.3 refill contract, allocation/respec
+      validated with the SAME shared gates, write-through persistence, all 7 node-effect kinds
+      folding live, `/setlevel` + `/ops/setlevel` dev path.
+- [x] Content + panel (P7-C, with Dawned-Admin A1): the 29-row curve + all 96 CLASSES.md nodes
+      authored through the panel's Content → Progression editors and published (hot reload); seed
+      migration 0010; `GET /api/content/skill-nodes`; Q21 authoring defaults (USER_QUESTIONS.md).
+- [x] Client progression (P7-D): bottom-edge XP bar + `+N XP` floaters, the full level-up juice
+      (pillar, Celebration when idle, flash frame + bar sparks, chime, toasts incl. ability
+      unlocks), `C` Character panel (staging + Confirm, suggested build, formula-transparent
+      derived stats, respec), `K` Skills panel (climbing lattices, data-generated tooltips,
+      click-to-allocate on shared gates), the §3 micro menu with banked-point badges, and the
+      specced-character prediction folds (effective defs, movement/stamina/attack-speed/resource).
+- [x] Verification (P7-E): `tools/smoke/browser-p7.mjs` grinds 1→10 legitimately on the live
+      camps (kills only, accelerated via the xpRate + xpMult content levers, hot-reloaded and
+      restored), proves tier gates open exactly with in-branch investment, capstone refusal at
+      L10, both respec flavors with gold charges, UI evidence (bar/toasts/badges/K-panel) and
+      relog persistence; the node-effect matrix test verifies EVERY published node at EVERY rank
+      folds observably with legal refs (`progression-content.test.ts`); p7-probe + two-client
+      regressions green.
 
 **Goal:** the reward engine.
 **Scope:** item system + rolled stats; inventory grid + paper-doll + tooltips + compare; equipment
