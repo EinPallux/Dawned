@@ -101,14 +101,15 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 (`tools/smoke/two-client-sync.mjs`, `tools/smoke/browser-sync.mjs`), and reviewed (see the
 2026-08-02 review commit for netcode-robustness fixes).
 
-21 owner decisions are answered and folded (decision log in USER_QUESTIONS.md); Q21 (P7
-tree-authoring defaults: tier-by-listed-order, linear per-rank ramps) is open with a
-keep-and-panel-tune recommendation implemented.
-**P0–P6 are ✅ complete (owner-verified; P6 closed 2026-08-04 — "classes are fine"; A0
-/admin login confirmed). P7 — Progression and P8 — Items, Inventory, Loot & Vendors are
-both ✅ built end-to-end (2026-08-04; protocol v9 then v10) and awaiting the owner's
-playtest; their A1 sync points landed in the panel (XP-curve + skill-tree editors, then
-items + loot + vendors).**
+All 21 owner decisions are answered and folded (decision log in USER_QUESTIONS.md — Q21,
+the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). No open
+questions right now.
+**P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
+P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
+all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
+then items + loot + vendors). **P9 — Enemies & AI Depth is the current phase.**
+The owner has explicitly deferred ALL fine-tuning (numbers, feel-pass on shipped systems)
+to the end of the project — do not stop mid-phase to polish balance; note it and move on.
 What P7 shipped on top of the P5/P6 caster platform: the XP pipeline (kill XP with the tag
 rule, level falloff, per-enemy `xpMult` and the `xpRate` world lever, zone-discovery XP,
 cascading level-ups with the §1.3 refill/juice contract), attribute allocation and the

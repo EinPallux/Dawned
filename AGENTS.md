@@ -25,11 +25,12 @@ nothing beyond it.
   README status block · CLAUDE/AGENTS current state in BOTH repos · design/tech docs you touched
   · no hardcoded phase or version strings in the app (the HUD reads `build-info.ts`) ·
   USER_QUESTIONS · any counts you quoted.
-- **State:** P0–P6 complete (owner-verified; P6 closed 2026-08-04 — "classes are fine";
-  A0 /admin login confirmed). **P7 — Progression and P8 — Items, Inventory, Loot &
-  Vendors are both built end-to-end (2026-08-04; protocol v9 then v10), owner playtest
-  pending; their A1 sync points landed in the panel (XP-curve + skill-tree editors, then
-  items + loot + vendors).** P7 on top of the P5/P6 caster platform: the XP pipeline
+- **State:** **P0–P8 all complete and owner-verified** (P6 closed 2026-08-04 — "classes
+  are fine"; P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested
+  everything so far and all seems fine"); their A1 sync points landed in the panel
+  (XP-curve + skill-tree editors, then items + loot + vendors). **P9 — Enemies & AI Depth
+  is the current phase.** ALL fine-tuning is deferred to the end of the project by the
+  owner's decision — never pause a phase to polish balance. P7 on top of the P5/P6 caster platform: the XP pipeline
   (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
   level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
   rows (seed migration 0010 — never edit an applied migration, DATABASE.md §5) with every

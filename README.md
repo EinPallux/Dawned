@@ -4,8 +4,8 @@
 community of friends (5–20 players), inspired by the feel of _Farever_, _Guild Wars 2_ and
 _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 
-> **Status (2026-08-04): phases P0–P8 are built; P0–P6 are owner-verified, P7 and P8 await
-> playtest.** Live at [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
+> **Status (2026-08-04): phases P0–P8 are complete and owner-verified; P9 (Enemies & AI Depth)
+> is in progress.** Live at [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
 > a streamed island, action combat, all four classes with their ability kits, levels 1–30 with
 > attributes and 96-node skill trees, and the full item loop (pack, paper-doll, loot bags,
 > vendors, visible weapons). Protocol v11 — the dodge roll now rides the snapshot, which is what

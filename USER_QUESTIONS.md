@@ -8,23 +8,18 @@
 
 ## Open questions
 
-### Q21 — P7 skill-tree authoring defaults (2026-08-04)
-
-CLASSES.md lists each branch's 8 nodes with per-rank effects but does not pin (a) which nodes sit
-in which unlock tier, or (b) how multi-rank "special" nodes scale per rank. Both shipped as
-authoring defaults in the 96 published node rows (every value is one panel edit away):
-
-- **Tier layout by listed order**: nodes 1–2 → tier 1 (0 pts/L2), 3–4 → tier 2 (3 pts/L5),
-  5–6 → tier 3 (6 pts/L10), node 7 → tier 4 (9 pts/L15), node 8 = capstone (8 pts + L25).
-- **Per-rank ramps are linear to the doc value at max rank** (e.g. Scorched Ground rank 1 burns
-  at half rate, Overflow rank 1 converts 15% of the doc's 30%).
-
-**Recommended default: keep both** — play the trees in the P7 playtest and re-tier/re-value
-individual nodes in the panel (Content → Progression) where they feel off. No code involved.
+_None._ (New questions get added here as they come up — with a recommended default, per the rule
+at the top of this file.)
 
 ---
 
 ## Decision log
+
+### 2026-08-04 — P7 + P8 closed (owner playtest: "I tested everything so far and all seems fine")
+
+| #   | Topic                            | Decision                                                                                                                                                                                                                                                                                                                                          | Folded into                                                       |
+| --- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Q21 | P7 skill-tree authoring defaults | **Keep both shipped defaults**: tier layout by CLASSES.md listed order (nodes 1–2 → tier 1, 3–4 → tier 2, 5–6 → tier 3, 7 → tier 4, 8 = capstone) and per-rank ramps linear to the doc value at max rank. Re-tiering/re-valuing individual nodes is panel work with no code, and the owner has deferred all fine-tuning to the end of the project | the 96 published `content_skill_nodes` rows (seed migration 0010) |
 
 ### 2026-08-04 — P6 casters (accepted with the owner's P6 playtest — "classes are fine")
 

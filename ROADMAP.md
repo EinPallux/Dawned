@@ -8,24 +8,24 @@
 >
 > **Status legend:** 🔲 not started · 🟨 in progress · ✅ done — update this file as phases move.
 
-| Phase | Name                                     | Size | Status                     |
-| ----- | ---------------------------------------- | ---- | -------------------------- |
-| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02)  |
-| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02)  |
-| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)       |
-| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)       |
-| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)       |
-| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)       |
-| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)       |
-| P7    | Progression — XP, Stats, Skill Trees     | M    | 🟨 built, playtest pending |
-| P8    | Items, Inventory, Loot & Vendors         | L    | 🟨 built, playtest pending |
-| P9    | Enemies & AI Depth                       | L    | 🔲                         |
-| P10   | Gathering Professions                    | M    | 🔲                         |
-| P11   | Quests, POIs & Interactables             | L    | 🔲                         |
-| P12   | World Building (the Dawnlands)           | XL   | 🔲                         |
-| P13   | GM Suite & Live Ops                      | M    | 🔲                         |
-| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                         |
-| P15   | Release 0.1.0                            | M    | 🔲                         |
+| Phase | Name                                     | Size | Status                    |
+| ----- | ---------------------------------------- | ---- | ------------------------- |
+| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
+| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
+| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
+| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)      |
+| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)      |
+| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
+| P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
+| P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
+| P9    | Enemies & AI Depth                       | L    | 🟨 in progress            |
+| P10   | Gathering Professions                    | M    | 🔲                        |
+| P11   | Quests, POIs & Interactables             | L    | 🔲                        |
+| P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
+| P13   | GM Suite & Live Ops                      | M    | 🔲                        |
+| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
+| P15   | Release 0.1.0                            | M    | 🔲                        |
 
 ---
 
@@ -380,7 +380,9 @@ screen, grows with later phases); `content_xp_curve`/nodes editable via A1 edito
 **DoD:** grind a character 1→10 legitimately on test camps; trees allocate/respec correctly incl.
 all Warrior/Rogue/Mage/Cleric node effects verified by targeted tests; unspent-point UX per design.
 
-**Status: ✅ built end-to-end 2026-08-04 (P7-A…E) — protocol v9; owner playtest pending.**
+**Status: ✅ complete (owner-verified 2026-08-04 — "I tested everything so far and all seems
+fine") — protocol v9.** Fine-tuning of the shipped numbers (heal magnitudes, node tiers/values)
+is deliberately deferred to the end of the project and is all panel work, no code.
 
 - [x] Shared progression core (P7-A): `content_xp_curve` (formula-exact defaults, panel-editable) + the full 96-node skill-tree contract (tiers/gates/capstones, 7-effect-kind vocabulary,
       allocation + aggregation helpers both sides run); protocol v9 (AllocateStats/Skill/Respec ↑,
@@ -418,7 +420,8 @@ unique icon, rarity frames); first 60 real items authored (T1–T2 bands) via ad
 fuzz tests green (no dupes under parallel op storms); icon build fails on any unmapped item
 (enforced); 60 items reviewed in-game.
 
-**Status: ✅ built end-to-end 2026-08-04 (P8-A…E) — protocol v10; owner playtest pending.**
+**Status: ✅ complete (owner-verified 2026-08-04, after two playtest fix rounds) — protocol v10,
+then v11 with the roll fix.**
 
 - [x] Shared item core (P8-A): item/loot-table/vendor zod schemas, the §2 budget formulas
       (`statBudget`, `weaponDamageFor`, `baseArmorFor`, `itemValue`, `sellPriceFor`,
