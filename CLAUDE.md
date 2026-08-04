@@ -87,9 +87,10 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 tree-authoring defaults: tier-by-listed-order, linear per-rank ramps) is open with a
 keep-and-panel-tune recommendation implemented.
 **P0–P6 are ✅ complete (owner-verified; P6 closed 2026-08-04 — "classes are fine"; A0
-/admin login confirmed). P7 — Progression is ✅ built end-to-end (P7-A…E, 2026-08-04,
-protocol v9) — owner playtest pending; its A1-b sync point landed (XP-curve + skill-tree
-editors live in the panel).**
+/admin login confirmed). P7 — Progression and P8 — Items, Inventory, Loot & Vendors are
+both ✅ built end-to-end (2026-08-04; protocol v9 then v10) and awaiting the owner's
+playtest; their A1 sync points landed in the panel (XP-curve + skill-tree editors, then
+items + loot + vendors).**
 What P7 shipped on top of the P5/P6 caster platform: the XP pipeline (kill XP with the tag
 rule, level falloff, per-enemy `xpMult` and the `xpRate` world lever, zone-discovery XP,
 cascading level-ups with the §1.3 refill/juice contract), attribute allocation and the
@@ -105,10 +106,32 @@ Verification: `tools/smoke/browser-p7.mjs` (a bot grinds 1→10 legitimately on 
 camps — kills only, accelerated via the published xpRate/xpMult levers — then proves tier
 gates, capstone refusal, both respecs, UI evidence and relog persistence), the node-effect
 matrix test (`progression-content.test.ts`: every published node at every rank folds
-observably, refs legal), p7-probe/two-client/earlier smokes green, 263 unit tests. Heal
-magnitudes remain flagged for panel tuning. Deploys to production happen only when the
+observably, refs legal), p7-probe/two-client/earlier smokes green. Heal magnitudes remain
+flagged for panel tuning. Deploys to production happen only when the
 owner merges to `main` and runs `deploy/UPDATE.sh` on the VPS (strict migrations; it also
 bridges the GitHub PAT for the admin panel's pinned `@dawned/shared` git dependency).
+
+What P8 shipped on top of that: items, loot and vendors as content (`content_items`,
+`content_loot_tables`, `content_vendors`) with the ITEMS_LOOT §2 budgets as shared
+formulas; the plan/apply inventory model (one code path both sides run, proven by a
+5-seed × 4000-op conservation fuzz suite); an authoritative 48-cell pack + paper-doll +
+purse that folds equipment into the P4 derived stats and persists write-through;
+per-player instanced loot bags (60 s, 4 m, `nothing` weighted, nested tables, XP's tag
+rule); server-priced vendors with a proximity lease and a 10-deep buyback shelf;
+consumables on the shared cooldown lane; and protocol v10 — `ItemOp` up (the only
+client-authored JSON envelope, zod-gated), `InventorySync`/`LootBags`/`VendorPanel`/
+`ItemNotice` down, `mainhandModel`/`offhandModel` on the roster. NOTHING about items is
+predicted: every op is a request and the next full sync is the answer, which is also what
+heals a refused drag. The client layer is the `I` pack + paper-doll + comparing tooltips,
+world loot bags with rarity beams and the `F` / `Shift+F` flow, Dawnhaven market posts
+with the `F` trade prompt, the vendor panel, HUD gold, item toasts, `E` quick-drink and
+visible weapons hung off the animated hand bones. Content: 12 weapon/shield models, 62
+unique item icons, and the whole T1–T2 catalogue (62 items, 5 loot tables, 5 vendors)
+authored in the panel, published, and frozen into seed migration 0012. Dev lever:
+`/ops/grant` (item or gold). Verification: `tools/smoke/browser-p8.mjs` runs the DoD loop
+for real (grind → bag with an ITEM → take with the key → equip → model on the roster →
+tooltip → all 5 posts standing → trade → relog); `pnpm check` is green at 336 unit tests,
+and browser-p6/p7, p8-probe, two-client and browser-sync all pass in the same session.
 
 ### Running it locally
 

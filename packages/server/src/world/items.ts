@@ -373,7 +373,7 @@ export const applyItemOp = (
     case 'vendorOpen': {
       const vendor = deps.content.vendors.get(op.vendorId);
       if (!vendor || !withinVendorReach(player, vendor)) {
-        return refused(deps, player, 'bad_slot');
+        return refused(deps, player, 'too_far');
       }
       player.items.openVendorId = vendor.id;
       deps.events.push({
@@ -492,7 +492,7 @@ const lootFromBag = (
   }
   const distance = Math.hypot(player.movement.x - bag.x, player.movement.z - bag.z);
   if (distance > LOOT_REACH_M) {
-    refused(deps, player, 'bad_slot');
+    refused(deps, player, 'too_far');
     return;
   }
 
@@ -600,7 +600,7 @@ const vendorBuy = (
   deps: ItemOpDeps,
 ): { equipmentChanged: boolean } => {
   const vendor = openVendorFor(player, vendorId, deps);
-  if (!vendor) return refused(deps, player, 'bad_slot');
+  if (!vendor) return refused(deps, player, 'too_far');
   if (!vendor.stock.some((entry) => entry.itemId === itemId)) {
     return refused(deps, player, 'unknown_item');
   }
@@ -626,7 +626,7 @@ const vendorSell = (
   deps: ItemOpDeps,
 ): { equipmentChanged: boolean } => {
   const vendor = openVendorFor(player, vendorId, deps);
-  if (!vendor) return refused(deps, player, 'bad_slot');
+  if (!vendor) return refused(deps, player, 'too_far');
   const stack = player.items.inventory.bag.get(from);
   if (!stack) return refused(deps, player, 'empty_slot');
   const def = deps.content.items.get(stack.itemId);
@@ -658,7 +658,7 @@ const vendorBuyback = (
   deps: ItemOpDeps,
 ): { equipmentChanged: boolean } => {
   const vendor = openVendorFor(player, vendorId, deps);
-  if (!vendor) return refused(deps, player, 'bad_slot');
+  if (!vendor) return refused(deps, player, 'too_far');
   const entry = player.items.buyback[index];
   if (!entry) return refused(deps, player, 'unknown_item');
   if (player.progress.gold < entry.price) return refused(deps, player, 'no_gold');

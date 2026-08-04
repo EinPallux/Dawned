@@ -365,9 +365,7 @@ describe('loot bags', () => {
     const far: LootBag = { ...bag, id: 2, x: owner.movement.x + 40 };
     far.shares = new Map([[owner.id, { items: [], gold: 5 }]]);
     world.lootBags.set(2, far);
-    expect(refusalOf(runOp(world, owner, { kind: 'loot', bagId: 2, index: null }))).toBe(
-      'bad_slot',
-    );
+    expect(refusalOf(runOp(world, owner, { kind: 'loot', bagId: 2, index: null }))).toBe('too_far');
   });
 
   it('expires bags after their lifetime and reports who could see them', () => {
@@ -477,12 +475,16 @@ describe('vendors', () => {
       open: false,
     });
 
-    // …and a trade attempted from over there is refused outright.
+    // …and a trade attempted from over there is refused outright, with the
+    // reason the HUD can say out loud ("Too far away.", not a slot complaint).
     expect(
       refusalOf(
         runOp(world, player, { kind: 'vendorBuy', vendorId: VENDOR.id, itemId: POTION.id, qty: 1 }),
       ),
-    ).toBe('bad_slot');
+    ).toBe('too_far');
+    expect(refusalOf(runOp(world, player, { kind: 'vendorOpen', vendorId: VENDOR.id }))).toBe(
+      'too_far',
+    );
   });
 
   it('never lets a sale mint gold from a bound item', () => {

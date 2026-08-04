@@ -18,7 +18,7 @@
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)       |
 | P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)       |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | 🟨 built, playtest pending |
-| P8    | Items, Inventory, Loot & Vendors         | L    | 🚧 in progress (A+B done)  |
+| P8    | Items, Inventory, Loot & Vendors         | L    | 🟨 built, playtest pending |
 | P9    | Enemies & AI Depth                       | L    | 🔲                         |
 | P10   | Gathering Professions                    | M    | 🔲                         |
 | P11   | Quests, POIs & Interactables             | L    | 🔲                         |
@@ -406,6 +406,8 @@ all Warrior/Rogue/Mage/Cleric node effects verified by targeted tests; unspent-p
       folds observably with legal refs (`progression-content.test.ts`); p7-probe + two-client
       regressions green.
 
+## P8 — Items, Inventory, Loot & Vendors (L) ⚙A1 item/loot/vendor editors in parallel
+
 **Goal:** the reward engine.
 **Scope:** item system + rolled stats; inventory grid + paper-doll + tooltips + compare; equipment
 stat application + weapon model attachment (visible weapons per class); loot tables + per-player
@@ -415,6 +417,38 @@ unique icon, rarity frames); first 60 real items authored (T1–T2 bands) via ad
 **DoD:** kill→loot→equip→visible weapon change→sell loop feels complete with juice; inventory
 fuzz tests green (no dupes under parallel op storms); icon build fails on any unmapped item
 (enforced); 60 items reviewed in-game.
+
+**Status: ✅ built end-to-end 2026-08-04 (P8-A…E) — protocol v10; owner playtest pending.**
+
+- [x] Shared item core (P8-A): item/loot-table/vendor zod schemas, the §2 budget formulas
+      (`statBudget`, `weaponDamageFor`, `baseArmorFor`, `itemValue`, `sellPriceFor`,
+      `ROLLS_BY_RARITY`), the plan/apply inventory model (`planMove`/`planSplit`/`planEquip`/…
+      → `InventoryMutation[]` → `applyPlan`, one code path for both sides) and protocol v10:
+      `ItemOp` (0x09, the only client-authored JSON envelope, zod-gated) plus `InventorySync`,
+      `LootBags`, `VendorPanel`, `ItemNotice`, and `mainhandModel`/`offhandModel` on the roster.
+- [x] Server items (P8-B): the authoritative inventory service (48-cell bag + paper-doll + purse),
+      equipment stat folding into the P4 derived block, per-player instanced loot bags (60 s,
+      4 m reach, `nothing` as a first-class weighted entry, nested tables with a cycle guard,
+      shared kill-tagging with XP), gold, vendors with a proximity lease the server closes when
+      you walk away, consumables on the shared cooldown lane, write-through persistence, and the
+      `/ops/grant` GM primitive. No client prediction anywhere: every op is a request and the
+      next full `InventorySync` is the answer, which is also what heals a refused drag.
+- [x] Content + panel (P8-C, with Dawned-Admin A1-c): 12 weapon/shield models and 62 unique item
+      icons through the pipeline, then the whole T1–T2 catalogue authored IN the panel and
+      published — 62 items, 5 loot tables, 5 Dawnhaven vendors, the shore/weald enemy bindings —
+      and frozen into seed migration 0012.
+- [x] Client items (P8-D): the `I` panel (48-cell grid with drag/split/sort/search, paper-doll,
+      rarity frames, tooltips with equipped-compare), loot bags as world props with rarity beams
+      and the `F` / `Shift+F` flow, the vendor panel (buy/sell/buyback, server-priced), market
+      posts with the `F` prompt, gold in the HUD, item toasts, `E` quick-drink, and visible
+      weapons: the roster's model refs hang off the animated hand bones.
+- [x] Verification (P8-E): `tools/smoke/browser-p8.mjs` runs the DoD loop for real — a bot grinds
+      the shore camp until a published table pays out an ITEM, walks into reach, takes the bag
+      with the real key, equips from the panel and sees the model reach the roster, reads a
+      tooltip, finds all five market posts standing, trades at one, and relogs into the same
+      pack/paper-doll/purse; the 5-seed × 4000-op inventory fuzz suite proves conservation; the
+      icon bake now refuses duplicate item icons; earlier smokes (p8-probe, browser-p6/p7,
+      two-client, browser-sync) green.
 
 ## P9 — Enemies & AI Depth (L)
 

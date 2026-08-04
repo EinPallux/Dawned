@@ -110,5 +110,6 @@
     "item_material_shore_crystal": "lorc/crystal-cluster",
     "item_material_mushcap": "lorc/mushroom"
   },
+  "$unique": ["items"],
   "$itemsComment": "P8 catalogue icons — one per item id (ITEMS_LOOT.md §8: an item IS its icon; the publish pipeline refuses duplicates across items)."
 }

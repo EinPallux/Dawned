@@ -184,6 +184,11 @@ export class CharacterView {
     this.applyWeapons();
   }
 
+  /** What the hands are really holding, and where (P8 grip diagnostics). */
+  get weaponDebug(): HeldWeapons['debug'] {
+    return this.weapons?.debug ?? [];
+  }
+
   private applyWeapons(): void {
     const models = weaponModels();
     if (!this.composed || !models) return;

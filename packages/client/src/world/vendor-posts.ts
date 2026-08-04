@@ -14,6 +14,14 @@ export interface VendorAnchor {
   anchor: { x: number; z: number; radius: number } | null;
 }
 
+/**
+ * The prompt keeps this much clear of the anchor's edge. The server judges the
+ * lease on ITS copy of your position, which trails the predicted one while you
+ * run; without the margin the prompt appears a step before the server agrees
+ * and `F` answers "Too far away." — the margin costs half a step and never lies.
+ */
+const PROMPT_MARGIN_M = 0.6;
+
 /** Banner tint per trade — a glance tells you which post you are walking to. */
 const KIND_COLORS: Record<string, string> = {
   general: '#c9a34e',
@@ -41,12 +49,16 @@ const isMesh = (object: THREE.Object3D): object is THREE.Mesh =>
   (object as Partial<THREE.Mesh>).isMesh === true;
 
 export class VendorPostManager {
-  private readonly posts: { vendor: VendorAnchor; group: THREE.Group }[] = [];
+  private readonly posts: { vendor: VendorAnchor; group: THREE.Group; seated: boolean }[] = [];
 
   constructor(private readonly scene: THREE.Scene) {}
 
-  /** Stand the posts (ground height comes from the terrain sampler). */
-  build(vendors: readonly VendorAnchor[], heightAt: (x: number, z: number) => number): void {
+  /**
+   * Build the posts. They stay hidden until the ground under them streams in
+   * (`update`): the vendor list usually arrives before the terrain chunk, and
+   * a post planted against a height of 0 is a post buried under the island.
+   */
+  build(vendors: readonly VendorAnchor[]): void {
     for (const vendor of vendors) {
       if (!vendor.anchor) continue;
       const color = KIND_COLORS[vendor.kind] ?? KIND_COLORS.general!;
@@ -69,14 +81,34 @@ export class VendorPostManager {
       crate.position.set(-0.35, 0.22, 0.1);
       crate.castShadow = true;
       group.add(stake, banner, crate);
-      group.position.set(
-        vendor.anchor.x,
-        heightAt(vendor.anchor.x, vendor.anchor.z),
-        vendor.anchor.z,
-      );
+      group.position.set(vendor.anchor.x, 0, vendor.anchor.z);
+      group.visible = false;
       this.scene.add(group);
-      this.posts.push({ vendor, group });
+      this.posts.push({ vendor, group, seated: false });
     }
+  }
+
+  /**
+   * Seat any post whose ground has arrived. Cheap after the first few frames —
+   * it walks a list that empties itself and then does nothing.
+   */
+  update(
+    heightAt: (x: number, z: number) => number,
+    isGroundReady: (x: number, z: number) => boolean,
+  ): void {
+    for (const post of this.posts) {
+      if (post.seated || !post.vendor.anchor) continue;
+      const { x, z } = post.vendor.anchor;
+      if (!isGroundReady(x, z)) continue;
+      post.group.position.y = heightAt(x, z);
+      post.group.visible = true;
+      post.seated = true;
+    }
+  }
+
+  /** Posts standing on real ground — a buried post is invisible, not absent. */
+  get seatedCount(): number {
+    return this.posts.filter((post) => post.seated).length;
   }
 
   /** The post the player is standing in, if any (the `F` prompt's subject). */
@@ -84,7 +116,8 @@ export class VendorPostManager {
     for (const post of this.posts) {
       const anchor = post.vendor.anchor;
       if (!anchor) continue;
-      if (Math.hypot(x - anchor.x, z - anchor.z) <= anchor.radius) return post.vendor;
+      const reach = Math.max(anchor.radius * 0.5, anchor.radius - PROMPT_MARGIN_M);
+      if (Math.hypot(x - anchor.x, z - anchor.z) <= reach) return post.vendor;
     }
     return null;
   }

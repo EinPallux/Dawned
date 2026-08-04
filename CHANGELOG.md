@@ -5,7 +5,7 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
-### Added — P8 Items, Inventory, Loot & Vendors (in progress, 2026-08-04)
+### Added — P8 Items, Inventory, Loot & Vendors (2026-08-04)
 
 - **Shared item core (P8-A, protocol v10):** items, loot tables and vendors
   are now content schemas (`content_items` / `content_loot_tables` /
@@ -40,6 +40,34 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   `character_items` + the three content tables. Verified by 20 new server
   tests and `tools/smoke/p8-probe.mjs` (join sync → grants → drags with a
   refusal that still resyncs → equip → relog).
+
+- **Content — the Dawnshore catalogue (P8-C):** 62 items, 5 loot tables and 5
+  Dawnhaven vendors, all authored in the admin panel and published through the
+  validated pipeline (never hand-written into the game). Twelve weapon and
+  shield models and a unique game-icons glyph per item went through the asset
+  pipeline first; the icon bake now REFUSES a map where two items share a
+  glyph, because in a bag the icon is the item. Shore glubs, young mushnubs
+  and spore lobbers carry loot bindings, so the island pays out. Frozen into
+  seed migration 0012.
+- **The pack, the ground and the market (P8-D):** `I` opens a 48-cell pack
+  with a paper-doll beside it — drag to move, shift-drag to split, right-click
+  to equip or drink, sort and search, rarity-framed cells, and tooltips that
+  compare against what you already wear. Kills leave loot bags in the world
+  with a rarity-tinted beam; `F` takes the top item and `Shift+F` takes the
+  bag, out to 4 m. Market posts stand in Dawnhaven under a trade banner: walk
+  into one and `F` opens the vendor — buy, sell and buy back at prices the
+  server computed, never the panel. Gold rides the HUD, item pickups toast in
+  their rarity colour, `E` drinks the first draught in the pack, and equipped
+  weapons are VISIBLE — the axe you just looted hangs from your hand for every
+  other player too.
+- **Fixed:** a weapon equipped by another player could hang in mid-air beside
+  them. Character composition rebinds every outfit and hair piece onto the
+  base skeleton but leaves each piece's own armature in the tree, so a rig
+  carries several bones called `hand_r` and only one of them moves; held gear
+  now attaches to the skeleton that actually deforms the mesh. Market posts no
+  longer plant themselves at height 0 while the terrain chunk under them is
+  still streaming, and walking up to a post at the very edge of its radius now
+  says "Too far away." instead of a refusal about inventory slots.
 
 ### Added — P7 Progression (in progress, 2026-08-04)
 

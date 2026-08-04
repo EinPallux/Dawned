@@ -179,6 +179,8 @@ export const runWorld = (
   // all funnel through setPanel: it owns the pointer-lock handoff (panels need
   // the cursor; closing re-locks into mouselook) and tells the React shell.
   let openPanel: PanelId | null = null;
+  /** Last few item notices, kept for the debug API (smoke diagnostics). */
+  const recentNotices: string[] = [];
   function setPanel(panel: PanelId | null): void {
     if (openPanel === panel) return;
     openPanel = panel;
@@ -513,6 +515,12 @@ export const runWorld = (
         const def = notice.itemId ? connection.itemDefs.get(notice.itemId) : undefined;
         const name = def?.name ?? notice.itemId ?? 'item';
         const qty = notice.qty && notice.qty > 1 ? ` ×${notice.qty}` : '';
+        // Keep the last few for the debug API: a refusal reason is the one
+        // thing a failing item smoke always wants and toasts fade too fast.
+        recentNotices.push(
+          `${notice.kind}${notice.reason ? `:${notice.reason}` : ''}${notice.itemId ? ` ${notice.itemId}` : ''}`,
+        );
+        if (recentNotices.length > 8) recentNotices.shift();
         switch (notice.kind) {
           case 'picked':
             hud.toast(`${name}${qty}`, { tone: def ? rarityTone(def.rarity) : 'plain' });
@@ -654,7 +662,7 @@ export const runWorld = (
   const lootBags = new LootBagManager(scene.scene);
   const vendorPosts = new VendorPostManager(scene.scene);
   void loadVendorAnchors().then((vendors) => {
-    if (!disposed) vendorPosts.build(vendors, (x, z) => terrain.sampler.heightAt(x, z));
+    if (!disposed) vendorPosts.build(vendors);
   });
   // Published ability + skill-node defs → the prediction layer (hotbar,
   // chains, costs, node folds), plus the icon wiring: baked game-icons urls
@@ -1129,6 +1137,67 @@ export const runWorld = (
       maxStamina: connection.predicted.maxStamina,
       resourceMax: connection.resource.max,
     }),
+    /** Where the held weapons ended up vs their hand bones (P8 grip check). */
+    weaponDebug: (): {
+      self: [number, number, number];
+      held: CharacterView['weaponDebug'];
+    } => {
+      const position = connection.renderPosition();
+      return {
+        self: [position.x, position.y, position.z],
+        held: localView.weaponDebug,
+      };
+    },
+    /** Item truth + drivers (P8 smoke: loot, equip, vendor). */
+    inventoryState: (): {
+      gold: number;
+      cells: [number, { itemId: string; qty: number }][];
+      equipment: Record<string, { itemId: string; qty: number }>;
+      bags: { id: number; distance: number; items: number; gold: number }[];
+      vendor: string | null;
+      vendorInReach: string | null;
+      postsSeated: number;
+      openPanel: PanelId | null;
+      notices: string[];
+      defsLoaded: number;
+      mainhandModel: string | null;
+    } => {
+      const self = connection.renderPosition();
+      const pack = connection.inventory;
+      return {
+        gold: pack?.gold ?? 0,
+        cells: (pack?.bag ?? []).map(([cell, stack]) => [
+          cell,
+          { itemId: stack.itemId, qty: stack.qty },
+        ]),
+        equipment: Object.fromEntries(
+          Object.entries(pack?.equipment ?? {}).map(([slot, stack]) => [
+            slot,
+            { itemId: stack.itemId, qty: stack.qty },
+          ]),
+        ),
+        // Nearest first — the same bag `F` would take, so a smoke that reads
+        // bags[0] and a player pressing the key are talking about one bag.
+        bags: connection.lootBags
+          .map((bag) => ({
+            id: bag.id,
+            distance: Math.hypot(bag.x - self.x, bag.z - self.z),
+            items: bag.items.length,
+            gold: bag.gold,
+          }))
+          .sort((a, b) => a.distance - b.distance),
+        vendor: connection.vendorPanel?.vendorId ?? null,
+        vendorInReach: vendorPosts.inReach(self.x, self.z)?.id ?? null,
+        postsSeated: vendorPosts.seatedCount,
+        openPanel,
+        notices: [...recentNotices],
+        defsLoaded: connection.itemDefs.size,
+        mainhandModel: connection.rosterEntryFor(connection.selfId)?.mainhandModel ?? null,
+      };
+    },
+    sendItemOp: (op: ItemOp): void => {
+      connection.sendItemOp(op);
+    },
     allocateStats: (deltas: AttributeSpread): void => {
       connection.sendAllocateStats(deltas);
     },
@@ -1281,6 +1350,10 @@ export const runWorld = (
     projectiles.update(dtSeconds);
     vfx.update(dtSeconds);
     lootBags.update(dtSeconds, now / 1000);
+    vendorPosts.update(
+      (x, z) => terrain.sampler.heightAt(x, z),
+      (x, z) => terrain.isGroundReadyAt(x, z),
+    );
 
     ambience?.update(dtSeconds, position.x, position.z);
     updateWaterTime(now / 1000);

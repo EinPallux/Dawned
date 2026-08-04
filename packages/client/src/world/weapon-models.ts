@@ -22,11 +22,28 @@ interface Manifest {
 }
 
 /**
- * Where a held model sits relative to the hand bone. The KayKit weapons are
- * modelled with the grip at the origin pointing +Y; hands point down the bone,
- * so every piece takes the same quarter turn.
+ * Where a held model sits relative to the hand bone.
+ *
+ * The weapons are modelled standing on their grip, shaft along +Y. A fist
+ * holds a shaft along one fixed axis of the hand bone, so pointing the model's
+ * +Y down that axis puts the handle in the palm in every pose the rig can
+ * reach. The axis below is that direction, measured off the rig itself: world
+ * DOWN expressed in `hand_r`'s local frame while the arm hangs at rest — which
+ * is exactly where a lowered weapon points.
  */
-const GRIP_ROTATION = new THREE.Euler(Math.PI / 2, 0, 0);
+const GRIP_AXIS = new THREE.Vector3(-0.138, 0.833, -0.536).normalize();
+const GRIP_ROTATION = new THREE.Quaternion().setFromUnitVectors(
+  new THREE.Vector3(0, 1, 0),
+  GRIP_AXIS,
+);
+/**
+ * A shield is strapped to the arm rather than hung from a handle: same axis,
+ * standing the other way up so its face is out and its rim is not in the dirt.
+ */
+const SHIELD_ROTATION = GRIP_ROTATION.clone().multiply(
+  new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI),
+);
+const isShield = (ref: string): boolean => ref.includes('_shield_');
 const GRIP_SCALE = 0.9;
 
 // three.js discriminator flag, narrowed without `any` (characters.ts idiom).
@@ -95,16 +112,23 @@ export class HeldWeapons {
     // ORIGIN varies by pack (centre for some, base for others). Re-seat each
     // one so the bottom of the shaft sits exactly at the bone: the grip lands
     // in the fist for every model without a per-item offset table.
+    //
+    // The correction SHIFTS the node — the measured bounds already include
+    // whatever offset the exporter baked into the root, so overwriting the
+    // position instead of subtracting from it counts that offset twice and
+    // hangs the weapon in the air beside the hand.
     const model = gltf.scene.clone(true);
     const bounds = new THREE.Box3().setFromObject(model);
     model.position.set(
-      -(bounds.min.x + bounds.max.x) / 2,
-      -bounds.min.y,
-      -(bounds.min.z + bounds.max.z) / 2,
+      model.position.x - (bounds.min.x + bounds.max.x) / 2,
+      // Weapons hang from their grip; a shield straps across the forearm, so
+      // it rides on its middle instead of standing on its rim.
+      model.position.y - (isShield(ref) ? (bounds.min.y + bounds.max.y) / 2 : bounds.min.y),
+      model.position.z - (bounds.min.z + bounds.max.z) / 2,
     );
     const object = new THREE.Group();
     object.add(model);
-    object.rotation.copy(GRIP_ROTATION);
+    object.quaternion.copy(isShield(ref) ? SHIELD_ROTATION : GRIP_ROTATION);
     object.scale.setScalar(GRIP_SCALE);
     object.traverse((node) => {
       if (isMesh(node)) node.castShadow = true;
@@ -117,17 +141,63 @@ export class HeldWeapons {
     for (const entry of this.held.values()) entry.object.parent?.remove(entry.object);
     this.held.clear();
   }
+
+  /** Where the gear really ended up — the grip is invisible until it is wrong. */
+  get debug(): {
+    hand: string;
+    ref: string;
+    bone: string;
+    boneAt: [number, number, number];
+    modelAt: [number, number, number];
+  }[] {
+    const rows = [];
+    const at = new THREE.Vector3();
+    for (const [hand, entry] of this.held) {
+      const bone = this.bones[hand];
+      bone?.getWorldPosition(at);
+      const boneAt: [number, number, number] = [at.x, at.y, at.z];
+      entry.object.getWorldPosition(at);
+      rows.push({
+        hand,
+        ref: entry.ref,
+        bone: bone?.name ?? '<none>',
+        boneAt,
+        modelAt: [at.x, at.y, at.z] as [number, number, number],
+      });
+    }
+    return rows;
+  }
 }
 
-/** Find the hand bones of a composed rig (UAL skeleton naming). */
+const isSkinnedMesh = (object: THREE.Object3D): object is THREE.SkinnedMesh =>
+  (object as Partial<THREE.SkinnedMesh>).isSkinnedMesh === true;
+
+/**
+ * Find the hand bones of a composed rig (UAL skeleton naming).
+ *
+ * Take them off the SKELETON that deforms the visible mesh, not off the node
+ * tree: composition (characters.ts) rebinds every outfit and hair piece onto
+ * the base rig's bones but leaves each piece's own armature in the tree, so a
+ * rig carries several bones called `hand_r` and only one of them ever moves.
+ * A name search over the tree can pick a bind-pose duplicate — which reads in
+ * game as a weapon hanging in mid-air beside the character.
+ */
 export const handBones = (
   root: THREE.Object3D,
 ): { mainhand: THREE.Object3D | null; offhand: THREE.Object3D | null } => {
-  let mainhand: THREE.Object3D | null = null;
-  let offhand: THREE.Object3D | null = null;
+  const animated = new Map<string, THREE.Object3D>();
   root.traverse((node) => {
-    if (node.name === 'hand_r') mainhand = node;
-    else if (node.name === 'hand_l') offhand = node;
+    if (!isSkinnedMesh(node)) return;
+    for (const bone of node.skeleton.bones) {
+      if (!animated.has(bone.name)) animated.set(bone.name, bone);
+    }
   });
-  return { mainhand, offhand };
+  if (animated.size === 0) {
+    // No skinned mesh (silhouette or a stripped rig): fall back to the tree,
+    // keeping the FIRST match — the base rig is added before its pieces.
+    root.traverse((node) => {
+      if (!animated.has(node.name)) animated.set(node.name, node);
+    });
+  }
+  return { mainhand: animated.get('hand_r') ?? null, offhand: animated.get('hand_l') ?? null };
 };

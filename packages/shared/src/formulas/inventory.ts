@@ -57,6 +57,7 @@ export type InventoryMutation =
 export type InventoryRefusal =
   | 'empty_slot'
   | 'bad_slot'
+  | 'too_far'
   | 'unknown_item'
   | 'not_equippable'
   | 'wrong_class'

@@ -29,7 +29,8 @@ export const rarityColor = (rarity: string): string =>
 export const refusalText = (reason: string): string =>
   ({
     empty_slot: 'Nothing there.',
-    bad_slot: 'Too far away.',
+    bad_slot: "That cell can't take it.",
+    too_far: 'Too far away.',
     unknown_item: 'That item is gone.',
     not_equippable: "That doesn't go anywhere.",
     wrong_class: 'Your class cannot use that.',

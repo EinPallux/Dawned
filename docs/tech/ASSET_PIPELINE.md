@@ -83,6 +83,18 @@
 > at P8 when item icon counts jump. All 28 ability rows carry icons; the
 > transform/validation extras in step 1 arrive with the item curation pass.
 
+> **As built (P8-C/E):** the map is sectioned (`abilities`, `items`, …) and a
+> new section rides the same fetch/bake with no code change. Abilities MAY
+> share a glyph (the three class basics all wear a weapon icon); items may not
+> — in a bag the icon IS the item (ITEMS_LOOT.md §8), so the sections listed
+> in the map's `$unique` array are checked at load and the bake fails naming
+> both offenders. The admin publish pipeline enforces the same rule on item
+> rows, so a duplicate is caught whichever end it is authored from. 62 item
+> icons are live; CSS masking still carries rarity colour, so step 3's tinted
+> atlases stay unnecessary. Weapon and shield MODELS bake as ordinary GLBs
+> under `items/weapons`; the client hangs them off the rig's hand bones by
+> manifest id (`modelRef` on the item row).
+
 ## 5. Audio Pipeline (`tools/audio/`) — sources per AUDIO.md §3 (CC0-first, decided)
 
 `assets/audio_src/<bucket>/` → ffmpeg batch: trim silence, loudness normalize (music −16 LUFS,
