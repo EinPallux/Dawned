@@ -116,6 +116,23 @@ button / `/reloadcontent` GM command) re-loads safely between ticks (never mid-t
 changed: stat-only changes apply live; structural map changes flag "applies on restart" back to the
 admin caller.
 
+**Ops API (localhost + `OPS_SECRET` header, every route).** These are the GM primitives the panel's
+Live Ops buttons and the smoke suite both drive; each queues its effect and applies it between
+ticks, never mid-tick:
+
+| Route                | Since | Effect                                                        |
+| -------------------- | ----- | ------------------------------------------------------------- |
+| `/ops/reload-content` | A1   | re-load published content between ticks                       |
+| `/ops/cc`            | P6    | stun/root an online player (the future GM `/stun`)            |
+| `/ops/setlevel`      | P7    | set an online player's level, same path as `/setlevel`        |
+| `/ops/hurt`          | P6    | set a player's HP to a fraction of max (fraction 1 = full heal) |
+| `/ops/grant`         | P8    | grant items or gold through the shared inventory planner       |
+| `/ops/enemyhurt`     | P9    | set a living enemy's HP by content id — reach a boss phase or an hp-threshold ability without a full fight |
+| `/ops/tp`            | P9    | teleport a player to a world position, grounded on the terrain |
+
+`enemyhurt` and `tp` only move state the AI then reacts to normally: the phase walk, the announce
+and the self-shield are the real systems, never staged for the observer.
+
 ## 4. Game Client (`@dawned/client`) anatomy
 
 ```

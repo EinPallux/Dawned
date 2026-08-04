@@ -508,6 +508,51 @@ export class World {
   }
 
   /**
+   * Set a LIVING enemy's HP to a fraction of max (/ops/enemyhurt, P9). The GM
+   * primitive that makes boss phases and self-shield thresholds reachable in a
+   * verification run without a 90-second fight per beat. It drives HP only —
+   * the phase walk, the announce and the shield all come out of the normal AI,
+   * so what a run observes is the real mechanic and not a staged one.
+   */
+  queueEnemyHurt(typeId: string, fraction: number): number | null {
+    let best: ServerEnemy | null = null;
+    for (const enemy of this.enemies.values()) {
+      if (enemy.def.id !== typeId || !enemy.alive) continue;
+      // Ties go to the healthiest so repeated calls keep hitting the same one.
+      if (!best || enemy.hp > best.hp) best = enemy;
+    }
+    if (!best) return null;
+    this.pendingEnemyHurt.push({ enemyId: best.id, fraction });
+    return best.id;
+  }
+
+  private readonly pendingEnemyHurt: { enemyId: number; fraction: number }[] = [];
+
+  /**
+   * Teleport an online player to a world position (/ops/tp, P9). Reaching a
+   * named camp or a boss arena is otherwise a two-minute walk in every smoke;
+   * the drop is grounded on the terrain the server itself samples, so the
+   * player lands legally rather than inside a hillside.
+   */
+  queueTeleport(name: string, x: number, z: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      const m = player.movement;
+      m.x = x;
+      m.z = z;
+      m.y = this.terrain.heightAt(x, z);
+      m.vx = 0;
+      m.vy = 0;
+      m.vz = 0;
+      m.grounded = true;
+      m.swimming = false;
+      m.fallPeakY = m.y;
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Ops-queued item/gold grants (/ops/grant — the GM primitive behind the
    * panel's future "grant item" button, and how the P8 smoke stages fixtures
    * that no loot table has to cooperate for). Runs the same planner a pickup
@@ -617,6 +662,15 @@ export class World {
       if (target && !target.dead) {
         target.hp = Math.max(1, Math.round(target.maxHp * hurt.fraction));
         target.lastCombatAtMs = nowMs;
+      }
+    }
+    // Enemy HP pokes land BEFORE the AI runs this tick, so the phase check
+    // inside the AI sees the new fraction on the very next decision.
+    for (const hurt of this.pendingEnemyHurt.splice(0)) {
+      const target = this.enemies.get(hurt.enemyId);
+      if (target && target.alive) {
+        target.hp = Math.max(1, Math.round(target.maxHp * hurt.fraction));
+        target.lastDamagedAtMs = nowMs;
       }
     }
 

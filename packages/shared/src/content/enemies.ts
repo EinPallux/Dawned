@@ -84,6 +84,12 @@ export const enemyAbilitySchema = z.object({
   /** `self_shield`: absorb granted, as a fraction of the caster's own max HP. */
   shieldPct: z.number().min(0).max(100).default(20),
   /**
+   * How long that absorb lasts. A shield that never expires is not a beat you
+   * burst through, it is a permanent HP raise — so it is a real, tunable
+   * window and the fight has a "wait it out or break it" answer.
+   */
+  shieldDurationMs: z.number().int().min(1000).max(60_000).default(12_000),
+  /**
    * Only selectable at or below this fraction of max HP — the §2 `hpThreshold`
    * condition. 100 = always available (the common case); a boss's desperation
    * ability sits at 35, a self-shield at 60 so it fires when it matters.

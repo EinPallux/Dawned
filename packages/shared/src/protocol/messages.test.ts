@@ -297,12 +297,20 @@ describe('combat messages (protocol v6)', () => {
   });
 
   it('round-trips AbilityStart', () => {
-    const message = { entityId: 900, action: 0, step: 2, durationMs: 750, yaw: 1.1 };
+    const message = { entityId: 900, action: 0, step: 2, durationMs: 750, yaw: 1.1, cast: false };
     const decoded = decodeAbilityStart(body(encodeAbilityStart(message)));
     expect(decoded.entityId).toBe(900);
     expect(decoded.step).toBe(2);
     expect(decoded.durationMs).toBe(750);
     expect(decoded.yaw).toBeCloseTo(1.1, 3);
+    expect(decoded.cast).toBe(false);
+  });
+
+  it('round-trips the AbilityStart cast flag (v12 enemy cast bars)', () => {
+    const message = { entityId: 7, action: 1, step: 0, durationMs: 1600, yaw: -0.4, cast: true };
+    const decoded = decodeAbilityStart(body(encodeAbilityStart(message)));
+    expect(decoded.cast).toBe(true);
+    expect(decoded.durationMs).toBe(1600);
   });
 
   it('round-trips AbilityResolve with mixed hit flags', () => {

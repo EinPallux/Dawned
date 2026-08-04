@@ -41,6 +41,7 @@ import { AmbienceController } from '../world/ambience.js';
 import { buildOceanMesh, updateWaterTime } from '../world/terrain-mesh.js';
 import { loadFoliageAssets, updateFoliageWind } from '../world/foliage.js';
 import { Hud } from '../ui/hud.js';
+import { BossFrame } from '../ui/boss-frame.js';
 import { EnemyView, loadEnemyAssets, type EnemyAssets } from '../world/enemy-view.js';
 import { TelegraphManager } from '../world/telegraphs.js';
 import { CombatTextManager } from '../world/combat-text.js';
@@ -60,6 +61,7 @@ import type {
   AbilityDef,
   DodgeRefusal,
   EnemyDef,
+  EnemyMetaEntry,
   InventorySyncMessage,
   ItemDef,
   ItemOp,
@@ -218,6 +220,18 @@ export const runWorld = (
   function togglePanel(panel: PanelId): void {
     setPanel(openPanel === panel ? null : panel);
   }
+  /**
+   * Volume scale for a sound made at a world position (P9). Enemy audio is
+   * the cue that arrives while you are looking the other way, but a camp
+   * 40 m off must not be as loud as the thing swinging at you — linear
+   * falloff to silence at AUDIBLE_RANGE_M.
+   */
+  const AUDIBLE_RANGE_M = 32;
+  function enemyAudibility(x: number, z: number): number {
+    const self = connection.renderPosition();
+    const dist = Math.hypot(x - self.x, z - self.z);
+    return Math.max(0, 1 - dist / AUDIBLE_RANGE_M);
+  }
   // Clicking the world with a panel open means "back to the game" — the input
   // layer's own mousedown handler re-locks in the same gesture.
   canvas.addEventListener('mousedown', () => {
@@ -312,7 +326,21 @@ export const runWorld = (
         const remote = connection.remotes.get(message.entityId);
         if (!remote) return;
         if (remote.kind === EntityKind.Enemy) {
-          enemyViews.get(message.entityId)?.playAbility(message.action, message.durationMs);
+          enemyViews
+            .get(message.entityId)
+            ?.playAbility(message.action, message.durationMs, message.cast);
+          // Every enemy wind-up gets a voice, and the voice says WHICH kind it
+          // is: a lunge/swing whooshes, a volley or a cast hums. Audio is the
+          // cue that reaches you while the camera is pointed elsewhere.
+          const kind = enemyDefs.get(remote.enemyMeta?.typeId ?? '')?.abilities[message.action]
+            ?.kind;
+          // A projectile draw stays a whoosh — its release already fires
+          // 'bolt' in onProjectileSpawn, and the same sound twice in half a
+          // second reads as one muddy noise instead of two beats.
+          sfx.play(
+            kind === 'ground_circle' || message.cast ? 'bolt' : 'whoosh',
+            enemyAudibility(remote.render.x, remote.render.z) * 0.8,
+          );
           return;
         }
         // Remote player basic swing: clip from their class's chain data.
@@ -451,8 +479,33 @@ export const runWorld = (
               sfx.play('deny', 0.9);
             } else {
               remoteViews.get(message.entityId)?.setCasting(null);
+              // An ENEMY cast broken by the player's interrupt is the payoff
+              // for reading the bar — shatter it rather than let it vanish.
+              const view = enemyViews.get(message.entityId);
+              if (view) {
+                view.breakCast();
+                const at = connection.remotes.get(message.entityId)?.render;
+                if (at) {
+                  vfx.ring(at.x, at.y + 1.1, at.z, 1.1, 0xd8453a);
+                  sfx.play('impact_heavy', enemyAudibility(at.x, at.z) * 0.8);
+                }
+              }
             }
             break;
+          case EntityEventKind.Phase: {
+            // A boss crossed a threshold: the frame flashes and it says its
+            // line. The words come from the published def the client already
+            // holds, so the panel can rewrite them without a protocol change.
+            bossFrame.onPhase(message.entityId, message.a);
+            const at = connection.remotes.get(message.entityId)?.render;
+            if (at) {
+              vfx.ring(at.x, at.y + 0.2, at.z, 3.2, 0xff8a3a);
+              vfx.pillar(at.x, at.y, at.z, 0xff8a3a);
+              sfx.play('levelup', 0.5 * enemyAudibility(at.x, at.z));
+              scene.addShake(1.5);
+            }
+            break;
+          }
           default:
             break;
         }
@@ -665,6 +718,9 @@ export const runWorld = (
   const projectiles = new ProjectileManager(scene.scene);
   const vfx = new AbilityVfxManager(scene.scene);
   const sfx = new CombatSfx();
+  // Boss frame (P9): adopted by the nearest engaged boss, released when it dies,
+  // leashes home or walks out of the arena.
+  const bossFrame = new BossFrame(container);
   canvas.addEventListener('mousedown', () => {
     sfx.unlock();
   });
@@ -1088,6 +1144,7 @@ export const runWorld = (
       fctTotal: number;
       dawnedMs: number;
       target: string | null;
+      yaw: number;
     } => ({
       hp: connection.selfHp,
       maxHp: connection.selfMaxHp,
@@ -1099,6 +1156,8 @@ export const runWorld = (
       fctTotal: combatText.spawnedTotal,
       dawnedMs: Math.max(0, connection.dawnedUntilMs - performance.now()),
       target: softTarget()?.name ?? null,
+      /** Camera yaw — lets a smoke place itself so the subject is on screen. */
+      yaw: input.yaw,
     }),
     animState: (): { local: string; localBubble: boolean; remotes: Record<string, string> } => {
       const remotes: Record<string, string> = {};
@@ -1126,27 +1185,46 @@ export const runWorld = (
         rollTimeLeft: connection.predicted.rollTimeLeft,
       };
     },
-    /** Living-enemy positions for the P7 grind bot (browser-p7 smoke). */
+    /**
+     * Living-enemy state for the P7 grind bot and the P9 presentation probe.
+     * `rank`, `casting` and `shielded` are what the P9 visuals are ABOUT, so
+     * a run can assert on them instead of eyeballing a screenshot.
+     */
     enemies: (): {
       id: number;
       name: string;
       level: number;
+      rank: string;
       x: number;
       z: number;
       hpFraction: number;
       dead: boolean;
+      inCombat: boolean;
+      casting: boolean;
+      shielded: boolean;
+      shield: number;
     }[] =>
       [...connection.remotes.values()]
         .filter((remote) => remote.kind === EntityKind.Enemy && remote.enemyMeta)
-        .map((remote) => ({
-          id: remote.id,
-          name: remote.enemyMeta!.name,
-          level: remote.enemyMeta!.level,
-          x: remote.render.x,
-          z: remote.render.z,
-          hpFraction: remote.render.hpFraction,
-          dead: (remote.render.flags & EntityFlag.Dead) !== 0,
-        })),
+        .map((remote) => {
+          const shield = connection
+            .effectsFor(remote.id)
+            .reduce((sum, effect) => sum + (effect.shieldRemaining ?? 0), 0);
+          return {
+            id: remote.id,
+            name: remote.enemyMeta!.name,
+            level: remote.enemyMeta!.level,
+            rank: remote.enemyMeta!.rank,
+            x: remote.render.x,
+            z: remote.render.z,
+            hpFraction: remote.render.hpFraction,
+            dead: (remote.render.flags & EntityFlag.Dead) !== 0,
+            inCombat: (remote.render.flags & EntityFlag.InCombat) !== 0,
+            casting: enemyViews.get(remote.id)?.isCasting ?? false,
+            shielded: shield > 0,
+            shield,
+          };
+        }),
     /** Progression truth + drivers (P7 smoke: grind, allocation, panels). */
     progressionState: (): {
       sheet: ProgressSyncMessage | null;
@@ -1399,6 +1477,7 @@ export const runWorld = (
       dodging: connection.predicted.rollTimeLeft > 0,
     });
     syncRemoteViews(dtSeconds);
+    syncBossFrame();
     telegraphs.update();
     combatText.update(dtSeconds);
     projectiles.update(dtSeconds);
@@ -1537,6 +1616,11 @@ export const runWorld = (
           scene.scene.add(enemyView.group);
         }
         if (enemyView) {
+          // Absorbs are public on enemies too (P9 self-shields): the bubble is
+          // why your burst stopped moving the bar.
+          enemyView.setShielded(
+            connection.effectsFor(id).some((effect) => (effect.shieldRemaining ?? 0) > 0),
+          );
           enemyView.update(dtSeconds, remote.render, enemyLastPos.get(id)!);
         }
         continue;
@@ -1584,6 +1668,47 @@ export const runWorld = (
         enemyLastPos.delete(id);
       }
     }
+  };
+
+  /**
+   * Boss frame ownership (P9). A boss takes the frame when it is ENGAGED and
+   * near enough to be the fight you are in — not when it is idling in its
+   * grove, which would make the frame a landmark instead of a fight. Nearest
+   * wins if two are somehow up; death, leash-home and walking out of range all
+   * release it.
+   */
+  const syncBossFrame = (): void => {
+    const self = connection.renderPosition();
+    let bestId: number | null = null;
+    let bestDist = Infinity;
+    let bestMeta: EnemyMetaEntry | null = null;
+    let bestHp = 1;
+    for (const remote of connection.remotes.values()) {
+      const meta = remote.enemyMeta;
+      if (remote.kind !== EntityKind.Enemy || !meta) continue;
+      if (meta.rank !== 'zone_boss' && meta.rank !== 'world_boss') continue;
+      if ((remote.render.flags & (EntityFlag.Dead | EntityFlag.Leashing)) !== 0) continue;
+      if ((remote.render.flags & EntityFlag.InCombat) === 0) continue;
+      // The arena IS the fight's extent when a boss declares one — past it the
+      // boss turns back, so the frame has nothing left to track. Bosses without
+      // an arena get a default wide enough to survive a kite, tight enough to
+      // release when you have genuinely left.
+      const def = enemyDefs.get(meta.typeId);
+      const range = def && def.arenaRadius > 0 ? def.arenaRadius : 45;
+      const dist = Math.hypot(remote.render.x - self.x, remote.render.z - self.z);
+      if (dist > range || dist >= bestDist) continue;
+      bestDist = dist;
+      bestId = remote.id;
+      bestMeta = meta;
+      bestHp = remote.render.hpFraction;
+    }
+    if (bestId === null || !bestMeta) {
+      bossFrame.hide();
+      return;
+    }
+    bossFrame.show(bestId, bestMeta.name, bestMeta.level, enemyDefs.get(bestMeta.typeId));
+    bossFrame.setHp(bestHp);
+    bossFrame.update();
   };
 
   /** Soft-target (COMBAT.md §1): the best living enemy near the reticle line.

@@ -486,8 +486,13 @@ export interface AbilityStartMessage {
    * client shows a bar over the nameplate instead of reading the pose, which
    * is the player's cue that this one can be stopped — the whole counterplay
    * to the archetype (NPCS_ENEMIES.md §1).
+   *
+   * REQUIRED, not optional: it was optional once, the gateway forgot to copy
+   * it out of the combat event, and enemy cast bars silently never appeared
+   * even though the AI, the codec and the view all handled it correctly. A
+   * required field turns that omission into a compile error.
    */
-  cast?: boolean;
+  cast: boolean;
 }
 
 export const encodeAbilityStart = (msg: AbilityStartMessage, writer?: BinaryWriter): Uint8Array => {
@@ -498,7 +503,7 @@ export const encodeAbilityStart = (msg: AbilityStartMessage, writer?: BinaryWrit
     .u8(msg.step)
     .u16(msg.durationMs)
     .u16(quantizeAngle(msg.yaw))
-    .u8(msg.cast === true ? 1 : 0);
+    .u8(msg.cast ? 1 : 0);
   return w.toUint8Array();
 };
 

@@ -25,7 +25,15 @@ export interface PendingSwing {
   contactAtMs: number;
   /** Aim captured at wind-up start (heavies telegraph THIS, not tracking). */
   yaw: number;
+  /**
+   * Where the shape resolves FROM. The enemy's own feet for swings, charges
+   * and volleys; the target's ground for a `ground_circle`, which is a pool
+   * placed where they stood (P9). `y` matters because the hit test's vertical
+   * tolerance is measured from the origin, and a pool 14 m downhill is not at
+   * the caster's height.
+   */
   x: number;
+  y: number;
   z: number;
 }
 

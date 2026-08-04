@@ -476,7 +476,7 @@ across Dawnshore+Weald as the template set; Mushroom King (first real boss) comp
 mixed camps (grunt+ranged+caster) create the intended "pick your fight" pressure; AI CPU within
 budget at 150 active.
 
-**Status (2026-08-04): P9-A/B/C built; P9-D (client) and P9-E (verification) remain.**
+**Status (2026-08-04): P9-A/B/C/D built; P9-E (verification) remains.**
 
 - [x] Shared archetype + boss core (P9-A): charge/self-shield ability kinds, interruptible casts,
       hp-threshold/once-per-life/phase conditions, boss phases + arena leash, and the SHARED
@@ -489,7 +489,14 @@ budget at 150 active.
 - [x] Content (P9-C, with Dawned-Admin A1-d): 13 new enemy models baked (3 → 16), the Dawnshore + Weald bestiary (17 enemies, 20 spawners incl. two mixed camps) authored through the
       Enemies editor and published, frozen into seed migration 0013. The TTK simulator caught the
       Mushroom King at a 48 s kill — under the §12 floor — before he ever went live.
-- [ ] Client (P9-D): rect charge decals, enemy cast bars, boss frame, elite nameplates + scale.
+- [x] Client (P9-D): the boss frame (name/level, HP, a pip per declared phase, the announce
+      banner), enemy cast bars that shatter red on an interrupt, absorb bubbles for self-shields,
+      rank marks + tints on nameplates, per-archetype wind-up audio with distance falloff, and
+      phase VFX. Rect charge decals and the ×1.15 elite scale were already live from P4/P9-B.
+      Three server holes surfaced closing it: `ground_circle` resolved as a melee cone instead of
+      the circle it drew, `self_shield` granted nothing at all, and the gateway dropped the
+      protocol's `cast` flag so no enemy cast bar could ever appear. Dev levers `/ops/enemyhurt`
+      and `/ops/tp` landed with the probe that found them.
 - [ ] Verification (P9-E): `browser-p9` smoke (solo the King inside 60–120 s with 3 mechanics
       readable, mixed-camp pressure run), AI CPU budget at 150 active.
 

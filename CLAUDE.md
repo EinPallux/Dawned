@@ -186,8 +186,8 @@ characters `/stuck` home first and the walk-back is in a `finally`. New/changed 
 predicted roll is cut short). `pnpm check` green at **342 unit tests**; browser-p8,
 two-client and predict-lag pass.
 
-**P9 — Enemies & AI Depth (in progress, 2026-08-04).** A/B/C are built; D (client) and
-E (verification) remain. P9-A put the archetype vocabulary in shared — charge/self-shield
+**P9 — Enemies & AI Depth (in progress, 2026-08-04).** A/B/C/D are built; E (verification)
+remains. P9-A put the archetype vocabulary in shared — charge/self-shield
 kinds, interruptible casts, hp-threshold/once-per-life/phase conditions, boss phases +
 arena — and, crucially, the SELECTION RULES themselves (`selectableEnemyAbilities`,
 `pickEnemyAbility`, `bossPhaseAt`), so the AI and the panel's TTK preview cannot disagree.
@@ -201,7 +201,28 @@ simulator caught the Mushroom King at a 48 s kill (under COMBAT.md §12's 60 s f
 he went live; he now carries an explicit HP override landing him near 87 s. A latent P5 bug
 surfaced with it: the Spore Lobber's panic swat asked a mushnub rig for a `Punch` clip it
 does not have, so the swing animated nothing — shared now records which clips each baked
-model owns (`ENEMY_MODEL_CLIPS`) and publish refuses the mistake. 372 unit tests green.
+model owns (`ENEMY_MODEL_CLIPS`) and publish refuses the mistake.
+
+**P9-D made those fights readable — and closed three holes the earlier slices left.**
+Shipped: the boss frame (`ui/boss-frame.ts` — name/level, HP, a pip per declared phase, the
+announce read from the client's own copy of the published def so the panel can rewrite a
+shout with no protocol change; adopted on ENGAGEMENT, released on death/leash/leaving the
+arena), enemy cast bars that shatter red with a ring + hit on an interrupt, absorb bubbles
++ pool chips for self-shields, drawn rank marks (diamond/star, canvas paths not glyphs)
+with per-rank tints, per-archetype wind-up audio with distance falloff, and phase VFX.
+Rect charge decals and elite ×1.15 scale were already live. The holes, all found by
+LOOKING (`tools/smoke/p9-visuals.mjs` + reading its screenshots, never by a failing test):
+(1) `ground_circle` drew a circle and resolved as a melee cone at the caster — it now
+places the pool on the target's ground at cast start and tests that exact circle, which is
+what makes "walk out of it" a real answer; (2) `self_shield` granted no absorb at all —
+it now applies a timed pool that drains through the same `absorbFromShields` players use,
+and enemy damage runs through it (full absorb ⇒ `HitFlag.Absorbed`, threat/tag still count
+the full swing); (3) the gateway rebuilt `AbilityStart` field-by-field and never copied
+`cast`, so no enemy cast bar could ever appear — the field is REQUIRED on the message type
+now, which turns that omission into a compile error (NETWORKING.md §3.2). Also fixed:
+nameplates clipped every name past ~17 chars (256 px canvas, centre-aligned). New dev
+levers `/ops/enemyhurt` and `/ops/tp` (ARCHITECTURE.md §3 table). 377 unit tests green;
+two-client, roll-probe, predict-lag, p8-probe and browser-p8 all pass on the same build.
 
 ### Running it locally
 

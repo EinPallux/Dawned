@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { z } from 'zod';
 import {
   BASIC_COMBOS,
   EntityEventKind,
@@ -16,6 +17,7 @@ import {
   enemyAbilitySchema,
   enemyDefSchema,
   flatTerrain,
+  HitFlag,
   type EnemyAbilityDef,
   type EnemyDef,
 } from '@dawned/shared';
@@ -23,13 +25,17 @@ import { ServerEnemy } from './enemy.js';
 import { decide, move, type AiContext } from './enemy-ai.js';
 import { World } from './world.js';
 import type { GameContent } from '../content/loader.js';
-import type { CombatEvent } from './combat.js';
+import { applyDamageToEnemy, type CombatEvent } from './combat.js';
 import type { ServerPlayer } from './player.js';
 
-const ability = (over: Partial<EnemyAbilityDef> & { id: string }): EnemyAbilityDef =>
-  enemyAbilitySchema.parse({ kind: 'melee_arc', clip: 'Attack', ...over });
+// Fixtures describe what the schema READS, not what it produces: typing an
+// override as Partial<EnemyDef> would force every defaulted field (a phase's
+// speedMult, an ability's overshootMs) to be spelled out at every call site.
+const ability = (
+  over: Partial<z.input<typeof enemyAbilitySchema>> & { id: string },
+): EnemyAbilityDef => enemyAbilitySchema.parse({ kind: 'melee_arc', clip: 'Attack', ...over });
 
-const def = (over: Partial<EnemyDef> & { id: string }): EnemyDef =>
+const def = (over: Partial<z.input<typeof enemyDefSchema>> & { id: string }): EnemyDef =>
   enemyDefSchema.parse({
     name: 'Test',
     archetype: 'grunt',
@@ -387,5 +393,118 @@ describe('once-per-life abilities', () => {
     enemy.resetToHome(2000);
     expect(enemy.spentAbilities.size).toBe(0);
     expect(enemy.phaseIndex).toBe(0);
+  });
+});
+
+/**
+ * The decal is a promise (COMBAT.md §5): whatever shape the player was shown
+ * is the shape the server tests. These pin the two kinds whose resolution
+ * P9-B declared but never wired — a circle that was silently resolving as a
+ * melee cone, and a shield that granted nothing at all.
+ */
+describe('Ability kinds resolve as the shape they telegraph', () => {
+  const caster = def({
+    id: 'enemy_pool_caster',
+    archetype: 'caster',
+    abilities: [
+      ability({
+        id: 'pool',
+        kind: 'ground_circle',
+        clip: 'Bite_Front',
+        rangeMin: 0,
+        rangeMax: 14,
+        circleRadius: 5,
+        reach: 2.2,
+        angleDeg: 90,
+        windupMs: 1000,
+        telegraph: true,
+      }),
+    ],
+  });
+
+  it('places the circle on the target, not on the caster', () => {
+    const enemy = spawn(caster, 0, 0);
+    const player = realPlayer(0, 10);
+    const ctx = makeCtx([player], 1000);
+    enemy.enterState('combat', 1000);
+    enemy.addThreat(player.id, 10);
+    decide(enemy, ctx);
+
+    expect(enemy.swing?.ability.id).toBe('pool');
+    expect(enemy.swing?.z).toBeCloseTo(10, 3);
+    const decal = ctx.events.find((event) => event.type === 'telegraph');
+    expect(decal).toBeDefined();
+    if (decal?.type === 'telegraph') {
+      expect(decal.z).toBeCloseTo(10, 3);
+      expect(decal.size).toBe(5); // the CIRCLE radius, not the melee reach
+    }
+  });
+
+  it('hits inside the circle at 10 m — a cone from the caster would not', () => {
+    const enemy = spawn(caster, 0, 0);
+    const player = realPlayer(0, 10);
+    const ctx = makeCtx([player], 1000);
+    enemy.enterState('combat', 1000);
+    enemy.addThreat(player.id, 10);
+    decide(enemy, ctx);
+
+    const hpBefore = player.hp;
+    move(enemy, [], makeCtx([player], 2100, 0.5));
+    expect(player.hp).toBeLessThan(hpBefore);
+  });
+
+  it('spares anyone who walked out of it before contact', () => {
+    const enemy = spawn(caster, 0, 0);
+    const player = realPlayer(0, 10);
+    const ctx = makeCtx([player], 1000);
+    enemy.enterState('combat', 1000);
+    enemy.addThreat(player.id, 10);
+    decide(enemy, ctx);
+
+    // The pool was placed at z = 10; step well clear of its 5 m radius.
+    player.movement.z = 20;
+    const hpBefore = player.hp;
+    move(enemy, [], makeCtx([player], 2100, 0.5));
+    expect(player.hp).toBe(hpBefore);
+  });
+
+  it('self_shield grants a real absorb that eats damage and then runs out', () => {
+    const warded = def({
+      id: 'enemy_warded_pool',
+      abilities: [
+        ability({
+          id: 'ward',
+          kind: 'self_shield',
+          clip: 'Bite_Front',
+          shieldPct: 25,
+          shieldDurationMs: 5000,
+          windupMs: 500,
+          rangeMax: 30,
+        }),
+      ],
+    });
+    const enemy = spawn(warded, 0, 0);
+    const player = realPlayer(0, 2);
+    enemy.enterState('combat', 1000);
+    enemy.addThreat(player.id, 10);
+    decide(enemy, makeCtx([player], 1000));
+    expect(enemy.swing?.ability.id).toBe('ward');
+
+    move(enemy, [], makeCtx([player], 1600));
+    const pool = enemy.effects.reduce((sum, effect) => sum + effect.shieldPool, 0);
+    expect(pool).toBe(Math.round(enemy.maxHp * 0.25));
+
+    // A hit smaller than the pool takes no HP at all, and is flagged absorbed.
+    const events: CombatEvent[] = [];
+    const hpBefore = enemy.hp;
+    const hit = applyDamageToEnemy(enemy, player.id, player, 10, false, 0, 1700, events);
+    expect(enemy.hp).toBe(hpBefore);
+    expect(hit.flags & HitFlag.Absorbed).toBeTruthy();
+    // Threat still counts the full swing: hitting a shield is not punished.
+    expect(enemy.threat.get(player.id)).toBe(20);
+
+    // Burst past the pool and HP starts moving again.
+    applyDamageToEnemy(enemy, player.id, player, pool, false, 0, 1800, events);
+    expect(enemy.hp).toBeLessThan(hpBefore);
   });
 });

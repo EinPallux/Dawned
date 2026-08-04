@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { z } from 'zod';
 import {
   bossPhaseAt,
   enemyAbilitySchema,
@@ -13,11 +14,17 @@ import {
 } from './enemies.js';
 import { ARCHETYPE_MOTION, surroundSlot } from '../formulas/stats.js';
 
-/** A minimal valid ability row; overrides layer the case under test on top. */
-const ability = (over: Partial<EnemyAbilityDef> & { id: string }): EnemyAbilityDef =>
-  enemyAbilitySchema.parse({ kind: 'melee_arc', clip: 'Attack', ...over });
+/**
+ * A minimal valid ability row; overrides layer the case under test on top.
+ * Overrides are typed as the schema's INPUT: the output type would force every
+ * defaulted field (a phase's speedMult, an ability's overshootMs) to be spelled
+ * out at every call site, which is how fixtures rot.
+ */
+const ability = (
+  over: Partial<z.input<typeof enemyAbilitySchema>> & { id: string },
+): EnemyAbilityDef => enemyAbilitySchema.parse({ kind: 'melee_arc', clip: 'Attack', ...over });
 
-const enemy = (over: Partial<EnemyDef> & { id: string }): EnemyDef =>
+const enemy = (over: Partial<z.input<typeof enemyDefSchema>> & { id: string }): EnemyDef =>
   enemyDefSchema.parse({
     name: 'Test Thing',
     archetype: 'grunt',

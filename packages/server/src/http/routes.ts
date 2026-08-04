@@ -289,4 +289,53 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     if (itemId && gold !== 0) world.queueGrantGold(player, gold);
     return reply.send({ ok: true, ...(itemId ? { itemId, qty } : {}), ...(gold ? { gold } : {}) });
   });
+
+  /**
+   * Set a living enemy's HP to a fraction of max (P9). GM primitive: it makes
+   * boss phases and hp-threshold abilities reachable in seconds instead of a
+   * full fight per beat. It only moves the bar — the phase walk, the announce
+   * and the shield are the real AI reacting, never staged.
+   */
+  app.post('/ops/enemyhurt', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as { enemyId?: unknown; fraction?: unknown } | undefined;
+    const typeId = typeof body?.enemyId === 'string' ? body.enemyId.trim() : '';
+    const fraction =
+      typeof body?.fraction === 'number' ? Math.min(1, Math.max(0.01, body.fraction)) : 0.5;
+    if (!typeId) return reply.code(400).send({ error: 'enemyId (content slug) required' });
+    const entityId = world.queueEnemyHurt(typeId, fraction);
+    if (entityId === null) return reply.code(404).send({ error: 'no living enemy of that type' });
+    return reply.send({ ok: true, entityId, fraction });
+  });
+
+  /**
+   * Teleport an online player (P9). Every verification run otherwise opens
+   * with a two-minute walk to whichever camp or arena it is about to test.
+   */
+  app.post('/ops/tp', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as { player?: unknown; x?: unknown; z?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const x = typeof body?.x === 'number' ? body.x : NaN;
+    const z = typeof body?.z === 'number' ? body.z : NaN;
+    if (!player || !Number.isFinite(x) || !Number.isFinite(z)) {
+      return reply.code(400).send({ error: 'player, x and z required' });
+    }
+    if (!world.queueTeleport(player, x, z)) {
+      return reply.code(404).send({ error: 'player not online' });
+    }
+    return reply.send({ ok: true, x, z });
+  });
 };

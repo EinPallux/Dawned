@@ -294,12 +294,21 @@ const startSwing = (
   enemy.yaw = yaw;
   enemy.vx = 0;
   enemy.vz = 0;
+  // A ground circle is a POOL PLACED ON THE TARGET where they stood when the
+  // cast began — walking out of it is the whole counterplay, and a circle
+  // centred on the caster instead would be unreachable from its own range
+  // band. Every other shape swings from the enemy's own feet.
+  const groundCircle = ability.kind === 'ground_circle';
+  const originX = groundCircle ? target.movement.x : enemy.x;
+  const originY = groundCircle ? target.movement.y : enemy.y;
+  const originZ = groundCircle ? target.movement.z : enemy.z;
   enemy.swing = {
     ability,
     contactAtMs: ctx.nowMs + ability.windupMs,
     yaw,
-    x: enemy.x,
-    z: enemy.z,
+    x: originX,
+    y: originY,
+    z: originZ,
   };
   enemy.cooldowns.set(ability.id, ctx.nowMs + ability.windupMs + ability.cooldownMs);
   // Once-per-life is spent at COMMIT, not at contact: an interrupted opener
@@ -324,8 +333,8 @@ const startSwing = (
       type: 'telegraph',
       casterId: enemy.id,
       shape: telegraphShapeOf(ability),
-      x: enemy.x,
-      z: enemy.z,
+      x: originX,
+      z: originZ,
       yaw,
       size: telegraphSizeOf(ability),
       spread: telegraphSpreadOf(ability),
@@ -422,6 +431,7 @@ export const move = (
       swing.ability,
       swing.yaw,
       swing.x,
+      swing.y,
       swing.z,
       [...ctx.players.values()],
       ctx.nowMs,
@@ -652,6 +662,7 @@ const advanceCharge = (enemy: ServerEnemy, ctx: AiContext): void => {
         { ...ability, kind: 'melee_arc', reach: 1.2, angleDeg: 360 },
         enemy.yaw,
         player.movement.x,
+        player.movement.y,
         player.movement.z,
         [player],
         ctx.nowMs,

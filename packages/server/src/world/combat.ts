@@ -47,6 +47,7 @@ import {
   gainResource,
   payResource,
   arcHits,
+  circleHits,
   interruptCast,
   isDodgeInvulnerable,
   rollDamage,
@@ -583,7 +584,13 @@ export const applyDamageToEnemy = (
   nowMs: number,
   events: CombatEvent[],
 ): ResolveHit => {
-  enemy.hp = Math.max(0, enemy.hp - amount);
+  // Absorbs intercept before HP, exactly as they do for players (P6) — an
+  // enemy self-shield (P9) is the same pool drained by the same function, so
+  // "burst it down or wait it out" behaves identically on both sides of a
+  // fight. Threat and the kill-credit ledger still count the FULL swing: you
+  // are not punished on aggro or tag for hitting a shield.
+  const absorbed = absorbFromShields(enemy, amount);
+  enemy.hp = Math.max(0, enemy.hp - (amount - absorbed));
   enemy.lastDamagedAtMs = nowMs;
   enemy.addThreat(attackerId, amount);
   if (attacker) {
@@ -594,6 +601,9 @@ export const applyDamageToEnemy = (
 
   let flags = 0;
   if (crit) flags |= HitFlag.Crit;
+  // Fully eaten by the shield: the FCT says "absorbed" instead of a number
+  // that never left the bar (v8's flag, now on the enemy side too).
+  if (absorbed >= amount) flags |= HitFlag.Absorbed;
 
   if (enemy.hp <= 0) {
     flags |= HitFlag.Killed;
@@ -1201,6 +1211,9 @@ export const resolveEnemySwing = (
   ability: EnemyAbilityDef,
   swingYaw: number,
   swingX: number,
+  /** Origin height for the vertical hit tolerance (a placed pool sits at the
+   * target's ground, not the caster's). */
+  swingY: number,
   swingZ: number,
   players: readonly ServerPlayer[],
   nowMs: number,
@@ -1275,6 +1288,29 @@ export const resolveEnemySwing = (
     return;
   }
 
+  // The self-shield spends its wind-up buying an absorb pool, not a hit. It
+  // rides the SAME effect list players' shields do, so it drains through
+  // `absorbFromShields`, syncs to viewers as a shield chip, and can be waited
+  // out — a boss that hardens forever is an HP bar, not a beat.
+  if (ability.kind === 'self_shield') {
+    applyEffect(
+      enemy,
+      {
+        effectId: `enemy_shield_${ability.id}`,
+        casterId: enemy.id,
+        durationMs: ability.shieldDurationMs,
+        stacksMax: 1,
+        mods: {},
+        harmful: false,
+        category: 'buff',
+        shieldPool: Math.round((enemy.maxHp * ability.shieldPct) / 100),
+      },
+      nowMs,
+    );
+    events.push({ type: 'ability-resolve', attackerId: enemy.id, action: 0, step: 0, hits: [] });
+    return;
+  }
+
   const targets: HitTarget[] = players.map((p) => ({
     x: p.movement.x,
     y: p.movement.y,
@@ -1282,16 +1318,24 @@ export const resolveEnemySwing = (
     radius: PLAYER_RADIUS,
     height: PLAYER_HEIGHT,
   }));
-  const hitIndices = arcHits(
-    swingX,
-    enemy.y,
-    swingZ,
-    swingYaw,
-    ability.reach,
-    (ability.angleDeg * Math.PI) / 180,
-    targets,
-    MELEE_TARGET_CAP,
-  );
+  // A ground circle tests the DECAL the player was shown: same centre (where
+  // the pool was placed at wind-up start), same radius. Testing an arc here
+  // instead would make the decal a lie, which COMBAT.md §5 forbids. No target
+  // cap either — a telegraphed pool is supposed to catch everyone who stayed
+  // in it; that IS the mechanic, and the cap exists for untelegraphed swings.
+  const hitIndices =
+    ability.kind === 'ground_circle'
+      ? circleHits(swingX, swingY, swingZ, ability.circleRadius, targets)
+      : arcHits(
+          swingX,
+          swingY,
+          swingZ,
+          swingYaw,
+          ability.reach,
+          (ability.angleDeg * Math.PI) / 180,
+          targets,
+          MELEE_TARGET_CAP,
+        );
 
   const hits: ResolveHit[] = [];
   for (const index of hitIndices) {
