@@ -55,10 +55,16 @@ describe('deploy/Caddyfile production contracts', () => {
     expect(active).not.toMatch(/(^|\s)handle \/admin/m);
   });
 
-  it('asset manifest and index.html stay non-immutable across deploys', () => {
+  it('asset manifest and every HTML route stay non-immutable across deploys', () => {
     expect(active).toMatch(/@manifest path \/assets\/manifest\.json/);
     expect(active).toMatch(/header @manifest Cache-Control "no-cache"/);
-    expect(active).toMatch(/header @html Cache-Control "no-cache"/);
+    // Everything that is not a hashed asset IS index.html (SPA fallback), and
+    // it must carry no-cache — matching only `/` left deep links uncovered,
+    // because try_files rewrites after the header directives have run.
+    expect(active).toMatch(/@notasset not path \/assets\/\*/);
+    expect(active).toMatch(/header @notasset Cache-Control "no-cache"/);
+    // API answers are never cached either (the server says so too).
+    expect(active).toMatch(/header defer Cache-Control "no-store"/);
     // The manifest exception must come after the blanket immutable rule
     // (later directives win in Caddy) — order is part of the contract.
     const immutableAt = active.indexOf('@immutable path /assets/*');

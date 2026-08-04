@@ -21,6 +21,10 @@ nothing beyond it.
 - **Process:** work inside the current ROADMAP phase; run `pnpm check` before claiming done;
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
+- **Freshness checklist (every task, see CLAUDE.md):** ROADMAP row + phase block · CHANGELOG ·
+  README status block · CLAUDE/AGENTS current state in BOTH repos · design/tech docs you touched
+  · no hardcoded phase or version strings in the app (the HUD reads `build-info.ts`) ·
+  USER_QUESTIONS · any counts you quoted.
 - **State:** P0–P6 complete (owner-verified; P6 closed 2026-08-04 — "classes are fine";
   A0 /admin login confirmed). **P7 — Progression and P8 — Items, Inventory, Loot &
   Vendors are both built end-to-end (2026-08-04; protocol v9 then v10), owner playtest
@@ -43,4 +47,9 @@ nothing beyond it.
     (legit 1→10 camp grind, tier gates, respecs, UI, persistence), `browser-p8.mjs`
     (kill → loot an ITEM → equip → model on the roster → tooltip → posts → trade → relog),
     the node-effect matrix test, the inventory fuzz suite, p8-probe/browser-p6/two-client/
-    browser-sync, 336 unit tests. Heal magnitudes flagged for panel tuning.
+    browser-sync, 336 unit tests. Heal magnitudes flagged for panel tuning. **Owner round
+    after P8 (2026-08-04):** worn gear moved from the pack to the character sheet (`C` =
+    header + slot columns + live rig + stats folded through the shared `equipmentBonus`;
+    `I` = the bag alone), and stale-tab confusion is closed — client and server both carry
+    a build id, a mismatch raises a reload notice, the HUD corner shows the build, API
+    responses are `no-store` and every non-asset path is `no-cache`.

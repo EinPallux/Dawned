@@ -5,6 +5,32 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Changed — Character sheet, and knowing which build you are on (2026-08-04)
+
+- **Worn gear moved to the character sheet.** `C` is now the character screen
+  the owner asked for: name and level across the top, two columns of equipment
+  slots flanking your actual rig (holding the weapons you equipped), and the
+  stat block underneath — attributes with their +/− staging on the left, the
+  derived numbers on the right, gear contributions called out in green. `I` is
+  the pack alone: 48 cells, search, sort, purse. Right-click still equips from
+  the pack and now takes gear off from the sheet.
+  The sheet's numbers fold worn gear through the SAME shared `equipmentBonus`
+  the server derives with, so the sheet cannot flatter you — armour, crit and
+  your weapon's damage band read exactly as the world runs them.
+- **"Do I have the latest update?" is now a question the game answers.** Every
+  bundle carries the commit it was built from; the server reports the commit it
+  is running at `/api/health`; when they differ the client raises a reload
+  notice. The HUD corner shows the build instead of a hardcoded phase label
+  that had been wrong since P3.
+- **Fixed — the stale-tab problem.** API responses now say `no-store` (game and
+  admin panel), and Caddy marks every non-asset path `no-cache` rather than
+  only `/` — SPA deep links were served with no cache header at all, which
+  lets a browser invent its own freshness lifetime. That is why updates showed
+  up in a private window before they showed up in a normal tab.
+- **Fixed — panel text contrast.** Several new panel rules coloured text with
+  `--ink`, which is the dark BACKGROUND token in this palette, not a text
+  colour; values were rendering near-black on a dark panel.
+
 ### Added — P8 Items, Inventory, Loot & Vendors (2026-08-04)
 
 - **Shared item core (P8-A, protocol v10):** items, loot tables and vendors

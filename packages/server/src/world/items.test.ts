@@ -12,6 +12,7 @@ import {
   defaultWorldSettings,
   defaultXpCurve,
   devTerrain,
+  equipmentBonus,
   validateItemDef,
   validateLootTableDef,
   validateVendorDef,
@@ -27,7 +28,6 @@ import type { ServerPlayer } from './player.js';
 import {
   applyItemOp,
   createPlayerItems,
-  equipmentBonus,
   expireLootBags,
   grantGold,
   grantItem,
@@ -238,7 +238,7 @@ describe('equipment → stats', () => {
     expect(armed).toEqual({ min: 9, max: 13 });
     expect(armed.min).not.toBe(unarmed.min);
 
-    const bonus = equipmentBonus(player.items, world.itemContent().items);
+    const bonus = equipmentBonus(player.items.inventory.equipment, world.itemContent().items);
     expect(bonus.stats.str).toBe(4);
     // The jerkin's authored 12 plus the free armour its class/ilvl grants (§2:
     // medium 4/ilvl × chest weight 1.0 × ilvl 3) — budget stats are on top.
@@ -557,7 +557,7 @@ describe('grants and persistence rows', () => {
       equipment: new Map([['chest', { id: 6, itemId: CHEST.id, qty: 1, rolled: { vit: 2 } }]]),
     });
     expect(restored.inventory.gold).toBe(77);
-    const bonus = equipmentBonus(restored, world.itemContent().items);
+    const bonus = equipmentBonus(restored.inventory.equipment, world.itemContent().items);
     // Fixed stats plus the rolled ones on that particular copy.
     expect(bonus.stats.vit).toBe(7);
   });

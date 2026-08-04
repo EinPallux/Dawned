@@ -337,6 +337,7 @@ const main = async () => {
     await sleep(2000);
     const snap = await page.evaluate(() => ({
       sheet: window.__dawned.progressionState().sheet,
+      status: window.__dawned.connection.status,
       bot: window.__p7bot,
       toasts: [...document.querySelectorAll('.hud-toast')].map((t) => t.textContent ?? ''),
       xpFill: document.querySelector('.hud-xpbar-fill')?.style.width ?? '0%',
@@ -346,6 +347,13 @@ const main = async () => {
       ],
     }));
     const sheet = snap.sheet;
+    if (!sheet) {
+      // No sheet means no ProgressSync yet — i.e. the socket dropped and the
+      // client is re-entering. Say so and keep grinding; a genuine failure to
+      // come back shows up as the budget running out, not as a TypeError.
+      console.log(`   … no progress sheet (reconnecting?), status ${snap.status ?? '?'}`);
+      continue;
+    }
     if (sheet.xp !== lastXp || sheet.level !== lastLevel) sawXpTick = true;
     if (parseFloat(snap.xpFill) > 0) sawXpBarFill = true;
     if (snap.toasts.some((t) => t.includes('point banked'))) sawLevelToast = true;

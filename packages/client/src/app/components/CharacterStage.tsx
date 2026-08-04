@@ -12,10 +12,17 @@ import {
   loadCharacterAssets,
   type ComposedCharacter,
 } from '../../world/characters.js';
+import { HeldWeapons, handBones, loadWeaponModels } from '../../world/weapon-models.js';
 
 export interface CharacterStageProps {
   appearance: Appearance;
   classId: string;
+  /**
+   * Baked model refs for what the character holds (roster values). The sheet
+   * shows the gear you equipped, not a generic mannequin.
+   */
+  mainhandModel?: string | null;
+  offhandModel?: string | null;
   /** Stage height driver; the canvas fills its parent. */
   className?: string;
 }
@@ -23,11 +30,14 @@ export interface CharacterStageProps {
 export const CharacterStage = ({
   appearance,
   classId,
+  mainhandModel = null,
+  offhandModel = null,
   className,
 }: CharacterStageProps): React.JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   /** Serialize the appearance so the effect re-runs only on real changes. */
-  const appearanceKey = JSON.stringify(appearance) + classId;
+  const appearanceKey =
+    JSON.stringify(appearance) + classId + (mainhandModel ?? '-') + (offhandModel ?? '-');
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -71,15 +81,20 @@ export const CharacterStage = ({
     scene.add(holder);
 
     let composed: ComposedCharacter | null = null;
+    let held: HeldWeapons | null = null;
     let cancelled = false;
 
-    void loadCharacterAssets().then((assets) => {
+    void Promise.all([loadCharacterAssets(), loadWeaponModels()]).then(([assets, weapons]) => {
       if (cancelled) return;
       composed = composeCharacter(assets, appearance);
       if (composed) {
         holder.add(composed.group);
         const pose = classById(classId)?.poseClip ?? 'Idle_Loop';
         if (!composed.play(pose)) composed.play('Idle_Loop');
+        // Same hands, same grip as in the world (weapon-models.ts).
+        held = new HeldWeapons(weapons, handBones(composed.group));
+        held.set('mainhand', mainhandModel);
+        held.set('offhand', offhandModel);
       } else {
         // Silhouette fallback: assets not baked yet — never a blank hole.
         const silhouette = new THREE.Mesh(
@@ -144,6 +159,7 @@ export const CharacterStage = ({
       canvas.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      held?.dispose();
       composed?.dispose();
       renderer.dispose();
     };

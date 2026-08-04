@@ -16,6 +16,7 @@ import {
   EQUIP_SLOTS,
   applyPlan,
   baseWeaponDamage,
+  equipmentBonus,
   killGold,
   planAdd,
   planEquip,
@@ -27,14 +28,13 @@ import {
   rollItemStats,
   rollLootTable,
   sellPriceFor,
-  totalItemStats,
   type EquipSlot,
+  type EquipmentBonus,
   type InventoryMutation,
   type InventoryState,
   type ItemDef,
   type ItemOp,
   type ItemStack,
-  type ItemStats,
   type LootTableDef,
   type Rarity,
   type Rng,
@@ -129,46 +129,12 @@ export const bagsFor = (bags: ReadonlyMap<number, LootBag>, playerId: number): L
 // Equipment → stats
 // ---------------------------------------------------------------------------
 
-/**
- * What the worn set contributes: attributes (folded into the derived-stat
- * pass exactly like allocated points), flat armor/crit, and the main hand's
- * damage band. Recomputed on every equipment change, not cached — a set is
- * 11 rows and the fold is arithmetic.
- */
-export interface EquipmentBonus {
-  stats: ItemStats;
-  /** Main-hand damage band; null = unarmed (the P4 baseline applies). */
-  weapon: { min: number; max: number } | null;
-}
-
-export const equipmentBonus = (
-  items: PlayerItems,
-  defs: ReadonlyMap<string, ItemDef>,
-): EquipmentBonus => {
-  const stats: ItemStats = {};
-  let weapon: { min: number; max: number } | null = null;
-  for (const slot of EQUIP_SLOTS) {
-    const stack = items.inventory.equipment.get(slot);
-    if (!stack) continue;
-    const def = defs.get(stack.itemId);
-    if (!def) continue;
-    const total = totalItemStats(def, stack.rolled);
-    for (const [key, value] of Object.entries(total) as [keyof ItemStats, number][]) {
-      stats[key] = (stats[key] ?? 0) + value;
-    }
-    if (slot === 'mainhand' && def.weapon) {
-      weapon = { min: def.weapon.dmgMin, max: def.weapon.dmgMax };
-    }
-  }
-  return { stats, weapon };
-};
-
 /** Recompute and cache the worn set's contribution (equip/unequip/reload). */
 export const refreshEquipmentBonus = (
   items: PlayerItems,
   defs: ReadonlyMap<string, ItemDef>,
 ): void => {
-  items.bonus = equipmentBonus(items, defs);
+  items.bonus = equipmentBonus(items.inventory.equipment, defs);
 };
 
 /**

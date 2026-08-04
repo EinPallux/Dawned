@@ -4,12 +4,18 @@
 community of friends (5–20 players), inspired by the feel of _Farever_, _Guild Wars 2_ and
 _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 
-> **Status: ✅ Phase P0 complete — live at [play.pathlands.cc](https://play.pathlands.cc):**
-> two browsers, one authoritative world. **Next: P1 — Accounts, Characters & Menus.**
+> **Status (2026-08-04): phases P0–P8 are built; P0–P6 are owner-verified, P7 and P8 await
+> playtest.** Live at [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
+> a streamed island, action combat, all four classes with their ability kits, levels 1–30 with
+> attributes and 96-node skill trees, and the full item loop (pack, paper-doll, loot bags,
+> vendors, visible weapons). Protocol v10. **Next: P9 — Enemies & AI Depth.**
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an
 > authored island open world with levels 1–30, professions, quests, loot, chat, GM tools) — not an
 > MVP, not a prototype. The companion repo **[Dawned-Admin](../Dawned-Admin)** is the web panel
 > that edits everything: map editor, quest editor, database editors, live ops.
+>
+> Phase status lives in [ROADMAP.md](ROADMAP.md); what shipped in each is in
+> [CHANGELOG.md](CHANGELOG.md).
 
 ## The game in one paragraph
 
@@ -25,7 +31,7 @@ friends optional and welcome.
 | Read…                                                                                                                                                                                               | For…                                                                      |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | [ROADMAP.md](ROADMAP.md)                                                                                                                                                                            | **The build plan** — 16 phases with Definitions of Done + admin-repo sync |
-| [USER_QUESTIONS.md](USER_QUESTIONS.md)                                                                                                                                                              | ❓ Owner question inbox (currently empty) + the decision log              |
+| [USER_QUESTIONS.md](USER_QUESTIONS.md)                                                                                                                                                              | ❓ Owner question inbox + the decision log (21 decisions folded)          |
 | [docs/design/GAME_DESIGN.md](docs/design/GAME_DESIGN.md)                                                                                                                                            | Vision, pillars, loops — start here for design                            |
 | [docs/design/WORLD.md](docs/design/WORLD.md) · [COMBAT.md](docs/design/COMBAT.md) · [CLASSES.md](docs/design/CLASSES.md) · [PROGRESSION.md](docs/design/PROGRESSION.md)                             | World & the action-combat core                                            |
 | [docs/design/ITEMS_LOOT.md](docs/design/ITEMS_LOOT.md) · [PROFESSIONS.md](docs/design/PROFESSIONS.md) · [QUESTS_POI.md](docs/design/QUESTS_POI.md) · [NPCS_ENEMIES.md](docs/design/NPCS_ENEMIES.md) | Systems & content design                                                  |

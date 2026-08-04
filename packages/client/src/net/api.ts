@@ -83,6 +83,10 @@ export const api = {
 
   serverStatus: (): Promise<{ online: boolean; players: number; maxPlayers: number }> =>
     request('/api/status'),
+
+  /** Which build the server is running (build-info.ts compares it to ours). */
+  health: (): Promise<{ status: string; buildId?: string; protocolVersion: number }> =>
+    request('/api/health'),
 };
 
 /** Token persistence: remember-me picks the storage that survives the browser. */

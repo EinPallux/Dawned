@@ -81,6 +81,13 @@ export interface ProgressionBridge {
   version: () => number;
   classId: () => ClassId;
   level: () => number;
+  /** Who the sheet is about: name, looks and what the roster says you hold. */
+  identity: () => {
+    name: string;
+    appearance: Appearance;
+    mainhandModel: string | null;
+    offhandModel: string | null;
+  };
   /** The authoritative sheet (null until the first ProgressSync). */
   sheet: () => ProgressSyncMessage | null;
   nodeDefs: () => ReadonlyMap<string, SkillNodeDef>;
@@ -1579,6 +1586,15 @@ export const runWorld = (
     version: () => connection.progressVersion,
     classId: () => connection.classId,
     level: () => connection.selfLevel,
+    identity: () => {
+      const entry = connection.rosterEntryFor(connection.selfId);
+      return {
+        name: entry?.name ?? playerName,
+        appearance: entry?.appearance ?? appearance,
+        mainhandModel: entry?.mainhandModel ?? null,
+        offhandModel: entry?.offhandModel ?? null,
+      };
+    },
     sheet: () => connection.sheet,
     nodeDefs: () => connection.skillNodeDefs,
     ranks: () => connection.ranks,
