@@ -247,6 +247,14 @@ export const decodeRespec = (reader: BinaryReader): RespecMessage => ({
   kind: reader.u8(),
 });
 
+/**
+ * Every inventory/loot/vendor intent (v10) in one envelope. Client-authored,
+ * so the SERVER parses it with `itemOpSchema` (content/item-ops.ts) before
+ * touching state — the envelope decoder deliberately hands back `unknown`.
+ */
+export const encodeItemOp = (op: unknown, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ClientOp.ItemOp, op, writer);
+
 // ---------------------------------------------------------------------------
 // Server → Client
 // ---------------------------------------------------------------------------
@@ -257,6 +265,14 @@ export interface RosterEntry {
   classId: ClassId;
   level: number;
   appearance: Appearance;
+  /**
+   * Visible loadout (v10): baked model refs for what the character holds.
+   * Armor never changes the look (ITEMS_LOOT.md §1) — only these two do, so
+   * the roster (already the appearance channel) carries them and every
+   * client attaches the same models to the same sockets.
+   */
+  mainhandModel?: string | null;
+  offhandModel?: string | null;
 }
 
 export interface WelcomeMessage {
@@ -811,6 +827,100 @@ export const decodeLevelUp = (reader: BinaryReader): LevelUpMessage => ({
   entityId: reader.u32(),
   level: reader.u8(),
 });
+
+// ---------------------------------------------------------------------------
+// Items (v10) — ITEMS_LOOT.md. All JSON envelopes: these are UI-cadence
+// messages, and their shapes are heterogeneous by nature.
+// ---------------------------------------------------------------------------
+
+/**
+ * One owned stack on the wire (bag cell or paper-doll slot). The cell IS the
+ * identity here — row ids stay server-side, where they are rewritten on every
+ * flush and would only give the client something false to key on.
+ */
+export interface WireStack {
+  itemId: string;
+  qty: number;
+  /** Rolled attributes for gear; absent for stackables. */
+  rolled?: Record<string, number> | null;
+}
+
+/**
+ * Authoritative bag + paper-doll + purse for SELF (v10) — sent on join and
+ * after any change. The client adopts it wholesale: it is both the initial
+ * state and the correction that heals a mispredicted drag.
+ */
+export interface InventorySyncMessage {
+  /** Bag cells as [slotIndex, stack] pairs (sparse — 48-slot grid). */
+  bag: [number, WireStack][];
+  /** Equipment by slot name (EquipSlot). */
+  equipment: Record<string, WireStack>;
+  gold: number;
+  /** performance-independent server timestamps for consumable lanes. */
+  cooldowns: Record<string, number>;
+  /** Server time when the payload was built (cooldowns are relative to it). */
+  serverTimeMs: number;
+}
+
+export const encodeInventorySync = (msg: InventorySyncMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.InventorySync, msg, writer);
+
+/** A loot bag as THIS player sees it — contents are per-player instanced. */
+export interface WireLootBag {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Best rarity inside — colors the beam (ITEMS_LOOT.md §3). */
+  rarity: string;
+  items: { index: number; itemId: string; qty: number; rolled?: Record<string, number> | null }[];
+  gold: number;
+  /** Server time the bag despawns (60 s lifetime). */
+  expiresAtMs: number;
+}
+
+export interface LootBagsMessage {
+  bags: WireLootBag[];
+  serverTimeMs: number;
+}
+
+export const encodeLootBags = (msg: LootBagsMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.LootBags, msg, writer);
+
+/** An opened vendor: priced stock + this session's buyback shelf (§6). */
+export interface VendorPanelMessage {
+  vendorId: string;
+  /**
+   * false = close the panel. The lease is proximity-based: walking away from
+   * the post ends the conversation server-side, so the UI must follow.
+   */
+  open: boolean;
+  name: string;
+  kind: string;
+  greeting: string;
+  /** Buy list with the price the server WILL charge. */
+  stock: { itemId: string; price: number }[];
+  /** Last sold stacks, newest first, at the price paid. */
+  buyback: { index: number; itemId: string; qty: number; price: number }[];
+  /** Multiplier applied to item value when this vendor buys from the player. */
+  sellMult: number;
+}
+
+export const encodeVendorPanel = (msg: VendorPanelMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.VendorPanel, msg, writer);
+
+/** Bag traffic worth a toast (§3 loot juice, refusals in words). */
+export interface ItemNoticeMessage {
+  kind: 'picked' | 'gold' | 'sold' | 'bought' | 'full' | 'refused' | 'used' | 'equipped';
+  itemId?: string;
+  qty?: number;
+  gold?: number;
+  /** Refusal reason code (InventoryRefusal) for the words the HUD shows. */
+  reason?: string;
+}
+
+export const encodeItemNotice = (msg: ItemNoticeMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.ItemNotice, msg, writer);
 
 export interface SystemNoticeMessage {
   code: NoticeCode;

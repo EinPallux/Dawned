@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 9; // v9 (P7): progression — XP, level-ups, stat/skill allocation
+export const PROTOCOL_VERSION = 10; // v10 (P8): items — inventory, loot bags, vendors
 
 /** Client → server opcodes. */
 export const ClientOp = {
@@ -22,6 +22,13 @@ export const ClientOp = {
   Respec: 0x06,
   Ping: 0x08,
   Chat: 0x07,
+  /**
+   * Every inventory/loot/vendor intent (v10) as one zod-validated JSON
+   * envelope — these are UI clicks, not per-tick traffic, and the shapes are
+   * heterogeneous (slots, item ids, quantities). The server re-validates and
+   * re-prices everything; the client's copy is a prediction.
+   */
+  ItemOp: 0x09,
 } as const;
 export type ClientOp = (typeof ClientOp)[keyof typeof ClientOp];
 
@@ -51,6 +58,14 @@ export const ServerOp = {
   XpGained: 0x99,
   /** An entity leveled up (self: juice + refill; others: pillar VFX; v9). */
   LevelUp: 0x9a,
+  /** Authoritative bag + paper-doll + gold for SELF (JSON envelope, v10). */
+  InventorySync: 0x9b,
+  /** Loot bags this player can see, with THEIR instanced contents (v10). */
+  LootBags: 0x9c,
+  /** A vendor panel opened: stock, prices, buyback (JSON envelope, v10). */
+  VendorPanel: 0x9d,
+  /** Something entered/left the bag: toast + juice (JSON envelope, v10). */
+  ItemNotice: 0x9e,
 } as const;
 export type ServerOp = (typeof ServerOp)[keyof typeof ServerOp];
 

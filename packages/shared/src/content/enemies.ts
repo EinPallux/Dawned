@@ -90,6 +90,25 @@ export const enemyDefSchema = z.object({
   /** Camp tag for social aggro (NPCS_ENEMIES.md §2); null = loner. */
   socialTag: z.string().max(40).nullable().default(null),
   xpMult: z.number().min(0).max(10).default(1),
+  /**
+   * What this type pays out on death (P8, ITEMS_LOOT.md §4). Null = nothing
+   * drops (training dummies). Elites/bosses take extra rolls via `rolls`.
+   */
+  loot: z
+    .object({
+      tableId: z
+        .string()
+        .min(1)
+        .max(64)
+        .regex(/^loot_[a-z0-9_]+$/, 'loot refs look like loot_<name>'),
+      /** Table invocations per kill (§4: usually 1–2, elites +1). */
+      rolls: z.number().int().min(0).max(6).default(1),
+      goldMin: z.number().int().min(0).max(100000).default(0),
+      goldMax: z.number().int().min(0).max(100000).default(0),
+    })
+    .strict()
+    .nullable()
+    .default(null),
 });
 
 export type EnemyAbilityDef = z.infer<typeof enemyAbilitySchema>;
@@ -106,6 +125,9 @@ export const validateEnemyDef = (def: EnemyDef): string[] => {
     if (ability.rangeMin > ability.rangeMax) {
       problems.push(`ability ${ability.id}: rangeMin must be ≤ rangeMax`);
     }
+  }
+  if (def.loot && def.loot.goldMax < def.loot.goldMin) {
+    problems.push('loot: goldMax must be ≥ goldMin');
   }
   return problems;
 };

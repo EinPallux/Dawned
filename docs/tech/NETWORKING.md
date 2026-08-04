@@ -27,7 +27,7 @@ round-trip). Every message: `u8 opcode` + payload. Cold-path messages (login han
 inventory ops, quest text) ride JSON envelopes (they're rare; readability wins). Hot path is pure
 binary.
 
-> **Implementation status (P7, protocol v9):** the tables below describe the full 0.1.0 target
+> **Implementation status (P8, protocol v10):** the tables below describe the full 0.1.0 target
 > protocol. Implemented in `packages/shared/src/protocol/`: Hello/InputIntent/Ping/Chat/
 > AbilityRequest (0x03) up; Welcome/Snapshot/Roster/ChatBroadcast/Pong/SystemNotice plus the
 > combat fan-out — AbilityStart 0x8E, AbilityResolve 0x8F (per-hit target/amount/flags),
@@ -52,8 +52,18 @@ binary.
 > sent on join and after any progression change and doubling as the allocation-misprediction
 > correction; XpGained 0x99 — amount u32 + source u8 + absolute xp u32 + level u8 so a lost
 > packet can't desync the bar; LevelUp 0x9a — entityId u32 + level u8, fanned out so remotes
-> play the pillar; the 0x04–0x06 client opcodes supersede the target sketch below — P8's
-> interact/loot messages will take fresh numbers when they land). Snapshots remain **full-state
+> play the pillar; the 0x04–0x06 client opcodes supersede the target sketch below), v10 items
+> (P8: ItemOp 0x09 up — the ONLY client-authored JSON envelope in the protocol, a zod-parsed
+> union of move/split/sort/equip/unequip/use/drop/loot/vendor\* intents that is queued for the
+> tick and re-validated by the shared planner, never trusted; InventorySync 0x9b — the whole
+> authoritative pack (sparse bag cells, paper-doll by slot name, gold, consumable lane
+> cooldowns) sent on join and after ANY change, so it doubles as the drag-misprediction
+> correction; LootBags 0x9c — the player's own instanced view of nearby bags with the best
+> rarity for the beam colour and the despawn stamp; VendorPanel 0x9d — server-priced stock +
+> the session buyback shelf, with `open:false` closing the panel when the proximity lease
+> breaks; ItemNotice 0x9e — pickup/sale/refusal toasts, refusals carrying the shared
+> `InventoryRefusal` code; RosterEntry gained mainhandModel/offhandModel so held weapons are
+> visible to everyone). Snapshots remain **full-state
 > within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
 > (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
 > total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16

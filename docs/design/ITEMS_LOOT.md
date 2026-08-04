@@ -122,3 +122,32 @@ Vendor UI: buy/sell tabs, buyback (last 10 sold, session-scoped), shift-click qu
 - Naming voice: concrete + evocative, no procedurals in 0.1.0 ("Mosshollow Skinning Knife", not
   "Dagger of the Bear +2"). The 6 Legendaries carry zone lore (e.g. **Emberbrand**, blade quenched
   in Cinderfall's last fire — Epic effect: basic step-3 leaves a 2 s burn).
+
+## 9. As built (P8, 2026-08-04)
+
+The design above shipped with these decisions worth writing down:
+
+- **Nothing is predicted.** Item ops (`ItemOp`, the one client-authored JSON
+  envelope) are requests; the answer is the next full `InventorySync`, which is
+  also what snaps a refused drag back. That single rule is the anti-dupe story
+  on the client — the fuzz suite covers the server side.
+- **Item ids** read `item_<category>_<name>` (`item_weapon_axe_tidesplitter`),
+  one level deeper than §8's sketch, so a bare id sorts by category in the
+  panel and in the database.
+- **Bags are per-player and instanced**: every tagged killer rolls the table
+  independently, so nobody watches a bag they cannot take. 60 s, 4 m reach,
+  gold auto-picked, `nothing` weighted like any other entry.
+- **Vendors carry an `anchor` (x/z/radius)** and, until P12 stands real NPCs
+  in real settlements, each one shows in the world as a market post — a stake,
+  a banner in its trade's colour, a crate. The server owns the lease: walk out
+  of the radius and it closes the panel. The client raises the `F` prompt a
+  little inside the radius so the press always lands within the server's copy
+  of it, and reaching for a post that is genuinely too far now answers "Too far
+  away." rather than a refusal about slots.
+- **Visible gear is weapons only** (§1): the roster carries `mainhandModel` /
+  `offhandModel`, the client hangs the baked model off the hand bone, and
+  armour never changes the silhouette. Shields ride the forearm rather than
+  hanging from a grip.
+- **The first catalogue** is 62 items across T1–T2 (ilvl 1–8), 5 loot tables
+  and 5 Dawnhaven vendors, authored in Dawned-Admin and published — the
+  formulas in §2 generated the numbers, the panel's budget meter checks them.

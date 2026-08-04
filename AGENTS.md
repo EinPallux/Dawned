@@ -22,16 +22,25 @@ nothing beyond it.
   update CHANGELOG.md `[Unreleased]`; update affected docs in the same change; put new design
   questions in USER_QUESTIONS.md with a recommended default.
 - **State:** P0–P6 complete (owner-verified; P6 closed 2026-08-04 — "classes are fine";
-  A0 /admin login confirmed). **P7 — Progression is built end-to-end (P7-A…E, protocol
-  v9), owner playtest pending; its A1-b sync point landed (XP-curve + skill-tree editors
-  in the panel).** P7 on top of the P5/P6 caster platform: the XP pipeline (kill tag rule,
-  falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading level-ups + §1.3
-  juice), attribute allocation + all 96 skill-tree nodes as published rows (seed
-  migration 0010 — never edit an applied migration, DATABASE.md §5) with every effect
-  kind folding on BOTH sides (effective defs, movement/stamina/attack-speed/resource
-  prediction parity), respec, write-through persistence, the C/K panels + XP bar +
-  level-up juice + micro menu. Dev levers: `/setlevel`, `/ops/setlevel`, `/ops/cc`,
-  `/ops/hurt`. Verified: `tools/smoke/browser-p7.mjs` (legit 1→10 camp grind via the
-  published xpRate/xpMult levers, tier gates, respecs, UI, persistence), the node-effect
-  matrix test (every published node × rank), p7-probe/two-client/earlier smokes, 263 unit
-  tests. Heal magnitudes flagged for panel tuning.
+  A0 /admin login confirmed). **P7 — Progression and P8 — Items, Inventory, Loot &
+  Vendors are both built end-to-end (2026-08-04; protocol v9 then v10), owner playtest
+  pending; their A1 sync points landed in the panel (XP-curve + skill-tree editors, then
+  items + loot + vendors).** P7 on top of the P5/P6 caster platform: the XP pipeline
+  (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
+  level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
+  rows (seed migration 0010 — never edit an applied migration, DATABASE.md §5) with every
+  effect kind folding on BOTH sides (effective defs, movement/stamina/attack-speed/
+  resource prediction parity), respec, write-through persistence, the C/K panels + XP bar
+  - level-up juice + micro menu. P8 on top of that: items/loot/vendors as content with
+    the ITEMS_LOOT §2 budgets as shared formulas, the plan/apply inventory model (fuzz-
+    proven conservation), an authoritative pack + paper-doll + purse that folds equipment
+    into derived stats, per-player instanced loot bags, server-priced vendors with a
+    proximity lease, consumables, and the client's `I` pack, world bags, market posts,
+    vendor panel and VISIBLE weapons — nothing item-side is predicted, the next
+    `InventorySync` is always the answer. Content: 62 items, 5 loot tables, 5 vendors
+    authored in the panel and frozen into seed migration 0012. Dev levers: `/setlevel`,
+    `/ops/setlevel`, `/ops/cc`, `/ops/hurt`, `/ops/grant`. Verified: `browser-p7.mjs`
+    (legit 1→10 camp grind, tier gates, respecs, UI, persistence), `browser-p8.mjs`
+    (kill → loot an ITEM → equip → model on the roster → tooltip → posts → trade → relog),
+    the node-effect matrix test, the inventory fuzz suite, p8-probe/browser-p6/two-client/
+    browser-sync, 336 unit tests. Heal magnitudes flagged for panel tuning.

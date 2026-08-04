@@ -28,6 +28,12 @@ import {
   type WorldSettings,
   type XpCurve,
   type XpCurveEntry,
+  validateItemDef,
+  validateLootTableDef,
+  validateVendorDef,
+  type ItemDef,
+  type LootTableDef,
+  type VendorDef,
 } from '@dawned/shared';
 import {
   contentAbilities,
@@ -36,6 +42,9 @@ import {
   contentSpawners,
   contentWorldSettings,
   contentXpCurve,
+  contentItems,
+  contentLootTables,
+  contentVendors,
 } from '@dawned/shared/schema';
 import type { Db } from '../db/client.js';
 
@@ -54,6 +63,12 @@ export interface GameContent {
   skillNodes: Map<string, SkillNodeDef>;
   /** Published world settings (xpRate now; more keys as phases land). */
   worldSettings: WorldSettings;
+  /** Item definitions (P8): empty pre-seed — nothing drops, nothing breaks. */
+  items: Map<string, ItemDef>;
+  /** Loot tables (P8) keyed by id; enemies reference them by slug. */
+  lootTables: Map<string, LootTableDef>;
+  /** Vendors (P8) — stock + world anchors for the market posts. */
+  vendors: Map<string, VendorDef>;
 }
 
 export const slotKey = (classId: ClassId, slot: number): string => `${classId}:${slot}`;
@@ -125,6 +140,56 @@ export const loadContent = async (db: Db): Promise<GameContent> => {
         continue;
       }
       abilityBySlot.set(key, def);
+    }
+  }
+
+  // Items, loot tables and vendors (P8). Each row is validated by its shared
+  // schema; a bad row is a publish bug, so it fails the boot loudly rather
+  // than letting the world run with half a reward engine.
+  const items = new Map<string, ItemDef>();
+  const itemRows = await db.select().from(contentItems).where(eq(contentItems.status, 'published'));
+  for (const row of itemRows) {
+    try {
+      const def = validateItemDef(row.def);
+      items.set(def.id, def);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+  // §8: every item carries a UNIQUE icon. The panel enforces it at publish;
+  // boot re-checks so a hand-edited database can't ship duplicate art.
+  const iconOwners = new Map<string, string>();
+  for (const def of items.values()) {
+    const owner = iconOwners.get(def.icon);
+    if (owner) problems.push(`items ${owner} and ${def.id} share icon "${def.icon}"`);
+    else iconOwners.set(def.icon, def.id);
+  }
+
+  const lootTables = new Map<string, LootTableDef>();
+  const lootRows = await db
+    .select()
+    .from(contentLootTables)
+    .where(eq(contentLootTables.status, 'published'));
+  for (const row of lootRows) {
+    try {
+      const def = validateLootTableDef(row.def);
+      lootTables.set(def.id, def);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+
+  const vendors = new Map<string, VendorDef>();
+  const vendorRows = await db
+    .select()
+    .from(contentVendors)
+    .where(eq(contentVendors.status, 'published'));
+  for (const row of vendorRows) {
+    try {
+      const def = validateVendorDef(row.def);
+      vendors.set(def.id, def);
+    } catch (error) {
+      problems.push((error as Error).message);
     }
   }
 
@@ -218,5 +283,8 @@ export const loadContent = async (db: Db): Promise<GameContent> => {
     xpCurve,
     skillNodes,
     worldSettings,
+    items,
+    lootTables,
+    vendors,
   };
 };

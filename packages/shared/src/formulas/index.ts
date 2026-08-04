@@ -8,3 +8,5 @@ export * from './ability-machine.js';
 export * from './cc.js';
 export * from './progression.js';
 export * from './ability-mods.js';
+export * from './items.js';
+export * from './inventory.js';

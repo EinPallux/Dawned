@@ -19,6 +19,7 @@ import {
   applyXpRate,
   buildEffectiveDefs,
   canAllocateNode,
+  XP_TAG_DAMAGE_FRACTION,
   killXp,
   neutralResourceMods,
   playerStats,
@@ -120,10 +121,21 @@ export const resourceModsOf = (player: ServerPlayer): ResourceMods | undefined =
  */
 export const rebuildPlayerDerived = (player: ServerPlayer, refill: boolean): void => {
   const agg = player.progress.aggregates.stats;
-  const stats = playerStats(player.classId, player.level, player.progress.allocated);
+  // Worn gear adds attributes BEFORE the derivation (P8): a +5 VIT chest has
+  // to raise Max HP through the same 12-per-VIT rule the sheet shows, not as
+  // a bolted-on afterthought. Flat armor/crit apply after, like node scalars.
+  const gear = player.items.bonus;
+  const allocated = {
+    str: player.progress.allocated.str + (gear.stats.str ?? 0),
+    agi: player.progress.allocated.agi + (gear.stats.agi ?? 0),
+    int: player.progress.allocated.int + (gear.stats.int ?? 0),
+    vit: player.progress.allocated.vit + (gear.stats.vit ?? 0),
+    end: player.progress.allocated.end + (gear.stats.end ?? 0),
+  };
+  const stats = playerStats(player.classId, player.level, allocated);
   stats.maxHp = Math.max(1, Math.round(stats.maxHp * (1 + agg.maxHpPct / 100)));
-  stats.armor = stats.armor * (1 + agg.armorPct / 100);
-  stats.critPct += agg.critPct;
+  stats.armor = (stats.armor + (gear.stats.armor ?? 0)) * (1 + agg.armorPct / 100);
+  stats.critPct += agg.critPct + (gear.stats.critPct ?? 0);
   player.stats = stats;
   player.maxHp = stats.maxHp;
   player.hp = refill ? stats.maxHp : Math.min(player.hp, stats.maxHp);
@@ -205,6 +217,34 @@ export const awardXp = (
 };
 
 /** Kill XP for every tagged player (≥10% damage OR healed a tagger). */
+/**
+ * Who earned this kill (PROGRESSION.md §1.1): ≥10% of the damage, or any heal
+ * on someone who did (Cleric-safe). ONE definition — XP awards and loot rolls
+ * both read it, so a player can never be paid by one and skipped by the other.
+ */
+export const killTaggers = (ledger: {
+  damage: ReadonlyMap<number, number>;
+  healAssists: ReadonlyMap<number, ReadonlySet<number>>;
+}): Set<number> => {
+  let total = 0;
+  for (const amount of ledger.damage.values()) total += amount;
+  const tagged = new Set<number>();
+  if (total <= 0) return tagged;
+  for (const [playerId, amount] of ledger.damage) {
+    if (amount / total >= XP_TAG_DAMAGE_FRACTION) tagged.add(playerId);
+  }
+  for (const [healerId, healedWho] of ledger.healAssists) {
+    if (tagged.has(healerId)) continue;
+    for (const targetId of healedWho) {
+      if (tagged.has(targetId)) {
+        tagged.add(healerId);
+        break;
+      }
+    }
+  }
+  return tagged;
+};
+
 export const awardKillXp = (
   taggers: {
     damage: ReadonlyMap<number, number>;
@@ -217,23 +257,7 @@ export const awardKillXp = (
   content: ProgressionContent,
   events: CombatEvent[],
 ): void => {
-  let total = 0;
-  for (const amount of taggers.damage.values()) total += amount;
-  if (total <= 0) return;
-  const tagged = new Set<number>();
-  for (const [playerId, amount] of taggers.damage) {
-    if (amount / total >= 0.1) tagged.add(playerId);
-  }
-  for (const [healerId, healedWho] of taggers.healAssists) {
-    if (tagged.has(healerId)) continue;
-    for (const targetId of healedWho) {
-      if (tagged.has(targetId)) {
-        tagged.add(healerId);
-        break;
-      }
-    }
-  }
-  for (const playerId of tagged) {
+  for (const playerId of killTaggers(taggers)) {
     const player = players.get(playerId);
     if (!player || player.dead) continue;
     awardXp(player, killXp(mobLevel, rank, player.level, xpMult), XpSource.Kill, content, events);

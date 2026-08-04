@@ -45,11 +45,17 @@ import {
   encodeAllocateSkill,
   encodeAllocateStats,
   encodeLevelUp,
+  encodeInventorySync,
+  encodeItemNotice,
+  encodeItemOp,
+  encodeLootBags,
   encodeProgressSync,
+  encodeVendorPanel,
   encodeRespec,
   encodeXpGained,
   type SnapshotMessage,
 } from './messages.js';
+import { parseItemOp } from './item-ops.js';
 import {
   AbilityRejectReason,
   ActionId,
@@ -456,5 +462,94 @@ describe('progression messages (protocol v9)', () => {
     const packet = encodeProgressSync(message);
     expect(peekOpcode(packet)).toBe(ServerOp.ProgressSync);
     expect(decodeJsonEnvelope(body(packet))).toEqual(message);
+  });
+});
+
+describe('items (v10)', () => {
+  it('carries the whole self inventory through InventorySync', () => {
+    const message = {
+      bag: [
+        [0, { itemId: 'item_weapon_sword_dawnsteel', qty: 1, rolled: { str: 4 } }],
+        [3, { itemId: 'item_consumable_potion_minor', qty: 7, rolled: null }],
+      ] as [number, { itemId: string; qty: number; rolled: Record<string, number> | null }][],
+      equipment: {
+        chest: { itemId: 'item_armor_chest_padded', qty: 1, rolled: { vit: 5 } },
+      },
+      gold: 412,
+      cooldowns: { potion: 8200 },
+      serverTimeMs: 123456,
+    };
+    const packet = encodeInventorySync(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.InventorySync);
+    expect(decodeJsonEnvelope(body(packet))).toEqual(message);
+  });
+
+  it('carries per-player loot bags and vendor panels', () => {
+    const bags = {
+      bags: [
+        {
+          id: 4,
+          x: 1.5,
+          y: 4.2,
+          z: 380.25,
+          rarity: 'rare',
+          items: [{ index: 0, itemId: 'item_junk_shell', qty: 2, rolled: null }],
+          gold: 12,
+          expiresAtMs: 60000,
+        },
+      ],
+      serverTimeMs: 1000,
+    };
+    expect(peekOpcode(encodeLootBags(bags))).toBe(ServerOp.LootBags);
+    expect(decodeJsonEnvelope(body(encodeLootBags(bags)))).toEqual(bags);
+
+    const panel = {
+      vendorId: 'vendor_general_dawnhaven',
+      open: true,
+      name: 'General Goods',
+      kind: 'general',
+      greeting: 'Dawn finds you well.',
+      stock: [{ itemId: 'item_consumable_potion_minor', price: 12 }],
+      buyback: [{ index: 0, itemId: 'item_junk_shell', qty: 3, price: 2 }],
+      sellMult: 0.25,
+    };
+    expect(peekOpcode(encodeVendorPanel(panel))).toBe(ServerOp.VendorPanel);
+    expect(decodeJsonEnvelope(body(encodeVendorPanel(panel)))).toEqual(panel);
+
+    const notice = { kind: 'picked' as const, itemId: 'item_junk_shell', qty: 2 };
+    expect(peekOpcode(encodeItemNotice(notice))).toBe(ServerOp.ItemNotice);
+    expect(decodeJsonEnvelope(body(encodeItemNotice(notice)))).toEqual(notice);
+  });
+
+  it('gates client-authored item ops through zod (the envelope is untrusted)', () => {
+    const move = { kind: 'move' as const, from: 0, to: 12 };
+    const packet = encodeItemOp(move);
+    expect(peekOpcode(packet)).toBe(ClientOp.ItemOp);
+    expect(parseItemOp(decodeJsonEnvelope(body(packet)))).toEqual(move);
+
+    // Out-of-grid slots, unknown kinds, bad refs and extra keys all refuse.
+    expect(parseItemOp({ kind: 'move', from: 0, to: 48 })).toBeNull();
+    expect(parseItemOp({ kind: 'move', from: -1, to: 3 })).toBeNull();
+    expect(parseItemOp({ kind: 'teleport', from: 0 })).toBeNull();
+    expect(parseItemOp({ kind: 'move', from: 0, to: 1, sneaky: true })).toBeNull();
+    expect(
+      parseItemOp({ kind: 'vendorBuy', vendorId: 'nope', itemId: 'item_x', qty: 1 }),
+    ).toBeNull();
+    expect(parseItemOp({ kind: 'split', from: 0, to: 1, qty: 0 })).toBeNull();
+    expect(parseItemOp({ kind: 'equip', from: 2, prefer: 'backpack' })).toBeNull();
+    expect(parseItemOp(null)).toBeNull();
+
+    // Valid shapes across the union.
+    expect(parseItemOp({ kind: 'loot', bagId: 7, index: null })).toEqual({
+      kind: 'loot',
+      bagId: 7,
+      index: null,
+    });
+    expect(parseItemOp({ kind: 'equip', from: 2, prefer: 'ring2' })).toEqual({
+      kind: 'equip',
+      from: 2,
+      prefer: 'ring2',
+    });
+    expect(parseItemOp({ kind: 'sort' })).toEqual({ kind: 'sort' });
   });
 });

@@ -14,7 +14,6 @@ import {
   AbilityRejectReason,
   STAGGER_VULNERABILITY,
   arcHits,
-  baseWeaponDamage,
   circleHits,
   commitUse,
   beginDash,
@@ -66,6 +65,7 @@ import {
 import { effectiveDefOf } from './progression.js';
 import { slotKey } from '../content/loader.js';
 import type { ServerEnemy } from './enemy.js';
+import { playerWeaponDamage } from './items.js';
 import type { ServerPlayer } from './player.js';
 
 const scratch = { x: 0, y: 0, z: 0 };
@@ -688,7 +688,7 @@ const spawnAbilityProjectile = (
     (effect): effect is Extract<AbilityDef['effects'][number], { kind: 'damage' }> =>
       effect.kind === 'damage',
   );
-  const weapon = baseWeaponDamage(player.level);
+  const weapon = playerWeaponDamage(player);
   const dawnedMult = deps.nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1;
   const cosPitch = Math.cos(aimPitch);
   const projectile: ServerProjectile = {
@@ -748,7 +748,7 @@ const applyAbilityEffects = (
   deps: AbilityTickDeps,
 ): void => {
   const { rng, nowMs, events } = deps;
-  const weapon = baseWeaponDamage(player.level);
+  const weapon = playerWeaponDamage(player);
   const dawnedMult = nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1;
   const buffMult = damageDealtMultOf(player);
   const nextAttackMult = hitEnemies.length > 0 ? consumeNextAttackBonus(player) : 1;

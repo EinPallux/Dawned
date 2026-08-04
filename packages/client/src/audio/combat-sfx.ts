@@ -17,7 +17,9 @@ export type SfxSlot =
   | 'dodge'
   | 'bolt'
   | 'deny'
-  | 'levelup';
+  | 'levelup'
+  | 'pickup'
+  | 'coin';
 
 export const SFX_SLOTS: readonly SfxSlot[] = [
   'whoosh',
@@ -30,6 +32,8 @@ export const SFX_SLOTS: readonly SfxSlot[] = [
   'bolt',
   'deny',
   'levelup',
+  'pickup',
+  'coin',
 ];
 
 /** Content `sfx` ids map straight onto slots; unknown ids fall back. */
@@ -158,6 +162,37 @@ export class CombatSfx {
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
         osc.start(now);
         osc.stop(now + 0.16);
+        break;
+      }
+      case 'pickup': {
+        // Soft leather-and-clasp tick: something entered the pack (§3 juice).
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(420 * jitter, now);
+        osc.frequency.exponentialRampToValueAtTime(620 * jitter, now + 0.06);
+        osc.connect(gain);
+        gain.gain.setValueAtTime(0.05 * volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.start(now);
+        osc.stop(now + 0.1);
+        break;
+      }
+      case 'coin': {
+        // Two bright chinks — the gold counter's own sound.
+        for (const [i, freq] of [1180, 1560].entries()) {
+          const osc = ctx.createOscillator();
+          const noteGain = ctx.createGain();
+          const at = now + i * 0.045;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq * jitter, at);
+          osc.connect(noteGain).connect(gain);
+          noteGain.gain.setValueAtTime(0.0001, at);
+          noteGain.gain.exponentialRampToValueAtTime(0.06 * volume, at + 0.01);
+          noteGain.gain.exponentialRampToValueAtTime(0.001, at + 0.16);
+          osc.start(at);
+          osc.stop(at + 0.18);
+        }
+        gain.gain.setValueAtTime(1, now);
         break;
       }
       case 'levelup': {

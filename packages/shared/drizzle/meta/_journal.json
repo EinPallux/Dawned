@@ -78,6 +78,20 @@
       "when": 1785826811252,
       "tag": "0010_p7_progression_seeds",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785838025826,
+      "tag": "0011_p8_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785838085826,
+      "tag": "0012_p8_item_seeds",
+      "breakpoints": true
     }
   ]
 }

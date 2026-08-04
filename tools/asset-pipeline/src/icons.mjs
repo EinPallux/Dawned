@@ -33,10 +33,50 @@ const AUTHOR_NAMES = {
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 const toPosix = (value) => value.split(path.sep).join('/');
 
-const loadMap = async () => JSON.parse(await readFile(MAP_PATH, 'utf8'));
+/**
+ * Sections named in `$unique` may not reuse a glyph: for items, the icon IS
+ * the item at a glance (ITEMS_LOOT.md §8), so two rows sharing one makes a bag
+ * unreadable. The panel refuses duplicates at publish; this refuses them at
+ * bake, which is the earlier and cheaper of the two places to find out.
+ */
+const assertUniqueIcons = (map) => {
+  for (const section of map.$unique ?? []) {
+    const entries = map[section];
+    if (!entries) throw new Error(`icon-map $unique names a missing section: ${section}`);
+    const owners = new Map();
+    const collisions = [];
+    for (const [id, slug] of Object.entries(entries)) {
+      const first = owners.get(slug);
+      if (first) collisions.push(`${slug} — ${first} and ${id}`);
+      else owners.set(slug, id);
+    }
+    if (collisions.length > 0) {
+      throw new Error(
+        `icon-map section "${section}" reuses ${collisions.length} icon(s):\n  ${collisions.join('\n  ')}`,
+      );
+    }
+  }
+};
 
-/** Unique author/name slugs referenced by the map. */
-const uniqueIcons = (map) => [...new Set(Object.values(map.abilities))].sort();
+const loadMap = async () => {
+  const map = JSON.parse(await readFile(MAP_PATH, 'utf8'));
+  assertUniqueIcons(map);
+  return map;
+};
+
+/**
+ * Unique author/name slugs referenced by the map, across every section
+ * (`abilities`, `items`, …). Sections are additive: a new content type gets a
+ * key here and its icons ride the same fetch/bake without touching this code.
+ */
+const uniqueIcons = (map) =>
+  [
+    ...new Set(
+      Object.entries(map)
+        .filter(([key]) => !key.startsWith('$'))
+        .flatMap(([, section]) => Object.values(section)),
+    ),
+  ].sort();
 
 export const fetchIcons = async () => {
   const map = await loadMap();

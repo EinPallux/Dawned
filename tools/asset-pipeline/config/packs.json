@@ -128,6 +128,37 @@
       "limit": 2
     },
     {
+      "$comment": "P8 visible weapons — one model per weapon family the four classes can hold, plus shields for the Warrior/Cleric offhand (ITEMS_LOOT.md §1: held gear is visible, armour is not).",
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/dagger_*.gltf",
+      "limit": 2
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/hammer_*.gltf",
+      "limit": 3
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/axe_*.gltf",
+      "limit": 3
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/shield_*.gltf",
+      "limit": 3
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/wand_*.gltf",
+      "limit": 1
+    },
+    {
       "pack": "kaykit-tools",
       "category": "items/tools",
       "glob": "Assets/gltf/pickaxe.gltf",

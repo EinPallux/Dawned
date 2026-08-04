@@ -23,6 +23,7 @@ import {
   real,
   smallint,
   text,
+  unique,
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
@@ -194,6 +195,79 @@ export const characterDiscoveries = pgTable(
   (table) => [primaryKey({ columns: [table.characterId, table.kind, table.refId] })],
 );
 
+/**
+ * Owned items (DATABASE.md §2, P8). One row per stack, addressed by the cell
+ * it sits in: `container` says bag or paper-doll, `slot` is the grid index
+ * (0..47) or the equip-slot index (EQUIP_SLOTS order). The UNIQUE(character,
+ * container, slot) constraint is the structural half of the dupe defence —
+ * two stacks can never claim one cell, whatever a racing client sends.
+ */
+export const characterItems = pgTable(
+  'character_items',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    characterId: bigint('character_id', { mode: 'number' })
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    /** Content ref (`item_weapon_sword_dawnsteel`). */
+    itemId: text('item_id').notNull(),
+    container: text('container', { enum: ['inventory', 'equipment'] }).notNull(),
+    slot: smallint('slot').notNull(),
+    qty: integer('qty').notNull().default(1),
+    /** Rolled attributes for gear ({str:2,…}); null for stackables. */
+    rolledStats: jsonb('rolled_stats'),
+    /** GM/system tag for granted items (audit trail). */
+    grantedBy: text('granted_by'),
+  },
+  (table) => [
+    unique('character_items_cell_uq').on(table.characterId, table.container, table.slot),
+    index('character_items_character_idx').on(table.characterId),
+  ],
+);
+
+/** Item definitions (ITEMS_LOOT.md) — authored in Dawned-Admin (P8). */
+export const contentItems = pgTable(
+  'content_items',
+  {
+    /** Content slug (`item_weapon_sword_dawnsteel`). */
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** ItemDef (shared/src/content/items.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
+/** Loot tables (ITEMS_LOOT.md §4) — nested, weighted drop pools (P8). */
+export const contentLootTables = pgTable(
+  'content_loot_tables',
+  {
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** LootTableDef (shared/src/content/loot.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
+/** Vendors (ITEMS_LOOT.md §6) — stock, multiples, world anchor (P8). */
+export const contentVendors = pgTable(
+  'content_vendors',
+  {
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** VendorDef (shared/src/content/vendors.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
 // ---------------------------------------------------------------------------
 // Ops trail (DATABASE.md §4) — append-only, written by both servers
 // ---------------------------------------------------------------------------
@@ -342,3 +416,7 @@ export type CharacterSkillRow = typeof characterSkills.$inferSelect;
 export type CharacterDiscoveryRow = typeof characterDiscoveries.$inferSelect;
 export type ContentXpCurveRow = typeof contentXpCurve.$inferSelect;
 export type ContentSkillNodeRow = typeof contentSkillNodes.$inferSelect;
+export type CharacterItemRow = typeof characterItems.$inferSelect;
+export type ContentItemRow = typeof contentItems.$inferSelect;
+export type ContentLootTableRow = typeof contentLootTables.$inferSelect;
+export type ContentVendorRow = typeof contentVendors.$inferSelect;

@@ -98,6 +98,9 @@ const testContent = (): GameContent => {
     basicChains: BASIC_COMBOS,
     xpCurve: defaultXpCurve(),
     skillNodes: new Map(NODES.map((node) => [node.id, node])),
+    items: new Map(),
+    lootTables: new Map(),
+    vendors: new Map(),
     worldSettings: defaultWorldSettings(),
   };
 };

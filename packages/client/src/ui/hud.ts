@@ -96,7 +96,7 @@ export interface HudStats {
   unspentStatPoints: number;
   unspentSkillPoints: number;
   /** Which panel is open (micro-menu tiles light up). */
-  openPanel: 'character' | 'skills' | null;
+  openPanel: 'character' | 'skills' | 'inventory' | 'vendor' | null;
 }
 
 export class Hud {
@@ -176,6 +176,8 @@ export class Hud {
   private readonly microBadgeC: HTMLElement;
   private readonly microBadgeK: HTMLElement;
   private readonly microTiles = new Map<string, HTMLElement>();
+  private readonly interactEl: HTMLElement;
+  private readonly purseEl: HTMLElement;
   /** Rising gold sparks over the XP bar while a level-up burst runs. */
   private xpBurstParticles: { x: number; y: number; vx: number; vy: number; life: number }[] = [];
   private xpBurstRafArmed = false;
@@ -190,7 +192,8 @@ export class Hud {
     private readonly onChatSubmit: (text: string) => void,
     private readonly onChatFocusChange: (focused: boolean) => void,
     private readonly onRespawn: () => void = () => undefined,
-    private readonly onMenuAction: (panel: 'character' | 'skills') => void = () => undefined,
+    private readonly onMenuAction: (panel: 'character' | 'skills' | 'inventory') => void = () =>
+      undefined,
   ) {
     this.root = document.createElement('div');
     this.root.className = 'hud';
@@ -264,7 +267,14 @@ export class Hud {
           <span class="hud-micro-badge" data-badge-k hidden></span>
           <span class="hud-micro-label">Skills · K</span>
         </button>
+        <button class="hud-micro" data-micro="inventory" type="button">
+          <span class="hud-micro-glyph">▣</span>
+          <span class="hud-micro-label">Pack · I</span>
+        </button>
+        <span class="hud-purse" data-purse hidden></span>
       </div>
+      <!-- World interaction prompt (P8): loot bags and market posts. -->
+      <div class="hud-interact" data-interact hidden></div>
       <div class="hud-xpbar" data-xpbar>
         <div class="hud-xpbar-fill" data-xp-fill></div>
         <div class="hud-xpbar-ticks">${Array.from({ length: 9 }, (_, i) => `<span style="left:${(i + 1) * 10}%"></span>`).join('')}</div>
@@ -285,6 +295,8 @@ export class Hud {
     this.deathEl = this.query('[data-death]');
     this.dawnedEl = this.query('[data-dawned]');
     this.dawnedSecondsEl = this.query('[data-dawned-s]');
+    this.interactEl = this.query('[data-interact]');
+    this.purseEl = this.query('[data-purse]');
     this.targetEl = this.query('[data-target]');
     this.targetNameEl = this.query('[data-target-name]');
     this.targetHpFill = this.query('[data-target-hp]');
@@ -318,7 +330,7 @@ export class Hud {
     this.microBadgeC = this.query('[data-badge-c]');
     this.microBadgeK = this.query('[data-badge-k]');
     for (const tile of this.root.querySelectorAll<HTMLElement>('[data-micro]')) {
-      const panel = tile.dataset.micro as 'character' | 'skills';
+      const panel = tile.dataset.micro as 'character' | 'skills' | 'inventory';
       this.microTiles.set(panel, tile);
       tile.addEventListener('click', () => {
         this.onMenuAction(panel);
@@ -369,6 +381,21 @@ export class Hud {
   setBanner(text: string | null): void {
     this.bannerEl.hidden = text === null;
     this.bannerEl.textContent = text ?? '';
+  }
+
+  /**
+   * The world-interaction prompt (P8): what `F` would do right now, or null
+   * when it would do nothing. One line, bottom-centre, never a modal.
+   */
+  setInteractPrompt(text: string | null): void {
+    this.interactEl.hidden = text === null;
+    if (text !== null) this.interactEl.textContent = text;
+  }
+
+  /** Purse readout beside the micro menu; hidden until the first sync. */
+  setGold(gold: number | null): void {
+    this.purseEl.hidden = gold === null;
+    if (gold !== null) this.purseEl.textContent = `${gold} g`;
   }
 
   setRoster(players: RosterEntry[], selfId: number): void {
@@ -553,7 +580,14 @@ export class Hud {
    * collapse into "+n more". `onClick` makes it a click-to-open shortcut
    * (unlock toasts open the Skills panel).
    */
-  toast(text: string, opts: { onClick?: () => void; tone?: 'gold' | 'xp' } = {}): void {
+  toast(
+    text: string,
+    /** Tone tints the left rule: rarity for loot, red for refusals. */
+    opts: {
+      onClick?: () => void;
+      tone?: 'gold' | 'xp' | 'red' | 'plain' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+    } = {},
+  ): void {
     const row = document.createElement('div');
     row.className = 'hud-toast';
     if (opts.tone) row.dataset.tone = opts.tone;
