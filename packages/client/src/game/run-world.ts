@@ -1003,6 +1003,10 @@ export const runWorld = (
     },
     /** Full attack-press path for smokes (pointer lock is unreliable headless). */
     attack: (): boolean => performAttackPress(),
+    /** Smoke hook: send a chat line (the bots use `/stuck` to free themselves). */
+    say: (text: string): void => {
+      handleChatSubmit(text);
+    },
     /** Full hotbar-press path for smokes — identical to a 1–8 key press. */
     pressSlot: (slot: number): void => {
       performSlotPress(slot);
