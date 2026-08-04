@@ -86,4 +86,14 @@ nothing beyond it.
     draining through the players' own `absorbFromShields`), and the gateway silently
     dropped the protocol's `cast` flag (the field is required now — NETWORKING.md §3.3:
     optional wire fields are a silent-failure trap). Nameplates no longer clip long names.
-    New dev levers `/ops/enemyhurt` and `/ops/tp`. 377 tests green.
+    New dev levers `/ops/enemyhurt`, `/ops/tp` and `/ops/spawnwave`.
+    **P9-E closed the phase (built, awaiting the owner's playtest):** `browser-p9.mjs`
+    BUILDS its level-12 warrior first (all 33 attribute points, every legal node, T2 gear)
+    — an unspent level 12 does 30 dps where a built one does 78, and skipping that nearly
+    caused a wrong re-balance of the King. Measured **105.4 s, inside the §12 60–120 s
+    window**, one phase crossing, telegraphs throughout, plus a mixed-camp pull proving a
+    cast, a charge and melee at once. `p9-load.mjs` reaches 150 active AI with transient
+    spawn waves: **tick p95 4.19 ms of 25 ms, RSS 179 MB of 700**. The `/ops/tp` lever
+    exposed a client bug — prediction resolved against un-streamed ground and fell to the
+    sea floor; `stepMovement` asks `hasDataAt` first now (NETWORKING.md §3.2). 381 tests
+    green.

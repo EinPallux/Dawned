@@ -19,7 +19,7 @@
 | P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
-| P9    | Enemies & AI Depth                       | L    | 🟨 in progress            |
+| P9    | Enemies & AI Depth                       | L    | ✅ built (2026-08-04)     |
 | P10   | Gathering Professions                    | M    | 🔲                        |
 | P11   | Quests, POIs & Interactables             | L    | 🔲                        |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
@@ -476,7 +476,7 @@ across Dawnshore+Weald as the template set; Mushroom King (first real boss) comp
 mixed camps (grunt+ranged+caster) create the intended "pick your fight" pressure; AI CPU within
 budget at 150 active.
 
-**Status (2026-08-04): P9-A/B/C/D built; P9-E (verification) remains.**
+**Status (2026-08-04): all five slices built and the DoD measured — awaiting the owner's playtest.**
 
 - [x] Shared archetype + boss core (P9-A): charge/self-shield ability kinds, interruptible casts,
       hp-threshold/once-per-life/phase conditions, boss phases + arena leash, and the SHARED
@@ -497,8 +497,19 @@ budget at 150 active.
       the circle it drew, `self_shield` granted nothing at all, and the gateway dropped the
       protocol's `cast` flag so no enemy cast bar could ever appear. Dev levers `/ops/enemyhurt`
       and `/ops/tp` landed with the probe that found them.
-- [ ] Verification (P9-E): `browser-p9` smoke (solo the King inside 60–120 s with 3 mechanics
-      readable, mixed-camp pressure run), AI CPU budget at 150 active.
+- [x] Verification (P9-E): `tools/smoke/browser-p9.mjs` builds a level-12 warrior properly
+      (spends all 33 attribute points and every legal skill node — an UNSPENT level 12 fights at
+      38 % of a built one's damage, which is the trap the first measuring run fell into), stands
+      the King up, and times the kill. **Measured 105.4 s at 78 effective dps — inside COMBAT.md
+      §12's 60–120 s window**, with the phase crossed exactly once, telegraphs drawn throughout
+      and the frame released on death. The same run then pulls the hexer circle and proves all
+      three archetypes act at once: an interruptible cast, a charge and melee in your face.
+      `tools/smoke/p9-load.mjs` tops the world up to 150 active AI with transient waves, drives
+      the 20-bot swarm through them and reads the server's own histogram: **tick p95 4.19 ms
+      against the 25 ms budget, RSS 179 MB against 700 MB**.
+      Closing it also fixed a client bug the new `/ops/tp` lever exposed: the movement step
+      predicted against un-streamed ground and dropped the camera to the sea floor
+      (NETWORKING.md §3.2).
 
 ## P10 — Gathering Professions (M) ⚙A3 node placement tools required
 

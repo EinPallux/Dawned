@@ -278,13 +278,13 @@ alternative cancelled every roll about 150 ms in.
 **As built (P9).** Each enemy ability kind draws — and resolves as — exactly one shape, and the
 two must be read from the same fields or the decal becomes a lie:
 
-| Kind            | Decal                                 | Resolution                                   |
-| --------------- | ------------------------------------- | -------------------------------------------- |
-| `melee_arc`     | cone at the enemy, `reach`/`angleDeg` | arc at the enemy, same numbers                |
+| Kind            | Decal                                             | Resolution                                       |
+| --------------- | ------------------------------------------------- | ------------------------------------------------ |
+| `melee_arc`     | cone at the enemy, `reach`/`angleDeg`             | arc at the enemy, same numbers                   |
 | `ground_circle` | circle **on the target's ground**, `circleRadius` | circle at that point, same radius, no target cap |
-| `charge_rect`   | rect, `chargeDistance`×`chargeWidth`  | per-tick sweep of the segment travelled       |
-| `projectile`    | none (the bolt is the tell)           | sphere sweep, aimed at RELEASE                |
-| `self_shield`   | none                                  | absorb pool on the caster, no hit at all      |
+| `charge_rect`   | rect, `chargeDistance`×`chargeWidth`              | per-tick sweep of the segment travelled          |
+| `projectile`    | none (the bolt is the tell)                       | sphere sweep, aimed at RELEASE                   |
+| `self_shield`   | none                                              | absorb pool on the caster, no hit at all         |
 
 The ground circle is placed where the TARGET stood when the cast began — walking out of it is the
 counterplay, and a circle centred on the caster would be unreachable from its own range band.

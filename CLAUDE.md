@@ -208,21 +208,40 @@ Shipped: the boss frame (`ui/boss-frame.ts` — name/level, HP, a pip per declar
 announce read from the client's own copy of the published def so the panel can rewrite a
 shout with no protocol change; adopted on ENGAGEMENT, released on death/leash/leaving the
 arena), enemy cast bars that shatter red with a ring + hit on an interrupt, absorb bubbles
-+ pool chips for self-shields, drawn rank marks (diamond/star, canvas paths not glyphs)
-with per-rank tints, per-archetype wind-up audio with distance falloff, and phase VFX.
-Rect charge decals and elite ×1.15 scale were already live. The holes, all found by
-LOOKING (`tools/smoke/p9-visuals.mjs` + reading its screenshots, never by a failing test):
-(1) `ground_circle` drew a circle and resolved as a melee cone at the caster — it now
-places the pool on the target's ground at cast start and tests that exact circle, which is
-what makes "walk out of it" a real answer; (2) `self_shield` granted no absorb at all —
-it now applies a timed pool that drains through the same `absorbFromShields` players use,
-and enemy damage runs through it (full absorb ⇒ `HitFlag.Absorbed`, threat/tag still count
-the full swing); (3) the gateway rebuilt `AbilityStart` field-by-field and never copied
-`cast`, so no enemy cast bar could ever appear — the field is REQUIRED on the message type
-now, which turns that omission into a compile error (NETWORKING.md §3.3). Also fixed:
-nameplates clipped every name past ~17 chars (256 px canvas, centre-aligned). New dev
-levers `/ops/enemyhurt` and `/ops/tp` (ARCHITECTURE.md §3 table). 377 unit tests green;
-two-client, roll-probe, predict-lag, p8-probe and browser-p8 all pass on the same build.
+
+- pool chips for self-shields, drawn rank marks (diamond/star, canvas paths not glyphs)
+  with per-rank tints, per-archetype wind-up audio with distance falloff, and phase VFX.
+  Rect charge decals and elite ×1.15 scale were already live. The holes, all found by
+  LOOKING (`tools/smoke/p9-visuals.mjs` + reading its screenshots, never by a failing test):
+  (1) `ground_circle` drew a circle and resolved as a melee cone at the caster — it now
+  places the pool on the target's ground at cast start and tests that exact circle, which is
+  what makes "walk out of it" a real answer; (2) `self_shield` granted no absorb at all —
+  it now applies a timed pool that drains through the same `absorbFromShields` players use,
+  and enemy damage runs through it (full absorb ⇒ `HitFlag.Absorbed`, threat/tag still count
+  the full swing); (3) the gateway rebuilt `AbilityStart` field-by-field and never copied
+  `cast`, so no enemy cast bar could ever appear — the field is REQUIRED on the message type
+  now, which turns that omission into a compile error (NETWORKING.md §3.3). Also fixed:
+  nameplates clipped every name past ~17 chars (256 px canvas, centre-aligned). New dev
+  levers `/ops/enemyhurt` and `/ops/tp` (ARCHITECTURE.md §3 table).
+
+**P9-E measured the DoD and closed the phase (built, awaiting the owner's playtest).**
+`tools/smoke/browser-p9.mjs` BUILDS its level-12 warrior before timing anything — spends all
+33 attribute points and every legal skill node, equips published T2 gear — because an unspent
+level 12 fights at 38 % of a built one's damage (30 vs 78 effective dps). That is the trap the
+first two measuring runs fell into, and it nearly caused a wrong re-balance of the King.
+**Measured: 105.4 s at 78 dps, inside COMBAT.md §12's 60–120 s window**, phase crossed exactly
+once, telegraphs throughout, frame released on death; the same run pulls the hexer circle and
+proves a cast, a charge and melee land on the player at once. The bot cannot dodge, so it is
+kept alive with `/ops/hurt fraction 1` — the number measures the BOSS's durability against a
+competent player's damage, which is what §12 is about; feel is the owner's call.
+`tools/smoke/p9-load.mjs` tops the world up to 150 active AI with transient `/ops/spawnwave`
+waves (no respawn ticket, so a run never leaves the world heavier), drives the 20-bot swarm
+through them, and reads the server's own histogram: **tick p95 4.19 ms of a 25 ms budget, RSS
+179 MB of 700**. One client bug fell out of the new `/ops/tp` lever: the movement step resolved
+against un-streamed ground, whose sampler answers `OCEAN_FLOOR_Y`, so a teleport predicted a
+fall to −8 m; `stepMovement` now asks `hasDataAt` first and holds the column (NETWORKING.md
+§3.2). 381 unit tests green; two-client, roll-probe, predict-lag, p9-visuals, p9-load,
+browser-p9 and browser-p8 all pass on the same build.
 
 ### Running it locally
 

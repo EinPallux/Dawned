@@ -335,8 +335,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       typeof body?.count === 'number' ? Math.min(200, Math.max(1, Math.floor(body.count))) : 1;
     const x = typeof body?.x === 'number' ? body.x : NaN;
     const z = typeof body?.z === 'number' ? body.z : NaN;
-    const radius =
-      typeof body?.radius === 'number' ? Math.min(120, Math.max(0, body.radius)) : 12;
+    const radius = typeof body?.radius === 'number' ? Math.min(120, Math.max(0, body.radius)) : 12;
     if (!enemyId || !Number.isFinite(x) || !Number.isFinite(z)) {
       return reply.code(400).send({ error: 'enemyId, x and z required' });
     }

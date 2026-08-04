@@ -5,6 +5,30 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Verified — P9 closed: the Mushroom King fight measured end to end (2026-08-04)
+
+- **The boss fight lands where COMBAT.md says it should.** A level-12 warrior,
+  properly built and armed with published T2 gear, kills the Mushroom King in
+  **105 seconds** — inside the 60–120 s window a zone boss is supposed to
+  occupy. Along the way the frame adopts him on aggro, he crosses his phase
+  exactly once and says his line, his telegraphs draw throughout, and the frame
+  releases when he dies.
+- **The mixed camp does what it was built to do.** Pulling the hexer circle puts
+  an interruptible cast, a charge lane and melee on you at the same time — the
+  "which one do you answer first?" pressure the archetypes exist for.
+- **150 enemies do not cost the server anything to speak of.** With 150 active
+  AI and 20 players, the tick sits at **4.2 ms p95** against a 25 ms budget and
+  175 MB of RAM against 700 MB.
+- **Fixed — falling through the world after a teleport.** The client streams the
+  ground in chunks, and a chunk it has not received yet answers "sea floor" —
+  indistinguishable from actual sea floor. Prediction believed it, so anything
+  that moved you faster than the stream (a GM teleport) dropped the camera 8 m
+  under the island until the chunk landed. Movement now refuses to resolve
+  against ground it does not have.
+- New GM lever: `/ops/spawnwave` stands up a one-off wave of any enemy type
+  (world events; also how the load run reaches 150). Wave enemies never respawn,
+  so a test can never leave the world permanently heavier than it was authored.
+
 ### Added — P9 fights you can read: boss frames, cast bars, shields (2026-08-04)
 
 - **Bosses get a frame.** Aggro a zone or world boss and a plate takes the top
