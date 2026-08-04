@@ -158,6 +158,32 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
   });
 
   /**
+   * Set an online player's level (P7): the pre-GM-suite dev/admin primitive
+   * behind the panel's future Live Ops button and the P7 smoke's fixtures.
+   * Runs the same setLevel path as the in-game /setlevel command.
+   */
+  app.post('/ops/setlevel', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as { player?: unknown; level?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const level =
+      typeof body?.level === 'number' ? Math.min(30, Math.max(1, Math.floor(body.level))) : 0;
+    if (!player || level < 1) {
+      return reply.code(400).send({ error: 'player and level (1..30) required' });
+    }
+    if (!world.queueSetLevelByName(player, level)) {
+      return reply.code(404).send({ error: 'player not online' });
+    }
+    return reply.send({ ok: true, level });
+  });
+
+  /**
    * Set an online player's HP to a fraction of max (P6). GM primitive; the
    * smoke uses it to stage deterministic heal targets (OOC regen otherwise
    * erases any pre-damaged fixture within seconds). Marks combat, never kills.

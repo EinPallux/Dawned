@@ -49,6 +49,14 @@ export class ServerEnemy {
   stateSinceMs = Date.now();
   /** Threat table: entity id → accumulated threat (COMBAT.md §6.5). */
   readonly threat = new Map<number, number>();
+  /**
+   * Kill-credit ledger (P7, PROGRESSION.md §1.1): raw damage dealt per
+   * player this fight — the ≥10% tag rule reads THIS, not threat (healing
+   * inflates threat). Cleared with the fight (leash reset / death sweep).
+   */
+  readonly damageBy = new Map<number, number>();
+  /** Healers by who they healed during this fight (the Cleric-safe tag). */
+  readonly healAssists = new Map<number, Set<number>>();
   targetId: number | null = null;
   /** Alert beat target (the player who tripped perception). */
   alertTargetId: number | null = null;
@@ -180,6 +188,8 @@ export class ServerEnemy {
   resetToHome(nowMs: number): void {
     this.hp = this.maxHp;
     this.threat.clear();
+    this.damageBy.clear();
+    this.healAssists.clear();
     this.targetId = null;
     this.alertTargetId = null;
     this.swing = null;

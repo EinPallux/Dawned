@@ -225,6 +225,10 @@ export interface MovementModifiers {
   speedMult?: number;
   /** Added to the dodge stamina cost (Evasive Stance −10). Never below 0. */
   dodgeCostDelta?: number;
+  /** Stamina regenerated per second (P7: END-scaled via CombatStats). */
+  staminaRegenPerS?: number;
+  /** Land-sprint stamina drain per second (P7: Marathon −1/s). Min 1. */
+  sprintStaminaPerS?: number;
   /**
    * Rooted (P6, COMBAT.md §6.4): feet pinned — no walking, dodging or
    * jumping; turning stays free (aim your Blink out). Gravity still applies.
@@ -481,15 +485,20 @@ export function stepMovement(
   }
 
   // 11. Stamina: spend while sprinting (swim-sprint drains faster, COMBAT.md §7),
-  // otherwise regenerate after the delay.
+  // otherwise regenerate after the delay. Both rates take P7 modifiers (END
+  // regen scaling, Marathon sprint discount) — each side computes them from
+  // synced state, so prediction stays exact.
   if (sprinting) {
-    const drainPerSec = state.swimming ? SWIM_SPRINT_STAMINA_PER_SEC : SPRINT_STAMINA_PER_SEC;
+    const drainPerSec = state.swimming
+      ? SWIM_SPRINT_STAMINA_PER_SEC
+      : Math.max(1, modifiers?.sprintStaminaPerS ?? SPRINT_STAMINA_PER_SEC);
     state.stamina = Math.max(0, state.stamina - drainPerSec * dt);
     state.staminaIdleMs = 0;
   } else {
     state.staminaIdleMs += dt * 1000;
     if (state.staminaIdleMs >= STAMINA_REGEN_DELAY_MS) {
-      state.stamina = Math.min(state.maxStamina, state.stamina + STAMINA_REGEN_PER_SEC * dt);
+      const regenPerSec = modifiers?.staminaRegenPerS ?? STAMINA_REGEN_PER_SEC;
+      state.stamina = Math.min(state.maxStamina, state.stamina + regenPerSec * dt);
     }
   }
 

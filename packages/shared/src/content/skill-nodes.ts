@@ -601,7 +601,8 @@ export interface NodeAggregates {
     poisonsCanCrit: boolean;
     poisonJumpOnDeath: boolean;
   };
-  procs: NodeProc[];
+  /** Procs keep their source node id — it keys the runtime's ICD tracking. */
+  procs: { nodeId: string; proc: NodeProc }[];
 }
 
 const EMPTY_STATS: NodeAggregates['stats'] = {
@@ -647,7 +648,7 @@ export const aggregateNodeEffects = (
     poisonsCanCrit: false,
     poisonJumpOnDeath: false,
   };
-  const procs: NodeProc[] = [];
+  const procs: NodeAggregates['procs'] = [];
 
   for (const [nodeId, rank] of ranks) {
     const def = defsById.get(nodeId);
@@ -689,7 +690,7 @@ export const aggregateNodeEffects = (
           if (effect.poisonJumpOnDeath) passives.poisonJumpOnDeath = true;
           break;
         case 'proc':
-          procs.push(effect);
+          procs.push({ nodeId, proc: effect });
           break;
       }
     }

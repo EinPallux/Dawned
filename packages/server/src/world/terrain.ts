@@ -8,7 +8,7 @@
 
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { ChunkTerrain, Walkgrid, decodeChunk } from '@dawned/shared';
+import { ChunkTerrain, Walkgrid, decodeChunk, zonesFileSchema, type Zone } from '@dawned/shared';
 
 export interface MapMeta {
   mapVersion: string;
@@ -20,6 +20,9 @@ export interface MapMeta {
 export interface LoadedMap {
   terrain: ChunkTerrain;
   meta: MapMeta;
+  /** Zone polygons (P7 zone-entry XP; the client blends ambience from the
+   * same file). Empty when the map ships no zones.json. */
+  zones: Zone[];
 }
 
 /**
@@ -54,5 +57,16 @@ export const loadMapTerrain = async (mapDir: string): Promise<LoadedMap> => {
   const walkgridBytes = new Uint8Array(await readFile(path.join(mapDir, 'walkgrid.bin')));
   terrain.attachWalkgrid(Walkgrid.decode(walkgridBytes));
 
-  return { terrain, meta };
+  // Zones (P7): validated on load — a malformed polygon must not half-run.
+  let zones: Zone[] = [];
+  try {
+    const raw: unknown = JSON.parse(await readFile(path.join(mapDir, 'zones.json'), 'utf8'));
+    zones = zonesFileSchema.parse(raw).zones;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw new Error(`Cannot read map zones at ${mapDir}/zones.json: ${(error as Error).message}`);
+    }
+  }
+
+  return { terrain, meta, zones };
 };

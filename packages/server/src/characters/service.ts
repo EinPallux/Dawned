@@ -7,11 +7,17 @@
  */
 
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { characters, type CharacterRow } from '@dawned/shared/schema';
+import {
+  characterDiscoveries,
+  characterSkills,
+  characters,
+  type CharacterRow,
+} from '@dawned/shared/schema';
 import {
   MAX_CHARACTERS_PER_ACCOUNT,
   createCharacterRequestSchema,
   type Appearance,
+  type AttributeSpread,
   type CharacterSummary,
   type CreateCharacterRequest,
 } from '@dawned/shared';
@@ -136,6 +142,82 @@ export class CharacterService {
       return { ok: false, code: 'not_found', message: 'No such character on this account.' };
     }
     return { ok: true, value: null };
+  }
+
+  // -------------------------------------------------------------------------
+  // Progression (P7, DATABASE.md §2 write patterns)
+  // -------------------------------------------------------------------------
+
+  /** Allocated skill-tree ranks for the spawn path. */
+  async loadSkills(characterId: number): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select()
+      .from(characterSkills)
+      .where(eq(characterSkills.characterId, characterId));
+    return new Map(rows.map((row) => [row.nodeId, row.ranks]));
+  }
+
+  /** Discovered refs of one kind (zone first-entry dedupe at spawn). */
+  async loadDiscoveries(characterId: number, kind: 'zone'): Promise<Set<string>> {
+    const rows = await this.db
+      .select()
+      .from(characterDiscoveries)
+      .where(
+        and(eq(characterDiscoveries.characterId, characterId), eq(characterDiscoveries.kind, kind)),
+      );
+    return new Set(rows.map((row) => row.refId));
+  }
+
+  /** Record a first-time discovery; the PK makes double-pays impossible. */
+  async addDiscovery(characterId: number, kind: 'zone', refId: string): Promise<void> {
+    await this.db
+      .insert(characterDiscoveries)
+      .values({ characterId, kind, refId })
+      .onConflictDoNothing();
+  }
+
+  /**
+   * Write-through progression flush: xp/level/gold/points in ONE statement
+   * (gameplay-critical, DATABASE.md §2). Skill ranks travel separately via
+   * {@link saveSkills} — they change on explicit clicks, not per kill.
+   */
+  async saveProgress(
+    characterId: number,
+    progress: {
+      level: number;
+      xp: number;
+      gold: number;
+      allocated: AttributeSpread;
+      unspentStatPoints: number;
+      unspentSkillPoints: number;
+    },
+  ): Promise<void> {
+    await this.db
+      .update(characters)
+      .set({
+        level: progress.level,
+        xp: progress.xp,
+        gold: progress.gold,
+        statStr: progress.allocated.str,
+        statAgi: progress.allocated.agi,
+        statInt: progress.allocated.int,
+        statVit: progress.allocated.vit,
+        statEnd: progress.allocated.end,
+        unspentStatPoints: progress.unspentStatPoints,
+        unspentSkillPoints: progress.unspentSkillPoints,
+      })
+      .where(eq(characters.id, characterId));
+  }
+
+  /** Replace the character's skill rows wholesale (allocation + respec). */
+  async saveSkills(characterId: number, ranks: ReadonlyMap<string, number>): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.delete(characterSkills).where(eq(characterSkills.characterId, characterId));
+      const values = [...ranks.entries()]
+        .filter(([, rank]) => rank > 0)
+        .map(([nodeId, rank]) => ({ characterId, nodeId, ranks: rank }));
+      if (values.length > 0) await tx.insert(characterSkills).values(values);
+    });
   }
 
   /** Write-behind world state flush (gateway calls this on a timer + disconnect). */

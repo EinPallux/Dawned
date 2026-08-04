@@ -110,3 +110,29 @@ gatherer out-levels combat zones cautiously — sandbox tension we want).
 - Banked stat/skill points show a gentle HUD pip — never a nag modal.
 - All curves admin-editable live; XP-rate world modifier (`world_settings.xpRate`, default 1.0) for
   GM events like "Dawn Festival +50% weekend".
+
+---
+
+### As built (P7 server core, 2026-08-04)
+
+Protocol v9 carries the system: `ProgressSync` (the authoritative self sheet, sent on join and
+after any change — it doubles as the correction for mispredicted allocation clicks), `XpGained`
+(amount + source + absolute bar position) and `LevelUp` (fanned out so bystanders see the
+pillar); `AllocateStats`/`AllocateSkill`/`Respec` go up and are re-validated with the SAME
+shared gate helpers the client predicts with. Kill XP implements §1.1 exactly: per-enemy raw
+damage ledger (`≥10%` tag), heal-assist sets recorded through the healing-threat path
+(Cleric-safe), rank multipliers, per-level falloff, per-enemy `xpMult`, `xpRate` last, never 0;
+training dummies pay nothing. Zone first-entry XP checks polygons once a second per player
+against the baked `zones.json` and dedupes via `character_discoveries`. Level-ups run the §1.3
+contract server-side (full HP/stamina/pool refill, +3/+1 banked). Persistence is write-through
+per award/allocation (single-statement updates serialized per character; skills replace their
+rows transactionally). Respec works from anywhere until P12 places the Mirror of Dawn in
+Dawnhaven (the gold price already applies; proximity gate arrives with the interactable).
+Dev tools: in-game `/setlevel <1..30> [character]` (gm/admin roles) and `POST /ops/setlevel`
+(localhost + secret) — down-leveling refunds all points free (testing tool, not economy).
+All 7 node-effect kinds fold live: stat scalars into derived stats/movement/resources,
+per-ability rewrites via shared `applyAbilityMods` (both sides run it), conditionals/crit
+riders at the damage rolls, stance/passive tweaks at their sites, and the proc runtime
+(low-HP heals/auto-shields with ICDs, on-kill buffs, resource-spent stacks, thorns,
+melee-attacker debuffs, self-heal speed bursts, every-Nth echo bolts, Flurry empowers,
+Archmage surge, consume-bonus finishers, poison jump).

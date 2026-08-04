@@ -25,9 +25,20 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   AllocateStats/AllocateSkill/Respec up, ProgressSync/XpGained/LevelUp
   down. Migration 0008 adds `character_skills`, `content_xp_curve`,
   `content_skill_nodes`.
-- **Doc fix:** the PROGRESSION.md §1.2 XP table is regenerated
-  formula-exact (the planning table had hand-arithmetic drift up to ~2%;
-  cap total is 360,410 XP) — unit tests now pin every value.
+- **Server progression live (P7-B):** kills pay XP to everyone tagged
+  (≥10% damage, or any heal on a tagger — Cleric-safe), scaled by rank,
+  level gap and the panel's xpRate; entering a zone for the first time pays
+  discovery XP with a chat toast; level-ups refill HP/stamina/resource and
+  bank +3 attribute / +1 skill points. The Character sheet's allocation and
+  the Mirror of Dawn respec (25×/50×level gold) are validated server-side
+  with the same shared rules the client predicts, persisted write-through,
+  and every one of the 7 skill-node effect kinds now folds into play
+  (stats, per-ability rewrites, conditionals, stances, passives, procs —
+  Second Wind, Colossus stacks, Righteous Echo, Flurry, auto-Aegis and
+  friends all run). Dev `/setlevel` (gm/admin) + `/ops/setlevel` ship for
+  the grind-free test path. Verified live: `tools/smoke/p7-probe.mjs`
+  (join sync → setlevel 10 → allocation → relog persistence) plus the P4
+  combat probe and the two-client smoke green on v9.
 
 ### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (2026-08-03)
 

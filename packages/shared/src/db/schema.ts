@@ -176,6 +176,24 @@ export const characterSkills = pgTable(
   (table) => [primaryKey({ columns: [table.characterId, table.nodeId] })],
 );
 
+/**
+ * First-time discoveries (DATABASE.md §2, P7): zone entries now, POIs/
+ * shrines/codex entries as their phases land. The primary key IS the
+ * dedupe — discovery XP can never double-pay.
+ */
+export const characterDiscoveries = pgTable(
+  'character_discoveries',
+  {
+    characterId: bigint('character_id', { mode: 'number' })
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['zone', 'poi', 'shrine', 'codex'] }).notNull(),
+    refId: text('ref_id').notNull(),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.characterId, table.kind, table.refId] })],
+);
+
 // ---------------------------------------------------------------------------
 // Ops trail (DATABASE.md §4) — append-only, written by both servers
 // ---------------------------------------------------------------------------
@@ -321,5 +339,6 @@ export type ContentEnemyRow = typeof contentEnemies.$inferSelect;
 export type ContentSpawnerRow = typeof contentSpawners.$inferSelect;
 export type ContentAbilityRow = typeof contentAbilities.$inferSelect;
 export type CharacterSkillRow = typeof characterSkills.$inferSelect;
+export type CharacterDiscoveryRow = typeof characterDiscoveries.$inferSelect;
 export type ContentXpCurveRow = typeof contentXpCurve.$inferSelect;
 export type ContentSkillNodeRow = typeof contentSkillNodes.$inferSelect;

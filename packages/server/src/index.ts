@@ -57,8 +57,8 @@ log.info(
 );
 
 const metrics = new MetricsRing();
-const world = new World(map.terrain, map.meta.spawn, content);
-log.info({ entities: world.entityCount }, 'world populated from spawners');
+const world = new World(map.terrain, map.meta.spawn, content, Math.random, map.zones);
+log.info({ entities: world.entityCount, zones: map.zones.length }, 'world populated from spawners');
 
 const app = Fastify({
   loggerInstance: log.child({ component: 'http' }),

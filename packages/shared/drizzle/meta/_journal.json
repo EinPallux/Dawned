@@ -64,6 +64,13 @@
       "when": 1785825369824,
       "tag": "0008_p7_progression",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785826751252,
+      "tag": "0009_p7_discoveries",
+      "breakpoints": true
     }
   ]
 }

@@ -7,3 +7,4 @@ export * from './resources.js';
 export * from './ability-machine.js';
 export * from './cc.js';
 export * from './progression.js';
+export * from './ability-mods.js';

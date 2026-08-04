@@ -10,20 +10,27 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import {
   BinaryReader,
   ClientOp,
+  MAX_LEVEL,
   NoticeCode,
   PROTOCOL_VERSION,
   ProtocolError,
   TICK_RATE,
   decodeAbilityRequest,
+  decodeAllocateSkill,
+  decodeAllocateStats,
   decodeHello,
   decodeInputIntent,
   decodeJsonEnvelope,
   decodePing,
+  decodeRespec,
   encodeAbilityReject,
   encodeAbilityResolve,
   encodeAbilityStart,
   encodeAbilityState,
   encodeEffectSync,
+  encodeLevelUp,
+  encodeProgressSync,
+  encodeXpGained,
   exportCooldowns,
   slotForAction,
   encodeChatBroadcast,
@@ -51,6 +58,7 @@ import type { AuthService } from '../auth/service.js';
 import { CharacterService, toAppearance } from '../characters/service.js';
 import { Session } from './session.js';
 import type { CombatEvent } from '../world/combat.js';
+import { progressSyncOf } from '../world/progression.js';
 
 const MAX_CHAT_LENGTH = 200;
 /** Position write-behind cadence (docs/tech/DATABASE.md §2). */
@@ -185,6 +193,27 @@ export class Gateway {
       case ClientOp.Chat:
         this.handleChat(session, reader);
         return;
+      case ClientOp.AllocateStats: {
+        const player = session.player;
+        if (session.state !== 'playing' || !player || !session.allowGeneric()) return;
+        const deltas = decodeAllocateStats(reader);
+        this.world.queueAllocateStats(player.id, deltas);
+        return;
+      }
+      case ClientOp.AllocateSkill: {
+        const player = session.player;
+        if (session.state !== 'playing' || !player || !session.allowGeneric()) return;
+        const request = decodeAllocateSkill(reader);
+        if (request.nodeId.length > 64) return; // slug bound, never trust wire strings
+        this.world.queueAllocateSkill(player.id, request.nodeId);
+        return;
+      }
+      case ClientOp.Respec: {
+        const player = session.player;
+        if (session.state !== 'playing' || !player || !session.allowGeneric()) return;
+        this.world.queueRespec(player.id, decodeRespec(reader).kind);
+        return;
+      }
       default:
         throw new ProtocolError(`unknown opcode 0x${opcode.toString(16)}`);
     }
@@ -277,6 +306,13 @@ export class Gateway {
         }
       }
 
+      // Progression state (P7): skill ranks + seen zones ride separate tables.
+      const [nodeRanks, zonesSeen] = await Promise.all([
+        this.characters.loadSkills(character.id),
+        this.characters.loadDiscoveries(character.id, 'zone'),
+      ]);
+      if (!session.isIn('authenticating')) return;
+
       player = this.world.addPlayer({
         characterId: character.id,
         accountId: account.id,
@@ -289,6 +325,22 @@ export class Gateway {
             ? { x: character.posX, y: character.posY, z: character.posZ, yaw: character.yaw }
             : null,
         hp: character.hp,
+        role: account.role,
+        progression: {
+          xp: character.xp,
+          gold: character.gold,
+          allocated: {
+            str: character.statStr,
+            agi: character.statAgi,
+            int: character.statInt,
+            vit: character.statVit,
+            end: character.statEnd,
+          },
+          unspentStatPoints: character.unspentStatPoints,
+          unspentSkillPoints: character.unspentSkillPoints,
+          nodeRanks,
+          zonesSeen,
+        },
       });
     }
     session.player = player;
@@ -312,6 +364,11 @@ export class Gateway {
         },
         session.writer,
       ),
+    );
+    // The full progression sheet follows the Welcome (P7): level/xp/points/
+    // tree ranks — the client builds its panels and prediction folds from it.
+    session.send(
+      encodeProgressSync(progressSyncOf(player, this.world.progressionContent()), session.writer),
     );
 
     if (reattached) {
@@ -381,10 +438,36 @@ export class Gateway {
     this.broadcastChat(player.name, player.id, text);
   }
 
-  /** Player slash-commands. GM commands land in P13 with the audit trail. */
+  /** Player slash-commands. The full GM suite lands in P13 with the audit
+   * trail; /setlevel ships early (P7 DoD tool), gated to gm/admin roles. */
   private handleCommand(session: Session, player: ServerPlayer, text: string): void {
     const command = text.split(/\s+/, 1)[0]!.toLowerCase();
     switch (command) {
+      case '/setlevel': {
+        if (player.role !== 'gm' && player.role !== 'admin') {
+          this.sendSystemChatTo(session, `Unknown command: ${command}`);
+          return;
+        }
+        const parts = text.split(/\s+/).slice(1);
+        const level = Number(parts[0]);
+        if (!Number.isInteger(level) || level < 1 || level > MAX_LEVEL) {
+          this.sendSystemChatTo(session, `Usage: /setlevel <1..${MAX_LEVEL}> [character]`);
+          return;
+        }
+        if (parts.length > 1) {
+          const name = parts.slice(1).join(' ');
+          if (!this.world.queueSetLevelByName(name, level)) {
+            this.sendSystemChatTo(session, `No character named "${name}" is online.`);
+            return;
+          }
+          this.log.info({ by: player.name, target: name, level }, '/setlevel');
+          this.sendSystemChatTo(session, `${name} → level ${level}.`);
+          return;
+        }
+        this.world.queueSetLevel(player.id, level);
+        this.log.info({ by: player.name, level }, '/setlevel');
+        return;
+      }
       case '/stuck': {
         const now = Date.now();
         const waitMs = STUCK_COOLDOWN_MS - (now - player.lastStuckAt);
@@ -644,8 +727,85 @@ export class Gateway {
         case 'enemy-died':
           // World-internal bookkeeping; clients learn via Death entity-events.
           break;
+        // --- progression (P7) ------------------------------------------------
+        case 'xp-gained': {
+          const target = this.findSessionByPlayer(event.playerId);
+          target?.send(
+            encodeXpGained({
+              amount: event.amount,
+              source: event.source,
+              xp: event.xp,
+              level: event.level,
+            }),
+          );
+          // Kills are seconds apart at our scale: write-through per award
+          // (DATABASE.md §2), serialized per character so saves never race.
+          if (target?.player) this.persistProgress(target.player);
+          break;
+        }
+        case 'level-up': {
+          // Everyone in earshot sees the pillar; the roster refresh updates
+          // nameplate levels (RosterEntry carries level since v2).
+          this.sendToInterested(event.playerId, (session) => {
+            session.send(encodeLevelUp({ entityId: event.playerId, level: event.level }));
+          });
+          this.broadcastRoster();
+          break;
+        }
+        case 'progress-dirty': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (target?.player) {
+            target.send(
+              encodeProgressSync(
+                progressSyncOf(target.player, this.world.progressionContent()),
+                target.writer,
+              ),
+            );
+            this.persistProgress(target.player);
+            this.persistSkills(target.player);
+          }
+          break;
+        }
+        case 'discovery': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          this.sendSystemChatTo(target, `Discovered: ${event.label}`);
+          this.characters
+            .addDiscovery(target.player.characterId, event.kind, event.refId)
+            .catch((error: unknown) => {
+              this.log.error({ err: error }, 'discovery save failed');
+            });
+          break;
+        }
       }
     }
+  }
+
+  /** Serialized write-through of xp/level/gold/points for one character. */
+  private persistProgress(player: ServerPlayer): void {
+    const snapshot = {
+      level: player.level,
+      xp: player.progress.xp,
+      gold: player.progress.gold,
+      allocated: { ...player.progress.allocated },
+      unspentStatPoints: player.progress.unspentStatPoints,
+      unspentSkillPoints: player.progress.unspentSkillPoints,
+    };
+    player.progress.persistChain = player.progress.persistChain
+      .then(() => this.characters.saveProgress(player.characterId, snapshot))
+      .catch((error: unknown) => {
+        this.log.error({ err: error, character: player.characterId }, 'progress save failed');
+      });
+  }
+
+  /** Serialized write-through of the character's skill rows. */
+  private persistSkills(player: ServerPlayer): void {
+    const snapshot = new Map(player.progress.nodeRanks);
+    player.progress.persistChain = player.progress.persistChain
+      .then(() => this.characters.saveSkills(player.characterId, snapshot))
+      .catch((error: unknown) => {
+        this.log.error({ err: error, character: player.characterId }, 'skills save failed');
+      });
   }
 
   /** Send to the entity itself (if a player) and everyone whose AOI holds it. */

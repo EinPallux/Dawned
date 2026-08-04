@@ -62,17 +62,80 @@ import {
   type TerrainSampler,
 } from '@dawned/shared';
 import {
+  FLURRY_EFFECT,
   absorbFromShields,
   applyBoltRiders,
   applyEffect,
+  armorMultOf,
+  attackSpeedMultOf,
   damageDealtMultOf,
   damageTakenMultOf,
   dropManaShield,
   hasCategory,
   manaShieldRateOf,
+  removeEffect,
 } from './effects.js';
 import type { ServerPlayer } from './player.js';
 import type { ServerEnemy } from './enemy.js';
+
+/**
+ * Node damage multipliers vs one enemy (P7): school percent + conditional
+ * bonuses (Executioner vs low HP, Frostbite vs chilled, Judgement vs
+ * stunned/staggered…). Read at every player→enemy damage roll.
+ */
+export const nodeDamageMultVs = (
+  player: ServerPlayer,
+  school: 'physical' | 'magic',
+  enemy: ServerEnemy,
+  nowMs: number,
+): number => {
+  const agg = player.progress.aggregates;
+  let mult =
+    1 + (school === 'magic' ? agg.stats.magicDamagePct : agg.stats.physicalDamagePct) / 100;
+  for (const conditional of agg.conditionals) {
+    const matches =
+      (conditional.vsCategories !== undefined &&
+        (hasCategory(enemy, conditional.vsCategories) ||
+          (conditional.vsCategories.includes('root') && nowMs < enemy.rootedUntilMs) ||
+          (conditional.vsCategories.includes('stun') && nowMs < enemy.stunnedUntilMs))) ||
+      (conditional.vsHpBelowPct !== undefined &&
+        enemy.maxHp > 0 &&
+        (enemy.hp / enemy.maxHp) * 100 < conditional.vsHpBelowPct) ||
+      (conditional.vsStaggered === true && nowMs < enemy.vulnerableUntilMs) ||
+      (conditional.vsStunned === true && nowMs < enemy.stunnedUntilMs);
+    if (matches) mult *= 1 + conditional.pct / 100;
+  }
+  return mult;
+};
+
+/** Node crit additions vs one enemy: spell crit + critVs riders (Shatter). */
+export const nodeCritBonusVs = (
+  player: ServerPlayer,
+  school: 'physical' | 'magic',
+  abilityId: string | null,
+  enemy: ServerEnemy,
+  nowMs: number,
+): number => {
+  const agg = player.progress.aggregates;
+  let bonus = school === 'magic' ? agg.stats.spellCritPct : 0;
+  if (abilityId) {
+    const modsList = agg.abilityMods.get(abilityId);
+    if (modsList) {
+      for (const mods of modsList) {
+        const critVs = mods.critVs;
+        if (!critVs) continue;
+        if (
+          hasCategory(enemy, critVs.categories) ||
+          (critVs.categories.includes('root') && nowMs < enemy.rootedUntilMs) ||
+          (critVs.categories.includes('stun') && nowMs < enemy.stunnedUntilMs)
+        ) {
+          bonus += critVs.pct;
+        }
+      }
+    }
+  }
+  return bonus;
+};
 
 /** Everything the gateway must broadcast (or World must react to) after a tick. */
 export type CombatEvent =
@@ -119,7 +182,21 @@ export type CombatEvent =
     }
   | { type: 'projectile-end'; projectileId: number; hit: boolean; x: number; y: number; z: number }
   | { type: 'player-died'; playerId: number; killerEnemyId: number | null }
-  | { type: 'enemy-died'; enemy: ServerEnemy; killerPlayerId: number | null };
+  | { type: 'enemy-died'; enemy: ServerEnemy; killerPlayerId: number | null }
+  // --- progression (P7) ----------------------------------------------------
+  | {
+      type: 'xp-gained';
+      playerId: number;
+      amount: number;
+      source: number;
+      xp: number;
+      level: number;
+    }
+  | { type: 'level-up'; playerId: number; level: number }
+  /** Progression state changed: gateway sends ProgressSync + persists. */
+  | { type: 'progress-dirty'; playerId: number }
+  /** First-time discovery: gateway persists the row + toasts the finder. */
+  | { type: 'discovery'; playerId: number; kind: 'zone'; refId: string; label: string };
 
 export interface ServerProjectile {
   id: number;
@@ -154,6 +231,8 @@ export interface ServerProjectile {
   abilityId: string | null;
   /** Basic-combo bolt (Mage Attunement counts these on land). */
   fromBasic: boolean;
+  /** A free every-Nth follow-up (Righteous Echo) — never re-triggers itself. */
+  echoBolt?: boolean;
 }
 
 /** Rewind offset for an attacker: their half-RTT + interp, in whole ticks. */
@@ -214,18 +293,22 @@ export const handleAttackRequest = (
   }
 
   const combo = chains[player.classId];
+  // Attack-speed buffs (P7: Killer's Rhythm, Flurry) shrink every basic-step
+  // duration — link windows, contact points and the broadcast all agree.
+  const speedMult = attackSpeedMultOf(player);
   // Chain state: which step fires, per the shared timing rules.
   let step = 0;
   if (player.comboStep >= 0 && player.comboStartedAtMs > 0) {
     const current = combo.steps[player.comboStep]!;
+    const stepMs = current.durationMs / speedMult;
     const since = nowMs - player.comboStartedAtMs;
-    const linkOpensAt = current.durationMs * (1 - COMBO_LINK_WINDOW_FRACTION);
+    const linkOpensAt = stepMs * (1 - COMBO_LINK_WINDOW_FRACTION);
     if (since < linkOpensAt) {
       // Inside the swing before the link window: the press is dropped, not an
       // error — client prediction drops it identically (shared comboWindow).
       return;
     }
-    if (since <= current.durationMs + COMBO_RESET_MS) {
+    if (since <= stepMs + COMBO_RESET_MS) {
       step = (player.comboStep + 1) % combo.steps.length;
     }
   }
@@ -237,12 +320,13 @@ export const handleAttackRequest = (
   }
 
   const stepDef = combo.steps[step]!;
+  const stepDurationMs = Math.round(stepDef.durationMs / speedMult);
   player.comboStep = step;
   player.comboStartedAtMs = nowMs;
   player.gcdUntilMs = nowMs + GCD_MS;
   player.pendingContact = {
     step,
-    atMs: nowMs + stepDef.durationMs * stepDef.contactFraction,
+    atMs: nowMs + stepDurationMs * stepDef.contactFraction,
     aimYaw,
     aimPitch,
   };
@@ -251,7 +335,7 @@ export const handleAttackRequest = (
     entityId: player.id,
     action: ActionId.BasicAttack,
     step,
-    durationMs: stepDef.durationMs,
+    durationMs: stepDurationMs,
     yaw: aimYaw,
   });
 };
@@ -278,7 +362,10 @@ export const applyCcToPlayer = (
   nowMs: number,
   events: CombatEvent[],
 ): { durationMs: number; tier: 0 | 1 | 2 } => {
-  const verdict = applyCcDr(player.ccDr, category, nowMs, durationMs);
+  // Thick Skull / Unshakeable (P7): −X% CC duration on you, before DR.
+  const ccPct = player.progress.aggregates.stats.ccOnYouDurationPct;
+  const scaled = Math.max(100, Math.round(durationMs * (1 + ccPct / 100)));
+  const verdict = applyCcDr(player.ccDr, category, nowMs, scaled);
   if (verdict.durationMs <= 0) return verdict;
   if (category === 'stun') {
     player.stunnedUntilMs = Math.max(player.stunnedUntilMs, nowMs + verdict.durationMs);
@@ -321,8 +408,23 @@ export const advancePlayerContact = (
   const combo = chains[player.classId];
   const stepDef = combo.steps[contact.step]!;
   const weapon = baseWeaponDamage(player.level);
-  const dealtMult = nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1;
+  // Node folds (P7): school % rides the fire-time multiplier for bolts;
+  // melee rolls use nodeDamageMultVs (school + per-target conditionals).
+  const nodeAgg = player.progress.aggregates;
+  const schoolPct =
+    combo.school === 'magic' ? nodeAgg.stats.magicDamagePct : nodeAgg.stats.physicalDamagePct;
+  const dealtMult =
+    (nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1) * damageDealtMultOf(player);
   const rewind = rewindTicksFor(player.rttMs);
+  // Flurry (P7 capstone): empowered basics grant a CP each and count down;
+  // the visible speed buff drops with the last empowered swing.
+  if (player.empoweredBasicsLeft > 0) {
+    player.empoweredBasicsLeft -= 1;
+    if (player.classId === 'rogue' && player.empoweredBasicsCp > 0) {
+      gainComboPoints(player.resource, player.empoweredBasicsCp);
+    }
+    if (player.empoweredBasicsLeft === 0) removeEffect(player, FLURRY_EFFECT);
+  }
 
   if (combo.delivery === 'projectile' && combo.projectile) {
     const cosPitch = Math.cos(contact.aimPitch);
@@ -347,9 +449,10 @@ export const advancePlayerContact = (
       power: combo.school === 'magic' ? player.stats.sp : player.stats.ap,
       weaponMin: weapon.min,
       weaponMax: weapon.max,
+      // Spell crit folds at IMPACT via nodeCritBonusVs (never both places).
       critPct: player.stats.critPct,
       attackerLevel: player.level,
-      damageDealtMult: dealtMult,
+      damageDealtMult: dealtMult * (1 + schoolPct / 100),
       stagger: stepDef.stagger,
       homingTargetId: 0,
       abilityId: null,
@@ -409,13 +512,14 @@ export const advancePlayerContact = (
         weaponMax: weapon.max,
         power: combo.school === 'magic' ? player.stats.sp : player.stats.ap,
         school: combo.school,
-        critPct: player.stats.critPct,
+        critPct: player.stats.critPct + (combo.school === 'magic' ? nodeAgg.stats.spellCritPct : 0),
         attackerLevel: player.level,
         targetLevel: enemy.level,
         targetArmor: enemy.armor,
         targetMagicResistPct: enemy.magicResistPct,
-        damageTakenMult: takenMult,
-        damageDealtMult: dealtMult,
+        damageTakenMult: takenMult * damageTakenMultOf(enemy, player.id),
+        // School % + per-target conditionals (Executioner, Flensing…) — P7.
+        damageDealtMult: dealtMult * nodeDamageMultVs(player, combo.school, enemy, nowMs),
       },
       rng,
     );
@@ -423,10 +527,15 @@ export const advancePlayerContact = (
       applyDamageToEnemy(enemy, player.id, player, amount, crit, stepDef.stagger, nowMs, events),
     );
   }
-  // Resource riders per landed step (CLASSES.md §0/§3): Rage per basic hit,
-  // the Rogue combo point on step 3 — content-declared, applied on contact.
+  // Resource riders per landed step (CLASSES.md §0/§3): Rage per basic hit
+  // (+ Boiling Blood's node delta), the Rogue combo point on step 3 —
+  // content-declared, applied on contact.
   if (hits.length > 0) {
-    if (stepDef.rageGain > 0) gainResource(player.resource, stepDef.rageGain, true);
+    const rageGain =
+      stepDef.rageGain + (player.classId === 'warrior' ? nodeAgg.stats.rageOnBasicHitDelta : 0);
+    if (rageGain > 0 && player.resource.type === 'rage') {
+      gainResource(player.resource, rageGain, true);
+    }
     if (stepDef.comboPointGain > 0 && player.classId === 'rogue') {
       gainComboPoints(player.resource, stepDef.comboPointGain);
     }
@@ -456,7 +565,11 @@ export const applyDamageToEnemy = (
   enemy.hp = Math.max(0, enemy.hp - amount);
   enemy.lastDamagedAtMs = nowMs;
   enemy.addThreat(attackerId, amount);
-  if (attacker) attacker.lastCombatAtMs = nowMs;
+  if (attacker) {
+    attacker.lastCombatAtMs = nowMs;
+    // Kill-credit ledger (P7 tag rule): raw damage per player this fight.
+    enemy.damageBy.set(attackerId, (enemy.damageBy.get(attackerId) ?? 0) + amount);
+  }
 
   let flags = 0;
   if (crit) flags |= HitFlag.Crit;
@@ -499,6 +612,8 @@ export const stepProjectiles = (
   rng: Rng,
   events: CombatEvent[],
   abilityDefs: ReadonlyMap<string, AbilityDef> | null = null,
+  /** Id allocator for bolts spawned DURING the step (P7 echo bolts). */
+  nextProjectileId: (() => number) | null = null,
 ): void => {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i]!;
@@ -568,6 +683,7 @@ export const stepProjectiles = (
             nowMs,
             rng,
             events,
+            false, // ranged: melee-only retaliation procs stay quiet
           );
           if (resolved) hits.push(resolved);
         }
@@ -619,7 +735,13 @@ export const stepProjectiles = (
     if (hit) {
       const enemy = candidates[hit.index]!;
       const takenMult = nowMs < enemy.vulnerableUntilMs ? 1 + STAGGER_VULNERABILITY : 1;
-      const boltDef = p.abilityId && abilityDefs ? abilityDefs.get(p.abilityId) : undefined;
+      const owner = players.get(p.ownerId) ?? null;
+      // The OWNER'S node-rewritten def governs impact riders (P7) — the
+      // authored def only if they are gone or unmodified.
+      const boltDef =
+        p.abilityId && abilityDefs
+          ? (owner?.progress.effectiveDefs.get(p.abilityId) ?? abilityDefs.get(p.abilityId))
+          : undefined;
       // Conditional bonus at IMPACT state (Ice Lance vs chilled/rooted): the
       // status check happens when the bolt lands, not when it left the hand.
       const boltDamage = boltDef?.effects.find(
@@ -633,6 +755,17 @@ export const stepProjectiles = (
           (boltDamage.bonusVs.categories.includes('stun') && nowMs < enemy.stunnedUntilMs))
           ? 1 + boltDamage.bonusVs.pct / 100
           : 1;
+      // Node conditionals + crit-vs riders read the impact state too (P7:
+      // Frostbite, Shatter). School % was folded at fire time.
+      const conditionalMult = owner
+        ? nodeDamageMultVs(owner, p.school, enemy, nowMs) /
+          (1 +
+            (p.school === 'magic'
+              ? owner.progress.aggregates.stats.magicDamagePct
+              : owner.progress.aggregates.stats.physicalDamagePct) /
+              100)
+        : 1;
+      const critVsBonus = owner ? nodeCritBonusVs(owner, p.school, p.abilityId, enemy, nowMs) : 0;
       const { amount, crit } = rollDamage(
         {
           coef: p.coef,
@@ -640,17 +773,16 @@ export const stepProjectiles = (
           weaponMax: p.weaponMax,
           power: p.power,
           school: p.school,
-          critPct: p.critPct,
+          critPct: p.critPct + critVsBonus,
           attackerLevel: p.attackerLevel,
           targetLevel: enemy.level,
           targetArmor: enemy.armor,
           targetMagicResistPct: enemy.magicResistPct,
-          damageTakenMult: takenMult,
-          damageDealtMult: p.damageDealtMult * bonusMult,
+          damageTakenMult: takenMult * damageTakenMultOf(enemy, p.ownerId),
+          damageDealtMult: p.damageDealtMult * bonusMult * conditionalMult,
         },
         rng,
       );
-      const owner = players.get(p.ownerId) ?? null;
       const resolved = applyDamageToEnemy(
         enemy,
         p.ownerId,
@@ -676,17 +808,56 @@ export const stepProjectiles = (
           },
           nowMs,
         );
+        // Category-gated node appends (P7, Winter's Grasp): the extra
+        // apply_effect lands only when the target bears the gate category
+        // AT IMPACT — checked against the pre-impact state is fine because
+        // the gate category (chill) comes from earlier hits.
+        if (owner && p.abilityId) {
+          const modsList = owner.progress.aggregates.abilityMods.get(p.abilityId);
+          for (const mods of modsList ?? []) {
+            const gate = mods.addEffectsRequireCategories;
+            if (!mods.addEffects || !gate) continue;
+            if (
+              !hasCategory(enemy, gate) &&
+              !(gate.includes('root') && nowMs < enemy.rootedUntilMs) &&
+              !(gate.includes('stun') && nowMs < enemy.stunnedUntilMs)
+            ) {
+              continue;
+            }
+            for (const added of mods.addEffects) {
+              if (added.kind !== 'apply_effect' || added.target !== 'hit') continue;
+              applyEffect(
+                enemy,
+                {
+                  effectId: added.effectId,
+                  casterId: p.ownerId,
+                  durationMs: added.durationMs,
+                  stacksMax: added.stacksMax,
+                  mods: added.mods,
+                  harmful: true,
+                  category: added.category,
+                },
+                nowMs,
+              );
+            }
+          }
+        }
       }
-      // Class passives keyed to landed bolts (P6):
+      // Class passives keyed to landed bolts (P6; P7 node tweaks fold in):
       if (owner && !owner.dead) {
         if (p.fromBasic && owner.classId === 'mage') {
           // Attunement: every 3rd landed basic bolt refunds Mana and shaves
-          // active cooldowns. The client mirrors the count from its own
-          // resolve events for display; the server number is authoritative.
+          // active cooldowns. Swift Recovery (P7) raises the refund. The
+          // client mirrors the count from its own resolve events for display;
+          // the server number is authoritative.
           owner.attunementCount += 1;
           if (owner.attunementCount >= ATTUNEMENT_EVERY) {
             owner.attunementCount = 0;
-            gainResource(owner.resource, ATTUNEMENT_MANA_REFUND, true);
+            gainResource(
+              owner.resource,
+              ATTUNEMENT_MANA_REFUND + owner.progress.aggregates.passives.attunementManaDelta,
+              true,
+            );
             for (const [, slot] of owner.abilityMachine.slots) {
               if (slot.rechargeAtMs > 0) {
                 slot.rechargeAtMs = Math.max(nowMs, slot.rechargeAtMs - ATTUNEMENT_CDR_MS);
@@ -708,6 +879,58 @@ export const stepProjectiles = (
             },
             nowMs,
           );
+        }
+        // Righteous Echo-style riders (P7): every Nth landed bolt of the
+        // ability fires a FREE follow-up from the caster's hand at the
+        // struck target, reduced coef, no riders of its own.
+        if (p.abilityId && !p.echoBolt && nextProjectileId && enemy.hp > 0) {
+          const modsList = owner.progress.aggregates.abilityMods.get(p.abilityId);
+          for (const mods of modsList ?? []) {
+            const echo = mods.everyNBonusBolt;
+            if (!echo) continue;
+            const count = (owner.progress.boltCounters.get(p.abilityId) ?? 0) + 1;
+            if (count < echo.n) {
+              owner.progress.boltCounters.set(p.abilityId, count);
+              continue;
+            }
+            owner.progress.boltCounters.set(p.abilityId, 0);
+            const ox = owner.movement.x;
+            const oy = owner.movement.y + 1.4;
+            const oz = owner.movement.z;
+            const tx = enemy.x - ox;
+            const ty = enemy.y + enemy.def.hitHeight * 0.6 - oy;
+            const tz = enemy.z - oz;
+            const len = Math.hypot(tx, ty, tz) || 1;
+            const bonus: ServerProjectile = {
+              ...p,
+              id: nextProjectileId(),
+              x: ox,
+              y: oy,
+              z: oz,
+              dirX: tx / len,
+              dirY: ty / len,
+              dirZ: tz / len,
+              coef: echo.coef,
+              travelled: 0,
+              maxRange: Math.max(10, len + 6),
+              abilityId: null, // no on-hit riders, no re-echo
+              echoBolt: true,
+            };
+            projectiles.push(bonus);
+            events.push({
+              type: 'projectile-spawn',
+              projectileId: bonus.id,
+              ownerId: bonus.ownerId,
+              x: bonus.x,
+              y: bonus.y,
+              z: bonus.z,
+              dirX: bonus.dirX,
+              dirY: bonus.dirY,
+              dirZ: bonus.dirZ,
+              speed: bonus.speed,
+              visual: owner.classId === 'cleric' ? 1 : 0,
+            });
+          }
         }
       }
       events.push({
@@ -773,6 +996,8 @@ const applyEnemyHitToPlayer = (
   nowMs: number,
   rng: Rng,
   events: CombatEvent[],
+  /** Melee contact (false = projectile) — thorns/Glacial procs are melee-only. */
+  melee = true,
 ): ResolveHit | null => {
   if (player.dead) return null;
   // I-frames count live AND in the victim's rewound time — the roll they
@@ -783,13 +1008,17 @@ const applyEnemyHitToPlayer = (
     player.history.wasInvulnerable(rewindTicksFor(player.rttMs));
   if (invulnerable) return null;
 
+  const nodeAgg = player.progress.aggregates;
   // RMB block (CLASSES.md): frontal hits are mitigated while the shield is
   // up and stamina can pay for the absorb; a hit inside the raise window is
   // a PERFECT block — the attacker staggers open, the Warrior gains Rage.
+  // P7 stance nodes fold here: Stalwart Block's cheaper absorbs, Shield
+  // Training's extra mitigation, Immovable's perfect-block refund.
   let blockMult = 1;
+  let blocked = false;
   const mitigationPct =
     player.classId === 'warrior' || player.classId === 'cleric'
-      ? BLOCK_MITIGATION_PCT[player.classId]
+      ? Math.min(90, BLOCK_MITIGATION_PCT[player.classId] + nodeAgg.stance.blockMitigationDelta)
       : undefined;
   if (player.blocking && mitigationPct !== undefined) {
     const toSource = Math.atan2(sourceX - player.movement.x, sourceZ - player.movement.z);
@@ -797,9 +1026,14 @@ const applyEnemyHitToPlayer = (
     while (facingDelta > Math.PI) facingDelta -= 2 * Math.PI;
     while (facingDelta < -Math.PI) facingDelta += 2 * Math.PI;
     const frontal = Math.abs(facingDelta) <= ((BLOCK_ARC_DEG / 2) * Math.PI) / 180;
-    if (frontal && player.movement.stamina >= BLOCK_STAMINA_PER_HIT) {
+    const blockStamina = Math.max(
+      1,
+      Math.round(BLOCK_STAMINA_PER_HIT * (1 + nodeAgg.stance.blockStaminaCostPct / 100)),
+    );
+    if (frontal && player.movement.stamina >= blockStamina) {
       blockMult = 1 - mitigationPct / 100;
-      player.movement.stamina -= BLOCK_STAMINA_PER_HIT;
+      blocked = true;
+      player.movement.stamina -= blockStamina;
       player.movement.staminaIdleMs = 0;
       if (nowMs - player.blockRaisedAtMs <= PERFECT_BLOCK_WINDOW_MS) {
         enemy.stunFor(1200, nowMs);
@@ -815,6 +1049,12 @@ const applyEnemyHitToPlayer = (
         if (player.classId === 'warrior') {
           gainResource(player.resource, PERFECT_BLOCK_RAGE, true);
         }
+        if (nodeAgg.stance.perfectBlockStaminaRefund > 0) {
+          player.movement.stamina = Math.min(
+            player.movement.maxStamina,
+            player.movement.stamina + nodeAgg.stance.perfectBlockStaminaRefund,
+          );
+        }
       }
     }
   }
@@ -829,9 +1069,11 @@ const applyEnemyHitToPlayer = (
       critPct: 0, // enemies never crit — spikes read unfair, not dangerous
       attackerLevel: enemy.level,
       targetLevel: player.level,
-      targetArmor: player.stats.armor,
+      // Effect armor buffs ×stacks (Colossus, Beacon) on the sheet armor.
+      targetArmor: player.stats.armor * armorMultOf(player),
       targetMagicResistPct: player.stats.magicResistPct,
-      damageTakenMult: damageTakenMultOf(player, enemy.id) * blockMult,
+      damageTakenMult:
+        damageTakenMultOf(player, enemy.id) * blockMult * (1 + nodeAgg.stats.damageTakenPct / 100),
       damageDealtMult: damageDealtMultOf(enemy),
     },
     rng,
@@ -859,7 +1101,55 @@ const applyEnemyHitToPlayer = (
   player.hp = Math.max(0, player.hp - remaining);
   player.lastCombatAtMs = nowMs;
   if (player.classId === 'warrior' && player.hp > 0) {
-    gainResource(player.resource, RAGE_ON_DAMAGED, true);
+    gainResource(
+      player.resource,
+      RAGE_ON_DAMAGED + nodeAgg.stats.rageWhenHitDelta, // Enraging Defense (P7)
+      true,
+    );
+  }
+  // Retaliation procs (P7): thorns for melee attackers and blocked hits,
+  // Glacial Armor's chill on whoever swings into you. Deterministic damage
+  // through the real enemy pipeline (threat + kill credit included).
+  if (player.hp > 0 && enemy.alive && !enemy.invulnerable) {
+    const avgWeapon = (player.stats.ap + player.stats.sp) / 2;
+    for (const entry of player.progress.aggregates.procs) {
+      const proc = entry.proc;
+      if (proc.proc === 'melee_thorns' && melee) {
+        const thorns = Math.max(1, Math.round(proc.coef * (avgWeapon + player.stats.sp)));
+        const hit = applyDamageToEnemy(enemy, player.id, player, thorns, false, 0, nowMs, events);
+        events.push({
+          type: 'ability-resolve',
+          attackerId: player.id,
+          action: 0,
+          step: 0,
+          hits: [hit],
+        });
+      } else if (proc.proc === 'block_thorns' && blocked) {
+        const thorns = Math.max(1, Math.round(proc.coef * (avgWeapon + player.stats.ap)));
+        const hit = applyDamageToEnemy(enemy, player.id, player, thorns, false, 0, nowMs, events);
+        events.push({
+          type: 'ability-resolve',
+          attackerId: player.id,
+          action: 0,
+          step: 0,
+          hits: [hit],
+        });
+      } else if (proc.proc === 'melee_attacker_apply' && melee) {
+        applyEffect(
+          enemy,
+          {
+            effectId: proc.effectId,
+            casterId: player.id,
+            durationMs: proc.durationMs,
+            stacksMax: 1,
+            mods: proc.mods,
+            harmful: true,
+            category: proc.category,
+          },
+          nowMs,
+        );
+      }
+    }
   }
   if (player.hp <= 0) {
     events.push({ type: 'player-died', playerId: player.id, killerEnemyId: enemy.id });

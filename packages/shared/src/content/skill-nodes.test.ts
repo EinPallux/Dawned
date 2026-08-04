@@ -386,7 +386,8 @@ describe('node aggregation', () => {
     expect(crushing).toHaveLength(1);
     expect(crushing![0]!.damagePct).toBe(10);
     expect(agg.procs).toHaveLength(1);
-    expect(agg.procs[0]!.proc).toBe('resource_spent_stacks');
+    expect(agg.procs[0]!.proc.proc).toBe('resource_spent_stacks');
+    expect(agg.procs[0]!.nodeId).toBe('node_warrior_juggernaut_colossus');
   });
 
   it('ignores unknown nodes and zero ranks (stale rows never crash a login)', () => {

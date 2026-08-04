@@ -27,6 +27,26 @@ export const RESOURCE_BY_CLASS: Record<ClassId, ResourceType> = {
   cleric: 'mana',
 };
 
+/**
+ * Skill-tree pool/regen adjustments (P7): flat max add (Conditioning +5
+ * Energy), percent max (Clarity +5% Mana), flat regen add (Vigor +1
+ * Energy/s) and percent regen (Flow/Serenity +10% Mana regen). Neutral = all
+ * zero. Both sides fold the SAME values from synced node ranks.
+ */
+export interface ResourceMods {
+  maxFlat: number;
+  maxPct: number;
+  regenFlat: number;
+  regenPct: number;
+}
+
+export const neutralResourceMods = (): ResourceMods => ({
+  maxFlat: 0,
+  maxPct: 0,
+  regenFlat: 0,
+  regenPct: 0,
+});
+
 export interface ResourceState {
   type: ResourceType;
   /** Current amount, fractional internally; expose via Math.floor. */
@@ -34,30 +54,57 @@ export interface ResourceState {
   max: number;
   /** Rogue combo points (always 0 for other classes). */
   comboPoints: number;
+  /** Node-driven pool/regen adjustments; absent = neutral (pre-P7 callers). */
+  mods?: ResourceMods;
 }
 
-export const maxResourceFor = (classId: ClassId, int: number): number => {
+export const maxResourceFor = (classId: ClassId, int: number, mods?: ResourceMods): number => {
   const type = RESOURCE_BY_CLASS[classId];
-  if (type === 'rage') return RAGE_MAX;
-  if (type === 'energy') return ENERGY_MAX;
-  return MANA_BASE + MANA_PER_INT * int;
+  const base =
+    type === 'rage' ? RAGE_MAX : type === 'energy' ? ENERGY_MAX : MANA_BASE + MANA_PER_INT * int;
+  if (!mods) return base;
+  return Math.max(1, Math.round(base * (1 + mods.maxPct / 100) + mods.maxFlat));
 };
 
-export const createResourceState = (classId: ClassId, int: number): ResourceState => {
+export const createResourceState = (
+  classId: ClassId,
+  int: number,
+  mods?: ResourceMods,
+): ResourceState => {
   const type = RESOURCE_BY_CLASS[classId];
-  const max = maxResourceFor(classId, int);
+  const max = maxResourceFor(classId, int, mods);
   return {
     type,
     // Rage starts empty and is earned; pools start full.
     value: type === 'rage' ? 0 : max,
     max,
     comboPoints: 0,
+    ...(mods ? { mods } : {}),
   };
+};
+
+/**
+ * Re-derive the pool after INT/level/node changes (level-up, allocation,
+ * respec). Keeps the current value inside the new max; `refill` tops pools
+ * up (the level-up juice contract refills everything).
+ */
+export const rebuildResourceMax = (
+  state: ResourceState,
+  classId: ClassId,
+  int: number,
+  mods: ResourceMods | undefined,
+  refill: boolean,
+): void => {
+  if (mods) state.mods = mods;
+  else delete state.mods;
+  state.max = maxResourceFor(classId, int, mods);
+  state.value = refill && state.type !== 'rage' ? state.max : Math.min(state.value, state.max);
 };
 
 /**
  * Advance regen/decay by dtMs. Rage DECAYS out of combat and never
  * passively builds; energy regens always; mana regen halves-ish in combat.
+ * Node mods: flat regen adds (Energy) and percent regen (Mana) fold here.
  */
 export const tickResource = (state: ResourceState, dtMs: number, inCombat: boolean): void => {
   const dt = dtMs / 1000;
@@ -65,10 +112,12 @@ export const tickResource = (state: ResourceState, dtMs: number, inCombat: boole
     if (!inCombat) state.value = Math.max(0, state.value - RAGE_DECAY_PER_S * dt);
     return;
   }
+  const mods = state.mods;
   const perSecond =
     state.type === 'energy'
-      ? ENERGY_REGEN_PER_S
-      : (state.max * (inCombat ? MANA_REGEN_PCT_COMBAT : MANA_REGEN_PCT_OOC)) / 100;
+      ? Math.max(0, ENERGY_REGEN_PER_S + (mods?.regenFlat ?? 0))
+      : ((state.max * (inCombat ? MANA_REGEN_PCT_COMBAT : MANA_REGEN_PCT_OOC)) / 100) *
+        (1 + (mods?.regenPct ?? 0) / 100);
   state.value = Math.min(state.max, state.value + perSecond * dt);
 };
 
