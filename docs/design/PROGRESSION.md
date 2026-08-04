@@ -19,18 +19,22 @@ tagger within the fight (Cleric-safe).
 
 ### 1.2 Level curve
 
-`xpToNext(L) = round₁₀(90 × L^1.75)` — stored denormalized in the `xp_curve` table (editable per row).
+`xpToNext(L) = round₁₀(90 × L^1.75)` — stored denormalized in the `content_xp_curve` table
+(one published row per level, editable in the panel; the formula regenerates defaults).
 
 | Level | XP to next | Cumulative |     | Level | XP to next | Cumulative |
 | ----- | ---------- | ---------- | --- | ----- | ---------- | ---------- |
-| 1     | 90         | 0          |     | 16    | 11,540     | ~46k       |
-| 2     | 300        | 90         |     | 18    | 14,180     | ~72k       |
-| 4     | 1,020      | ~1.0k      |     | 20    | 17,000     | ~103k      |
-| 6     | 2,070      | ~3.5k      |     | 22    | 20,010     | ~140k      |
-| 8     | 3,440      | ~9.1k      |     | 24    | 23,190     | ~184k      |
-| 10    | 5,060      | ~17k       |     | 26    | 26,550     | ~234k      |
-| 12    | 6,970      | ~29k       |     | 28    | 30,080     | ~291k      |
-| 14    | 9,120      | ~37k       |     | 29→30 | 31,910     | ~355k      |
+| 1     | 90         | 0          |     | 16    | 11,520     | 61,360     |
+| 2     | 300        | 90         |     | 18    | 14,160     | 85,690     |
+| 4     | 1,020      | 1,010      |     | 20    | 17,020     | 115,410    |
+| 6     | 2,070      | 3,530      |     | 22    | 20,110     | 150,970    |
+| 8     | 3,420      | 8,310      |     | 24    | 23,420     | 192,820    |
+| 10    | 5,060      | 15,940     |     | 26    | 26,940     | 241,400    |
+| 12    | 6,960      | 26,980     |     | 28    | 30,670     | 297,120    |
+| 14    | 9,120      | 41,950     |     | 29→30 | 32,620     | 360,410    |
+
+> Table regenerated formula-exact at P7 (the planning-era table had hand-arithmetic drift of up
+> to ~2% — the formula above was always the definition; unit tests now pin these numbers).
 
 Pacing target: mixed play (fighting + quests + discovery + gathering) reaches 30 in ~35–45 h; pure
 grinding is slower but viable (sandbox promise). Early levels pop fast (first session ends ~lvl 5–6).

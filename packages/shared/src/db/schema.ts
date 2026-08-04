@@ -158,6 +158,24 @@ export const characters = pgTable(
   ],
 );
 
+/**
+ * Allocated skill-tree ranks (DATABASE.md §2, P7). One row per node a
+ * character has points in; `nodeId` references `content_skill_nodes` slugs
+ * (content refs are validated at allocation time, not by FK — content rows
+ * live on the draft/published axis). Respec deletes the character's rows.
+ */
+export const characterSkills = pgTable(
+  'character_skills',
+  {
+    characterId: bigint('character_id', { mode: 'number' })
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    nodeId: text('node_id').notNull(),
+    ranks: smallint('ranks').notNull().default(1),
+  },
+  (table) => [primaryKey({ columns: [table.characterId, table.nodeId] })],
+);
+
 // ---------------------------------------------------------------------------
 // Ops trail (DATABASE.md §4) — append-only, written by both servers
 // ---------------------------------------------------------------------------
@@ -255,6 +273,44 @@ export const contentAbilities = pgTable(
   (table) => [primaryKey({ columns: [table.id, table.status] })],
 );
 
+/**
+ * XP curve rows (P7): one row per level, def = { level, xpToNext } validated
+ * by shared/src/content/xp-curve.ts. Publish cross-checks completeness
+ * (levels 1..29 exactly once) the same way abilities cross-check slots.
+ */
+export const contentXpCurve = pgTable(
+  'content_xp_curve',
+  {
+    /** Content slug (`xp_l01`..`xp_l29`). */
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** XpCurveEntry (shared/src/content/xp-curve.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
+/**
+ * Skill-tree nodes (P7): one row per node (96 in 0.1.0), def validated by
+ * shared/src/content/skill-nodes.ts — branch/tier/ranks plus the per-rank
+ * effect lists the server folds into stats/abilities.
+ */
+export const contentSkillNodes = pgTable(
+  'content_skill_nodes',
+  {
+    /** Content slug (`node_warrior_bulwark_toughened`). */
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** SkillNodeDef (shared/src/content/skill-nodes.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
 export type AccountRow = typeof accounts.$inferSelect;
 export type SessionRow = typeof sessions.$inferSelect;
 export type CharacterRow = typeof characters.$inferSelect;
@@ -264,3 +320,6 @@ export type ContentWorldSettingsRow = typeof contentWorldSettings.$inferSelect;
 export type ContentEnemyRow = typeof contentEnemies.$inferSelect;
 export type ContentSpawnerRow = typeof contentSpawners.$inferSelect;
 export type ContentAbilityRow = typeof contentAbilities.$inferSelect;
+export type CharacterSkillRow = typeof characterSkills.$inferSelect;
+export type ContentXpCurveRow = typeof contentXpCurve.$inferSelect;
+export type ContentSkillNodeRow = typeof contentSkillNodes.$inferSelect;

@@ -19,6 +19,8 @@ export * from './content/world-settings.js';
 export * from './content/enemies.js';
 export * from './content/spawners.js';
 export * from './content/abilities.js';
+export * from './content/xp-curve.js';
+export * from './content/skill-nodes.js';
 export * from './data/appearance.js';
 export * from './data/splat-layers.js';
 export * from './data/basic-combos.js';

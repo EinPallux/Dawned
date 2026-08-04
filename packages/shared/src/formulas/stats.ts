@@ -2,12 +2,13 @@
  * Derived combat stats for players and enemies — the single source both sides
  * read (docs/design/PROGRESSION.md §2, docs/design/NPCS_ENEMIES.md §5).
  *
- * P4 note: player attributes are the class base spreads only. The +3
- * points-per-level bank and gear bonuses arrive with P7/P8 — level already
- * feeds the HP/stamina terms, so leveled characters get sturdier without
- * allocation existing yet.
+ * P7: attribute totals = class base spread + player-allocated points (+3
+ * banked per level, spent via the Character panel). Attribute GRANTS apply to
+ * the total — a Warrior's base 14 STR is 7 armor before any allocation.
+ * Gear bonuses stack on top at P8 through the same AttributeSpread shape.
  */
 
+import { STAMINA_REGEN_PER_SEC } from '../constants.js';
 import type { ClassId } from '../data/appearance.js';
 
 export interface AttributeSpread {
@@ -26,6 +27,25 @@ export const CLASS_BASE_ATTRIBUTES: Record<ClassId, AttributeSpread> = {
   cleric: { str: 9, agi: 7, int: 14, vit: 12, end: 8 },
 };
 
+/** The all-zero spread (fresh characters; also the "no gear" placeholder). */
+export const zeroAttributes = (): AttributeSpread => ({ str: 0, agi: 0, int: 0, vit: 0, end: 0 });
+
+/** Base spread + allocated points → the totals every grant reads. */
+export const attributeTotals = (classId: ClassId, allocated: AttributeSpread): AttributeSpread => {
+  const base = CLASS_BASE_ATTRIBUTES[classId];
+  return {
+    str: base.str + allocated.str,
+    agi: base.agi + allocated.agi,
+    int: base.int + allocated.int,
+    vit: base.vit + allocated.vit,
+    end: base.end + allocated.end,
+  };
+};
+
+/** Stamina regen bonus: +0.2/s per 4 END points (PROGRESSION.md §2). */
+export const staminaRegenForEnd = (endurance: number): number =>
+  STAMINA_REGEN_PER_SEC + 0.2 * Math.floor(endurance / 4);
+
 /** Everything combat math needs to know about an attacker/defender. */
 export interface CombatStats {
   maxHp: number;
@@ -39,17 +59,25 @@ export interface CombatStats {
   /** Magic mitigation in percent (0–100); players have none in 0.1.0. */
   magicResistPct: number;
   maxStamina: number;
+  /** Stamina regenerated per second (END-scaled since P7). */
+  staminaRegenPerS: number;
   /** INT attribute (mana pool sizing — CLASSES.md §0, v7). */
   int: number;
 }
 
 /**
- * Player stats at a level (PROGRESSION.md §2 derivations).
- * AP comes from the class primary (STR for Warrior, AGI for Rogue); casters
- * lean on SP. Gear armor is 0 until P8 items.
+ * Player stats at a level (PROGRESSION.md §2 derivations), with allocated
+ * attribute points folded on top of the class base spread. AP comes from the
+ * class primary (STR for Warrior, AGI for Rogue); casters lean on SP. Gear
+ * armor is 0 until P8 items. Omitting `allocated` gives the unallocated
+ * baseline (enemy-side callers, pre-P7 tests).
  */
-export const playerStats = (classId: ClassId, level: number): CombatStats => {
-  const a = CLASS_BASE_ATTRIBUTES[classId];
+export const playerStats = (
+  classId: ClassId,
+  level: number,
+  allocated: AttributeSpread = zeroAttributes(),
+): CombatStats => {
+  const a = attributeTotals(classId, allocated);
   const primary = classId === 'rogue' ? a.agi : a.str;
   return {
     maxHp: 80 + 12 * a.vit + 6 * (level - 1),
@@ -59,6 +87,7 @@ export const playerStats = (classId: ClassId, level: number): CombatStats => {
     armor: 0.5 * a.str,
     magicResistPct: 0,
     maxStamina: 100 + 5 * a.end + 2 * (level - 1),
+    staminaRegenPerS: staminaRegenForEnd(a.end),
     int: a.int,
   };
 };

@@ -5,6 +5,30 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — P7 Progression (in progress, 2026-08-04)
+
+- **Shared progression core (P7-A, protocol v9):** the level curve
+  (`round₁₀(90 × L^1.75)`, levels 1–30) now lives as editable
+  `content_xp_curve` rows with completeness validation; kill XP
+  (`8 + 6 × mobLevel^1.15`, ×1.5 elites / ×4 zone bosses, −10%/level
+  falloff beyond 3 below, 10% floor, per-enemy `xpMult` honored, never
+  rounds to 0), discovery basis-points and the `xpRate` world modifier are
+  unit-tested shared formulas. Derived stats fold player-allocated
+  attribute points (+3 banked per level) on top of the class spreads, and
+  END now scales stamina regen. The full skill-tree contract shipped as
+  content schema: 12 branches, tier gates (0/3/6/9/12 in-branch points OR
+  level 2/5/10/15/20 — whichever is later; capstones 8 points + L25), and
+  a closed per-rank effect vocabulary that expresses all 96 CLASSES.md
+  nodes (stat scalars, conditional damage, per-ability rewrites + on-use
+  riders, category effect mods, stance/passive tweaks, 8 proc shapes) with
+  allocation/gate/aggregation helpers both sides run. New wire messages:
+  AllocateStats/AllocateSkill/Respec up, ProgressSync/XpGained/LevelUp
+  down. Migration 0008 adds `character_skills`, `content_xp_curve`,
+  `content_skill_nodes`.
+- **Doc fix:** the PROGRESSION.md §1.2 XP table is regenerated
+  formula-exact (the planning table had hand-arithmetic drift up to ~2%;
+  cap total is 360,410 XP) — unit tests now pin every value.
+
 ### Added — P6 Classes II: Mage & Cleric playable with casts, channels and status effects (2026-08-03)
 
 - **Two new kits, 16 abilities, authored as live-tunable content:** Mage

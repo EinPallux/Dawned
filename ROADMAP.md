@@ -17,7 +17,7 @@
 | P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
 | P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)      |
 | P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
-| P7    | Progression — XP, Stats, Skill Trees     | M    | 🔲                        |
+| P7    | Progression — XP, Stats, Skill Trees     | M    | 🟨 in progress            |
 | P8    | Items, Inventory, Loot & Vendors         | L    | 🔲                        |
 | P9    | Enemies & AI Depth                       | L    | 🔲                        |
 | P10   | Gathering Professions                    | M    | 🔲                        |

@@ -178,6 +178,75 @@ export interface ChatMessage {
 export const encodeChat = (msg: ChatMessage, writer?: BinaryWriter): Uint8Array =>
   encodeJsonEnvelope(ClientOp.Chat, msg, writer);
 
+/**
+ * Spend banked attribute points (v9): the Character panel stages +/− locally,
+ * Confirm sends the summed deltas in one message. Server validates the sum
+ * against `unspentStatPoints` and answers with a ProgressSync either way.
+ */
+export interface AllocateStatsMessage {
+  str: number;
+  agi: number;
+  int: number;
+  vit: number;
+  end: number;
+}
+
+export const encodeAllocateStats = (
+  msg: AllocateStatsMessage,
+  writer?: BinaryWriter,
+): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(8)).reset();
+  const clamp = (n: number): number => Math.max(0, Math.min(255, Math.floor(n)));
+  w.u8(ClientOp.AllocateStats)
+    .u8(clamp(msg.str))
+    .u8(clamp(msg.agi))
+    .u8(clamp(msg.int))
+    .u8(clamp(msg.vit))
+    .u8(clamp(msg.end));
+  return w.toUint8Array();
+};
+
+export const decodeAllocateStats = (reader: BinaryReader): AllocateStatsMessage => ({
+  str: reader.u8(),
+  agi: reader.u8(),
+  int: reader.u8(),
+  vit: reader.u8(),
+  end: reader.u8(),
+});
+
+/** Put one rank into a skill-tree node (v9). Server re-runs the shared gate. */
+export interface AllocateSkillMessage {
+  nodeId: string;
+}
+
+export const encodeAllocateSkill = (
+  msg: AllocateSkillMessage,
+  writer?: BinaryWriter,
+): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(72)).reset();
+  w.u8(ClientOp.AllocateSkill).string(msg.nodeId);
+  return w.toUint8Array();
+};
+
+export const decodeAllocateSkill = (reader: BinaryReader): AllocateSkillMessage => ({
+  nodeId: reader.string(),
+});
+
+/** Mirror of Dawn respec request (v9). `kind` is {@link RespecWireKind}. */
+export interface RespecMessage {
+  kind: number;
+}
+
+export const encodeRespec = (msg: RespecMessage, writer?: BinaryWriter): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(4)).reset();
+  w.u8(ClientOp.Respec).u8(msg.kind);
+  return w.toUint8Array();
+};
+
+export const decodeRespec = (reader: BinaryReader): RespecMessage => ({
+  kind: reader.u8(),
+});
+
 // ---------------------------------------------------------------------------
 // Server → Client
 // ---------------------------------------------------------------------------
@@ -676,6 +745,72 @@ export interface AbilityStateMessage {
 
 export const encodeAbilityState = (msg: AbilityStateMessage, writer?: BinaryWriter): Uint8Array =>
   encodeJsonEnvelope(ServerOp.AbilityState, msg, writer);
+
+/**
+ * Authoritative progression state for SELF (v9) — sent on join and after any
+ * change (XP threshold crossings send XpGained/LevelUp instead; this carries
+ * the durable sheet). The client adopts it wholesale: it is both the initial
+ * state and the correction that heals any mispredicted allocation click.
+ */
+export interface ProgressSyncMessage {
+  level: number;
+  /** XP into the current level. */
+  xp: number;
+  /** XP needed to leave it (0 at the cap) — the curve stays server-side. */
+  xpToNext: number;
+  gold: number;
+  unspentStatPoints: number;
+  unspentSkillPoints: number;
+  /** Allocated (spent) attribute points on top of the class base spread. */
+  allocated: { str: number; agi: number; int: number; vit: number; end: number };
+  /** Allocated skill-tree ranks by node id. */
+  nodes: Record<string, number>;
+}
+
+export const encodeProgressSync = (msg: ProgressSyncMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.ProgressSync, msg, writer);
+
+/** An XP award (v9): FCT "+N XP" + bar tick. Carries the absolute position
+ * after the award so a dropped packet can never desync the bar. */
+export interface XpGainedMessage {
+  amount: number;
+  /** {@link XpSource}. */
+  source: number;
+  /** Absolute XP into the current level, after this award. */
+  xp: number;
+  level: number;
+}
+
+export const encodeXpGained = (msg: XpGainedMessage, writer?: BinaryWriter): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(16)).reset();
+  w.u8(ServerOp.XpGained).u32(msg.amount).u8(msg.source).u32(msg.xp).u8(msg.level);
+  return w.toUint8Array();
+};
+
+export const decodeXpGained = (reader: BinaryReader): XpGainedMessage => ({
+  amount: reader.u32(),
+  source: reader.u8(),
+  xp: reader.u32(),
+  level: reader.u8(),
+});
+
+/** An entity leveled up (v9): self plays the §1.3 juice contract, remotes get
+ * the gold pillar + nameplate refresh. */
+export interface LevelUpMessage {
+  entityId: number;
+  level: number;
+}
+
+export const encodeLevelUp = (msg: LevelUpMessage, writer?: BinaryWriter): Uint8Array => {
+  const w = (writer ?? new BinaryWriter(8)).reset();
+  w.u8(ServerOp.LevelUp).u32(msg.entityId).u8(msg.level);
+  return w.toUint8Array();
+};
+
+export const decodeLevelUp = (reader: BinaryReader): LevelUpMessage => ({
+  entityId: reader.u32(),
+  level: reader.u8(),
+});
 
 export interface SystemNoticeMessage {
   code: NoticeCode;

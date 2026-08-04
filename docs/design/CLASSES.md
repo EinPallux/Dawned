@@ -173,7 +173,7 @@ ground quick-casts (Q19), ally-soft heals (Q20), Blink's teleport + root break, 
 mana-per-point absorb and Aegis' pooled shield with the synced remaining number. Passives:
 Attunement (3rd landed bolt → +5 Mana, −0.5 s cooldowns) and Grace (Smite hits bank −0.1 s
 Mend stacks, max 3) run server-side with client mirrors; Focus is the mage's held RMB stance
-(0.6× move, +10 % bolt speed). Skill trees (§ tables above) remain P10 — the P6 kits are the
+(0.6× move, +10 % bolt speed). Skill trees (§ tables above) land at P7 — the P6 kits are the
 tree-less baselines. `tools/smoke/browser-p6.mjs` runs a scripted 25 s rotation per class at
 L25 and gates that every kit sustains real damage end to end; the §5 ORDERING is a
 played-well property the bot can't measure (it pilots a mage far better than a rogue), so

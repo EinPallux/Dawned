@@ -37,6 +37,17 @@ import {
   encodeTelegraph,
   peekOpcode,
   type ChatBroadcastMessage,
+  decodeAllocateSkill,
+  decodeAllocateStats,
+  decodeLevelUp,
+  decodeRespec,
+  decodeXpGained,
+  encodeAllocateSkill,
+  encodeAllocateStats,
+  encodeLevelUp,
+  encodeProgressSync,
+  encodeRespec,
+  encodeXpGained,
   type SnapshotMessage,
 } from './messages.js';
 import {
@@ -47,8 +58,10 @@ import {
   InputButton,
   NoticeCode,
   PROTOCOL_VERSION,
+  RespecWireKind,
   ServerOp,
   TelegraphShape,
+  XpSource,
   actionForSlot,
   slotForAction,
 } from './opcodes.js';
@@ -391,5 +404,57 @@ describe('ability messages (protocol v7)', () => {
     expect(slotForAction(ActionId.BasicAttack)).toBeNull();
     expect(slotForAction(ActionId.Respawn)).toBeNull();
     expect(slotForAction(actionForSlot(8) + 1)).toBeNull();
+  });
+});
+
+describe('progression messages (protocol v9)', () => {
+  it('round-trips stat allocation deltas, clamped to bytes', () => {
+    const message = { str: 2, agi: 0, int: 1, vit: 3, end: 0 };
+    expect(decodeAllocateStats(body(encodeAllocateStats(message)))).toEqual(message);
+    const wild = decodeAllocateStats(
+      body(encodeAllocateStats({ str: 999, agi: -4, int: 0.9, vit: 0, end: 255 })),
+    );
+    expect(wild).toEqual({ str: 255, agi: 0, int: 0, vit: 0, end: 255 });
+  });
+
+  it('round-trips skill allocation and respec requests', () => {
+    const skill = { nodeId: 'node_warrior_bulwark_toughened' };
+    const packet = encodeAllocateSkill(skill);
+    expect(peekOpcode(packet)).toBe(ClientOp.AllocateSkill);
+    expect(decodeAllocateSkill(body(packet))).toEqual(skill);
+    expect(decodeRespec(body(encodeRespec({ kind: RespecWireKind.Skills })))).toEqual({
+      kind: 1,
+    });
+    expect(decodeRespec(body(encodeRespec({ kind: RespecWireKind.Stats })))).toEqual({ kind: 2 });
+  });
+
+  it('round-trips XP gains with absolute bar position', () => {
+    const gain = { amount: 46, source: XpSource.Kill, xp: 136, level: 3 };
+    const packet = encodeXpGained(gain);
+    expect(peekOpcode(packet)).toBe(ServerOp.XpGained);
+    expect(decodeXpGained(body(packet))).toEqual(gain);
+  });
+
+  it('round-trips level-ups for any entity', () => {
+    const up = { entityId: 91, level: 12 };
+    const packet = encodeLevelUp(up);
+    expect(peekOpcode(packet)).toBe(ServerOp.LevelUp);
+    expect(decodeLevelUp(body(packet))).toEqual(up);
+  });
+
+  it('carries the full self progression sheet through ProgressSync', () => {
+    const message = {
+      level: 7,
+      xp: 1234,
+      xpToNext: 2760,
+      gold: 145,
+      unspentStatPoints: 3,
+      unspentSkillPoints: 1,
+      allocated: { str: 8, agi: 2, int: 0, vit: 6, end: 2 },
+      nodes: { node_warrior_bulwark_toughened: 3, node_warrior_warlord_sharpened: 2 },
+    };
+    const packet = encodeProgressSync(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.ProgressSync);
+    expect(decodeJsonEnvelope(body(packet))).toEqual(message);
   });
 });
