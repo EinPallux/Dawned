@@ -142,6 +142,8 @@ ticks, never mid-tick:
 | `/ops/respawnnodes`   | P10   | bring every depleted resource node back at once — respawns are 90–180 s by design, which is right in play and tedious in a test                                                           |
 | `/ops/hook`           | P10   | answer the next N fishing bites for a player — the 0.8 s hook window is reaction time, which is the one thing a bot cannot supply                                                         |
 | `/ops/fish`           | P10   | put a named fish on a player's line for N casts — the reel's difficulty comes from the fish's rarity, so this is how a rare or legendary BAR gets played on purpose instead of waited for |
+| `/ops/quest`          | P11   | put a quest on an online player at a given step (or drop it) — the panel's quest test hook, so an author can jump to step 3 instead of replaying steps 1–2                                |
+| `/ops/worldobjects`   | P11   | GET what the live world seeded from the bake: NPC / interactable / POI counts and the placements whose definition did not resolve — the counterpart to `respawnnodes` reporting orphans   |
 | `/ops/spawnwave`      | P9    | spawn a TRANSIENT wave of an enemy type (world events; also how the load harness reaches the 150-AI budget)                                                                               |
 | `/ops/reload-map`     | A2    | re-read `current.json` and swap that bake under the running world (map publish)                                                                                                           |
 

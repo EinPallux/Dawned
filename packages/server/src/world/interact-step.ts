@@ -77,6 +77,12 @@ export interface InteractEffects {
   dialogueDirty: boolean;
   /** Quest beats worth a toast. */
   notices2: { kind: string; questId: string; text: string }[];
+  /**
+   * The NPC this interaction talked to, if any. The world turns it into a
+   * `talk` quest event — which is how a TALK step counts and how a DELIVER
+   * step is handed over, once the world has checked the pack.
+   */
+  talkedTo: string | null;
 }
 
 export const emptyEffects = (): InteractEffects => ({
@@ -89,6 +95,7 @@ export const emptyEffects = (): InteractEffects => ({
   objectsDirty: [],
   dialogueDirty: false,
   notices2: [],
+  talkedTo: null,
 });
 
 const refuse = (effects: InteractEffects, objectId: string, reason: InteractRefusal): void => {
@@ -152,6 +159,10 @@ export const applyInteract = (
       refuse(effects, op.objectId, INTERACT_REFUSALS.TooFar);
       return;
     }
+    // Walking up to someone IS the talk, whatever the conversation turns out
+    // to be. A TALK step that only counted when a quest happened to open a
+    // panel would be satisfiable by one NPC and not by another.
+    effects.talkedTo = npc.npcId;
     openNpcDialogue(player, npc, world, effects);
     return;
   }

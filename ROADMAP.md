@@ -21,7 +21,7 @@
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
 | P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)      |
 | P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)      |
-| P11   | Quests, POIs & Interactables             | L    | 🔲                        |
+| P11   | Quests, POIs & Interactables             | L    | 🟨 A–C built (2026-08-05) |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
 | P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
@@ -656,6 +656,22 @@ end-to-end via the Quest Editor.
 **DoD:** a tester who has never read our docs finds, accepts, completes and turns in a chain using
 only in-game affordances; discovery loop (banner/XP/map) fires correctly for every POI type;
 found-object quest works.
+
+**Progress (2026-08-05):**
+
+- [x] **P11-A** shared core — quest/NPC/dialogue schemas, the state machine (`questAvailability`,
+      `advanceQuest`, `eventCredit`), protocol v14, migration 0018.
+- [x] **P11-B** server runtime — quest log, interactables, shrine attunement + travel, POI
+      discovery, dialogue, `/ops/quest`, `/api/content/quests|npcs`.
+- [x] **A4** (panel) quest & dialogue editor on one publish rail with the game's own
+      `validateQuestFlow`, the chain graph and the journal preview.
+- [x] **P11-C** pilot content — 4 NPCs, 8 quests, 7 interactables and 6 POIs authored through the
+      panel and published; 4 interactable props baked; frozen into seed migration 0019.
+      Proven from the game side: `/ops/worldobjects` reports 4 NPCs, 7 interactables, 6 POIs,
+      0 orphans on the live bake.
+- [ ] **P11-D** client — dialogue panel, journal (`L`), HUD tracker, world map (`M`) with fog +
+      pins + fast travel, minimap final, discovery banners, interact prompts, quest toasts.
+- [ ] **P11-E** verification — the DoD run (`tools/smoke/browser-p11.mjs`).
 
 ## P12 — World Building: the Dawnlands (XL) ⚙A2+A3 fully required (dogfood!)
 

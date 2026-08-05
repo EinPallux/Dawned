@@ -666,6 +666,37 @@ export const grantItem = (
   return result.leftover;
 };
 
+/**
+ * Take `qty` of an item out of the bag, oldest cell first (quest delivery).
+ *
+ * The mirror of `grantItem`, and the reason it exists as its own function: a
+ * DELIVER step hands over an ITEM, not a slot, and the caller has no business
+ * knowing which cells the stack is spread across. Returns how many were
+ * actually removed — the caller has already checked `countItem`, so a short
+ * return means the pack changed underneath and the step must not complete.
+ */
+export const takeItem = (
+  player: ServerPlayer,
+  itemId: string,
+  qty: number,
+  deps: ItemOpDeps,
+): number => {
+  let remaining = Math.max(0, Math.floor(qty));
+  let removed = 0;
+  for (const [slot, stack] of [...player.items.inventory.bag]) {
+    if (remaining <= 0) break;
+    if (stack.itemId !== itemId) continue;
+    const take = Math.min(remaining, stack.qty);
+    const plan = planRemove(player.items.inventory, slot, take);
+    if (!plan.ok) continue;
+    applyMutations(player, plan.mutations);
+    remaining -= take;
+    removed += take;
+  }
+  if (removed > 0) dirty(deps, player);
+  return removed;
+};
+
 /** Purse grant (GM primitive, quest rewards later). Never goes negative. */
 export const grantGold = (player: ServerPlayer, amount: number, deps: ItemOpDeps): void => {
   const delta = Math.max(amount, -player.progress.gold);

@@ -5,6 +5,36 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the world has people in it (2026-08-05, P11-A/B/C)
+
+- **Four villagers now stand in and around Dawnhaven**: Marla at the gate, Torv on the jetty,
+  Hesta on the north road and Bran, out at the logging cut. They wear the same composed look a
+  player character does — body, outfit, hair — so they move and gesture like people rather than
+  like props with a name over them.
+- **Eight quests are live**: four Dawnshore jobs that each teach one thing (thin out the glubs,
+  clear the bog, cut and carry six lengths of birch, find what the sea gave back), and the
+  four-part chain **The Loggers' Silence**, which ends underground with the Mushroom King and
+  pays a Rare weapon chosen for your class plus the title _Friend of the Weald_.
+- **Things to walk up to and press `F` on**: a notice board in Dawnhaven that hands out work with
+  nobody standing next to it, a crate washed up east of the last mooring post, four marked stumps
+  at the cut, and a shrine you attune to and can travel back to for the price WORLD.md §4.2 sets.
+- **Six places worth finding** — a vista, a landmark, a cache, a camp, a shrine and a curiosity —
+  each paying discovery XP the first time you walk into it, once, forever.
+- Quest progress, discoveries and everything you have opened survive a relog.
+- The **UI for all of this arrives with P11-D**: the journal, the tracker, the dialogue panel and
+  the world map. Until then the content is live and the server drives it, but there is nothing on
+  screen to read it with.
+
+### Fixed — two ways a delivery could go wrong (2026-08-05, P11-C)
+
+- **Handing over goods you do not have.** Walking up to the NPC with an empty bag correctly said
+  so — and then credited the step anyway. The refusal and the credit came from the same moment;
+  now a refused delivery does not advance.
+- **A delivery that could never be finished.** "Take 5 mossbloom to Bran" wanted five separate
+  conversations, and the second one found a step it had already counted, so the quest stuck one
+  short forever. A delivery is one act: you hand over the stack, it leaves your bag, the step is
+  done.
+
 ### Verified — P10 closed: a profession taken 1→10 for real (2026-08-05, P10-G)
 
 - **Woodcutting goes 1 → 10 in 458 gathers**, chopped one at a time on the live world by a real

@@ -30,7 +30,7 @@ nothing beyond it.
   everything so far and all seems fine"); their A1 sync points landed in the panel
   (XP-curve + skill-tree editors, then items + loot + vendors). **P9 and P10 are both built
   and measured (2026-08-05) and owner-accepted; P11 — Quests, POIs & Interactables is
-  next.** ALL fine-tuning is deferred to the end of the project by the
+  🟨 in progress — A/B/C built (protocol v14), D (client) and E (the DoD run) remain.** ALL fine-tuning is deferred to the end of the project by the
   owner's decision — never pause a phase to polish balance. P7 on top of the P5/P6 caster platform: the XP pipeline
   (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
   level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
@@ -195,3 +195,31 @@ nothing beyond it.
     The Gems & Ores pack was deliberately NOT used despite being the perfect fit: no license file,
     third-party conversion, unattributable — recorded in CREDITS.md rather than quietly shipped.
     571 unit tests green.
+
+    **P11 — Quests, POIs & Interactables (🟨 in progress, 2026-08-05). A/B/C built.**
+    P11-A put it in shared: `content/quests.ts` (7-member step union, four giver kinds,
+    dialogue, `validateQuestFlow`), `content/npcs.ts`, `formulas/quests.ts` (the state
+    machine — a DISCOVERY gate HIDES a quest, a LEVEL gate LOCKS it; `advanceQuest`
+    cascades one event through several steps), protocol v14 and migration 0018. **Nothing
+    about a quest is predicted** — every op is a request and the next `QuestSync` is the
+    answer, which is P8's item rule. P11-B is the runtime: the quest log, interactables
+    where **the verb comes from the object, never from the client**, shrine attunement +
+    `fastTravelCost`, POI discovery at tick step 0e, dialogue with stale-node rejection,
+    `/ops/quest`. A4 (panel) is the editor, on one publish rail running the game's own
+    `validateQuestFlow`. P11-C is the pilot content, authored through it and live: 4 NPCs,
+    8 quests (four Dawnshore one-offs + the four-part "The Loggers' Silence"), 7
+    interactables, 6 POIs — one per kind — and 4 baked props so nothing ships as a
+    re-labelled rock (KayKit Dungeon + Quaternius Fantasy Props, both CC0 WITH license
+    files). Frozen into seed migration 0019 and proven from the GAME side by the new
+    `/ops/worldobjects`: **4 NPCs, 7 interactables, 6 POIs, 0 orphans**.
+    Four bugs came out of running it, three invisible to every existing test: the map
+    editor and the bake validated NPC placements with **different schemas** (A2's local
+    guess vs P11's shared row — both real zod, so nothing typechecked; the editor 500'd on
+    exactly the row the bake emits); the bake **counted** NPCs and never wrote them; a
+    delivery **credited the step it had just refused** (shared credits a DELIVER on a
+    `talk`, the server checks the pack — same event, so `applyQuestEvent` takes a skip set
+    now); and `stepTarget` read `count` on a deliver step, so "take 5 mossbloom to Bran"
+    wanted five conversations and could never finish (`count` is the STACK, the target is
+    1). Every pilot quest says `zoneId: 'dawnshore'` — only one landmass is built, and a
+    journal heading for a place the player has never been is worse than a soft label;
+    deviations from QUESTS_POI §6 are tabled in its new §6.1. **638 unit tests green.**

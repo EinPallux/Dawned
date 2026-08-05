@@ -13,6 +13,7 @@ import {
   defaultWorldSettings,
   defaultXpCurve,
   devTerrain,
+  countItem,
   validateItemDef,
   validateNpcDef,
   validateQuestDef,
@@ -28,6 +29,7 @@ import type { CombatEvent } from './combat.js';
 import type { ServerPlayer } from './player.js';
 import { acceptQuest, questSyncEntries, turnInQuest } from './quests.js';
 import { useObject, emptyRecord, planTravel, buildInteractables } from './interactables.js';
+import { grantItem } from './items.js';
 
 const LOGS = validateItemDef({
   id: 'item_material_birchwood_logs',
@@ -99,6 +101,24 @@ const EXPLORE_QUEST: QuestDef = validateQuestDef({
       trackerText: 'Find the point',
     },
   ],
+});
+
+const DELIVER_QUEST: QuestDef = validateQuestDef({
+  id: 'quest_shore_delivery',
+  name: 'Firewood for Marla',
+  zoneId: 'zone_dawnshore',
+  giver: { kind: 'npc', npcId: 'npc_marla' },
+  journalText: 'Marla wants the wood brought to her, not left in a pile.',
+  steps: [
+    {
+      type: 'deliver',
+      itemId: LOGS.id,
+      count: 4,
+      npcId: 'npc_marla',
+      trackerText: 'Take the wood to Marla',
+    },
+  ],
+  rewards: { xp: 50, gold: 10 },
 });
 
 const VISTA: Poi = {
@@ -380,6 +400,43 @@ describe('accepting and turning in', () => {
       ok: false,
       reason: 'not_complete',
     });
+  });
+
+  /**
+   * Delivery is an ACT, and the two halves of that live in different places:
+   * shared credits a DELIVER step on a `talk` at the named NPC (it cannot see
+   * an inventory), and the server checks the pack. The bug this pins is what
+   * happens when they disagree — a player with an empty bag walked up to the
+   * NPC, was told "missing_items", and the SAME talk event then advanced the
+   * step anyway, handing over five mossbloom they never had.
+   */
+  it('takes the stack on delivery, and refuses without advancing when short', () => {
+    const world = makeWorld([DELIVER_QUEST]);
+    const player = addPlayer(world, { x: 2, z: 0 });
+    acceptQuest(player.quests, { defs: world.questDefs() }, actorOf(player), DELIVER_QUEST.id);
+
+    // Empty-handed: refused, and the step must NOT move.
+    world.queueInteractOp(player.id, { kind: 'use', objectId: 'marla_gate' });
+    const refusedEvents = run(world, 200);
+    expect(
+      refusedEvents.some(
+        (event) => event.type === 'quest-notice' && event.text === 'missing_items',
+      ),
+    ).toBe(true);
+    expect(player.quests.get(DELIVER_QUEST.id)?.step).toBe(0);
+
+    // Carrying the goods: the stack leaves the bag and the quest completes.
+    grantItem(player, LOGS.id, 4, {
+      content: world.itemContent(),
+      bags: new Map(),
+      nowMs: Date.now(),
+      events: [],
+    });
+    expect(countItem(player.items.inventory, LOGS.id)).toBe(4);
+    world.queueInteractOp(player.id, { kind: 'use', objectId: 'marla_gate' });
+    run(world, 200);
+    expect(countItem(player.items.inventory, LOGS.id)).toBe(0);
+    expect(player.quests.get(DELIVER_QUEST.id)?.step).toBe(1);
   });
 
   it('syncs the whole log with per-step progress', () => {

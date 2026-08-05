@@ -473,6 +473,26 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
   });
 
   /**
+   * What the live world actually seeded from the map bake (P11).
+   *
+   * The counterpart to `/ops/respawnnodes` reporting "65 nodes, 0 orphans": a
+   * publish saying "ok" is the PANEL's account of its own work, and a bake that
+   * carries four villagers the world quietly dropped looks identical from
+   * outside. This is the line that proves the content crossed the boundary, and
+   * `orphanNpcs` names the placements whose definition did not resolve.
+   */
+  app.get('/ops/worldobjects', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    return reply.send({ ok: true, ...world.worldObjects });
+  });
+
+  /**
    * Bring every depleted resource node back at once (P10).
    *
    * Respawns are 90–180 s by design, which is right in play and tedious in a

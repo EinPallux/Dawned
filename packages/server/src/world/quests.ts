@@ -67,15 +67,23 @@ const emptyOutcome = (): QuestOutcome => ({
  * iteration order, which is insertion order — two quests wanting the same kill
  * both get it, because sharing an objective between quests is a feature (§5's
  * "kill-and-collect overlap keeps it one trip"), not a conflict to resolve.
+ *
+ * `skip` exists for one case and is worth naming: a DELIVER step is credited by
+ * a `talk` at the named NPC, and whether the player is actually carrying the
+ * goods is the server's business (shared cannot see an inventory). So the
+ * caller checks the stack, refuses the ones that come up short, and passes
+ * those quest ids here — otherwise the very same talk would advance the step it
+ * just refused, and you could hand Bran five mossbloom you do not have.
  */
 export const applyQuestEvent = (
   log: QuestLog,
   content: QuestContent,
   event: QuestEvent,
+  skip: ReadonlySet<string> = new Set(),
 ): QuestOutcome => {
   const outcome = emptyOutcome();
   for (const [questId, state] of log) {
-    if (state.status !== 'active') continue;
+    if (state.status !== 'active' || skip.has(questId)) continue;
     const def = content.defs.get(questId);
     if (!def) continue;
     const advance = advanceQuest(def, state, event);

@@ -238,6 +238,31 @@ describe('advancing', () => {
     expect(questComplete(q, after.state)).toBe(true);
   });
 
+  /**
+   * `count` on a DELIVER step is the size of the stack, not a repeat count.
+   * Treating it as a target asked the player to hold four separate
+   * conversations with the same NPC — and the second one finds a step that was
+   * already credited, so the quest could never finish at all.
+   */
+  it('finishes a delivery in one conversation, whatever the stack size', () => {
+    const q = validateQuestDef({
+      ...quest(),
+      steps: [
+        {
+          type: 'deliver',
+          itemId: 'item_material_mossbloom',
+          count: 5,
+          npcId: 'npc_bran',
+          trackerText: 'Take the mossbloom to Bran',
+        },
+      ],
+    });
+    const after = advanceQuest(q, startQuest(q), { kind: 'talk', refId: 'npc_bran' });
+    expect(after.stepsCompleted).toHaveLength(1);
+    expect(after.completed).toBe(true);
+    expect(questProgress(q, after.state)[0]).toMatchObject({ done: true, have: 1, need: 1 });
+  });
+
   it('never runs past the last step', () => {
     const q = quest();
     const done: QuestState = { questId: q.id, step: 2, counter: 0, status: 'active' };

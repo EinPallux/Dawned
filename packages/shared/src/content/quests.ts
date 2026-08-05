@@ -218,7 +218,17 @@ export const QUEST_STEP_TYPES = [
  * "0/1", which is why this is derived rather than stored — one fewer field to
  * get out of step with `count`.
  */
-export const stepTarget = (step: QuestStep): number => ('count' in step ? step.count : 1);
+/**
+ * How many credits finish this step.
+ *
+ * `count` means "how many times" on every step type EXCEPT `deliver`, where it
+ * means "how big a stack" — a delivery is ONE act at one NPC, and the number is
+ * what leaves the bag when you get there. Reading `count` there asked the
+ * player to have four separate conversations with Bran, which is not a thing
+ * the game can even offer: the second `use` finds a step it already credited.
+ */
+export const stepTarget = (step: QuestStep): number =>
+  step.type === 'deliver' ? 1 : 'count' in step ? step.count : 1;
 
 /**
  * Who hands the quest over. Objects and boards matter: §1 rule 2 wants ~30 % of

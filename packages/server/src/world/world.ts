@@ -69,6 +69,7 @@ import {
   type QuestOp,
   rollLootTable,
   questTurnInNpc,
+  countItem,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
 import {
@@ -163,6 +164,7 @@ import {
   refreshEquipmentBonus,
   rollEnemyLoot,
   sweepVendorLeases,
+  takeItem,
   type ItemContent,
   type LootBag,
 } from './items.js';
@@ -251,18 +253,21 @@ export class World {
   private pois: readonly Poi[] = [];
   private orphanNpcRefs: string[] = [];
 
-  /** Live world objects, for the gateway and `/api/health`. */
+  /** Live world objects, for the gateway and `/ops/worldobjects`. */
   get worldObjects(): {
     npcs: number;
     interactables: number;
     pois: number;
     orphanNpcs: number;
+    /** WHICH placements lost their definition — a count alone is unfixable. */
+    orphanNpcRefs: readonly string[];
   } {
     return {
       npcs: this.npcs.size,
       interactables: this.interactables.size,
       pois: this.pois.length,
       orphanNpcs: this.orphanNpcRefs.length,
+      orphanNpcRefs: this.orphanNpcRefs,
     };
   }
 
@@ -1364,6 +1369,34 @@ export class World {
       const npc = def ? questTurnInNpc(def) : null;
       if (npc) this.questEvent(player, { kind: 'talk', refId: npc }, events);
     }
+    // A TALK — and the DELIVER that rides on it. Delivery is an ACT: the
+    // player hands the stack over, so the pack is checked and emptied here
+    // rather than being credited by merely owning the items. A player who
+    // turns up without them is told, not silently advanced.
+    if (effects.talkedTo) {
+      // Quests whose delivery came up short. They must be EXCLUDED from the
+      // talk below, or the same event that refused them would advance them.
+      const shortOfGoods = new Set<string>();
+      for (const [questId, state] of player.quests) {
+        if (state.status !== 'active') continue;
+        const def = this.questDefs().get(questId);
+        const step = def ? def.steps[state.step] : undefined;
+        if (!def || !step || step.type !== 'deliver' || step.npcId !== effects.talkedTo) continue;
+        if (countItem(player.items.inventory, step.itemId) < step.count) {
+          shortOfGoods.add(questId);
+          events.push({
+            type: 'quest-notice',
+            playerId: player.id,
+            kind: 'refused',
+            questId,
+            text: 'missing_items',
+          });
+          continue;
+        }
+        takeItem(player, step.itemId, step.count, itemDeps);
+      }
+      this.questEvent(player, { kind: 'talk', refId: effects.talkedTo }, events, shortOfGoods);
+    }
     for (const notice of effects.notices2) {
       events.push({
         type: 'quest-notice',
@@ -2033,10 +2066,15 @@ export class World {
    * every accept and abandon, and being wrong there is a quest that silently
    * stops counting.
    */
-  private questEvent(player: ServerPlayer, event: QuestEvent, events: CombatEvent[]): void {
+  private questEvent(
+    player: ServerPlayer,
+    event: QuestEvent,
+    events: CombatEvent[],
+    skip?: ReadonlySet<string>,
+  ): void {
     const defs = this.questDefs();
     if (defs.size === 0 || player.quests.size === 0) return;
-    const outcome = applyQuestEvent(player.quests, { defs }, event);
+    const outcome = applyQuestEvent(player.quests, { defs }, event, skip);
     if (outcome.touched.length === 0) return;
     events.push({ type: 'quest-progress', playerId: player.id, questIds: outcome.touched });
     for (const done of outcome.stepsCompleted) {

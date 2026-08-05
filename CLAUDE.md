@@ -115,8 +115,9 @@ cannot carry music or sfx (recommended default — add both with the audio phase
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
 then items + loot + vendors). **P0–P10 are ✅ complete and owner-accepted (P9 + P10 closed
-2026-08-05 on their measured DoDs). P11 — Quests, POIs & Interactables is next**, paired with
-the panel's A4 quest editor.
+2026-08-05 on their measured DoDs). P11 — Quests, POIs & Interactables is 🟨 in progress:
+A/B/C are built (protocol v14), D (client) and E (the DoD run) remain**, paired with the
+panel's A4 quest editor, which is live.
 **A phase closes on its MEASURED DoD, not on a playtest** (owner decision, 2026-08-05): the
 priority is reaching P15 with every phase built. Record what was measured — including any
 deviation, like P10's one-profession grind — and move on. The owner has explicitly deferred
@@ -391,6 +392,50 @@ refusal was invisible — the first run to reach the T2 pool spent six minutes b
 profession level is too low" without hearing it. It listens to `GatherState` now and aborts a
 band on a refusal instead of burning the budget. **`pnpm check` green at 587 unit tests**;
 browser-p10 and fishing-probe both pass on the same build.
+
+**P11 — Quests, POIs & Interactables (🟨 in progress, 2026-08-05). A/B/C built; D and E remain.**
+P11-A put the vocabulary in shared: `content/quests.ts` (the 7-member step union, the four giver
+kinds, dialogue nodes, `validateQuestFlow`), `content/npcs.ts`, `formulas/quests.ts` (the state
+machine — `questAvailability` where a DISCOVERY gate hides a quest and a LEVEL gate locks it,
+`advanceQuest` cascading one event through several steps, `eventCredit`), protocol v14
+(`InteractOp`/`QuestOp` up; `QuestSync`/`QuestNotice`/`DialogueState`/`DiscoverySync`/
+`InteractState` down) and migration 0018. **Nothing about a quest is predicted** — every op is a
+request and the next `QuestSync` is the answer, which is P8's item rule for the same reason.
+P11-B built the runtime: the quest log, interactables where **the verb comes from the object and
+never from the client**, shrine attunement + `fastTravelCost`, POI discovery on the tick's step
+0e, dialogue with stale-node rejection, `/ops/quest`, and `/api/content/quests|npcs`. A4 (panel)
+is the editor, on one publish rail with the game's own `validateQuestFlow`.
+
+**P11-C is the pilot content, authored through that editor and live.** 4 NPCs, 8 quests
+(`author-quests.mjs` in the panel repo), 7 interactables, 6 POIs — one per POI kind — plus
+4 baked props so nothing is a re-labelled rock (KayKit Dungeon chest + carved pillar, Quaternius
+Fantasy Props crate + banner; both packs CC0 with license files, unlike the Gems & Ores pack P10
+refused). Frozen into seed migration 0019. **Proven from the game side rather than from the
+publish button**: the new `/ops/worldobjects` lever reports **4 NPCs, 7 interactables, 6 POIs,
+0 orphans** on the hot-swapped bake — the counterpart to `/ops/respawnnodes` reporting node
+orphans, and the only line that shows content crossed the repo boundary.
+**Four bugs came out of running it, and three were invisible to every test that existed:**
+(1) **the map editor and the bake validated NPC placements with DIFFERENT schemas.** A2 shipped
+a local guess (`name` + `modelRef` + a walk routine) months before P11 defined the real one in
+shared (`npcId`, composed appearance, no mesh), so the editor refused — with a 500 — exactly the
+row the bake was written to emit. Both were real zod schemas, so nothing typechecked. The draft
+store imports the shared one now, and `map-bake.test.ts` asserts the PROPERTY: a def the bake
+accepts must survive the draft store, for every layer. (2) **the bake counted NPCs and never
+wrote them** — the same shape as the A2/A3-e scatter bug, found the same way, and a count is not
+evidence a row was written. (3) **a delivery credited a step it had just refused**: shared
+credits a DELIVER on a `talk` at the named NPC (it cannot see an inventory), the server checks
+the pack, and the refusal and the credit came from the same event — `applyQuestEvent` takes a
+skip set now. (4) **`stepTarget` read `count` on a deliver step**, so "take 5 mossbloom to Bran"
+wanted five separate conversations and the second one found a step it had already counted: the
+quest could never finish. `count` on a deliver is the STACK SIZE; the target is 1.
+Also closed: publish warns when a quest's `zoneId` names no zone on the map (the journal groups
+by it), and the bake now refuses an NPC placement whose definition is not published.
+**Every pilot quest says `zoneId: 'dawnshore'`, including the Weald chain** — only one landmass
+is built, `verdant_weald` is open water until P12, and a journal heading for a place the player
+has never been is worse than a slightly wrong label. Deviations from QUESTS_POI §6's specs are
+tabled in that doc's new §6.1 rather than quietly absorbed. **`pnpm check` green at 638 unit
+tests.** P11-D (the client: dialogue, journal `L`, tracker, world map `M`, discovery banners) and
+P11-E (the DoD run) are next.
 
 ### Running it locally
 

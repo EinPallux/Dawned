@@ -1,5 +1,5 @@
 {
-  "$comment": "License ledger — the source of truth for attribution. Every served asset must belong to a pack listed here, and every pack must carry license + source. The build fails on unattributed files (docs/tech/ASSET_PIPELINE.md §1). Licenses marked \"verify\" are Phase 0 checklist items before those packs may ship.",
+  "$comment": "License ledger \u2014 the source of truth for attribution. Every served asset must belong to a pack listed here, and every pack must carry license + source. The build fails on unattributed files (docs/tech/ASSET_PIPELINE.md \u00a71). Licenses marked \"verify\" are Phase 0 checklist items before those packs may ship.",
   "packs": {
     "kaykit-forest": {
       "name": "KayKit Forest Nature Pack 1.0 FREE",
@@ -50,7 +50,7 @@
       "root": "assets/player_characters/Universal Base Characters[Standard]"
     },
     "quaternius-outfits-fantasy": {
-      "name": "Quaternius Modular Character Outfits — Fantasy (Standard)",
+      "name": "Quaternius Modular Character Outfits \u2014 Fantasy (Standard)",
       "author": "Quaternius",
       "license": "CC0-1.0",
       "verified": true,
@@ -112,9 +112,25 @@
       "verified": true,
       "source": "https://quaternius.com/",
       "root": "assets/world/Quaternius Animated Fish Bundle"
+    },
+    "kaykit-dungeon": {
+      "name": "KayKit Dungeon Asset Pack 1.1",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://kaylousberg.itch.io/",
+      "root": "assets/world/KayKit Low Poly Dungeon Pack"
+    },
+    "quaternius-fantasy-props": {
+      "name": "Quaternius Fantasy Props MegaKit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/world/Fantasy Props Mega Kit[Standard]"
     }
   },
-  "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land — the pipeline itself does not change.",
+  "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land \u2014 the pipeline itself does not change.",
   "selection": [
     {
       "pack": "kaykit-forest",
@@ -129,7 +145,7 @@
       "limit": 3
     },
     {
-      "$comment": "P2 foliage set — instanced per terrain chunk (grass tufts, bushes, bare trees for the ashen zone).",
+      "$comment": "P2 foliage set \u2014 instanced per terrain chunk (grass tufts, bushes, bare trees for the ashen zone).",
       "pack": "kaykit-forest",
       "category": "world/nature",
       "glob": "Assets/gltf/Grass_*_Color1.gltf",
@@ -160,7 +176,7 @@
       "limit": 2
     },
     {
-      "$comment": "P8 visible weapons — one model per weapon family the four classes can hold, plus shields for the Warrior/Cleric offhand (ITEMS_LOOT.md §1: held gear is visible, armour is not).",
+      "$comment": "P8 visible weapons \u2014 one model per weapon family the four classes can hold, plus shields for the Warrior/Cleric offhand (ITEMS_LOOT.md \u00a71: held gear is visible, armour is not).",
       "pack": "kaykit-weapons",
       "category": "items/weapons",
       "glob": "Assets/gltf/dagger_*.gltf",
@@ -221,7 +237,7 @@
       "limit": 1
     },
     {
-      "$comment": "P9 bestiary — Dawnshore (NPCS_ENEMIES.md §4). Shore Glub and Young Mushnub reuse the models baked at P4/P5.",
+      "$comment": "P9 bestiary \u2014 Dawnshore (NPCS_ENEMIES.md \u00a74). Shore Glub and Young Mushnub reuse the models baked at P4/P5.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Green Blob.glb",
@@ -240,7 +256,7 @@
       "limit": 1
     },
     {
-      "$comment": "Bandit Forager: the doc names a KayKit Adventurers peasant, a pack not in assets/. Orc is the closest humanoid on disk that actually WALKS — Tribal looked right but is rigged in the pack's flyer family (no Idle/Walk clips). See USER_QUESTIONS Q22.",
+      "$comment": "Bandit Forager: the doc names a KayKit Adventurers peasant, a pack not in assets/. Orc is the closest humanoid on disk that actually WALKS \u2014 Tribal looked right but is rigged in the pack's flyer family (no Idle/Walk clips). See USER_QUESTIONS Q22.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Orc.glb",
@@ -254,7 +270,7 @@
       "limit": 1
     },
     {
-      "$comment": "P9 bestiary — Verdant Weald.",
+      "$comment": "P9 bestiary \u2014 Verdant Weald.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Frog.glb",
@@ -297,14 +313,14 @@
       "limit": 1
     },
     {
-      "$comment": "Mushroom King — the first real boss (P9 DoD).",
+      "$comment": "Mushroom King \u2014 the first real boss (P9 DoD).",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Mushroom King.glb",
       "limit": 1
     },
     {
-      "$comment": "P1 player heads: the modular outfits ship their own body geometry (bodyCut keeps head+neck of the fused base; the seam hides in every collar). The pack's Godot-UE export references two textures that do not exist (typo'd `_png.png` names) and defaults to the Dark basecolor variants — the runtime skin-tint model multiplies DOWN from the Light variants (packages/shared appearance.ts), so both are overridden. `null` drops the broken slot.",
+      "$comment": "P1 player heads: the modular outfits ship their own body geometry (bodyCut keeps head+neck of the fused base; the seam hides in every collar). The pack's Godot-UE export references two textures that do not exist (typo'd `_png.png` names) and defaults to the Dark basecolor variants \u2014 the runtime skin-tint model multiplies DOWN from the Light variants (packages/shared appearance.ts), so both are overridden. `null` drops the broken slot.",
       "pack": "quaternius-base-characters",
       "category": "characters",
       "glob": "Base Characters/Godot - UE/Superhero_*_FullBody.gltf",
@@ -330,7 +346,7 @@
       }
     },
     {
-      "$comment": "Hairstyles + beard, skinned to the shared 65-bone rig (head bone variant). Eyebrows_* are deliberately excluded — the base bodies ship eyebrows built in. Hair basecolors bake to a brightness-normalized luminance map (grayscale mean 0.56 × 1.47 ≈ 0.82) so runtime multiply tints land on the picked swatch with strand shading intact.",
+      "$comment": "Hairstyles + beard, skinned to the shared 65-bone rig (head bone variant). Eyebrows_* are deliberately excluded \u2014 the base bodies ship eyebrows built in. Hair basecolors bake to a brightness-normalized luminance map (grayscale mean 0.56 \u00d7 1.47 \u2248 0.82) so runtime multiply tints land on the picked swatch with strand shading intact.",
       "pack": "quaternius-base-characters",
       "category": "characters",
       "glob": "Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_*.gltf",
@@ -362,7 +378,7 @@
       }
     },
     {
-      "$comment": "Animation library — only the clips a shipped phase uses are kept (menus: class poses; world: locomotion; P4: dodge, hit reacts, deaths, spell bolt; P7: level-up Celebration).",
+      "$comment": "Animation library \u2014 only the clips a shipped phase uses are kept (menus: class poses; world: locomotion; P4: dodge, hit reacts, deaths, spell bolt; P7: level-up Celebration).",
       "pack": "quaternius-ual1",
       "category": "characters",
       "glob": "Unreal-Godot/UAL1.glb",
@@ -431,7 +447,7 @@
       ]
     },
     {
-      "$comment": "P10 woodcutting nodes (PROFESSIONS.md §2) — one tree per tier so a forest reads as its tier from a distance, plus the felled log every chopped tree leaves behind.",
+      "$comment": "P10 woodcutting nodes (PROFESSIONS.md \u00a72) \u2014 one tree per tier so a forest reads as its tier from a distance, plus the felled log every chopped tree leaves behind.",
       "pack": "quaternius-nature-kit2",
       "category": "world/nature",
       "glob": "glTF/BirchTree_2.gltf",
@@ -468,7 +484,7 @@
       "limit": 1
     },
     {
-      "$comment": "P10 mining nodes (PROFESSIONS.md §3). The forest pack ships one grey rock; a different SHAPE per tier plus an atlas tint per ore is what makes copper readable as copper at thirty metres. The tint multiplies each baked copy's own embedded texture, so the plain scatter rocks are untouched.",
+      "$comment": "P10 mining nodes (PROFESSIONS.md \u00a73). The forest pack ships one grey rock; a different SHAPE per tier plus an atlas tint per ore is what makes copper readable as copper at thirty metres. The tint multiplies each baked copy's own embedded texture, so the plain scatter rocks are untouched.",
       "pack": "kaykit-forest",
       "category": "world/nature",
       "glob": "Assets/gltf/Rock_2_A_Color1.gltf",
@@ -532,7 +548,7 @@
       "limit": 1
     },
     {
-      "$comment": "P10 herbalism nodes (PROFESSIONS.md §4) — a distinct bloom per tier plus the Elder Grove's Dawnpetal. Picked herbs leave nothing behind, so these have no depleted model.",
+      "$comment": "P10 herbalism nodes (PROFESSIONS.md \u00a74) \u2014 a distinct bloom per tier plus the Elder Grove's Dawnpetal. Picked herbs leave nothing behind, so these have no depleted model.",
       "pack": "quaternius-nature-kit2",
       "category": "world/nature",
       "glob": "glTF/Flower_1_Clump.gltf",
@@ -569,7 +585,7 @@
       "limit": 1
     },
     {
-      "$comment": "P10 fishing spots (PROFESSIONS.md §5). The node IS the fish you can see under the surface — a marker buoy would be someone else's gear, and an empty patch of water is not a thing you can aim at. One species per tier; a fished-out spot shows nothing at all.",
+      "$comment": "P10 fishing spots (PROFESSIONS.md \u00a75). The node IS the fish you can see under the surface \u2014 a marker buoy would be someone else's gear, and an empty patch of water is not a thing you can aim at. One species per tier; a fished-out spot shows nothing at all.",
       "pack": "quaternius-fish",
       "category": "world/nature",
       "glob": "Goldfish.glb",
@@ -597,6 +613,34 @@
       "pack": "quaternius-fish",
       "category": "world/nature",
       "glob": "Swordfish.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "P11 interactables (QUESTS_POI.md \u00a74). Every one of these is a thing a player walks up to and presses F on, so none of them may be a re-labelled rock \u2014 the modelRef is what makes an interactable readable from ten metres away.",
+      "pack": "kaykit-dungeon",
+      "category": "world/props",
+      "glob": "Assets/gltf/chest.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "A carved standing stone for shrines. The fast-travel network is the thing a player must recognise across a valley, so it is a silhouette rather than a texture.",
+      "pack": "kaykit-dungeon",
+      "category": "world/props",
+      "glob": "Assets/gltf/pillar_decorated.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Torv's lost crate, and the generic container for anything washed up. A crate reads differently from a chest at a glance, which is the whole point of having both.",
+      "pack": "quaternius-fantasy-props",
+      "category": "world/props",
+      "glob": "Exports/glTF/Crate_Wooden.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "The notice board. Deliberately the same visual family as P8's vendor market posts (a stake and a hanging cloth) so Dawnhaven's board reads as village furniture rather than as an unrelated object.",
+      "pack": "quaternius-fantasy-props",
+      "category": "world/props",
+      "glob": "Exports/glTF/Banner_2.gltf",
       "limit": 1
     }
   ]

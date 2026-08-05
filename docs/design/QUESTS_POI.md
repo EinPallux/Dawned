@@ -83,6 +83,25 @@ Chain reward: Rare weapon choice (one per class), title "Friend of the Weald".
 identify the sandbar from the note's sketch (drawn art asset) → INTERACT: dig at the right spot
 (shovel prop appears) → Hidden Cache loot + 1 of 6 collectible "Castaway Log" lore pages (codex).
 
+### 6.1 As built (P11-C, 2026-08-05)
+
+The eight pilot quests are live content — authored in the panel's A4 editor, published, and frozen
+into seed migration 0019. Between them they run every one of the seven step types, all four giver
+kinds, both gate kinds, a `toast` hook and a per-class reward choice. Four deviations from the
+specs above, each because the built world could not carry the spec version yet:
+
+| Spec                                                             | As built                                                                                 | Why                                                                                                                                                                              |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Boil Trouble" step 2 COLLECT Unpopped Boil ×3                   | dropped; the quest is the KILL step alone                                                | there is no `item_material_unpopped_boil` in the published catalogue and inventing a drop for one quest is P12's content pass, not this slice's                                  |
+| Q2 "…& a shattered cart → spawns ambush"                         | four marked stumps sharing the tag `Marked Stump`, then a KILL step for 3 Weald Stalkers | the ambush IS the second step rather than a `spawnGroup` hook: the stalker camp already stands at the cut, so a scripted spawn would have added a second population on top of it |
+| Q3 "DELIVER poultice"                                            | delivers the Mossbloom itself to Bran                                                    | a poultice item does not exist; the herb the player just gathered is the thing they carry                                                                                        |
+| Rewards name flavour items (`Marla's Preserves`)                 | the published equivalents — Traveler's Rations, Lesser Healing Potion                    | same shape, real rows; bespoke reward items are P12's catalogue work                                                                                                             |
+| Every quest's `zoneId` is `dawnshore`, including the Weald chain | —                                                                                        | the journal groups by this id and only one landmass is built; the `verdant_weald` polygon is open water until P12. Four fields to re-point when it is not.                       |
+
+"Message in a Bottle" is **not** built: it needs a drawn sketch asset and a dig interaction, both
+P12/P14 work. The `item` giver kind it would use is implemented and schema-gated, so the quest is
+authoring away rather than code away.
+
 ## 7. Quest Boards
 
 Settlement boards hold 2–3 posted one-offs (fixed in 0.1.0; the _system_ supports adding rotating
