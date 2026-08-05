@@ -5,6 +5,17 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the panel can author what you gather (2026-08-05, P10-D)
+
+- **Dawned-Admin's Professions page** authors resource-node definitions — what a birch, a copper
+  vein, a herb patch or a shoal IS — with a preview that rolls a thousand gathers through the
+  game's own roller, so the items it lists are the items the server will hand over. The map
+  editor's node layer places them; a map publish refuses a placement whose definition is not
+  published, the same way a spawner cannot go live pointing at an enemy that does not exist.
+- Nothing about this is visible in the game yet — nodes need models and item sets (P10-E) and a
+  gather bar to hold (P10-F).
+
+
 ### Added — fishing (2026-08-05, P10-C)
 
 - **The minigame is in.** Hold at a fishing spot, the line goes out, and after a

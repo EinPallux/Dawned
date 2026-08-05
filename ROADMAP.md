@@ -20,7 +20,7 @@
 | P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
 | P9    | Enemies & AI Depth                       | L    | ✅ built (2026-08-04)     |
-| P10   | Gathering Professions                    | M    | 🔲                        |
+| P10   | Gathering Professions                    | M    | 🟨 A–D built (2026-08-05) |
 | P11   | Quests, POIs & Interactables             | L    | 🔲                        |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
@@ -540,14 +540,14 @@ Not a P-phase of its own — the game half of the map publish pipeline, built al
       author yet, each a game-side slice with a recommended default in USER_QUESTIONS: patrol
       splines (Q24, P12), resource nodes (Q25, P10-A), per-zone music/sfx (Q26, P14 audio).
 
-## P10 — Gathering Professions (M) ⚙A3 node placement tools required
+## P10 — Gathering Professions (M) ⚙A1-e node editor + A3 placement layer
 
-> **The A3 half of this is deliberately unfinished, and P10 is where it lands.** The map editor
-> has a Resource-node layer that reads zero and refuses to stamp, because `@dawned/shared` has no
-> resource-node schema for it to author against — an editor writing rows nothing reads is worse
-> than one that says so (USER_QUESTIONS Q25). The node schema is a P10-A deliverable; the panel's
-> layer is already wired and gets its tool the moment the schema exists. The same shape applies to
-> patrol splines for P12 (Q24).
+> **The A3 gap this phase was waiting on is closed** (2026-08-05). The map editor's Resource-node
+> layer read zero and refused to stamp because `@dawned/shared` had no resource-node schema to
+> author against — an editor writing rows nothing reads is worse than one that says so
+> (USER_QUESTIONS Q25). P10-A added the schema, and the panel's A1-e slice turned the layer on:
+> definitions in Content → Professions, placements in the map editor, resolved against each other
+> at publish. The same shape still applies to patrol splines (Q24), which are out of 0.1.0.
 
 **Goal:** all four professions shippable.
 **Scope:** interactable framework final (prompts, hold-cast, server timers); nodes (tree topple,
@@ -557,6 +557,37 @@ tier); materials/fish item sets ×5 tiers; gather XP trickle; profession titles.
 **DoD:** each profession 1→10 on the dev island feels good (timing, sounds, toasts); fishing
 minigame tuned across 3 rarities; node respawn/depletion correct under multiplayer contention
 (two players, one node — first-tap claim rule verified).
+
+- [x] **P10-A — shared professions core.** `formulas/professions.ts` (the four professions, tier
+      gates 1/7/13/19/25, profession XP with the back-country halving, channel time, proc chance,
+      range and refusal reasons) and `content/resource-nodes.ts` (the definition/placement split,
+      `rollGather`). Protocol v13 with `GatherOp` up and `NodeStates`/`GatherState`/
+      `ProfessionSync` down; migration 0016 for `content_resource_nodes` and
+      `character_professions`. Everything both sides need to agree on lives here, including the
+      roll itself — the panel previews with the same function the server drops with.
+- [x] **P10-B — server node runtime.** Nodes seeded from the map's placements, `first-tap claim`
+      (PROFESSIONS §1.1) so a second player is refused immediately rather than racing, channel
+      breaking on range/damage/movement, respawn scheduling, write-through profession XP, and the
+      `/ops/setprof` + `/ops/respawnnodes` levers. Driven by tests that run the real `World.step()`
+      rather than a stub.
+- [x] **P10-C — fishing.** `formulas/fishing.ts`: cast → bite window → a reel bar whose fish path
+      is a PURE FUNCTION of a seed and a time, so the client draws and the server judges the same
+      bar and only the seed travels — the one place the two could disagree about a fast-moving
+      thing on screen. Four bugs came out of the tests, the worst of them a bar that could not be
+      won at all; the physics were re-measured rather than guessed.
+- [x] **P10-D — the panel (Dawned-Admin A1-e).** Content → Professions authors node definitions on
+      their own publish rail, with a gathering preview that runs the game's own `rollGather` and
+      reports hold time, profession XP, proc chance, items per 100 gathers, per-hour yield and
+      gathers-to-the-next-gate — and, for fishing nodes, each catch's bar difficulty. The map
+      editor's node layer places them: kind picker, thin placements, markers ringed at the
+      definition's radius, and a bake that refuses a placement whose definition is not published.
+- [ ] **P10-E — content.** Bake node models (tree/stump, vein/cracked rock, herb, ripple), author
+      the material and fish item sets ×5 tiers with icons, then the node definitions and their
+      placements through the panel; freeze the published result into a seed migration.
+- [ ] **P10-F — client.** Interact prompt, hold-to-gather bar with the tool prop and animation,
+      depletion VFX, the fishing minigame UI, the `J` professions panel with its codex, toasts.
+- [ ] **P10-G — verification.** `browser-p10`: a profession taken 1→10 for real, two players on
+      one node proving the claim rule, the fishing bar tuned across three rarities.
 
 ## P11 — Quests, POIs & Interactables (L) ⚙A4 quest editor required
 
@@ -631,9 +662,9 @@ launch-day monitoring (dashboard watch, backup verified); post-launch hotfix win
 | Admin phase                                                                           | Delivers              | Needed by                                              |
 | ------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------ |
 | A0 Foundation (auth, shell, DB link)                                                  | ✅ 2026-08-04         | A1+                                                    |
-| A1 Content editors (items, abilities, enemies, loot, vendors, curves, world settings) | 🟨 during P5–P8       | P5 ability rows, P8 items                              |
+| A1 Content editors (abilities, progression, items/loot/vendors, enemies, professions) | 🟨 during P5–P10      | P5 ability rows, P8 items, P10 nodes                   |
 | A2 Map editor I — terrain sculpt/paint/publish                                        | ✅ 2026-08-05         | P12 (early access for dev island iteration from P5 on) |
-| A3 Map editor II — placement/spawns/zones/nodes/POIs                                  | ✅ 2026-08-05 (built) | P10 nodes, P12 world                                   |
+| A3 Map editor II — placement/spawns/zones/nodes/POIs                                  | ✅ 2026-08-05 (built) | P12 world (node layer live since A1-e)                 |
 | A4 Quest & dialogue editor                                                            | during P11            | P11 pilot quests                                       |
 | A5 Live ops (players, dashboard, bans, reload)                                        | during P13            | P13 event night                                        |
 | A6 Validation/diff/publish polish + backups UI                                        | during P14            | P15 release ops                                        |

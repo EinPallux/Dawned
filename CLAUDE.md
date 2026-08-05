@@ -283,6 +283,30 @@ made the published world the one thing a restore would not have brought back; th
 came from is in Postgres, so pg_dump covers re-publishing, and this covers putting the world
 straight back. DEPLOYMENT.md §6 carries the contract.
 
+**P10 — Gathering Professions (in progress, 2026-08-05). A/B/C/D are built; E–G remain.**
+P10-A put the vocabulary in shared: `formulas/professions.ts` (the four professions, the
+1/7/13/19/25 tier gates, profession XP with §1.3's back-country halving, channel time, proc
+chance, gather range and the refusal reasons) and `content/resource-nodes.ts` — the
+definition/placement split enemies already use, so retuning birchwood is one row rather than
+two hundred placements, plus `rollGather` itself. Protocol v13 (`GatherOp` up;
+`NodeStates`/`GatherState`/`ProfessionSync` down), migration 0016 for
+`content_resource_nodes` + `character_professions`. P10-B built the runtime: nodes seeded from
+the map's placements, **first-tap claim** (a second player is refused immediately rather than
+racing), channels broken by range/damage/movement, respawn scheduling, write-through
+profession XP, `/ops/setprof` and `/ops/respawnnodes` — tested by driving the real
+`World.step()`, not a stub. P10-C shipped fishing (`formulas/fishing.ts`): cast → bite window
+→ a reel bar whose fish path is a PURE FUNCTION of a seed and a time, so the client draws and
+the server judges the same bar and only the seed travels. That is the one place in the game
+where both sides track a fast-moving thing at once, and a marker sitting on a fish that is
+told it missed is the worst thing a minigame can do. Four bugs came out of its tests, the
+worst being **a bar that could not be won at all**; the marker physics were re-measured rather
+than re-guessed. P10-D is the panel half (Dawned-Admin A1-e): Content → Professions authors
+node definitions with a gathering preview that runs THIS repo's `rollGather`, and the map
+editor's node layer places them — markers ringed at the definition's radius, and a map bake
+that refuses a placement whose definition is not published. Still ahead: node models and the
+material/fish item sets (E), the client's gather bar, fishing UI and `J` panel (F), and the
+1→10 / two-players-one-node / three-rarity verification run (G).
+
 ### Running it locally
 
 ```bash

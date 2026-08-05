@@ -97,6 +97,22 @@ nothing beyond it.
     exposed a client bug — prediction resolved against un-streamed ground and fell to the
     sea floor; `stepMovement` asks `hasDataAt` first now (NETWORKING.md §3.2). 381 tests
     green.
+    **P10 — Gathering Professions (in progress, 2026-08-05): A/B/C/D built, E–G left.**
+    P10-A put it in shared — `formulas/professions.ts` (four professions, tier gates
+    1/7/13/19/25, profession XP with the back-country halving, channel time, proc chance,
+    range, refusal reasons) and `content/resource-nodes.ts` (definition/placement split,
+    `rollGather`); protocol v13, migration 0016. P10-B is the runtime: nodes seeded from
+    the map's placements, **first-tap claim** so a second player is refused rather than
+    racing, channel breaks on range/damage/movement, respawns, write-through profession
+    XP, `/ops/setprof` + `/ops/respawnnodes`, all tested through the real `World.step()`.
+    P10-C is fishing: the fish's path is a PURE FUNCTION of a seed and a time, so the
+    client draws and the server judges the same bar and only the seed travels — four bugs
+    fell out of testing it, the worst a bar that could not be won. P10-D is the panel
+    (Dawned-Admin A1-e): node definitions with a gathering preview that runs THIS repo's
+    `rollGather`, and the map editor's node layer placing them. Left: models + material/
+    fish items (E), the client gather/fishing/`J` layer (F), the 1→10 and
+    two-players-one-node verification (G).
+
     **A2 game-side half (2026-08-04):** the live map is a published artifact, not a
     constant — the server resolves `assets_baked/map/current.json`, reports it on
     `/api/health`, and the client asks the server which bake to stream (NETWORKING.md
