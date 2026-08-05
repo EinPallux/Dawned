@@ -52,8 +52,25 @@ import {
   type EquipSlot,
   type ItemOp,
   type ItemStack,
+  GatherRefusal,
+  gatherXp,
+  type GatherOp,
+  type Profession,
+  type NodePlacement,
+  type ResourceNodeDef,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
+import {
+  buildNodes,
+  channelBreak,
+  finishGather,
+  releaseClaim,
+  respawnNodes,
+  startGather,
+  type GatherChannel,
+  type ServerNode,
+} from './nodes.js';
+import { awardProfessionXp, createProfessions, professionLevel } from './professions.js';
 import { ServerEnemy } from './enemy.js';
 import type { GameContent } from '../content/loader.js';
 import {
@@ -151,8 +168,38 @@ export class World {
     private readonly rng: Rng = Math.random,
     /** Zone polygons (P7 zone-entry XP; baked zones.json, empty in tests). */
     private zonePolys: readonly Zone[] = [],
+    /** Resource-node placements from the bake (P10; empty in tests). */
+    nodePlacements: readonly NodePlacement[] = [],
   ) {
     if (content) this.populateFromSpawners();
+    this.seedNodes(nodePlacements);
+  }
+
+  /**
+   * (Re)build the resource-node set from a bake's placements.
+   *
+   * Orphans — a placement whose definition is gone — are logged and dropped
+   * rather than throwing: publish already cross-checks node refs, so reaching
+   * here means map and content drifted between two publishes, and taking the
+   * world down over one stale rock would turn a content typo into an outage.
+   */
+  private seedNodes(placements: readonly NodePlacement[]): void {
+    const built = buildNodes(
+      placements,
+      { defs: this.content?.resourceNodes ?? new Map() },
+      (x, z) => this.terrain.heightAt(x, z),
+    );
+    this.nodes.clear();
+    for (const [id, node] of built.nodes) this.nodes.set(id, node);
+    this.orphanNodeRefs = built.orphans;
+  }
+
+  /** Node ids in the bake with no published definition — surfaced on health. */
+  private orphanNodeRefs: string[] = [];
+  get nodeStats(): { total: number; depleted: number; orphans: number } {
+    let depleted = 0;
+    for (const node of this.nodes.values()) if (node.readyAtMs !== null) depleted++;
+    return { total: this.nodes.size, depleted, orphans: this.orphanNodeRefs.length };
   }
 
   /**
@@ -169,7 +216,12 @@ export class World {
    * Anyone the new terrain leaves under the ground gets pushed up by it; anyone
    * left over open sea swims, which is honest and visible.
    */
-  applyMap(next: { terrain: TerrainSampler; spawn: SpawnPoint; zones: readonly Zone[] }): {
+  applyMap(next: {
+    terrain: TerrainSampler;
+    spawn: SpawnPoint;
+    zones: readonly Zone[];
+    nodes?: readonly NodePlacement[];
+  }): {
     enemies: number;
   } {
     this.terrain = next.terrain;
@@ -179,6 +231,12 @@ export class World {
     this.tickets.length = 0;
     this.campIndex.clear();
     this.populateFromSpawners();
+    // Nodes re-seed against the new ground for the same reason camps do: a
+    // birch authored on a hill that just became a bay has to sit on the bay.
+    // Depletion timers are NOT carried across — a republish is a new world, and
+    // preserving "this tree is stumped" across a bake that may not contain that
+    // tree is more surprising than a forest that comes back standing.
+    this.seedNodes(next.nodes ?? []);
     for (const player of this.players.values()) {
       const m = player.movement;
       m.y = this.terrain.heightAt(m.x, m.z);
@@ -201,6 +259,11 @@ export class World {
     };
   }
 
+  /** Published resource-node definitions (P10) — empty until content lands. */
+  resourceNodeDefs(): ReadonlyMap<string, ResourceNodeDef> {
+    return this.content?.resourceNodes ?? new Map();
+  }
+
   /** Published item/loot/vendor rows (empty maps until P8 content lands). */
   itemContent(): ItemContent {
     return {
@@ -209,6 +272,11 @@ export class World {
       vendors: this.content?.vendors ?? new Map(),
     };
   }
+
+  /** Resource nodes by placement id (P10) — position from the bake, state here. */
+  readonly nodes = new Map<string, ServerNode>();
+  /** In-flight gather holds, one per player (you cannot chop two trees). */
+  private readonly gathering = new Map<number, GatherChannel>();
 
   /** Live loot bags by id — the gateway reads them to build LootBags. */
   readonly lootBags = new Map<number, LootBag>();
@@ -244,6 +312,231 @@ export class World {
       if (player.accountId === accountId) return player;
     }
     return undefined;
+  }
+
+  // -------------------------------------------------------------------------
+  // Gathering (P10)
+  // -------------------------------------------------------------------------
+
+  /**
+   * One tick of gathering: drain intents, then advance the holds.
+   *
+   * Order matters. Intents are drained FIRST so a start becomes a channel this
+   * tick and can only complete on a later one — resolving both in the same pass
+   * would make a 3 s hold finish instantly for anyone who could send two
+   * messages between ticks, which is a duplication bug wearing a timer's
+   * clothes.
+   */
+  private stepGathering(nowMs: number, events: CombatEvent[]): void {
+    const defs = this.content?.resourceNodes ?? new Map<string, ResourceNodeDef>();
+
+    for (const request of this.pendingGatherOps.splice(0)) {
+      const player = this.players.get(request.playerId);
+      if (!player) continue;
+      if (request.op.kind === 'cancel') {
+        this.endGather(player.id, 'cancelled', undefined, events);
+        continue;
+      }
+      // Already holding something? Treat a new start as "switch": drop the old
+      // claim first, or a player who re-clicks mid-hold locks two nodes.
+      this.endGather(player.id, 'cancelled', undefined, events);
+      const node = this.nodes.get(request.op.placementId);
+      const def = node ? defs.get(node.nodeId) : undefined;
+      const level = professionLevel(player.professions, def?.profession ?? 'woodcutting');
+      // Anything that already owns the character: dead, mid-cast, mid-channel,
+      // or a committed swing waiting for its contact frame.
+      const busy =
+        player.dead ||
+        player.abilityMachine.cast !== null ||
+        player.abilityMachine.channel !== null ||
+        player.pendingAbility !== null;
+      const result = startGather(player, node, def, level, nowMs, busy);
+      if (!result.ok || !result.channel) {
+        events.push({
+          type: 'gather-state',
+          playerId: player.id,
+          phase: 'refused',
+          placementId: request.op.placementId,
+          reason: result.refusal ?? GatherRefusal.Unknown,
+        });
+        continue;
+      }
+      this.gathering.set(player.id, result.channel);
+      events.push({
+        type: 'gather-state',
+        playerId: player.id,
+        phase: 'start',
+        placementId: result.channel.placementId,
+        nodeId: result.channel.nodeId,
+        profession: result.channel.profession,
+        tier: result.channel.tier,
+        startedAtMs: result.channel.startedAtMs,
+        endsAtMs: result.channel.endsAtMs,
+      });
+    }
+
+    // Advance the in-flight holds.
+    for (const [playerId, channel] of [...this.gathering]) {
+      const player = this.players.get(playerId);
+      if (!player) {
+        releaseClaim(this.nodes.get(channel.placementId), playerId);
+        this.gathering.delete(playerId);
+        continue;
+      }
+      const node = this.nodes.get(channel.placementId);
+      const broke = channelBreak(channel, player, node);
+      if (broke) {
+        this.endGather(playerId, 'cancelled', broke, events);
+        continue;
+      }
+      if (nowMs < channel.endsAtMs) continue;
+
+      const def = defs.get(channel.nodeId);
+      if (!def || !node) {
+        this.endGather(playerId, 'cancelled', GatherRefusal.Unknown, events);
+        continue;
+      }
+      const level = professionLevel(player.professions, def.profession);
+      const award = finishGather(
+        def,
+        level,
+        {
+          yieldPick: this.rng(),
+          yieldQty: this.rng(),
+          proc: this.rng(),
+          procPick: this.rng(),
+          procQty: this.rng(),
+        },
+        nowMs,
+      );
+
+      // Deplete BEFORE handing out anything: if the bag write throws, the tree
+      // is still gone, which is the safe direction. The reverse would print
+      // materials from a node that stayed up.
+      node.readyAtMs = award.readyAtMs;
+      node.claimedBy = 0;
+      this.gathering.delete(playerId);
+      events.push({ type: 'nodes-dirty', placementIds: [node.id] });
+
+      const itemDeps = { content: this.itemContent(), bags: this.lootBags, nowMs, events };
+      const gained: { itemId: string; qty: number }[] = [];
+      for (const stack of award.yields) {
+        const leftover = grantItem(player, stack.itemId, stack.qty, itemDeps);
+        if (stack.qty - leftover > 0)
+          gained.push({ itemId: stack.itemId, qty: stack.qty - leftover });
+      }
+      let proc: { itemId: string; qty: number } | null = null;
+      if (award.proc) {
+        const leftover = grantItem(player, award.proc.itemId, award.proc.qty, itemDeps);
+        if (award.proc.qty - leftover > 0) {
+          proc = { itemId: award.proc.itemId, qty: award.proc.qty - leftover };
+        }
+      }
+
+      const result = awardProfessionXp(player.professions, def.profession, award.profXp);
+      events.push({ type: 'professions-dirty', playerId });
+      if (result.levelsGained > 0) {
+        events.push({
+          type: 'profession-level',
+          playerId,
+          profession: def.profession,
+          level: result.level,
+        });
+      }
+      // The CHARACTER trickle comes from PROGRESSION.md's own formula, applied
+      // through the same award path kills use so the xpRate lever covers it.
+      awardXp(player, gatherXp(def.tier), XpSource.Gather, this.progressionContent(), events);
+
+      // Codex: first time this material has ever been gathered by this
+      // character. The dedupe lives in the DB's primary key; this only decides
+      // whether to bother the gateway with a write.
+      for (const stack of [...gained, ...(proc ? [proc] : [])]) {
+        if (player.progress.codexSeen.has(stack.itemId)) continue;
+        player.progress.codexSeen.add(stack.itemId);
+        events.push({
+          type: 'discovery',
+          playerId,
+          kind: 'codex',
+          refId: stack.itemId,
+          label: this.itemContent().items.get(stack.itemId)?.name ?? stack.itemId,
+        });
+      }
+
+      events.push({
+        type: 'gather-state',
+        playerId,
+        phase: 'done',
+        placementId: node.id,
+        nodeId: def.id,
+        profession: def.profession,
+        tier: def.tier,
+        gained,
+        proc,
+        profXp: award.profXp,
+      });
+    }
+
+    for (const playerId of this.pendingProfessionSync.splice(0)) {
+      if (this.players.has(playerId)) events.push({ type: 'professions-dirty', playerId });
+    }
+
+    // Regrowth. Only the ids that changed travel; the gateway decides who is
+    // close enough to care.
+    const back = respawnNodes(this.nodes, nowMs);
+    if (back.length > 0) events.push({ type: 'nodes-dirty', placementIds: back });
+  }
+
+  /** Drop a hold without completing it. Safe to call when there is none. */
+  private endGather(
+    playerId: number,
+    phase: 'cancelled',
+    reason: GatherRefusal | undefined,
+    events: CombatEvent[],
+  ): void {
+    const channel = this.gathering.get(playerId);
+    if (!channel) return;
+    releaseClaim(this.nodes.get(channel.placementId), playerId);
+    this.gathering.delete(playerId);
+    events.push(
+      reason
+        ? { type: 'gather-state', playerId, phase, placementId: channel.placementId, reason }
+        : { type: 'gather-state', playerId, phase, placementId: channel.placementId },
+    );
+  }
+
+  /** A disconnect must not leave a node claimed for ever. */
+  releaseGather(playerId: number): void {
+    const channel = this.gathering.get(playerId);
+    if (!channel) return;
+    releaseClaim(this.nodes.get(channel.placementId), playerId);
+    this.gathering.delete(playerId);
+  }
+
+  /** Ops lever: set an online player's profession level by character name. */
+  setProfessionByName(name: string, profession: Profession, level: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      player.professions.set(profession, { level, xp: 0 });
+      this.pendingProfessionSync.push(player.id);
+      return true;
+    }
+    return false;
+  }
+
+  /** Profession syncs raised outside the tick (ops levers) — flushed in step. */
+  private readonly pendingProfessionSync: number[] = [];
+
+  /** Ops lever: bring every depleted node back at once (`/ops/respawnnodes`). */
+  respawnAllNodes(): number {
+    let count = 0;
+    for (const node of this.nodes.values()) {
+      if (node.readyAtMs !== null) {
+        node.readyAtMs = null;
+        node.claimedBy = 0;
+        count++;
+      }
+    }
+    return count;
   }
 
   // -------------------------------------------------------------------------
@@ -364,7 +657,11 @@ export class World {
       unspentSkillPoints: number;
       nodeRanks: Map<string, number>;
       zonesSeen: Set<string>;
+      /** Material ids already in the codex (P10) — first-gather dedupe. */
+      codexSeen?: Set<string>;
     };
+    /** Persisted gathering professions (P10); absent = all four at level 1. */
+    professions?: readonly { profession: string; level: number; xp: number }[];
     /** Persisted bag + paper-doll (P8); absent = an empty pack. */
     inventory?: {
       bag: Map<number, ItemStack>;
@@ -411,6 +708,7 @@ export class World {
       spawn.yaw,
       spec.hp ?? null,
     );
+    player.professions = createProfessions(spec.professions ?? []);
     // Worn gear contributes to the very same fold, so price it first.
     refreshEquipmentBonus(player.items, this.itemContent().items);
     // Fold the allocated tree into stats/pools/defs (never refills — the
@@ -482,6 +780,14 @@ export class World {
     // Bounded: a spamming client fills its own queue, not the server's heap.
     if (this.pendingItemOps.length > 512) return;
     this.pendingItemOps.push({ playerId, op });
+  }
+
+  /** Gather intents (P10) ride the tick like item drags do. */
+  private readonly pendingGatherOps: { playerId: number; op: GatherOp }[] = [];
+
+  queueGatherOp(playerId: number, op: GatherOp): void {
+    if (this.pendingGatherOps.length > 256) return;
+    this.pendingGatherOps.push({ playerId, op });
   }
 
   queueAllocateStats(playerId: number, deltas: AttributeSpread): void {
@@ -715,6 +1021,11 @@ export class World {
         }
       }
     }
+
+    // 0d. Gathering (P10). Intents first, then the in-flight holds, so a start
+    // and its completion can never land in the same tick — a 3 s channel that
+    // resolved instantly would be a duplication bug wearing a timer's clothes.
+    this.stepGathering(nowMs, events);
 
     // Bags rot after 60 s (§3); whoever could see one re-syncs.
     for (const playerId of expireLootBags(this.lootBags, nowMs)) {

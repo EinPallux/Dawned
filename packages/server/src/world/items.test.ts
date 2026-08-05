@@ -142,6 +142,7 @@ const testContent = (): GameContent => ({
     [NOTHING_TABLE.id, NOTHING_TABLE],
   ]),
   vendors: new Map([[VENDOR.id, VENDOR]]),
+  resourceNodes: new Map(),
   worldSettings: defaultWorldSettings(),
 });
 

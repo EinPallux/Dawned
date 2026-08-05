@@ -20,11 +20,13 @@ import {
   type CombatStats,
   type MovementIntent,
   type MovementState,
+  type Profession,
   type ResourceState,
 } from '@dawned/shared';
 import { isUntargetable, type ActiveEffect } from './effects.js';
 import type { PlayerProgress } from './progression.js';
 import type { PlayerItems } from './items.js';
+import { createProfessions, type ProfessionState } from './professions.js';
 
 /** A committed instant ability waiting for its contact frame. */
 export interface PendingAbility {
@@ -96,6 +98,8 @@ export class ServerPlayer {
   progress: PlayerProgress;
   /** Bag, paper-doll, consumable lanes and vendor session (P8). */
   items: PlayerItems;
+  /** Gathering-profession levels (P10) — loaded at spawn, written through. */
+  professions: Map<Profession, ProfessionState> = createProfessions();
   /** Countdown of Flurry-empowered basics left (capstone rider). */
   empoweredBasicsLeft = 0;
   empoweredBasicsCp = 0;

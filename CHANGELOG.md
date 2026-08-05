@@ -5,6 +5,25 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the server half of gathering (2026-08-05, P10-B)
+
+- **Resource nodes are live in the world.** The server reads the map bake's
+  node layer, seats every one on the ground, and owns the three things a bake
+  cannot say: is it standing, when does it come back, and who is holding it.
+- **Hold to gather.** Press and hold near a node; the server times the channel
+  and the yield lands in your pack when it finishes. Walking away, taking a
+  hit or dying breaks the hold and frees the node for whoever is next. Every
+  refusal comes back as a reason you can read — too far, too low a level,
+  already harvested, someone else got there first.
+- **Two players, one tree, one set of logs.** The node belongs to whoever
+  starts, and the second person is told immediately rather than after three
+  seconds of holding — being refused up front is information; being refused at
+  the end is a waste of your time.
+- **The four professions level independently** and persist. Gathering also
+  trickles character XP, and the first time you gather a material it goes in
+  your codex.
+
+
 ### Fixed — the live map is backed up, and cannot be clobbered by an update (2026-08-05, with Dawned-Admin A2/A3-e)
 
 - The map bakes the admin panel publishes were in neither git nor the nightly

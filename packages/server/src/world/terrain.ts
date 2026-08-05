@@ -14,7 +14,9 @@ import {
   MAP_VERSION,
   Walkgrid,
   decodeChunk,
+  placementsFileSchema,
   zonesFileSchema,
+  type NodePlacement,
   type Zone,
 } from '@dawned/shared';
 
@@ -51,6 +53,13 @@ export interface LoadedMap {
   /** Zone polygons (P7 zone-entry XP; the client blends ambience from the
    * same file). Empty when the map ships no zones.json. */
   zones: Zone[];
+  /**
+   * Resource-node placements (P10). The first thing the server reads out of
+   * `placements.json` — props and scatter stay client-side decoration, but a
+   * node is a thing you interact with, so the authority needs to know it is
+   * there. Empty when the map predates P10 or has no gathering.
+   */
+  nodes: NodePlacement[];
 }
 
 /**
@@ -96,5 +105,20 @@ export const loadMapTerrain = async (mapDir: string): Promise<LoadedMap> => {
     }
   }
 
-  return { terrain, meta, zones };
+  // Resource nodes (P10). A missing file is fine — every map baked before P10
+  // has none — but a malformed one is not: half a forest is worse than a loud
+  // refusal, and the same argument the zones block above makes.
+  let nodes: NodePlacement[] = [];
+  try {
+    const raw: unknown = JSON.parse(await readFile(path.join(mapDir, 'placements.json'), 'utf8'));
+    nodes = placementsFileSchema.parse(raw).nodes;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw new Error(
+        `Cannot read map placements at ${mapDir}/placements.json: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  return { terrain, meta, zones, nodes };
 };

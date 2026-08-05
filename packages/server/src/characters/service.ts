@@ -9,6 +9,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import {
   characterDiscoveries,
+  characterProfessions,
   characterItems,
   characterSkills,
   characters,
@@ -161,8 +162,8 @@ export class CharacterService {
     return new Map(rows.map((row) => [row.nodeId, row.ranks]));
   }
 
-  /** Discovered refs of one kind (zone first-entry dedupe at spawn). */
-  async loadDiscoveries(characterId: number, kind: 'zone'): Promise<Set<string>> {
+  /** Discovered refs of one kind (zone first-entry, P10 material codex). */
+  async loadDiscoveries(characterId: number, kind: 'zone' | 'codex'): Promise<Set<string>> {
     const rows = await this.db
       .select()
       .from(characterDiscoveries)
@@ -173,11 +174,43 @@ export class CharacterService {
   }
 
   /** Record a first-time discovery; the PK makes double-pays impossible. */
-  async addDiscovery(characterId: number, kind: 'zone', refId: string): Promise<void> {
+  async addDiscovery(characterId: number, kind: 'zone' | 'codex', refId: string): Promise<void> {
     await this.db
       .insert(characterDiscoveries)
       .values({ characterId, kind, refId })
       .onConflictDoNothing();
+  }
+
+  /** Gathering-profession rows for one character (P10). */
+  async loadProfessions(
+    characterId: number,
+  ): Promise<{ profession: string; level: number; xp: number }[]> {
+    const rows = await this.db
+      .select()
+      .from(characterProfessions)
+      .where(eq(characterProfessions.characterId, characterId));
+    return rows.map((row) => ({ profession: row.profession, level: row.level, xp: row.xp }));
+  }
+
+  /**
+   * Write-through one profession's level/xp. Upsert rather than update: a
+   * character's first swing at a tree is also the first time that row exists,
+   * and making the spawn path pre-insert four rows for every character who may
+   * never gather is four writes for nothing.
+   */
+  async saveProfession(
+    characterId: number,
+    profession: 'woodcutting' | 'mining' | 'herbalism' | 'fishing',
+    level: number,
+    xp: number,
+  ): Promise<void> {
+    await this.db
+      .insert(characterProfessions)
+      .values({ characterId, profession, level, xp })
+      .onConflictDoUpdate({
+        target: [characterProfessions.characterId, characterProfessions.profession],
+        set: { level, xp, updatedAt: new Date() },
+      });
   }
 
   /**

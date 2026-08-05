@@ -37,6 +37,12 @@ import {
   encodeXpGained,
   exportCooldowns,
   parseItemOp,
+  parseGatherOp,
+  encodeGatherState,
+  encodeNodeStates,
+  encodeProfessionSync,
+  PROFESSIONS,
+  nodeItemRefs,
   slotForAction,
   encodeChatBroadcast,
   encodeEnemyMeta,
@@ -63,9 +69,18 @@ import type { Config } from '../config.js';
 import type { MetricsRing } from '../metrics/ring.js';
 import type { World } from '../world/world.js';
 import type { ServerPlayer } from '../world/player.js';
+import { professionWire } from '../world/professions.js';
+import { nodesNear } from '../world/nodes.js';
 import type { AuthService } from '../auth/service.js';
 import { CharacterService, toAppearance } from '../characters/service.js';
 import { Session } from './session.js';
+
+/**
+ * How far out node state is synced, metres. Wider than the interact range so a
+ * tree you are walking toward is already known to be a stump before you arrive
+ * — arriving at a node and THEN learning it is gone is the annoying version.
+ */
+const NODE_SYNC_RADIUS_M = 80;
 import type { CombatEvent } from '../world/combat.js';
 import { progressSyncOf } from '../world/progression.js';
 import {
@@ -243,6 +258,19 @@ export class Gateway {
         this.world.queueItemOp(player.id, op);
         return;
       }
+      case ClientOp.GatherOp: {
+        const player = session.player;
+        if (session.state !== 'playing' || !player || !session.allowGeneric()) return;
+        // Client-authored JSON, so zod decides whether it is a gather op at
+        // all; the world decides whether it is legal (range, tier, the claim).
+        const op = parseGatherOp(decodeJsonEnvelope(reader));
+        if (!op) {
+          player.violations++;
+          return;
+        }
+        this.world.queueGatherOp(player.id, op);
+        return;
+      }
       default:
         throw new ProtocolError(`unknown opcode 0x${opcode.toString(16)}`);
     }
@@ -336,10 +364,12 @@ export class Gateway {
       }
 
       // Progression state (P7) + the pack (P8) ride separate tables.
-      const [nodeRanks, zonesSeen, inventory] = await Promise.all([
+      const [nodeRanks, zonesSeen, codexSeen, inventory, professionRows] = await Promise.all([
         this.characters.loadSkills(character.id),
         this.characters.loadDiscoveries(character.id, 'zone'),
+        this.characters.loadDiscoveries(character.id, 'codex'),
         this.characters.loadInventory(character.id),
+        this.characters.loadProfessions(character.id),
       ]);
       if (!session.isIn('authenticating')) return;
 
@@ -370,8 +400,10 @@ export class Gateway {
           unspentSkillPoints: character.unspentSkillPoints,
           nodeRanks,
           zonesSeen,
+          codexSeen,
         },
         inventory,
+        professions: professionRows,
       });
     }
     session.player = player;
@@ -405,6 +437,17 @@ export class Gateway {
     // the 60 s timer kept running while their socket was gone.
     this.sendInventory(session);
     this.sendLootBags(session);
+    // …and the gathering state (P10): the four profession bars, the codex, and
+    // which nearby nodes are currently stumps. Without the last one a player
+    // who logs in next to a chopped tree sees it standing until someone else
+    // touches something.
+    session.send(
+      encodeProfessionSync(
+        { professions: professionWire(player.professions), codex: this.codexOf(player) },
+        session.writer,
+      ),
+    );
+    this.sendNodeStates(session);
 
     if (reattached) {
       this.log.info(
@@ -847,6 +890,56 @@ export class Gateway {
             });
           break;
         }
+        // --- gathering (P10) -------------------------------------------------
+        case 'gather-state': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          const { type: _type, playerId: _playerId, ...body } = event;
+          target.send(encodeGatherState(body, target.writer));
+          break;
+        }
+        case 'nodes-dirty': {
+          // Only the players who can SEE the changed nodes re-sync. A tree
+          // regrowing on the far side of the island is a state change, not a
+          // packet everyone has to receive.
+          for (const other of this.sessions.values()) {
+            if (!other.player || other.state !== 'playing') continue;
+            const m = other.player.movement;
+            const relevant = event.placementIds.some((id) => {
+              const node = this.world.nodes.get(id);
+              if (!node) return false;
+              const dx = node.x - m.x;
+              const dz = node.z - m.z;
+              return dx * dx + dz * dz <= NODE_SYNC_RADIUS_M * NODE_SYNC_RADIUS_M;
+            });
+            if (relevant) this.sendNodeStates(other);
+          }
+          break;
+        }
+        case 'professions-dirty': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          target.send(
+            encodeProfessionSync(
+              {
+                professions: professionWire(target.player.professions),
+                codex: this.codexOf(target.player),
+              },
+              target.writer,
+            ),
+          );
+          this.persistProfessions(target.player);
+          break;
+        }
+        case 'profession-level': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          this.sendSystemChatTo(
+            target,
+            `${event.profession[0]?.toUpperCase() ?? ''}${event.profession.slice(1)} is now level ${String(event.level)}.`,
+          );
+          break;
+        }
         // --- items (P8) ------------------------------------------------------
         case 'inventory-dirty': {
           const target = this.findSessionByPlayer(event.playerId);
@@ -1016,6 +1109,69 @@ export class Gateway {
       });
   }
 
+  /**
+   * Which nodes near this player are taken.
+   *
+   * Only the depleted ones travel — the client already has every node's
+   * position and definition from the baked map, so "standing" is the default
+   * and this is the exception list.
+   */
+  private sendNodeStates(session: Session): void {
+    const player = session.player;
+    if (!player) return;
+    const m = player.movement;
+    const depleted: { id: string; readyAtMs: number }[] = [];
+    for (const node of nodesNear(this.world.nodes, m.x, m.z, NODE_SYNC_RADIUS_M)) {
+      if (node.readyAtMs !== null) depleted.push({ id: node.id, readyAtMs: node.readyAtMs });
+    }
+    session.send(encodeNodeStates({ depleted, serverTimeMs: Date.now() }, session.writer));
+  }
+
+  /**
+   * The discovered-material codex, grouped by profession.
+   *
+   * Derived rather than stored: the flat set of item ids lives in
+   * `character_discoveries`, and which profession yields what is already known
+   * from the published node defs. Storing the grouping too would be storing
+   * the same fact twice, in two places that can disagree.
+   */
+  private codexOf(player: ServerPlayer): Record<string, string[]> {
+    const byProfession: Record<string, string[]> = {};
+    for (const profession of PROFESSIONS) byProfession[profession] = [];
+    const seen = player.progress.codexSeen;
+    for (const def of this.world.resourceNodeDefs().values()) {
+      const bucket = byProfession[def.profession];
+      if (!bucket) continue;
+      for (const itemId of nodeItemRefs(def)) {
+        if (seen.has(itemId) && !bucket.includes(itemId)) bucket.push(itemId);
+      }
+    }
+    return byProfession;
+  }
+
+  /** Serialized write-through of one character's gathering professions. */
+  private persistProfessions(player: ServerPlayer): void {
+    const snapshot = [...player.professions].map(([profession, state]) => ({
+      profession,
+      level: state.level,
+      xp: state.xp,
+    }));
+    player.progress.persistChain = player.progress.persistChain
+      .then(async () => {
+        for (const row of snapshot) {
+          await this.characters.saveProfession(
+            player.characterId,
+            row.profession,
+            row.level,
+            row.xp,
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        this.log.error({ err: error, character: player.characterId }, 'profession save failed');
+      });
+  }
+
   /** Serialized write-through of xp/level/gold/points for one character. */
   private persistProgress(player: ServerPlayer): void {
     const snapshot = {
@@ -1125,6 +1281,9 @@ export class Gateway {
 
   private despawn(player: ServerPlayer, sessionId: string): void {
     this.lingering.delete(player.characterId);
+    // Logging out mid-chop must not leave the tree claimed for ever — the
+    // claim is held by a player id, and that id is about to stop existing.
+    this.world.releaseGather(player.id);
     this.world.removePlayer(player.id);
     this.log.info({ sessionId, name: player.name }, 'player left the world');
     this.broadcastRoster();
