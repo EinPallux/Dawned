@@ -5,6 +5,19 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — fishing (2026-08-05, P10-C)
+
+- **The minigame is in.** Hold at a fishing spot, the line goes out, and after a
+  few seconds something bites — answer it in time and a bar opens with a fish
+  drifting inside it. Hold to lift your marker, let go to drop it, keep it over
+  the fish for about six seconds and it is yours. Slip and the progress drains,
+  though more slowly than it fills: one mistake is not fatal.
+- **Rarer, deeper fish fight harder** — faster drift, smaller marker.
+- **A fish that gets away leaves the spot alone**, so the answer to a miss is to
+  cast again; a fish you land depletes it like any other node.
+- The bar you watch and the bar the server judges are the same bar, so a marker
+  sitting on a fish is never a miss.
+
 ### Added — the server half of gathering (2026-08-05, P10-B)
 
 - **Resource nodes are live in the world.** The server reads the map bake's

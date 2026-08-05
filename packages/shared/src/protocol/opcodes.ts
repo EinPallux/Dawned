@@ -84,6 +84,13 @@ export const ServerOp = {
   GatherState: 0xa0,
   /** SELF's four profession levels + the discovered-material codex (v13). */
   ProfessionSync: 0xa1,
+  /**
+   * SELF's fishing attempt (v13): the phase, the seed the bar's fish drifts
+   * from, and the authoritative progress. The fish's PATH is never sent —
+   * both sides evaluate `fishPosition(seed, t)`, which is the only way the
+   * client's bar and the server's judgement cannot disagree.
+   */
+  FishingState: 0xa2,
 } as const;
 export type ServerOp = (typeof ServerOp)[keyof typeof ServerOp];
 
@@ -94,6 +101,12 @@ export const InputButton = {
   Dodge: 1 << 2,
   PrimaryAction: 1 << 3,
   SecondaryAction: 1 << 4,
+  /**
+   * Reel held (v13, P10 fishing). A continuously-held input, so it rides the
+   * 20 Hz input stream rather than the GatherOp envelope — JSON per frame
+   * would be the wrong lane for a fact that is true or false every tick.
+   */
+  Reel: 1 << 5,
 } as const;
 export type InputButton = (typeof InputButton)[keyof typeof InputButton];
 

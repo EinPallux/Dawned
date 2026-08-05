@@ -76,7 +76,14 @@ binary.
 > in frames, `reason` carrying a shared `GatherRefusal` code, and the yield/proc/XP on `done`
 > for the toast; ProfessionSync 0xa1 — the four profession levels with their xpToNext and
 > unlocked tier, plus the discovered-material codex. Held inputs deliberately do NOT ride the
-> envelope: anything continuous belongs on the 20 Hz InputIntent stream). Snapshots remain **full-state
+> envelope: anything continuous belongs on the 20 Hz InputIntent stream —
+> `InputButton.Reel` (1 << 5) is the fishing hold, and `GatherOp` gained a
+> discrete `{kind:'hook'}` for answering a bite; FishingState 0xa2 — SELF's
+> attempt as waiting/bite/reeling/caught/escaped. It carries a **seed**, not a
+> position: the fish's path is `fishPosition(seed, elapsed)` evaluated on both
+> sides, so the bar the player watches and the bar the server judges are the
+> same bar and a marker sitting on a fish can never read as a miss. Progress
+> rides along ~4×/s as a correction, not a stream). Snapshots remain **full-state
 > within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
 > (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
 > total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16

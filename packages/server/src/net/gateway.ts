@@ -39,6 +39,7 @@ import {
   parseItemOp,
   parseGatherOp,
   encodeGatherState,
+  encodeFishingState,
   encodeNodeStates,
   encodeProfessionSync,
   PROFESSIONS,
@@ -914,6 +915,13 @@ export class Gateway {
             });
             if (relevant) this.sendNodeStates(other);
           }
+          break;
+        }
+        case 'fishing-state': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          const { type: _type, playerId: _playerId, ...body } = event;
+          target.send(encodeFishingState(body, target.writer));
           break;
         }
         case 'professions-dirty': {

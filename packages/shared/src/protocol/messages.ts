@@ -1032,6 +1032,37 @@ export interface ProfessionSyncMessage {
   codex: Record<string, string[]>;
 }
 
+/**
+ * SELF's fishing attempt (v13, P10 §5).
+ *
+ * `seed` is the whole trick: the fish's path is `fishPosition(seed, elapsed)`
+ * evaluated on both sides, so the bar the player watches and the bar the
+ * server judges are the same bar. Nothing about the fish's POSITION travels —
+ * only the seed, once, and the authoritative progress as a correction.
+ */
+export interface FishingStateMessage {
+  phase: 'waiting' | 'bite' | 'reeling' | 'caught' | 'escaped';
+  /** The fishing node being worked. */
+  placementId?: string;
+  /** Drift seed, sent when the bar opens. */
+  seed?: number;
+  /** Server time the reel began — the client's `elapsed` reference. */
+  startedAtMs?: number;
+  /** `bite`: when the hook window closes. A late press is a miss. */
+  hookUntilMs?: number;
+  /** Fish difficulty, so the client draws the right marker width and speed. */
+  driftSpeed?: number;
+  markerHalf?: number;
+  /** Authoritative progress 0..1 — the correction for the client's own run. */
+  progress?: number;
+  /** `caught`: what came out, for the hold-up beat and the toast. */
+  fish?: { itemId: string; qty: number };
+  profXp?: number;
+}
+
+export const encodeFishingState = (msg: FishingStateMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.FishingState, msg, writer);
+
 export const encodeProfessionSync = (
   msg: ProfessionSyncMessage,
   writer?: BinaryWriter,

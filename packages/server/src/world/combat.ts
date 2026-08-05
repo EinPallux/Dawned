@@ -241,7 +241,22 @@ export type CombatEvent =
   /** A profession's level/xp moved: gateway sends ProfessionSync + persists. */
   | { type: 'professions-dirty'; playerId: number }
   /** A profession leveled — worth its own toast and sound. */
-  | { type: 'profession-level'; playerId: number; profession: string; level: number };
+  | { type: 'profession-level'; playerId: number; profession: string; level: number }
+  /** SELF's fishing attempt moved — gateway sends FishingState (P10-C §5). */
+  | {
+      type: 'fishing-state';
+      playerId: number;
+      phase: 'waiting' | 'bite' | 'reeling' | 'caught' | 'escaped';
+      placementId?: string;
+      seed?: number;
+      startedAtMs?: number;
+      hookUntilMs?: number;
+      driftSpeed?: number;
+      markerHalf?: number;
+      progress?: number;
+      fish?: { itemId: string; qty: number };
+      profXp?: number;
+    };
 
 export interface ServerProjectile {
   id: number;

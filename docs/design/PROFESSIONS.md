@@ -118,6 +118,32 @@ smaller markers. Success → catch splash + hold-up-the-fish beat (`PickUp_Table
 | Procs: Sunken Cache (mini loot table: gold, rings, messages in bottles → tiny treasure-map      |
 | curiosities pointing at Hidden Caches).                                                         |
 
+### 5.1 As built (P10-C) — a fishing SPOT is a resource node
+
+§5 says "waters carry fish tables, painted in the map editor". Shipped: a fishing
+spot is a resource node whose profession is `fishing`, and the node's yields ARE its
+fish table. That buys the whole of the rest of gathering for free — tier gates, XP,
+respawn, the codex, the first-tap claim — instead of a second, parallel system that
+would need its own version of each. Coast, river, pond and deep-sea variety comes from
+authoring different node definitions and placing them on the right water, which is the
+same expressiveness with tools that already exist; a waterbody-tagging brush is A-phase
+work the editor does not have.
+
+**Not shipped, deliberately:** the cast's aim reticle and hold-strength distance. The
+minigame §5 describes is bite + reel, and that is built; the cast is its entry, and
+"walk to the ripple and hold" keeps one interaction framework rather than two. Aiming
+is polish worth adding later, not a mechanic that is missing.
+
+The reel's numbers were set by MEASUREMENT, not taste. The first physics pass left the
+marker lagging so far behind the fish that the crudest possible strategy — hold whenever
+the marker is under the fish — could not land a T1 common in eighteen seconds at any
+seed. That is not difficulty, it is a broken minigame, and §5 wants the first fish a
+player ever hooks to be caught. At the shipped values that strategy lands an easy fish
+from every seed in about nine seconds and a T5 legendary about half the time in
+fourteen, and a human who anticipates does better than it. A test pins that property so
+a future tuning pass cannot quietly break it again. Feel remains the owner's end-of-
+project pass.
+
 ## 6. Why gather in 0.1.0 (pre-crafting honesty)
 
 - Gold: materials vendor well (Collector +10%), deliberately decent — gathering is a legitimate

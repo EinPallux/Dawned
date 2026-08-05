@@ -28,6 +28,12 @@ export const gatherOpSchema = z.discriminatedUnion('kind', [
    * cancel that never arrives is not a stuck channel.
    */
   z.object({ kind: z.literal('cancel') }).strict(),
+  /**
+   * Answer a bite (fishing). Discrete and time-critical — the server checks it
+   * against the 0.8 s window it opened, so a late press is a miss rather than
+   * something the client got to decide.
+   */
+  z.object({ kind: z.literal('hook') }).strict(),
 ]);
 export type GatherOp = z.infer<typeof gatherOpSchema>;
 

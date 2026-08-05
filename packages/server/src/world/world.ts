@@ -71,6 +71,17 @@ import {
   type ServerNode,
 } from './nodes.js';
 import { awardProfessionXp, createProfessions, professionLevel } from './professions.js';
+import {
+  fishingExpired,
+  fishingXp,
+  hookFishing,
+  startFishing,
+  stepFishing,
+  type FishingSession,
+} from './fishing.js';
+
+/** Ticks between authoritative reel-progress corrections (20 Hz → ~4/s). */
+const FISHING_SYNC_TICKS = 5;
 import { ServerEnemy } from './enemy.js';
 import type { GameContent } from '../content/loader.js';
 import {
@@ -277,6 +288,8 @@ export class World {
   readonly nodes = new Map<string, ServerNode>();
   /** In-flight gather holds, one per player (you cannot chop two trees). */
   private readonly gathering = new Map<number, GatherChannel>();
+  /** In-flight fishing attempts (P10-C) — a gather hold with a minigame. */
+  private readonly fishing = new Map<number, FishingSession>();
 
   /** Live loot bags by id — the gateway reads them to build LootBags. */
   readonly lootBags = new Map<number, LootBag>();
@@ -335,6 +348,26 @@ export class World {
       if (!player) continue;
       if (request.op.kind === 'cancel') {
         this.endGather(player.id, 'cancelled', undefined, events);
+        this.endFishing(player.id, events);
+        continue;
+      }
+      if (request.op.kind === 'hook') {
+        // Answering a bite. The SERVER decides whether the press was in the
+        // window it opened — a late one must not get to argue it was early.
+        const session = this.fishing.get(player.id);
+        if (session && hookFishing(session, nowMs)) {
+          events.push({
+            type: 'fishing-state',
+            playerId: player.id,
+            phase: 'reeling',
+            placementId: session.placementId,
+            seed: session.seed,
+            startedAtMs: session.reelStartedAtMs,
+            driftSpeed: session.driftSpeed,
+            markerHalf: session.markerHalf,
+            progress: 0,
+          });
+        }
         continue;
       }
       // Already holding something? Treat a new start as "switch": drop the old
@@ -361,6 +394,31 @@ export class World {
         });
         continue;
       }
+      // A fishing spot passes the SAME gates (range, tier, claim) and then
+      // runs a minigame instead of a timer — one interaction framework, two
+      // kinds of channel, rather than two ways to touch the world.
+      if (def && def.profession === 'fishing') {
+        const session = startFishing(
+          def,
+          result.channel.placementId,
+          Math.floor(this.rng() * 0xffff_ffff),
+          nowMs,
+          player.movement.x,
+          player.movement.z,
+          { fishPick: this.rng(), fishQty: this.rng() },
+          this.itemContent().items,
+        );
+        this.fishing.set(player.id, session);
+        this.gathering.set(player.id, result.channel);
+        events.push({
+          type: 'fishing-state',
+          playerId: player.id,
+          phase: 'waiting',
+          placementId: session.placementId,
+          seed: session.seed,
+        });
+        continue;
+      }
       this.gathering.set(player.id, result.channel);
       events.push({
         type: 'gather-state',
@@ -375,6 +433,8 @@ export class World {
       });
     }
 
+    this.stepFishingSessions(nowMs, events);
+
     // Advance the in-flight holds.
     for (const [playerId, channel] of [...this.gathering]) {
       const player = this.players.get(playerId);
@@ -387,8 +447,11 @@ export class World {
       const broke = channelBreak(channel, player, node);
       if (broke) {
         this.endGather(playerId, 'cancelled', broke, events);
+        this.endFishing(playerId, events);
         continue;
       }
+      // Fishing holds are advanced by `stepFishingSessions`, not by a clock.
+      if (this.fishing.has(playerId)) continue;
       if (nowMs < channel.endsAtMs) continue;
 
       const def = defs.get(channel.nodeId);
@@ -484,6 +547,131 @@ export class World {
     // close enough to care.
     const back = respawnNodes(this.nodes, nowMs);
     if (back.length > 0) events.push({ type: 'nodes-dirty', placementIds: back });
+  }
+
+  /**
+   * Advance every fishing attempt by one tick.
+   *
+   * The Reel button rides the input stream, so the server steps the SAME bar
+   * the client is drawing, from the same seed. Its progress is the authority;
+   * the client's is a prediction that the periodic state message corrects.
+   */
+  private stepFishingSessions(nowMs: number, events: CombatEvent[]): void {
+    const defs = this.content?.resourceNodes ?? new Map<string, ResourceNodeDef>();
+    for (const [playerId, session] of [...this.fishing]) {
+      const player = this.players.get(playerId);
+      if (!player || fishingExpired(session, nowMs)) {
+        this.endFishing(playerId, events);
+        this.endGather(playerId, 'cancelled', GatherRefusal.Busy, events);
+        continue;
+      }
+      const holding = (player.heldButtons & InputButton.Reel) !== 0;
+      const tick = stepFishing(session, holding, nowMs, TICK_MS);
+      if (tick.resolved === 'caught') {
+        const def = defs.get(session.nodeId);
+        const node = this.nodes.get(session.placementId);
+        const level = professionLevel(player.professions, 'fishing');
+        const itemDeps = { content: this.itemContent(), bags: this.lootBags, nowMs, events };
+        const leftover = session.fishItemId
+          ? grantItem(player, session.fishItemId, session.fishQty, itemDeps)
+          : session.fishQty;
+        const landed = session.fishQty - leftover;
+        const xp = fishingXp(session, level);
+        if (xp > 0) {
+          const award = awardProfessionXp(player.professions, 'fishing', xp);
+          events.push({ type: 'professions-dirty', playerId });
+          if (award.levelsGained > 0) {
+            events.push({
+              type: 'profession-level',
+              playerId,
+              profession: 'fishing',
+              level: award.level,
+            });
+          }
+        }
+        awardXp(player, gatherXp(session.tier), XpSource.Gather, this.progressionContent(), events);
+        // A caught fish depletes the spot the same way a chopped tree does —
+        // the ripples go out, and it comes back on its own timer.
+        if (node && def) {
+          node.readyAtMs = nowMs + def.respawnMs;
+          node.claimedBy = 0;
+          events.push({ type: 'nodes-dirty', placementIds: [node.id] });
+        }
+        if (landed > 0 && !player.progress.codexSeen.has(session.fishItemId)) {
+          player.progress.codexSeen.add(session.fishItemId);
+          events.push({
+            type: 'discovery',
+            playerId,
+            kind: 'codex',
+            refId: session.fishItemId,
+            label: this.itemContent().items.get(session.fishItemId)?.name ?? session.fishItemId,
+          });
+        }
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: 'caught',
+          placementId: session.placementId,
+          progress: 1,
+          fish: { itemId: session.fishItemId, qty: landed },
+          profXp: xp,
+        });
+        this.fishing.delete(playerId);
+        this.gathering.delete(playerId);
+        continue;
+      }
+      if (tick.resolved === 'escaped') {
+        // The spot is NOT depleted: a fish that got away leaves the water
+        // where it was, so the answer to a miss is to cast again.
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: 'escaped',
+          placementId: session.placementId,
+          progress: session.reel.progress,
+        });
+        this.endFishing(playerId, events);
+        this.endGather(playerId, 'cancelled', undefined, events);
+        continue;
+      }
+      if (tick.changed) {
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: session.phase === 'bite' ? 'bite' : 'waiting',
+          placementId: session.placementId,
+          seed: session.seed,
+          hookUntilMs: session.hookUntilMs,
+        });
+      } else if (session.phase === 'reeling' && this.tickCounter % FISHING_SYNC_TICKS === 0) {
+        // A periodic correction rather than one per tick: the client is
+        // running the same bar, so this only has to catch drift.
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: 'reeling',
+          placementId: session.placementId,
+          seed: session.seed,
+          startedAtMs: session.reelStartedAtMs,
+          driftSpeed: session.driftSpeed,
+          markerHalf: session.markerHalf,
+          progress: session.reel.progress,
+        });
+      }
+    }
+  }
+
+  /** Drop a fishing attempt (cancel, break, disconnect). */
+  private endFishing(playerId: number, events: CombatEvent[]): void {
+    const session = this.fishing.get(playerId);
+    if (!session) return;
+    this.fishing.delete(playerId);
+    events.push({
+      type: 'fishing-state',
+      playerId,
+      phase: 'escaped',
+      placementId: session.placementId,
+    });
   }
 
   /** Drop a hold without completing it. Safe to call when there is none. */
