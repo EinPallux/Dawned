@@ -110,3 +110,11 @@ nothing beyond it.
     disagree. 425 tests green.
     **A3-d game-side half (2026-08-05):** migration 0015 adds `map_editor_collections` for
     the panel's selection sets and prefabs — editor-side only, nothing the game reads.
+    **A2/A3 closed panel-side (2026-08-05):** the panel's §7 run sculpts an islet out of
+    open water, populates and zones it, publishes, and this server hot-swaps onto it with
+    no restart — proven against a running game. Game-side follow-up: published map bakes
+    are MACHINE STATE. They land in `assets_baked/map/` beside the committed `dev-2`
+    fallback, so `map-*/` and `current.json` are git-ignored (a `git pull` during
+    UPDATE.sh must never repoint the live world at a dev checkout's bake), and BACKUP.sh
+    archives the live bake + pointer nightly (`backups/map-*.tar.gz`, last 7) — they were
+    in neither git nor the backups before. DEPLOYMENT.md §6.

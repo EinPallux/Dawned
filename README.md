@@ -13,9 +13,10 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > Dawnshore/Weald bestiary, and their fights are readable: boss frames with phase pips,
 > interruptible cast bars, telegraphed pools you walk out of, and absorb bubbles. The Mushroom
 > King measures **105 s** solo at level (the 60–120 s target), and 150 active AI cost the server
-> 4.2 ms of a 50 ms tick. The world itself is becoming editable: the live map is now a published
-> artifact the server hot-loads, so Dawned-Admin's map editor can republish the island without a
-> deploy. **Next: the owner's P9 playtest, then P10 — Gathering Professions.**
+> 4.2 ms of a 50 ms tick. **The world itself is editable now**: the live map is a published
+> artifact the server hot-loads, and Dawned-Admin's map editor (A2 + A3, closed 2026-08-05) can
+> sculpt a new islet out of open water, populate and zone it, and put it under a player's feet
+> without a deploy. **Next: the owner's P9 playtest, then P10 — Gathering Professions.**
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an
 > authored island open world with levels 1–30, professions, quests, loot, chat, GM tools) — not an
 > MVP, not a prototype. The companion repo **[Dawned-Admin](../Dawned-Admin)** is the web panel

@@ -523,8 +523,31 @@ Not a P-phase of its own — the game half of the map publish pipeline, built al
       (`World.applyMap`): enemies re-seed from the spawners against the new ground, players keep
       their x/z and are re-seated, discovery progress is preserved. A bad bake throws before the
       swap, so the old map stays live. Connected tabs get the same reload notice a new build gets.
+- [x] `fastTravelCost` / `travelHops` (`formulas/travel.ts`, A3-c) — the shrine-hop price the map
+      editor previews while the owner places shrines, in shared so the panel cannot quote a number
+      the game will not take. Nothing charges it until shrines become interactable (P11).
+- [x] Migration 0015, `map_editor_collections` (A3-d) — the panel's named selections and stampable
+      prefabs. Editor-side only; a prefab flattens to plain placements when stamped.
+- [x] **Published bakes are machine state** (A2/A3-e). They land in `assets_baked/map/` beside the
+      committed `dev-2` fallback, so `map-*/` and `current.json` are git-ignored — a `git pull`
+      during UPDATE.sh must never repoint the live world at a bake from a dev checkout — and
+      `deploy/BACKUP.sh` archives the live bake plus its pointer nightly (last 7). They were in
+      neither git nor the backups before, which made the published world the one thing a restore
+      would not have brought back (DEPLOYMENT.md §6).
+- [x] **The §7 loop is proven against this server**, not mocked: the panel's `map-scenario.mjs`
+      sculpts an islet out of open water, populates and zones it, publishes, and `/api/health`
+      flips `dev-2 → map-<epoch>` with no restart. Three things the editor deliberately cannot
+      author yet, each a game-side slice with a recommended default in USER_QUESTIONS: patrol
+      splines (Q24, P12), resource nodes (Q25, P10-A), per-zone music/sfx (Q26, P14 audio).
 
 ## P10 — Gathering Professions (M) ⚙A3 node placement tools required
+
+> **The A3 half of this is deliberately unfinished, and P10 is where it lands.** The map editor
+> has a Resource-node layer that reads zero and refuses to stamp, because `@dawned/shared` has no
+> resource-node schema for it to author against — an editor writing rows nothing reads is worse
+> than one that says so (USER_QUESTIONS Q25). The node schema is a P10-A deliverable; the panel's
+> layer is already wired and gets its tool the moment the schema exists. The same shape applies to
+> patrol splines for P12 (Q24).
 
 **Goal:** all four professions shippable.
 **Scope:** interactable framework final (prompts, hold-cast, server timers); nodes (tree topple,
@@ -605,15 +628,15 @@ launch-day monitoring (dashboard watch, backup verified); post-launch hotfix win
 
 ## Cross-repo sync (details in Dawned-Admin/ROADMAP.md)
 
-| Admin phase                                                                           | Delivers                   | Needed by                                              |
-| ------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------ |
-| A0 Foundation (auth, shell, DB link)                                                  | after P1                   | A1+                                                    |
-| A1 Content editors (items, abilities, enemies, loot, vendors, curves, world settings) | during P5–P8               | P5 ability rows, P8 items                              |
-| A2 Map editor I — terrain sculpt/paint/publish                                        | after P2                   | P12 (early access for dev island iteration from P5 on) |
-| A3 Map editor II — placement/spawns/zones/nodes/POIs                                  | after P9 systems stabilize | P10 nodes, P12 world                                   |
-| A4 Quest & dialogue editor                                                            | during P11                 | P11 pilot quests                                       |
-| A5 Live ops (players, dashboard, bans, reload)                                        | during P13                 | P13 event night                                        |
-| A6 Validation/diff/publish polish + backups UI                                        | during P14                 | P15 release ops                                        |
+| Admin phase                                                                           | Delivers              | Needed by                                              |
+| ------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------ |
+| A0 Foundation (auth, shell, DB link)                                                  | ✅ 2026-08-04         | A1+                                                    |
+| A1 Content editors (items, abilities, enemies, loot, vendors, curves, world settings) | 🟨 during P5–P8       | P5 ability rows, P8 items                              |
+| A2 Map editor I — terrain sculpt/paint/publish                                        | ✅ 2026-08-05         | P12 (early access for dev island iteration from P5 on) |
+| A3 Map editor II — placement/spawns/zones/nodes/POIs                                  | ✅ 2026-08-05 (built) | P10 nodes, P12 world                                   |
+| A4 Quest & dialogue editor                                                            | during P11            | P11 pilot quests                                       |
+| A5 Live ops (players, dashboard, bans, reload)                                        | during P13            | P13 event night                                        |
+| A6 Validation/diff/publish polish + backups UI                                        | during P14            | P15 release ops                                        |
 
 ## Post-0.1.0 direction (unscoped, priority-ordered draft)
 
