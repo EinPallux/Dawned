@@ -8,6 +8,31 @@
 
 ## Open questions
 
+### Q24 — patrol splines need AI, not just an editor (A3-b, 2026-08-05)
+
+MAP_EDITOR.md §2.3 asks the spawns mode for a **patrol spline editor with per-node wait times**.
+Drawing one is the easy half. The other half does not exist: `spawnerDefSchema` has no patrol
+field, and more importantly the enemy AI has no patrol state — idle enemies stand at their spawn
+until something perceives them.
+
+**Not shipped, on purpose.** Adding the field and the path editor now would put data in the
+database that nothing reads. Project rule 1 calls that a placeholder, and this is exactly the
+shape it warns about: it would look finished in the panel and do nothing in the world.
+
+What it actually needs, as a game-side slice: a `patrol` array on the spawner schema, an AI state
+that walks it at a stroll speed and honours the wait at each node, and the interaction with leash
+and social aggro decided (does a patroller return to its LAST node or its spawn? does pulling one
+member of a moving camp drag the whole line?). That is enemy-behaviour work, so it belongs with
+the game's AI phase rather than being smuggled in as an editor feature.
+
+**Recommended default: leave patrols out of 0.1.0.** Everything else in spawns mode shipped —
+camp links, aggro/leash rings, per-zone population against the CONTENT_0.1 budget, and a
+deterministic simulate-populate — and a world of stationary camps is what P9 was measured and
+balanced against. If you want patrols, say so and it becomes a game-side task with its own DoD
+(the editor half is a day on top).
+
+---
+
 ### Q23 — who owns a spawner's position, the map editor or the Enemies page? (A3, 2026-08-05)
 
 Camps can now be placed in two places: **Content → Enemies → Spawners** (where they have been

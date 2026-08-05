@@ -102,9 +102,11 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 21 owner decisions are answered and folded (decision log in USER_QUESTIONS.md — Q21,
-the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). Two open
-questions: Q22 (the Bandit Forager's model) and Q23 (who owns a spawner's position now that
-the map editor can place camps) — both shipped with a recommended default, neither blocking.
+the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). Three open
+questions: Q22 (the Bandit Forager's model), Q23 (who owns a spawner's position now that the
+map editor can place camps) and Q24 (patrol splines need an AI state the game does not have,
+so the editor deliberately does not author them) — all three shipped with a recommended
+default, none blocking.
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
