@@ -77,6 +77,48 @@ describe('casting', () => {
     expect(rare.markerHalf).toBeLessThan(common.markerHalf);
     expect(rare.driftSpeed).toBeGreaterThan(common.driftSpeed);
   });
+
+  /**
+   * `/ops/fish`. A rare is one weight in ten, so verifying "the rare's bar can
+   * be won" by fishing until one appears measures the yield roll rather than
+   * the reel — and at three catches per water it usually measures nothing.
+   */
+  it('puts a named fish on the line whatever the roll says', () => {
+    const forced = startFishing(
+      SHOAL,
+      'shoal_1',
+      1,
+      0,
+      0,
+      0,
+      { fishPick: 0, fishQty: 0 },
+      ITEMS,
+      SUNSCALE.id,
+    );
+    expect(forced.fishItemId).toBe(SUNSCALE.id);
+    // The bar has to follow the fish, or the lever would hand out a rare that
+    // drifts like a common and prove nothing about the difficulty ladder.
+    expect(forced.markerHalf).toBe(cast(1, 0, { fishPick: 0.95, fishQty: 0 }).markerHalf);
+  });
+
+  /**
+   * A stale lever must not conjure a fish this water does not stock — better a
+   * normal cast than a Ghostfin pulled out of the shore shoal.
+   */
+  it('falls back to the roll when the water does not stock the forced fish', () => {
+    const forced = startFishing(
+      SHOAL,
+      'shoal_1',
+      1,
+      0,
+      0,
+      0,
+      { fishPick: 0, fishQty: 0 },
+      ITEMS,
+      'item_material_ghostfin',
+    );
+    expect(forced.fishItemId).toBe(SPRAT.id);
+  });
 });
 
 describe('the bite', () => {

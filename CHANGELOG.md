@@ -5,6 +5,27 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Verified — P10 closed: a profession taken 1→10 for real (2026-08-05, P10-G)
+
+- **Woodcutting goes 1 → 10 in 458 gathers**, chopped one at a time on the live world by a real
+  character — no granted XP, no shortcuts. The T2 gate opens at gather 248, almost exactly
+  halfway, which is where the design wants you moving to bigger trees. Both numbers match the
+  XP curve's own arithmetic to the gather, so the levels you earn are the levels the design
+  promised.
+- **Two players cannot chop the same tree.** Whoever taps first gets it; the other is told
+  "Someone else got there first." straight away rather than working for three seconds and being
+  handed nothing.
+- **A node above your level says so** ("Your profession level is too low for this node.") and
+  opens the moment you reach the tier.
+- **Your professions survive a relog** — levels, XP and everything the codex has recorded.
+- **Every fishing bar the world can currently show you can be landed.** Both waters that exist,
+  both rarities each of them stocks — four different bars, each one caught within two casts. The
+  bar really does get faster and narrower as the fish gets better, in even steps. Epic and
+  legendary fish are defined but have no water to swim in until their zones are built.
+- New GM lever: `/ops/fish` puts a named fish on a player's line for their next casts. The reel
+  bar's speed and width come from what is on the hook, so this is how a rare or legendary bar
+  gets played on purpose instead of waited for.
+
 ### Added — you can gather it now (2026-08-05, P10-F)
 
 - **Walk up to a tree and press `F`.** The prompt tells you what you are about to do and what

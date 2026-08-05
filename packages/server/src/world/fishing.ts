@@ -72,8 +72,18 @@ export const startFishing = (
   originZ: number,
   rolls: { fishPick: number; fishQty: number },
   items: ReadonlyMap<string, ItemDef>,
+  /**
+   * `/ops/fish` — force which of this water's yields is on the line, instead of
+   * rolling for it. A rare is one weight in ten, so measuring "is the rare's bar
+   * winnable?" by fishing until one turns up measures the YIELD ROLL's luck, not
+   * the bar. Ignored when the water does not list the item, so a stale lever
+   * silently falls back to a normal cast rather than handing out a fish that
+   * does not live here.
+   */
+  forceItemId?: string,
 ): FishingSession => {
-  const chosen = pickWeighted(def.yields, rolls.fishPick);
+  const forced = forceItemId ? def.yields.find((y) => y.itemId === forceItemId) : undefined;
+  const chosen = forced ?? pickWeighted(def.yields, rolls.fishPick);
   const span = chosen ? chosen.qtyMax - chosen.qtyMin + 1 : 1;
   const qty = chosen ? chosen.qtyMin + Math.floor(Math.min(0.999999, rolls.fishQty) * span) : 1;
   const rarity = chosen ? (items.get(chosen.itemId)?.rarity ?? 'common') : 'common';

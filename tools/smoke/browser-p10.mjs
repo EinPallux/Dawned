@@ -452,7 +452,8 @@ const run = async () => {
       // and go again. It is COUNTED, because a run where half the holds break
       // is telling you something even when it finishes.
       broken++;
-      if (broken > 25) fail(`${broken} holds broke — the last said "${result.reason ?? 'nothing'}"`);
+      if (broken > 25)
+        fail(`${broken} holds broke — the last said "${result.reason ?? 'nothing'}"`);
       await ops('/ops/respawnnodes', {});
       continue;
     }
@@ -500,6 +501,14 @@ const run = async () => {
   }
   ok(`relog holds: woodcutting ${after.level}, codex ${after.codex}`);
 
+  // Let the codex's own data arrive before reading it. The panel lists what a
+  // profession CAN produce, which comes from the published node definitions —
+  // asserting before those land tests the loader, not the panel.
+  await page(returning).waitForFunction(
+    () => window.__dawned.professionCatalogue('woodcutting').length > 0,
+    null,
+    { timeout: 30000 },
+  );
   await page(returning).evaluate(() => {
     window.__dawned.setPanel('professions');
   });

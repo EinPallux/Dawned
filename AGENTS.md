@@ -28,8 +28,9 @@ nothing beyond it.
 - **State:** **P0–P8 all complete and owner-verified** (P6 closed 2026-08-04 — "classes
   are fine"; P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested
   everything so far and all seems fine"); their A1 sync points landed in the panel
-  (XP-curve + skill-tree editors, then items + loot + vendors). **P9 — Enemies & AI Depth
-  is the current phase.** ALL fine-tuning is deferred to the end of the project by the
+  (XP-curve + skill-tree editors, then items + loot + vendors). **P9 and P10 are both built
+  and measured (2026-08-05), awaiting the owner's playtest; P11 — Quests, POIs &
+  Interactables is next.** ALL fine-tuning is deferred to the end of the project by the
   owner's decision — never pause a phase to polish balance. P7 on top of the P5/P6 caster platform: the XP pipeline
   (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
   level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
@@ -97,7 +98,7 @@ nothing beyond it.
     exposed a client bug — prediction resolved against un-streamed ground and fell to the
     sea floor; `stepMovement` asks `hasDataAt` first now (NETWORKING.md §3.2). 381 tests
     green.
-    **P10 — Gathering Professions (in progress, 2026-08-05): A–F built, G left.**
+    **P10 — Gathering Professions ✅ built and measured (2026-08-05).**
     P10-A put it in shared — `formulas/professions.ts` (four professions, tier gates
     1/7/13/19/25, profession XP with the back-country halving, channel time, proc chance,
     range, refusal reasons) and `content/resource-nodes.ts` (definition/placement split,
@@ -109,8 +110,20 @@ nothing beyond it.
     client draws and the server judges the same bar and only the seed travels — four bugs
     fell out of testing it, the worst a bar that could not be won. P10-D is the panel
     (Dawned-Admin A1-e): node definitions with a gathering preview that runs THIS repo's
-    `rollGather`, and the map editor's node layer placing them. Left: the 1→10 and
-    two-players-one-node verification (G).
+    `rollGather`, and the map editor's node layer placing them.
+    **P10-G measured the DoD:** `browser-p10.mjs` takes woodcutting **1 → 10 in 458 real
+    gathers** (T2 gate at 248, 210 wealdoaks after) — both reproducing §1.3's closed form to
+    the gather, checked AFTER the run rather than asserted before it — plus the first-tap
+    claim with two real clients pressing together, the tier gate, relog and the `J` panel. It
+    grinds over the PROTOCOL: headless Chromium at ~4 fps turned 2.8 s per gather into 32.
+    Fishing needed a lever to be measurable at all — a rare is one weight in ten, so fishing
+    until one appears measures the yield roll, not the reel. `/ops/fish` names the fish (setup
+    only); the probe then walks **all four bands the placed waters offer, four distinct bars,
+    each landed within two casts**. Epic/legendary have no water until P12 and the run says so
+    rather than implying three rarities. Two harness bugs, both "silence looks like failure": a
+    caught spot regrows on the normal timer so a band's second cast sat out its deadline as a
+    lost bar, and the probe never decoded `GatherState`, so six minutes of "your profession
+    level is too low" were invisible. **587 unit tests green.**
 
     **A2 game-side half (2026-08-04):** the live map is a published artifact, not a
     constant — the server resolves `assets_baked/map/current.json`, reports it on
@@ -152,7 +165,8 @@ nothing beyond it.
     include a tick of delay. New: `tools/smoke/fishing-probe.mjs` (headless, real
     protocol at the tick rate, lands a fish), `tools/smoke/p10-probe.mjs` (browser), and
     `/ops/hook` for the 0.8 s reflex a bot cannot supply. `/ops/respawnnodes` told no
-    client it had run; fixed. **585 tests green.** T5 legendary difficulty is open (Q27).
+    client it had run; fixed. T5 legendary difficulty was Q27, answered 2026-08-05 with the
+    recommended default: leave the reel as shipped and judge it in the playtest.
 
     **P10-E — the gathering catalogue is content (2026-08-05).** 22 node models baked (a
     tree and a bloom per tier, a fish per water, five ore rocks tinted per ore off ONE grey KayKit boulder,

@@ -129,20 +129,27 @@ and are re-seated on the new terrain, and their clients are asked to reload (NET
 Live Ops buttons and the smoke suite both drive; each queues its effect and applies it between
 ticks, never mid-tick:
 
-| Route                 | Since | Effect                                                                                                                            |
-| --------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `/ops/reload-content` | A1    | re-load published content between ticks                                                                                           |
-| `/ops/cc`             | P6    | stun/root an online player (the future GM `/stun`)                                                                                |
-| `/ops/setlevel`       | P7    | set an online player's level, same path as `/setlevel`                                                                            |
-| `/ops/hurt`           | P6    | set a player's HP to a fraction of max (fraction 1 = full heal)                                                                   |
-| `/ops/grant`          | P8    | grant items or gold through the shared inventory planner                                                                          |
-| `/ops/enemyhurt`      | P9    | set a living enemy's HP by content id — reach a boss phase or an hp-threshold ability without a full fight                        |
-| `/ops/tp`             | P9    | teleport a player to a world position, grounded on the terrain                                                                    |
-| `/ops/setprof`        | P10   | set an online player's gathering-profession level — reach a tier gate without an afternoon of chopping                            |
-| `/ops/respawnnodes`   | P10   | bring every depleted resource node back at once — respawns are 90–180 s by design, which is right in play and tedious in a test   |
-| `/ops/hook`           | P10   | answer the next N fishing bites for a player — the 0.8 s hook window is reaction time, which is the one thing a bot cannot supply |
-| `/ops/spawnwave`      | P9    | spawn a TRANSIENT wave of an enemy type (world events; also how the load harness reaches the 150-AI budget)                       |
-| `/ops/reload-map`     | A2    | re-read `current.json` and swap that bake under the running world (map publish)                                                   |
+| Route                 | Since | Effect                                                                                                                                                                                    |
+| --------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/ops/reload-content` | A1    | re-load published content between ticks                                                                                                                                                   |
+| `/ops/cc`             | P6    | stun/root an online player (the future GM `/stun`)                                                                                                                                        |
+| `/ops/setlevel`       | P7    | set an online player's level, same path as `/setlevel`                                                                                                                                    |
+| `/ops/hurt`           | P6    | set a player's HP to a fraction of max (fraction 1 = full heal)                                                                                                                           |
+| `/ops/grant`          | P8    | grant items or gold through the shared inventory planner                                                                                                                                  |
+| `/ops/enemyhurt`      | P9    | set a living enemy's HP by content id — reach a boss phase or an hp-threshold ability without a full fight                                                                                |
+| `/ops/tp`             | P9    | teleport a player to a world position, grounded on the terrain                                                                                                                            |
+| `/ops/setprof`        | P10   | set an online player's gathering-profession level — reach a tier gate without an afternoon of chopping                                                                                    |
+| `/ops/respawnnodes`   | P10   | bring every depleted resource node back at once — respawns are 90–180 s by design, which is right in play and tedious in a test                                                           |
+| `/ops/hook`           | P10   | answer the next N fishing bites for a player — the 0.8 s hook window is reaction time, which is the one thing a bot cannot supply                                                         |
+| `/ops/fish`           | P10   | put a named fish on a player's line for N casts — the reel's difficulty comes from the fish's rarity, so this is how a rare or legendary BAR gets played on purpose instead of waited for |
+| `/ops/spawnwave`      | P9    | spawn a TRANSIENT wave of an enemy type (world events; also how the load harness reaches the 150-AI budget)                                                                               |
+| `/ops/reload-map`     | A2    | re-read `current.json` and swap that bake under the running world (map publish)                                                                                                           |
+
+`hook` and `fish` are the same kind of lever from opposite ends: one supplies the reflex a bot
+does not have, the other supplies the fish a 1-in-10 yield roll will not reliably hand over. Both
+stop at the SETUP — the window check, the bar, the catch and the xp are the untouched real path,
+so a run still measures the game rather than the harness. `fish` is ignored when the water does
+not stock the named item, so a stale arm degrades to an ordinary cast.
 
 `enemyhurt` and `tp` only move state the AI then reacts to normally: the phase walk, the announce
 and the self-shield are the real systems, never staged for the observer. Wave enemies carry a
