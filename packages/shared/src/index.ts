@@ -29,6 +29,8 @@ export * from './content/items.js';
 export * from './content/loot.js';
 export * from './content/vendors.js';
 export * from './content/resource-nodes.js';
+export * from './content/quests.js';
+export * from './content/npcs.js';
 export * from './data/appearance.js';
 export * from './data/splat-layers.js';
 export * from './data/basic-combos.js';

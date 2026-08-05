@@ -318,6 +318,97 @@ export const characterProfessions = pgTable(
   (table) => [primaryKey({ columns: [table.characterId, table.profession] })],
 );
 
+/** Quests (QUESTS_POI.md) — authored in the panel's quest editor (P11). */
+export const contentQuests = pgTable(
+  'content_quests',
+  {
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** QuestDef (shared/src/content/quests.ts) — steps, dialogue, rewards. */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
+/** Friendly NPCs (QUESTS_POI.md §3) — who Marla is; the map says where (P11). */
+export const contentNpcs = pgTable(
+  'content_npcs',
+  {
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** NpcDef (shared/src/content/npcs.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
+/**
+ * Per-character quest state (QUESTS_POI.md §2, P11).
+ *
+ * One row per (character, quest), holding only what the server cannot derive:
+ * which step, how far into it, and the status. Counters for FINISHED steps are
+ * not kept — steps are ordered and one at a time, so "step 3, counter 2" says
+ * everything, and storing a per-step array would be a second source of truth
+ * for a number the step index already implies.
+ *
+ * `rewardChoice` is written at turn-in, not before: a chain-end weapon choice
+ * has to survive a relog between "I picked the axe" and the reward landing,
+ * and it is also the audit trail for who took what.
+ */
+export const characterQuests = pgTable(
+  'character_quests',
+  {
+    characterId: bigint('character_id', { mode: 'number' })
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    questId: text('quest_id').notNull(),
+    status: text('status', {
+      enum: ['active', 'complete', 'turned_in', 'abandoned'],
+    })
+      .notNull()
+      .default('active'),
+    /** 0-based index into the quest's steps; == steps.length when complete. */
+    step: smallint('step').notNull().default(0),
+    /** Progress on the CURRENT step only. */
+    counter: integer('counter').notNull().default(0),
+    /** Pinned to the HUD tracker (max 3, enforced server-side). */
+    pinned: boolean('pinned').notNull().default(false),
+    /** Which per-class reward was taken, if the quest offered a choice. */
+    rewardChoice: text('reward_choice'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.characterId, table.questId] })],
+);
+
+/**
+ * Interactables whose state is PER CHARACTER rather than per world (P11).
+ *
+ * A chest with `respawnMs: 0` is one-shot per character — everyone gets to
+ * open it once, and nobody races anyone for it. That is the loot-bag lesson
+ * from P8 applied to furniture: shared world state turns a discovery into a
+ * competition. Shrine attunement lives here too, since being attuned is
+ * something you did, not something the world is.
+ */
+export const characterInteractions = pgTable(
+  'character_interactions',
+  {
+    characterId: bigint('character_id', { mode: 'number' })
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    /** The placement id from the baked map. */
+    objectId: text('object_id').notNull(),
+    kind: text('kind', { enum: ['opened', 'attuned', 'used'] }).notNull(),
+    /** How many times (an interact step can want four stumps touched). */
+    count: integer('count').notNull().default(1),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.characterId, table.objectId, table.kind] })],
+);
+
 // ---------------------------------------------------------------------------
 // Ops trail (DATABASE.md §4) — append-only, written by both servers
 // ---------------------------------------------------------------------------
@@ -601,3 +692,7 @@ export type ContentLootTableRow = typeof contentLootTables.$inferSelect;
 export type ContentVendorRow = typeof contentVendors.$inferSelect;
 export type ContentResourceNodeRow = typeof contentResourceNodes.$inferSelect;
 export type CharacterProfessionRow = typeof characterProfessions.$inferSelect;
+export type ContentQuestRow = typeof contentQuests.$inferSelect;
+export type ContentNpcRow = typeof contentNpcs.$inferSelect;
+export type CharacterQuestRow = typeof characterQuests.$inferSelect;
+export type CharacterInteractionRow = typeof characterInteractions.$inferSelect;

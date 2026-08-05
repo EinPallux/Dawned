@@ -13,3 +13,4 @@ export * from './inventory.js';
 export * from './travel.js';
 export * from './professions.js';
 export * from './fishing.js';
+export * from './quests.js';
