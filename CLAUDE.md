@@ -102,14 +102,14 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 21 owner decisions are answered and folded (decision log in USER_QUESTIONS.md — Q21,
-the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). Five open
-questions: Q22 (the Bandit Forager's model), Q23 (who owns a spawner's position now that the
-map editor can place camps), and three the map editor surfaced by hitting the wall — Q24
-(patrol splines need an AI state the game does not have), Q25 (no resource-node schema, so
-the editor's node layer cannot author anything until P10-A) and Q26 (`zoneAmbienceSchema` is
-light and colour only, so a zone cannot carry music or sfx). All five shipped with a
-recommended default, none blocking; the last three are why the §7 run reports three of its
-steps as "not possible yet" rather than faking them.
+the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). The map
+editor's four questions were answered on 2026-08-05 with "your recommendations": Q22 keeps
+the Orc as the Bandit Forager, Q23 makes the MAP the place camps live (its publish wins over
+the Enemies page's copy of a position), Q24 puts patrol splines out of 0.1.0, and Q25 — the
+resource-node schema — is answered by P10 starting, since its recommended default was "do it
+in the professions phase". **One open question: Q26** (`zoneAmbienceSchema` is light and
+colour only, so a zone cannot carry music or sfx; recommended default is to add both with the
+audio phase).
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,

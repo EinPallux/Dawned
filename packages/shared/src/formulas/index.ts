@@ -11,3 +11,4 @@ export * from './ability-mods.js';
 export * from './items.js';
 export * from './inventory.js';
 export * from './travel.js';
+export * from './professions.js';

@@ -44,6 +44,22 @@ profession (collection-completion itch).
   sightseeing); ~15% of nodes in risky spots (inside camps, cliff ledges) with +1 proc bonus roll.
 - Density target per zone: ~25 tree, ~20 ore, ~20 herb, ~8 fish spots (counts in CONTENT_0.1.md).
 
+### 1.5 As built (P10-A) — a node's definition and its placements are separate rows
+
+The obvious shape is one row per tree. The shipped shape is the one enemies already use: a
+**definition** (`content_resource_nodes`) says what a birch IS — profession, tier, what it
+yields, what it can proc, how long the hold is, how long until it regrows, which model stands
+and which stump replaces it — and a **placement** in the map bake says where one is. Two
+hundred birches share one definition, so retuning birchwood is one row in the panel rather
+than two hundred, and a placement stays small enough that a forest costs the bake almost
+nothing.
+
+The gates are DETERMINISTIC end to end: nothing in `rollGather` can fail to produce the
+ordinary yield. §1.1's "no fail-rolls" is a rule the code cannot break rather than a number
+someone chose. The only randomness is which yield entry, how many, and whether the proc lands
+— and all three arrive as explicit rolls the caller supplies, so the panel's gathering preview
+and the live drop run the same function rather than two similar ones.
+
 ## 2. Woodcutting
 
 | Tier (gate)                                                                                        | Wood            | Zone             | Node models (assets)                       |

@@ -88,10 +88,10 @@ cross-ref checks: every loot ref exists, every spawner enemy exists, every quest
 not by FKs across draft tables (drafts may be temporarily dangling while editing — the validator
 is the gate, and the game only ever sees validated snapshots).
 
-> **As built (P4/P5/P7/P8):** eight content tables are live — `content_enemies`,
+> **As built (P4/P5/P7/P8/P10):** nine content tables are live — `content_enemies`,
 > `content_spawners`, `content_abilities` (P5), `content_xp_curve` and
 > `content_skill_nodes` (P7, migration 0008), `content_items`, `content_loot_tables`
-> and `content_vendors` (P8, migration 0011), each `PK(id, status)` with the whole
+> `content_vendors` (P8, migration 0011) and `content_resource_nodes` (P10, migration 0016), each `PK(id, status)` with the whole
 > definition in one `def JSONB` column validated by the shared zod schemas
 > (`@dawned/shared/content`). The xp-curve rows are `xp_l01..xp_l29`
 > (`{level, xpToNext}`; publish cross-checks levels 1..29 exactly once); skill-node rows
@@ -104,7 +104,16 @@ is the gate, and the game only ever sees validated snapshots).
 > ever read as a whole weighted list) and vendor stock inside a vendor's, so a publish
 > copies one row per concept and the editor edits one document. `character_items`
 > (migration 0011) matches §2 exactly, with UNIQUE(character_id, container, slot) making
-> two stacks in one cell unrepresentable. The draft/published split is the PK's status axis from day
+> two stacks in one cell unrepresentable. `character_professions`
+> (character_id, profession, level, xp — PK(char, profession), migration 0016) is rows rather
+> than four columns on `characters`, because the four professions level independently and a
+> fifth one after 0.1.0 should be content, not a migration of the hottest table in the schema.
+> The discovered-material CODEX gets no table of its own: it is `character_discoveries` with
+> kind='codex', whose PK is already the dedupe, and the per-profession grouping is derived from
+> the published node defs when the server builds ProfessionSync rather than stored twice.
+> `content_resource_nodes` holds what a birch IS (profession, tier, yields, procs, channel and
+> respawn times, models); WHERE the birches stand is the map bake's thin `nodes[]` placement
+> layer, so retuning birchwood is one row rather than the two hundred trees sharing it. The draft/published split is the PK's status axis from day
 > one; the server loads **published rows only** at boot and refuses to start on a row that
 > fails validation (fail loud beats simulating weird content). The P4 enemies/camps ship as
 > published seed rows in migration 0003; the P5 ability kits were authored THROUGH the

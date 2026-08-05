@@ -65,7 +65,18 @@ binary.
 > `InventoryRefusal` code; RosterEntry gained mainhandModel/offhandModel so held weapons are
 > visible to everyone), v11 the dodge roll (the snapshot's self block gained rollTimeLeft u16
 > ms + rollDir u16 angle + rollCooldown u16 ms — without them reconciliation cancelled the
-> player's own roll ~150 ms in, see §3.1; +6 B per snapshot, self only). Snapshots remain **full-state
+> player's own roll ~150 ms in, see §3.1; +6 B per snapshot, self only). **v13 gathering
+> (P10: GatherOp 0x0a up — the SECOND client-authored JSON envelope, a zod-parsed
+> `{kind:'start', placementId}` / `{kind:'cancel'}` union re-validated against range, tier gate
+> and the node's claim before it touches anything; NodeStates 0x9f — only the DEPLETED nodes
+> near you plus the server time each returns, because the client already has every node's
+> position and definition from the baked `placements.json`, so "standing" is the default and
+> this is the exception list; GatherState 0xa0 — SELF's channel as start/done/cancelled/refused
+> with `startedAtMs`/`endsAtMs` so the hold bar is drawn from server stamps rather than counted
+> in frames, `reason` carrying a shared `GatherRefusal` code, and the yield/proc/XP on `done`
+> for the toast; ProfessionSync 0xa1 — the four profession levels with their xpToNext and
+> unlocked tier, plus the discovered-material codex. Held inputs deliberately do NOT ride the
+> envelope: anything continuous belongs on the 20 Hz InputIntent stream). Snapshots remain **full-state
 > within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
 > (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
 > total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16
