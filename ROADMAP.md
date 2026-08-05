@@ -19,8 +19,8 @@
 | P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
 | P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
-| P9    | Enemies & AI Depth                       | L    | ✅ built (2026-08-04)     |
-| P10   | Gathering Professions                    | M    | ✅ built (2026-08-05)     |
+| P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)      |
+| P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)      |
 | P11   | Quests, POIs & Interactables             | L    | 🔲                        |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
@@ -476,7 +476,8 @@ across Dawnshore+Weald as the template set; Mushroom King (first real boss) comp
 mixed camps (grunt+ranged+caster) create the intended "pick your fight" pressure; AI CPU within
 budget at 150 active.
 
-**Status (2026-08-04): all five slices built and the DoD measured — awaiting the owner's playtest.**
+**Status: ✅ closed 2026-08-05.** All five slices built and the DoD measured; the owner accepted
+the phase with P10, deferring the feel pass to the end-of-project fine-tuning round.
 
 - [x] Shared archetype + boss core (P9-A): charge/self-shield ability kinds, interruptible casts,
       hp-threshold/once-per-life/phase conditions, boss phases + arena leash, and the SHARED
@@ -557,6 +558,13 @@ tier); materials/fish item sets ×5 tiers; gather XP trickle; profession titles.
 **DoD:** each profession 1→10 on the dev island feels good (timing, sounds, toasts); fishing
 minigame tuned across 3 rarities; node respawn/depletion correct under multiplayer contention
 (two players, one node — first-tap claim rule verified).
+
+**Status: ✅ closed 2026-08-05.** DoD measured in P10-G, with two deviations the owner accepted
+explicitly rather than silently: **woodcutting alone** was walked 1→10 (the other three run the
+identical `rollGather` path over content of the same shape, and the owner will test them in the
+end-of-project pass), and **two rarities, not three** — epic and legendary fish have definitions
+and no water until P12 sculpts their zones, so the run reports the gap instead of faking it.
+"Feels good" is explicitly deferred to the fine-tuning round.
 
 - [x] **P10-A — shared professions core.** `formulas/professions.ts` (the four professions, tier
       gates 1/7/13/19/25, profession XP with the back-country halving, channel time, proc chance,

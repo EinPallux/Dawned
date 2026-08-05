@@ -35,6 +35,14 @@ the audio phase lands.
 
 ## Decision log
 
+### 2026-08-05 — P9 + P10 accepted (owner: "Mark P9 and P10 as done… We can always finetune after that")
+
+| #   | Topic                            | Decision                                                                                                                                                                                                                                                                       | Folded into                                          |
+| --- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| —   | P10 DoD: one profession measured | **Accepted.** Woodcutting was walked 1→10 for real; mining, herbalism and fishing share the `rollGather` path and content shape. The owner tests all four in the end-of-project pass rather than gating the phase on it                                                        | ROADMAP P10 status block, PROFESSIONS.md §1.7        |
+| —   | P10 DoD: two rarities, not three | **Accepted.** Epic and legendary fish are defined but have no placed water until P12 sculpts Emberwood/Sungraze/Ashcrag; the probe reports the gap rather than claiming three. Re-check when those zones land                                                                  | ROADMAP P10 status block, PROFESSIONS.md §5.3        |
+| —   | Phase closure vs. playtest       | **Phases close on the measured DoD, not on a playtest.** The owner's priority is reaching P15 with every phase built; ALL feel/number tuning is one deliberate pass at the end. Do not hold a phase open waiting for a playtest verdict — record what was measured and move on | ROADMAP status table, CLAUDE.md/AGENTS.md both repos |
+
 ### 2026-08-05 — the reel's difficulty ladder (owner: "Go with the recommended default")
 
 | #   | Topic                               | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Folded into                                                                                       |
