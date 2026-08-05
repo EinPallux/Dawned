@@ -50,6 +50,19 @@ const TICK_MS = 50;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const ok = (message) => console.log(`✅ ${message}`);
+const note = (message) => console.log(`   ${message}`);
+/**
+ * Which rarity bands a water's own definition can hand out.
+ *
+ * A yield entry names an ITEM, not a rarity — `fishingDifficulty` looks the
+ * rarity up on the item, which is why a water's difficulty spread is only
+ * knowable by joining the two.
+ */
+const nodeRarities = (nodeId, defs, rarityOf) => {
+  const def = (defs.nodes ?? []).find((n) => n.id === nodeId);
+  if (!def) return [];
+  return def.yields.map((y) => rarityOf.get(y.itemId) ?? 'unknown');
+};
 const fail = (message) => {
   console.error(`\n❌ ${message}\n`);
   process.exit(1);
@@ -147,7 +160,13 @@ const playOneCast = async (probe, placementId, log) => {
     const state = probe.fishing;
     const phase = state?.phase ?? 'none';
 
-    if (phase === 'caught' || phase === 'escaped') return phase;
+    if (phase === 'caught') {
+      // The catch message names the fish, which is the only place the rarity
+      // band that set this bar's difficulty can be read back.
+      log.fish = state.fish ?? null;
+      return phase;
+    }
+    if (phase === 'escaped') return phase;
     if (phase === 'none' && hooked) return 'lost';
 
     // Answer the bite. 0.8 s of window, and this loop runs every 50 ms.
@@ -243,26 +262,69 @@ const main = async () => {
   }
   ok(`at ${shoal.nodeId} (${shoals.length} shoals in the bake)`);
 
-  // Land one. A miss is a legal outcome — the fish gets away and the spot is
-  // not depleted — so the claim is "the bar can be won", not "won first try".
-  const attempts = [];
-  let caught = 0;
-  for (let i = 0; i < 12 && caught === 0; i++) {
-    const log = { peak: 0, gap: 0, serverProgress: 0 };
-    const outcome = await playOneCast(probe, shoal.id, log);
-    attempts.push(
-      `${outcome} local ${log.peak.toFixed(2)} / server ${log.serverProgress.toFixed(2)} (worst gap ${log.gap.toFixed(2)})`,
+  // What the catalogue says lives in each water, so a rarity that never turns
+  // up can be told apart from one that does not exist here.
+  const nodeDefs = await (await fetch(`${API_BASE}/api/content/resource-nodes`)).json();
+  const items = await (await fetch(`${API_BASE}/api/content/items`)).json();
+  const rarityOf = new Map((items.items ?? []).map((item) => [item.id, item.rarity]));
+  const nameOf = new Map((items.items ?? []).map((item) => [item.id, item.name]));
+
+  /** Fish one water until it gives up its rarities or the budget runs out. */
+  const fishAt = async (spot, casts) => {
+    await ops('/ops/tp', { player: CHARACTER, x: spot.x + 1.4, z: spot.z });
+    for (let i = 0; i < 30; i++) {
+      probe.send(0);
+      await sleep(TICK_MS);
+    }
+    const landed = [];
+    for (let i = 0; i < casts; i++) {
+      const log = { peak: 0, gap: 0, serverProgress: 0, fish: null };
+      const outcome = await playOneCast(probe, spot.id, log);
+      if (outcome === 'caught' && log.fish) {
+        const rarity = rarityOf.get(log.fish.itemId) ?? 'unknown';
+        landed.push({ ...log.fish, rarity, name: nameOf.get(log.fish.itemId) ?? log.fish.itemId });
+      }
+      await sleep(400);
+    }
+    return landed;
+  };
+
+  // Every water the world actually has, not every water the catalogue defines:
+  // T3–T5 fishing nodes are authored but have no ground to stand on until P12
+  // sculpts their zones, so their bands cannot be landed here and saying "three
+  // rarities" would be a claim about content that is not in the world.
+  const waters = [...new Map(shoals.map((s) => [s.nodeId, s])).values()];
+  const caught = [];
+  for (const water of waters) {
+    const landed = await fishAt(water, 8);
+    caught.push(...landed);
+    note(
+      `${water.nodeId}: ${landed.length} landed — ` +
+        (landed.map((f) => `${f.name} (${f.rarity})`).join(', ') || 'none'),
     );
-    if (outcome === 'caught') caught++;
-    await sleep(500);
   }
-  console.log(`   attempts:\n     ${attempts.join('\n     ')}`);
-  if (caught === 0) {
+  if (caught.length === 0) {
+    fail('never landed a fish in any water — a reel that cannot be won is the P10-C bug');
+  }
+  ok(`${caught.length} fish landed across ${waters.length} water(s)`);
+
+  // The DIFFICULTY BANDS are the point: `fishingDifficulty` reads the fish's
+  // rarity, so landing more than one band is what proves the bar is tuned
+  // rather than one-size-fits-all.
+  const bands = [...new Set(caught.map((f) => f.rarity))].sort();
+  const offered = [...new Set(waters.flatMap((w) => nodeRarities(w.nodeId, nodeDefs, rarityOf)))].sort();
+  note(`bands landed: ${bands.join(', ')} · bands these waters offer: ${offered.join(', ')}`);
+  if (bands.length < 2) {
     fail(
-      `${attempts.length} casts and never landed one — a reel that cannot be won is the P10-C bug (${attempts.join(', ')})`,
+      `only the ${bands[0]} band was landed across ${caught.length} fish — ` +
+        `the placed waters offer ${offered.join(' + ')}, so the ladder is not being exercised`,
     );
   }
-  ok(`landed a fish in ${attempts.length} cast(s)`);
+  ok(`the bar is winnable in ${bands.length} difficulty bands: ${bands.join(' + ')}`);
+  note(
+    'epic and legendary bands live on the T3–T5 waters, which have definitions and no ' +
+      'placements until P12 sculpts their zones — measured by the shared tests, not here',
+  );
 
   const fishing = probe.level('fishing');
   if (!fishing || (fishing.level === 1 && fishing.xp === 0)) {
