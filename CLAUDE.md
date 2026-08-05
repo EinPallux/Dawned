@@ -263,6 +263,10 @@ WORLD.md §4.2 / ITEMS_LOOT.md §5 price of a shrine hop, `2 × distance-in-chun
 interactable with the world-objects phase); it lives in shared because the map editor
 previews the whole matrix while the owner places shrines, and a panel quoting a price the
 game will not take is exactly the drift shared exists to prevent. **425 unit tests green.**
+**A3-d game-side half, 2026-08-05:** migration 0015 + `mapEditorCollections` — the panel's
+named selections and stampable prefabs. Editor-side only (a prefab flattens to plain
+placements when stamped), in Postgres rather than a browser because both are shared between
+the owner and any GM (DATABASE.md §4).
 
 ### Running it locally
 

@@ -108,3 +108,5 @@ nothing beyond it.
     banded 5–40 g) plus `travelHops`. Nothing charges it until shrines become
     interactable; it is in shared so the map editor's cost matrix and the game cannot
     disagree. 425 tests green.
+    **A3-d game-side half (2026-08-05):** migration 0015 adds `map_editor_collections` for
+    the panel's selection sets and prefabs — editor-side only, nothing the game reads.

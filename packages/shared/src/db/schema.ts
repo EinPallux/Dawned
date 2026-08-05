@@ -493,6 +493,30 @@ export const mapCheckpoints = pgTable('map_checkpoints', {
 });
 
 /**
+ * Editor-side collections (Dawned-Admin MAP_EDITOR.md §2.2, §3) — named
+ * selections and stampable prefabs.
+ *
+ * Nothing here reaches the game: a prefab flattens to plain placements the
+ * moment it is stamped, and a selection is pure UI. They are in Postgres rather
+ * than the browser because they are shared between the owner and any GM, and
+ * because months of collected prefabs must not die with a cache clear.
+ */
+export const mapEditorCollections = pgTable(
+  'map_editor_collections',
+  {
+    id: text('id').primaryKey(),
+    kind: text('kind', { enum: ['selection', 'prefab'] }).notNull(),
+    name: text('name').notNull(),
+    /** Shape depends on `kind`; the panel validates it with zod on both sides. */
+    data: jsonb('data').notNull(),
+    createdBy: bigint('created_by', { mode: 'number' }).references(() => accounts.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('map_editor_collections_kind_idx').on(table.kind)],
+);
+
+/**
  * Single-writer lock (MAP_EDITOR.md §3). It is a friends team, so this is a
  * lease with a heartbeat rather than anything clever: one row, whoever holds it
  * edits, everyone else gets read-only and a "request takeover" button.
