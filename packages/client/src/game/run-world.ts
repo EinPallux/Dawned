@@ -921,9 +921,22 @@ export const runWorld = (
   let resourceNodes: ResourceNodeManager | null = null;
   let nodeDefs = new Map<string, ResourceNodeDef>();
   const buildNodes = async (): Promise<void> => {
+    // The DEFINITIONS land on their own, ahead of the geometry. Drawing a node
+    // needs all three, but the `J` codex needs only this one — and waiting for
+    // ~39 baked models to arrive before a list of item names can be shown left
+    // the panel reading "Codex 0/0 · No catalogue loaded" for seconds after
+    // login, while the server had already told it four things were found. A
+    // list of names should not be gated on megabytes of trees.
+    const defsReady = loadResourceNodeDefs().then((defs) => {
+      if (disposed) return defs;
+      nodeDefs = defs;
+      professionsVersion++;
+      notifyProfessions();
+      return defs;
+    });
     const [placements, defs, models] = await Promise.all([
       mapSource.loadPlacements(),
-      loadResourceNodeDefs(),
+      defsReady,
       loadNodeModels(),
     ]);
     if (disposed) return;
@@ -1582,6 +1595,13 @@ export const runWorld = (
     respec: (kind: RespecKind): void => {
       connection.sendRespec(kind);
     },
+    /**
+     * What the `J` codex CAN list for a profession — the published node
+     * definitions joined to the item catalogue. Empty until both have loaded,
+     * which is exactly what a run needs to wait on before reading the panel.
+     */
+    professionCatalogue: (profession: string): string[] =>
+      professionsBridge.catalogue(profession).map((def) => def.id),
     setPanel: (panel: PanelId | null): void => {
       setPanel(panel);
     },

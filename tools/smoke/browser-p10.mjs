@@ -500,6 +500,14 @@ const run = async () => {
   }
   ok(`relog holds: woodcutting ${after.level}, codex ${after.codex}`);
 
+  // Let the codex's own data arrive before reading it. The panel lists what a
+  // profession CAN produce, which comes from the published node definitions —
+  // asserting before those land tests the loader, not the panel.
+  await page(returning).waitForFunction(
+    () => window.__dawned.professionCatalogue('woodcutting').length > 0,
+    null,
+    { timeout: 30000 },
+  );
   await page(returning).evaluate(() => {
     window.__dawned.setPanel('professions');
   });
