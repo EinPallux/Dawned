@@ -23,6 +23,7 @@ import {
   XpSource,
   devTerrain,
   discoveryXp,
+  poiDiscoveryXp,
   pointInPolygon,
   stepMovement,
   xpToNext,
@@ -58,8 +59,33 @@ import {
   type Profession,
   type NodePlacement,
   type ResourceNodeDef,
+  type Interactable,
+  type NpcPlacement,
+  type Poi,
+  type QuestDef,
+  type QuestEvent,
+  type QuestHook,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
+import {
+  buildInteractables,
+  buildNpcs,
+  type PlacedInteractable,
+  type ServerNpc,
+} from './interactables.js';
+import { applyQuestEvent } from './quests.js';
+import { poisEntered } from './interactables.js';
+
+/**
+ * The parts of a bake that are neither terrain nor resource nodes (P11).
+ * Optional throughout so a test world — and a bake published before P11 — is
+ * simply a world where nobody lives yet.
+ */
+export interface WorldPlacements {
+  npcs?: readonly NpcPlacement[];
+  interactables?: readonly Interactable[];
+  pois?: readonly Poi[];
+}
 import {
   buildNodes,
   channelBreak,
@@ -181,9 +207,71 @@ export class World {
     private zonePolys: readonly Zone[] = [],
     /** Resource-node placements from the bake (P10; empty in tests). */
     nodePlacements: readonly NodePlacement[] = [],
+    /** NPC placements, interactables and POIs from the bake (P11). */
+    worldPlacements: WorldPlacements = {},
   ) {
     if (content) this.populateFromSpawners();
     this.seedNodes(nodePlacements);
+    this.seedWorldObjects(worldPlacements);
+  }
+
+  /**
+   * (Re)build the NPCs, interactables and POIs a bake carries.
+   *
+   * Same orphan policy as nodes: a placement whose NPC definition is gone is
+   * dropped with a count rather than taking the world down, because publish
+   * already cross-checks the refs and reaching here means two publishes drifted.
+   */
+  private seedWorldObjects(placements: WorldPlacements): void {
+    const built = buildNpcs(placements.npcs ?? [], this.content?.npcs ?? new Map(), (x, z) =>
+      this.terrain.heightAt(x, z),
+    );
+    this.npcs.clear();
+    for (const [id, npc] of built.npcs) this.npcs.set(id, npc);
+    this.orphanNpcRefs = built.orphans;
+    this.interactables = buildInteractables(placements.interactables ?? [], (x, z) =>
+      this.terrain.heightAt(x, z),
+    );
+    this.pois = placements.pois ?? [];
+  }
+
+  private readonly npcs = new Map<string, ServerNpc>();
+  private interactables: Map<string, PlacedInteractable> = new Map();
+  private pois: readonly Poi[] = [];
+  private orphanNpcRefs: string[] = [];
+
+  /** Live world objects, for the gateway and `/api/health`. */
+  get worldObjects(): {
+    npcs: number;
+    interactables: number;
+    pois: number;
+    orphanNpcs: number;
+  } {
+    return {
+      npcs: this.npcs.size,
+      interactables: this.interactables.size,
+      pois: this.pois.length,
+      orphanNpcs: this.orphanNpcRefs.length,
+    };
+  }
+
+  npcAt(id: string): ServerNpc | undefined {
+    return this.npcs.get(id);
+  }
+  interactableAt(id: string): PlacedInteractable | undefined {
+    return this.interactables.get(id);
+  }
+  get allNpcs(): ReadonlyMap<string, ServerNpc> {
+    return this.npcs;
+  }
+  get allInteractables(): ReadonlyMap<string, PlacedInteractable> {
+    return this.interactables;
+  }
+  get allPois(): readonly Poi[] {
+    return this.pois;
+  }
+  questDefs(): ReadonlyMap<string, QuestDef> {
+    return this.content?.quests ?? new Map();
   }
 
   /**
@@ -232,6 +320,7 @@ export class World {
     spawn: SpawnPoint;
     zones: readonly Zone[];
     nodes?: readonly NodePlacement[];
+    world?: WorldPlacements;
   }): {
     enemies: number;
   } {
@@ -248,6 +337,11 @@ export class World {
     // preserving "this tree is stumped" across a bake that may not contain that
     // tree is more surprising than a forest that comes back standing.
     this.seedNodes(next.nodes ?? []);
+    // NPCs, chests and discovery points re-seat on the new ground for the same
+    // reason camps and trees do. Per-character interaction records are NOT
+    // touched: an attuned shrine is something the player did, and a republish
+    // must not un-attune it any more than it re-awards zone-discovery XP.
+    this.seedWorldObjects(next.world ?? {});
     for (const player of this.players.values()) {
       const m = player.movement;
       m.y = this.terrain.heightAt(m.x, m.z);
@@ -513,6 +607,17 @@ export class World {
       // The CHARACTER trickle comes from PROGRESSION.md's own formula, applied
       // through the same award path kills use so the xpRate lever covers it.
       awardXp(player, gatherXp(def.tier), XpSource.Gather, this.progressionContent(), events);
+
+      // Quest credit for what the node gave. `source: 'gather'` is what lets a
+      // COLLECT step insist the herb came out of the ground rather than off a
+      // vendor's shelf.
+      for (const stack of [...gained, ...(proc ? [proc] : [])]) {
+        this.questEvent(
+          player,
+          { kind: 'item', refId: stack.itemId, qty: stack.qty, source: 'gather' },
+          events,
+        );
+      }
 
       // Codex: first time this material has ever been gathered by this
       // character. The dedupe lives in the DB's primary key; this only decides
@@ -1598,13 +1703,22 @@ export class World {
       tickResource(player.resource, TICK_MS, inCombat);
       // Zone first-entry XP (P7, §1.1 discovery): polygon check once a second
       // per player, staggered by id — entering a zone is not a twitch event.
-      if (
-        !player.dead &&
-        this.zonePolys.length > 0 &&
-        (this.tickCounter + player.id) % 20 === 0 &&
-        player.level > 0
-      ) {
-        this.checkZoneDiscovery(player, events);
+      // Once a second per player, staggered by id — walking into a place is not
+      // a twitch event, and checking every zone AND every POI for every player
+      // every tick is the kind of quadratic that only shows up on the VPS.
+      //
+      // Zone and POI checks are deliberately separate guards: gating discovery
+      // on `zonePolys.length > 0` would mean a world with POIs but no zone
+      // polygons never discovers anything, which is exactly what a fresh map
+      // bake looks like before its zones are drawn.
+      if (!player.dead && (this.tickCounter + player.id) % 20 === 0 && player.level > 0) {
+        if (this.zonePolys.length > 0) this.checkZoneDiscovery(player, events);
+        this.checkPoiDiscovery(player, events);
+        this.questEvent(
+          player,
+          { kind: 'enter', x: player.movement.x, z: player.movement.z },
+          events,
+        );
       }
       // Low-HP procs (P7: Second Wind, Guardian of Dawn) — threshold checks
       // once per tick catch any crossing within 50 ms of the wound.
@@ -1703,6 +1817,121 @@ export class World {
         },
         nowMs,
       );
+    }
+  }
+
+  /**
+   * Offer one world event to a player's quest log, and turn what it did into
+   * combat events the gateway fans out.
+   *
+   * Every kill, item and interact comes through here. The fan-out is cheap on
+   * purpose (a handful of quests × one active step each) rather than indexed —
+   * an index of "which quests care about enemy_bog_blob" has to be rebuilt on
+   * every accept and abandon, and being wrong there is a quest that silently
+   * stops counting.
+   */
+  private questEvent(player: ServerPlayer, event: QuestEvent, events: CombatEvent[]): void {
+    const defs = this.questDefs();
+    if (defs.size === 0 || player.quests.size === 0) return;
+    const outcome = applyQuestEvent(player.quests, { defs }, event);
+    if (outcome.touched.length === 0) return;
+    events.push({ type: 'quest-progress', playerId: player.id, questIds: outcome.touched });
+    for (const done of outcome.stepsCompleted) {
+      events.push({
+        type: 'quest-step',
+        playerId: player.id,
+        questId: done.questId,
+        text: done.step.trackerText,
+      });
+    }
+    for (const questId of outcome.completed) {
+      events.push({ type: 'quest-complete', playerId: player.id, questId });
+    }
+    for (const hook of outcome.hooks) this.runQuestHook(player, hook, events);
+  }
+
+  /**
+   * The whitelisted scripting hooks (QUESTS_POI §8). Deliberately a closed set:
+   * every one of these is a dropdown in the quest editor, and the schema is
+   * what stops "no arbitrary scripting in 0.1.0" being a promise nobody checks.
+   */
+  private runQuestHook(player: ServerPlayer, hook: QuestHook, events: CombatEvent[]): void {
+    switch (hook.hook) {
+      case 'spawnGroup': {
+        const spawner = this.content?.spawners.find((entry) => entry.id === hook.spawnerId);
+        if (!spawner) break;
+        // The ambush behind step 2. Spawned through the ordinary path so the
+        // enemies behave normally — a scripted spawn that produced special
+        // enemies would be a second AI to keep correct.
+        for (const entry of spawner.entries) {
+          const def = this.content?.enemies.get(entry.enemyId);
+          if (!def) continue;
+          for (let i = 0; i < entry.count; i++) {
+            this.spawnEnemy(spawner, def, this.rollLevel(def, entry.level));
+          }
+        }
+        break;
+      }
+      case 'despawn': {
+        for (const enemy of [...this.enemies.values()]) {
+          if (enemy.campTag === hook.tag) this.removeEnemy(enemy);
+        }
+        break;
+      }
+      case 'toast':
+        events.push({ type: 'quest-toast', playerId: player.id, text: hook.text });
+        break;
+      case 'playEmote':
+        events.push({
+          type: 'npc-emote',
+          playerId: player.id,
+          npcId: hook.npcId,
+          clip: hook.clip,
+        });
+        break;
+      case 'grantBuff':
+        // Buffs come from the ability content the effect id names; an unknown
+        // id is a content mistake the publish rail catches, so it is a no-op
+        // here rather than a throw that would strand a quest mid-step.
+        events.push({
+          type: 'quest-buff',
+          playerId: player.id,
+          effectId: hook.effectId,
+          durationMs: hook.durationMs,
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
+   * POI rings → first-entry discovery XP, banner and map reveal (P11,
+   * WORLD.md §4.1).
+   *
+   * Uses the same `discoveryXp` curve zones do, scaled by the POI's own
+   * `xpBasis`, so a vista at level 3 and a vista at level 20 are both worth
+   * finding. Discovery is also a quest GATE (§5), so finding one can make a
+   * hidden quest exist — which is why the event carries the id rather than
+   * just a toast.
+   */
+  private checkPoiDiscovery(player: ServerPlayer, events: CombatEvent[]): void {
+    if (this.pois.length === 0) return;
+    for (const poi of poisEntered(this.pois, player, player.poisSeen)) {
+      player.poisSeen.add(poi.id);
+      const award = poiDiscoveryXp(
+        poi.xpBasis,
+        xpToNext(this.progressionContent().xpCurve, player.level),
+      );
+      awardXp(player, award, XpSource.Discovery, this.progressionContent(), events);
+      events.push({
+        type: 'discovery',
+        playerId: player.id,
+        kind: 'poi',
+        refId: poi.id,
+        label: poi.name,
+        poiKind: poi.kind,
+      });
     }
   }
 
@@ -1808,6 +2037,21 @@ export class World {
         this.progressionContent(),
         events,
       );
+    }
+    // Quest kill credit (P11): every TAGGED player, the same rule XP and loot
+    // use — being paid experience for a kill but skipped for the quest counter
+    // is the kind of inconsistency players notice within a minute.
+    if (enemy.def.archetype !== 'dummy') {
+      for (const playerId of killTaggers({
+        damage: enemy.damageBy,
+        healAssists: enemy.healAssists,
+      })) {
+        const tagger = this.players.get(playerId);
+        if (!tagger) continue;
+        const killEvent: QuestEvent = { kind: 'kill', refId: enemy.def.id };
+        if (enemy.campTag) killEvent.tag = enemy.campTag;
+        this.questEvent(tagger, killEvent, events);
+      }
     }
     // Loot (P8, ITEMS_LOOT.md §3–4): one INDEPENDENT roll per tagger, all
     // parcelled into a single bag at the corpse. Same tag rule as the XP

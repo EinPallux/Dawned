@@ -174,7 +174,11 @@ export class CharacterService {
   }
 
   /** Record a first-time discovery; the PK makes double-pays impossible. */
-  async addDiscovery(characterId: number, kind: 'zone' | 'codex', refId: string): Promise<void> {
+  async addDiscovery(
+    characterId: number,
+    kind: 'zone' | 'codex' | 'poi' | 'shrine',
+    refId: string,
+  ): Promise<void> {
     await this.db
       .insert(characterDiscoveries)
       .values({ characterId, kind, refId })

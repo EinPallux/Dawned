@@ -432,3 +432,44 @@ export const questTurnInNpc = (quest: QuestDef): string | null => {
   if (quest.turnInNpcId) return quest.turnInNpcId;
   return quest.giver.kind === 'npc' ? quest.giver.npcId : null;
 };
+
+/**
+ * Every NPC this quest names — giver, turn-in, delivery targets, dialogue
+ * speakers and `playEmote` hooks. Publish and the content loader both resolve
+ * these against the published NPC list, because a quest pointing at an NPC who
+ * does not exist is a conversation that never opens.
+ */
+export const questNpcRefs = (quest: QuestDef): string[] => {
+  const refs = new Set<string>();
+  if (quest.giver.kind === 'npc') refs.add(quest.giver.npcId);
+  const turnIn = questTurnInNpc(quest);
+  if (turnIn) refs.add(turnIn);
+  for (const step of quest.steps) {
+    if (step.type === 'deliver' || step.type === 'talk') refs.add(step.npcId);
+    for (const hook of step.hooks) {
+      if (hook.hook === 'playEmote') refs.add(hook.npcId);
+    }
+  }
+  for (const node of [
+    ...quest.dialogue.offer,
+    ...quest.dialogue.inProgress,
+    ...quest.dialogue.complete,
+  ]) {
+    if (node.npcId) refs.add(node.npcId);
+  }
+  return [...refs];
+};
+
+/** Every item id a quest touches — collect/deliver targets and rewards. */
+export const questItemRefs = (quest: QuestDef): string[] => {
+  const refs = new Set<string>();
+  if (quest.giver.kind === 'item') refs.add(quest.giver.itemId);
+  for (const step of quest.steps) {
+    if (step.type === 'collect' || step.type === 'deliver' || step.type === 'use_at') {
+      refs.add(step.itemId);
+    }
+  }
+  for (const reward of quest.rewards.items) refs.add(reward.itemId);
+  for (const choice of quest.rewards.choices) refs.add(choice.itemId);
+  return [...refs];
+};

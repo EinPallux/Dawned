@@ -199,7 +199,32 @@ export type CombatEvent =
   /** Progression state changed: gateway sends ProgressSync + persists. */
   | { type: 'progress-dirty'; playerId: number }
   /** First-time discovery: gateway persists the row + toasts the finder. */
-  | { type: 'discovery'; playerId: number; kind: 'zone' | 'codex'; refId: string; label: string }
+  | {
+      type: 'discovery';
+      playerId: number;
+      kind: 'zone' | 'codex' | 'poi';
+      refId: string;
+      label: string;
+      /** POI kind, for the banner's glyph and flourish (P11). */
+      poiKind?: string;
+    }
+  // --- quests (P11) --------------------------------------------------------
+  /** Counters moved on these quests — resend the log, bump the tracker. */
+  | { type: 'quest-progress'; playerId: number; questIds: string[] }
+  /** A step finished: toast its tracker line. */
+  | { type: 'quest-step'; playerId: number; questId: string; text: string }
+  /** Every step is behind you — "Return to Marla". */
+  | { type: 'quest-complete'; playerId: number; questId: string }
+  /** A quest hook asked for a line of text. */
+  | { type: 'quest-toast'; playerId: number; text: string }
+  /** A quest hook asked an NPC to emote. */
+  | { type: 'npc-emote'; playerId: number; npcId: string; clip: string }
+  /** A quest hook granted a buff; the gateway resolves the effect id. */
+  | { type: 'quest-buff'; playerId: number; effectId: string; durationMs: number }
+  /** Quest state changed enough to need a full QuestSync + a save. */
+  | { type: 'quest-dirty'; playerId: number }
+  /** Per-character interactable state changed (chest opened, shrine attuned). */
+  | { type: 'interact-dirty'; playerId: number; objectId: string }
   // --- items (P8) ----------------------------------------------------------
   /** Bag/paper-doll/purse changed — resend the authoritative sheet + persist. */
   | { type: 'inventory-dirty'; playerId: number }

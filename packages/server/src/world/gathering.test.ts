@@ -83,6 +83,8 @@ const testContent = (): GameContent => ({
     [BIRCH.id, BIRCH],
     [OAK.id, OAK],
   ]),
+  quests: new Map(),
+  npcs: new Map(),
   worldSettings: defaultWorldSettings(),
 });
 

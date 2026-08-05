@@ -143,6 +143,8 @@ const testContent = (): GameContent => ({
   ]),
   vendors: new Map([[VENDOR.id, VENDOR]]),
   resourceNodes: new Map(),
+  quests: new Map(),
+  npcs: new Map(),
   worldSettings: defaultWorldSettings(),
 });
 

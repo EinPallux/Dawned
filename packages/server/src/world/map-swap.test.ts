@@ -56,6 +56,8 @@ const content = (): GameContent => ({
   lootTables: new Map(),
   vendors: new Map(),
   resourceNodes: new Map(),
+  quests: new Map(),
+  npcs: new Map(),
   worldSettings: defaultWorldSettings(),
 });
 

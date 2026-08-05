@@ -32,10 +32,17 @@ import {
   validateLootTableDef,
   validateVendorDef,
   validateResourceNodeDef,
+  validateQuestDef,
+  validateQuestFlow,
+  validateNpcDef,
+  validateNpc,
+  questNpcRefs,
   type ItemDef,
   type LootTableDef,
   type VendorDef,
   type ResourceNodeDef,
+  type QuestDef,
+  type NpcDef,
 } from '@dawned/shared';
 import {
   contentAbilities,
@@ -48,6 +55,8 @@ import {
   contentLootTables,
   contentVendors,
   contentResourceNodes,
+  contentQuests,
+  contentNpcs,
 } from '@dawned/shared/schema';
 import type { Db } from '../db/client.js';
 
@@ -74,6 +83,10 @@ export interface GameContent {
   vendors: Map<string, VendorDef>;
   /** Resource-node definitions (P10) — what each kind of node yields. */
   resourceNodes: Map<string, ResourceNodeDef>;
+  /** Quests (P11) by id: steps, gates, dialogue, rewards. */
+  quests: Map<string, QuestDef>;
+  /** Friendly NPC definitions (P11) — the map bake says where they stand. */
+  npcs: Map<string, NpcDef>;
 }
 
 export const slotKey = (classId: ClassId, slot: number): string => `${classId}:${slot}`;
@@ -289,6 +302,53 @@ export const loadContent = async (db: Db): Promise<GameContent> => {
     }
   }
 
+  const npcs = new Map<string, NpcDef>();
+  const npcRows = await db.select().from(contentNpcs).where(eq(contentNpcs.status, 'published'));
+  for (const row of npcRows) {
+    try {
+      const def = validateNpcDef(row.def);
+      // Role rules (a vendor with no shop) are advisory at load: the publish
+      // rail already blocks them, and refusing to boot over a silent villager
+      // would take the world down for a content warning.
+      for (const warning of validateNpc(def)) console.warn(`[content] npc ${warning}`);
+      npcs.set(def.id, def);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+
+  const quests = new Map<string, QuestDef>();
+  const questRows = await db
+    .select()
+    .from(contentQuests)
+    .where(eq(contentQuests.status, 'published'));
+  for (const row of questRows) {
+    try {
+      const def = validateQuestDef(row.def);
+      // Flow problems DO block: an unfinishable quest is worse than a missing
+      // one, because a player carries it in their journal forever.
+      const flow = validateQuestFlow(def);
+      if (flow.length > 0) {
+        problems.push(...flow);
+        continue;
+      }
+      quests.set(def.id, def);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+  // Cross-refs the flow check cannot see, because they leave this row.
+  for (const quest of quests.values()) {
+    for (const questId of quest.prerequisites.questIds) {
+      if (!quests.has(questId)) {
+        problems.push(`quest ${quest.id}: requires unpublished quest "${questId}"`);
+      }
+    }
+    for (const npcId of questNpcRefs(quest)) {
+      if (!npcs.has(npcId)) problems.push(`quest ${quest.id}: unknown npc "${npcId}"`);
+    }
+  }
+
   if (problems.length > 0) {
     throw new Error(`published content failed validation:\n  ${problems.join('\n  ')}`);
   }
@@ -306,5 +366,7 @@ export const loadContent = async (db: Db): Promise<GameContent> => {
     lootTables,
     vendors,
     resourceNodes,
+    quests,
+    npcs,
   };
 };
