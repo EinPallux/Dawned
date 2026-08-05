@@ -29,8 +29,8 @@ nothing beyond it.
   are fine"; P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested
   everything so far and all seems fine"); their A1 sync points landed in the panel
   (XP-curve + skill-tree editors, then items + loot + vendors). **P9 and P10 are both built
-  and measured (2026-08-05), awaiting the owner's playtest; P11 — Quests, POIs &
-  Interactables is next.** ALL fine-tuning is deferred to the end of the project by the
+  and measured (2026-08-05) and owner-accepted; P11 — Quests, POIs & Interactables is
+  next.** ALL fine-tuning is deferred to the end of the project by the
   owner's decision — never pause a phase to polish balance. P7 on top of the P5/P6 caster platform: the XP pipeline
   (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
   level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
@@ -88,7 +88,7 @@ nothing beyond it.
     dropped the protocol's `cast` flag (the field is required now — NETWORKING.md §3.3:
     optional wire fields are a silent-failure trap). Nameplates no longer clip long names.
     New dev levers `/ops/enemyhurt`, `/ops/tp` and `/ops/spawnwave`.
-    **P9-E closed the phase (built, awaiting the owner's playtest):** `browser-p9.mjs`
+    **P9-E closed the phase:** `browser-p9.mjs`
     BUILDS its level-12 warrior first (all 33 attribute points, every legal node, T2 gear)
     — an unspent level 12 does 30 dps where a built one does 78, and skipping that nearly
     caused a wrong re-balance of the King. Measured **105.4 s, inside the §12 60–120 s

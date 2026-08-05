@@ -114,10 +114,14 @@ cannot carry music or sfx (recommended default — add both with the audio phase
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
-then items + loot + vendors). **P9 and P10 are both built and measured (2026-08-05), awaiting
-the owner's playtest; P11 — Quests, POIs & Interactables is next.**
-The owner has explicitly deferred ALL fine-tuning (numbers, feel-pass on shipped systems)
-to the end of the project — do not stop mid-phase to polish balance; note it and move on.
+then items + loot + vendors). **P0–P10 are ✅ complete and owner-accepted (P9 + P10 closed
+2026-08-05 on their measured DoDs). P11 — Quests, POIs & Interactables is next**, paired with
+the panel's A4 quest editor.
+**A phase closes on its MEASURED DoD, not on a playtest** (owner decision, 2026-08-05): the
+priority is reaching P15 with every phase built. Record what was measured — including any
+deviation, like P10's one-profession grind — and move on. The owner has explicitly deferred
+ALL fine-tuning (numbers, feel-pass on shipped systems) to one pass at the end of the project;
+do not stop mid-phase to polish balance.
 What P7 shipped on top of the P5/P6 caster platform: the XP pipeline (kill XP with the tag
 rule, level falloff, per-enemy `xpMult` and the `xpRate` world lever, zone-discovery XP,
 cascading level-ups with the §1.3 refill/juice contract), attribute allocation and the
@@ -232,7 +236,7 @@ arena), enemy cast bars that shatter red with a ring + hit on an interrupt, abso
   nameplates clipped every name past ~17 chars (256 px canvas, centre-aligned). New dev
   levers `/ops/enemyhurt` and `/ops/tp` (ARCHITECTURE.md §3 table).
 
-**P9-E measured the DoD and closed the phase (built, awaiting the owner's playtest).**
+**P9-E measured the DoD and closed the phase.**
 `tools/smoke/browser-p9.mjs` BUILDS its level-12 warrior before timing anything — spends all
 33 attribute points and every legal skill node, equips published T2 gear — because an unspent
 level 12 fights at 38 % of a built one's damage (30 vs 78 effective dps). That is the trap the
@@ -285,7 +289,7 @@ made the published world the one thing a restore would not have brought back; th
 came from is in Postgres, so pg_dump covers re-publishing, and this covers putting the world
 straight back. DEPLOYMENT.md §6 carries the contract.
 
-**P10 — Gathering Professions is ✅ built and measured (2026-08-05), awaiting the playtest.**
+**P10 — Gathering Professions is ✅ complete (2026-08-05).**
 P10-A put the vocabulary in shared: `formulas/professions.ts` (the four professions, the
 1/7/13/19/25 tier gates, profession XP with §1.3's back-country halving, channel time, proc
 chance, gather range and the refusal reasons) and `content/resource-nodes.ts` — the
@@ -363,7 +367,7 @@ two nodes sharing a model) rather than re-checking what the publish rail already
 The Gems & Ores pack was deliberately NOT used despite being the perfect fit: no license file,
 third-party conversion, unattributable — recorded in CREDITS.md rather than quietly shipped.
 
-**P10-G measured the DoD and closed the phase (built, awaiting the owner's playtest).**
+**P10-G measured the DoD and closed the phase.**
 `tools/smoke/browser-p10.mjs` takes woodcutting **1 → 10 in 458 real gathers** on the live
 world — every one an actual `GatherOp`, no granted XP — with the T2 gate opening at gather 248
 and 210 wealdoaks after it. Both numbers reproduce PROFESSIONS §1.3's closed form to the gather

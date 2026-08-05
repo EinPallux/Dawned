@@ -4,25 +4,26 @@
 community of friends (5–20 players), inspired by the feel of _Farever_, _Guild Wars 2_ and
 _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 
-> **Status (2026-08-05): phases P0–P8 are complete and owner-verified; P9 (Enemies & AI Depth)
-> and P10 (Gathering Professions) are built and measured, awaiting the owner's playtest.** Live at
+> **Status (2026-08-05): phases P0–P10 are complete and owner-accepted.** Live at
 > [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
 > a streamed island, action combat, all four classes with their ability kits, levels 1–30 with
 > attributes and 96-node skill trees, and the full item loop (pack, paper-doll, loot bags,
-> vendors, visible weapons). Protocol v12 — enemies come in five archetypes with a 17-strong
+> vendors, visible weapons). Protocol v13 — enemies come in five archetypes with a 17-strong
 > Dawnshore/Weald bestiary, and their fights are readable: boss frames with phase pips,
 > interruptible cast bars, telegraphed pools you walk out of, and absorb bubbles. The Mushroom
 > King measures **105 s** solo at level (the 60–120 s target), and 150 active AI cost the server
 > 4.2 ms of a 50 ms tick. **The world itself is editable now**: the live map is a published
 > artifact the server hot-loads, and Dawned-Admin's map editor (A2 + A3, closed 2026-08-05) can
 > sculpt a new islet out of open water, populate and zone it, and put it under a player's feet
-> without a deploy. **P10 — Gathering Professions is built (protocol v13):** 65 resource nodes
+> without a deploy. **Gathering professions are in:** 65 resource nodes
 > stand in the world, `F` chops/mines/picks them with a hold bar and a depletion beat, fishing is
 > a real minigame, and `J` opens four profession levels with a codex of everything you have ever
 > brought home. Measured end to end: woodcutting goes **1 → 10 in 458 real gathers** (the T2 gate
 > at 248, both matching the XP curve's own arithmetic to the gather), two players cannot chop the
 > same tree, and every fishing bar the placed waters can show is landable within two casts.
-> **Next: the owner's playtest of P9 + P10, then P11 — Quests, POIs & Interactables.**
+> **Next: P11 — Quests, POIs & Interactables**, paired with the panel's A4 quest editor.
+> Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
+> end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an
 > authored island open world with levels 1–30, professions, quests, loot, chat, GM tools) — not an
 > MVP, not a prototype. The companion repo **[Dawned-Admin](../Dawned-Admin)** is the web panel
