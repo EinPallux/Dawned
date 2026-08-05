@@ -20,7 +20,7 @@
 | P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
 | P9    | Enemies & AI Depth                       | L    | ✅ built (2026-08-04)     |
-| P10   | Gathering Professions                    | M    | 🟨 A–F built (2026-08-05) |
+| P10   | Gathering Professions                    | M    | ✅ built (2026-08-05)     |
 | P11   | Quests, POIs & Interactables             | L    | 🔲                        |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
@@ -616,10 +616,25 @@ minigame tuned across 3 rarities; node respawn/depletion correct under multiplay
       consumed inputs, scoring every press one tick late; and it sampled the Reel bit once per
       tick rather than once per intent, throwing presses away on catch-up ticks. Underneath all
       of them, `MARKER_MAX_SPEED` made the loop unwinnable through any delay (Q27).
-- [ ] **P10-G — verification.** `browser-p10`: a profession taken 1→10 for real, two players on
-      one node proving the claim rule, the fishing bar tuned across three rarities.
-- [ ] **P10-G — verification.** `browser-p10`: a profession taken 1→10 for real, two players on
-      one node proving the claim rule, the fishing bar tuned across three rarities.
+- [x] **P10-G — verification.** `tools/smoke/browser-p10.mjs` takes woodcutting **1 → 10 in 458
+      real gathers** on the live world — every one an actual `GatherOp`, no granted XP — with the
+      T2 gate opening at gather 248 and 210 wealdoaks after it. Both numbers reproduce §1.3's
+      closed form to the gather (2980 xp ÷ 12, then 5040 ÷ 24), which was checked AFTER the run
+      rather than asserted before it, so it is evidence that the XP pipeline, the tier gates and
+      the ×0.5 halving fold as designed. The same run proves the first-tap claim with two real
+      clients pressing together (one channels, the other is told "Someone else got there
+      first."), the tier gate refusing and then opening, relog persistence, and the `J` panel
+      agreeing with the server. It grinds over the PROTOCOL rather than in a browser: at ~4 fps
+      in a container a headless Chromium turned 2.8 s per gather into 32, and 458 of those is a
+      run nobody executes. `tools/smoke/fishing-probe.mjs` walks the difficulty ladder on
+      purpose with the new `/ops/fish` lever — **all four bands the placed waters offer, four
+      distinct bars, each landed within two casts** (§5.3). Epic and legendary have definitions
+      and no water until P12, which the run REPORTS rather than implying three rarities.
+      Two harness bugs fell out, both of the "silence looks like failure" kind: a caught spot
+      depletes and regrows on the normal 90–180 s timer, so a band's second cast was refused and
+      then sat out the deadline as if the bar had been lost; and the probe watched only the
+      fishing state, so a refusal was invisible — the first run to reach the T2 pool spent six
+      minutes being told "your profession level is too low" without hearing it.
 
 ## P11 — Quests, POIs & Interactables (L) ⚙A4 quest editor required
 

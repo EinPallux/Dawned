@@ -85,6 +85,40 @@ Two things the shipped rows say that this document did not:
   grows. Found by a test asserting that every node yields something from its own tier band, not
   by reading the rows.
 
+### 1.7 As built (P10-G) — what 1→10 actually costs
+
+§1.3 says "level 30 in one profession ≈ focused casual week" and never says what the first ten
+levels cost. Measured on the live server by `tools/smoke/browser-p10.mjs`, which grinds a real
+character with real `GatherOp`s rather than granting XP:
+
+| milestone | gathers | closed form                      | note                                              |
+| --------- | ------- | -------------------------------- | ------------------------------------------------- |
+| level 2   | 4       |                                  |                                                   |
+| level 5   | 94      |                                  |                                                   |
+| level 7   | 248     | 2980 xp ÷ 12 = 248.3             | the T2 gate opens — the run moves to the wealdoak |
+| level 10  | 458     | + 5040 xp ÷ 24 = 210 → **458.3** | 210 of them T2                                    |
+
+**The live server reproduces §1.3's curve to the gather.** Summing `profXpToNext` over levels
+1–6 and dividing by a T1 node's 12 xp predicts the gate at gather 248; levels 7–9 over a T2
+node's 24 xp predicts 210 more. The run measured 248 and 210. Nothing about that was asserted
+in advance — the grind counts gathers and the formula was checked against it afterwards — so it
+is evidence that the XP pipeline, the tier gates and the ×0.5 halving all fold the way the
+design says rather than merely running without error.
+
+**The T2 gate falls almost exactly at the halfway mark**, which is the shape the halving is for:
+the second half is only worth grinding on the higher tier, and the ladder opens it right when
+you can reach it.
+
+The run's 1290 s is NOT a play-time estimate. It holds a `/ops/respawnnodes` lever open so a
+node is always ready, which deletes the thing that actually paces gathering: a tree is a 90–180 s
+regrow, so a real session is a walk between clusters, not a stand at one trunk. The number worth
+keeping is the gather COUNT; wall-clock is the owner's feel pass.
+
+Only woodcutting was walked end to end. Mining, herbalism and fishing run the identical
+`rollGather` path over content of the same shape, so the machinery is proven once rather than
+four times — the same argument as testing one class's resource lane. Whether each one _feels_
+good is a playtest judgement, deferred with all other tuning.
+
 ## 2. Woodcutting
 
 | Tier (gate)                                                                                        | Wood            | Zone             | Node models (assets)                       |
@@ -190,6 +224,40 @@ Proven end to end by `tools/smoke/fishing-probe.mjs`, which plays the real proto
 the tick rate. It is headless on purpose: the browser probe renders at ~4 fps in a
 container and steps the reel once a frame, so it could only ever measure the container.
 Feel remains the owner's end-of-project pass.
+
+### 5.3 As built (P10-G) — every bar the world can present, played on purpose
+
+The DoD asks for the minigame "tuned across 3 rarities". Fishing until a rare turns up
+does not measure that: a rare is one weight in ten, so a handful of casts usually never
+opens the bar in question, and a run that fails on the roll has found nothing. `/ops/fish`
+puts a named fish on the line, and the probe walks the ladder deliberately — one
+representative fish per rarity each placed water stocks, then plays it for real.
+
+| water       | tier | rarity | drift | half-width | landed on |
+| ----------- | ---- | ------ | ----- | ---------- | --------- |
+| Shore Shoal | T1   | common | 0.180 | 0.160      | cast 1    |
+| Weald Pool  | T2   | common | 0.195 | 0.149      | cast 2    |
+| Shore Shoal | T1   | rare   | 0.210 | 0.139      | cast 1    |
+| Weald Pool  | T2   | rare   | 0.225 | 0.129      | cast 1    |
+
+Four bands, four DISTINCT bars, all winnable through a real server. The rungs matter more
+than the labels: `fishingDifficulty` folds tier and rarity into one step, so a T1 rare and
+a T2 common are different bars despite sharing neither word — and the four measured pairs
+are a clean monotone ladder rather than two settings with a name each.
+
+**Only two of the five rarities are reachable, and that is content, not tuning.** Epic and
+legendary fish live on the T3–T5 waters, which have definitions and deliberately no
+placements until P12 sculpts their zones (§1.6). The probe says so rather than implying
+three; the harder rungs stay pinned by the shared delayed-command tests, and how hard a
+legendary should FEEL is Q27, answered "leave it as shipped and judge it in the playtest".
+
+One thing the run found on the way, which had nothing to do with difficulty: a caught fish
+depletes the spot, and a spot regrows on the same 90–180 s timer as everything else. The
+probe's second cast of a band was therefore refused and then sat out its whole deadline,
+which printed as a lost bar. It respawns nodes between casts now, and — more importantly —
+it LISTENS to refusals instead of watching only the fishing state, so a refused cast says
+why immediately rather than costing 70 s of silence. The first run to reach the weald pool
+spent six minutes being told "your profession level is too low" without hearing it.
 
 ## 6. Why gather in 0.1.0 (pre-crafting honesty)
 

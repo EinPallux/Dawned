@@ -392,6 +392,38 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
   });
 
   /**
+   * Put a named fish on a player's line for their next casts (P10).
+   *
+   * The reel bar's speed and catch width come from the fish's rarity, so "is
+   * the rare's bar winnable?" cannot be answered by fishing until a rare turns
+   * up — that is one weight in ten and measures the yield roll, not the reel.
+   * This picks the yield entry directly; everything after it (the bite, the
+   * window, the bar, the catch, the xp) is the untouched real path. It is also
+   * the tuning handle for USER_QUESTIONS Q27: judging a legendary means hooking
+   * one on demand. Ignored if the water does not stock that fish.
+   */
+  app.post('/ops/fish', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as { player?: unknown; item?: unknown; casts?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const item = typeof body?.item === 'string' ? body.item.trim() : '';
+    const casts =
+      typeof body?.casts === 'number' ? Math.min(50, Math.max(1, Math.floor(body.casts))) : 1;
+    if (!player) return reply.code(400).send({ error: 'player required' });
+    if (!item) return reply.code(400).send({ error: 'item required' });
+    if (!world.forceFishByName(player, item, casts)) {
+      return reply.code(404).send({ error: 'player not online' });
+    }
+    return reply.send({ ok: true, armed: player, item, casts });
+  });
+
+  /**
    * Bring every depleted resource node back at once (P10).
    *
    * Respawns are 90–180 s by design, which is right in play and tedious in a

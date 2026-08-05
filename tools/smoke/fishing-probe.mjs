@@ -36,6 +36,7 @@ import {
   encodeHello,
   encodeInputIntent,
   fishPosition,
+  gateForTier,
   peekOpcode,
   reelStep,
 } from '@dawned/shared';
@@ -51,18 +52,6 @@ const TICK_MS = 50;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const ok = (message) => console.log(`✅ ${message}`);
 const note = (message) => console.log(`   ${message}`);
-/**
- * Which rarity bands a water's own definition can hand out.
- *
- * A yield entry names an ITEM, not a rarity — `fishingDifficulty` looks the
- * rarity up on the item, which is why a water's difficulty spread is only
- * knowable by joining the two.
- */
-const nodeRarities = (nodeId, defs, rarityOf) => {
-  const def = (defs.nodes ?? []).find((n) => n.id === nodeId);
-  if (!def) return [];
-  return def.yields.map((y) => rarityOf.get(y.itemId) ?? 'unknown');
-};
 const fail = (message) => {
   console.error(`\n❌ ${message}\n`);
   process.exit(1);
@@ -99,6 +88,17 @@ class Probe {
       else if (opcode === ServerOp.Snapshot) this.snapshot = decodeSnapshot(reader);
       else if (opcode === ServerOp.FishingState) this.fishing = decodeJsonEnvelope(reader);
       else if (opcode === ServerOp.ProfessionSync) this.professions = decodeJsonEnvelope(reader);
+      // A refused cast used to be INVISIBLE here: the probe watched only the
+      // fishing state, which simply never left 'none', so a cast the server had
+      // already rejected looked exactly like a bite that had not come yet and
+      // burned the whole 70 s deadline. Five of those is six silent minutes
+      // ending in "bar never opened", which names the symptom and not the cause.
+      else if (opcode === ServerOp.GatherState) {
+        const message = decodeJsonEnvelope(reader);
+        if (message.phase === 'refused' || message.phase === 'cancelled') {
+          this.refusal = message.reason ?? 'unknown';
+        }
+      }
     });
   }
 
@@ -146,6 +146,7 @@ class Probe {
  */
 const playOneCast = async (probe, placementId, log) => {
   probe.fishing = null;
+  probe.refusal = null;
   probe.gather({ kind: 'start', placementId });
 
   const deadline = Date.now() + 70_000;
@@ -168,6 +169,10 @@ const playOneCast = async (probe, placementId, log) => {
     }
     if (phase === 'escaped') return phase;
     if (phase === 'none' && hooked) return 'lost';
+    if (probe.refusal) {
+      log.refusal = probe.refusal;
+      return `refused:${probe.refusal}`;
+    }
 
     // Answer the bite. 0.8 s of window, and this loop runs every 50 ms.
     if (phase === 'bite' && !hooked) {
@@ -177,6 +182,10 @@ const playOneCast = async (probe, placementId, log) => {
 
     if (phase === 'reeling' && state.startedAtMs !== undefined) {
       const drift = { driftSpeed: state.driftSpeed ?? 0.18, markerHalf: state.markerHalf ?? 0.16 };
+      // The bar the server actually opened. `fishingDifficulty` derives it from
+      // the fish's tier and rarity, so recording it is how a run can say which
+      // rung of the ladder it just played rather than only which fish it got.
+      log.drift = drift;
       // Restart only when a NEW reel opens: the periodic correction carries
       // the seed too, so keying on that resets the bar several times a second
       // and it can never fill (the client had exactly this bug).
@@ -269,61 +278,112 @@ const main = async () => {
   const rarityOf = new Map((items.items ?? []).map((item) => [item.id, item.rarity]));
   const nameOf = new Map((items.items ?? []).map((item) => [item.id, item.name]));
 
-  /** Fish one water until it gives up its rarities or the budget runs out. */
-  const fishAt = async (spot, casts) => {
-    await ops('/ops/tp', { player: CHARACTER, x: spot.x + 1.4, z: spot.z });
-    for (let i = 0; i < 30; i++) {
-      probe.send(0);
-      await sleep(TICK_MS);
-    }
-    const landed = [];
-    for (let i = 0; i < casts; i++) {
-      const log = { peak: 0, gap: 0, serverProgress: 0, fish: null };
+  /**
+   * Play one difficulty band until it is landed, or until the budget is spent.
+   *
+   * `/ops/fish` decides WHICH fish is on the line; everything after that — the
+   * bite, the window, the bar, the catch — is the untouched real path. Fishing
+   * blind instead would measure the yield weights: a rare is one entry in ten,
+   * so a handful of casts usually never presents the bar this is about, and a
+   * run that fails on that has found nothing.
+   *
+   * It stops at the first catch on purpose. The claim being made is "this rung
+   * is winnable", not "it is winnable X% of the time" — a hit rate off five
+   * casts is noise, and a rare SHOULD cost more casts than a common.
+   */
+  const playBand = async (spot, itemId, rarity, budget) => {
+    const outcomes = [];
+    let drift = null;
+    for (let i = 0; i < budget; i++) {
+      // A caught fish DEPLETES the spot, and a fishing spot regrows on the same
+      // 90–180 s timer everything else does. Without this the second cast of a
+      // band is refused and then sits out the probe's whole deadline, which
+      // reads as "the bar was lost" when nothing was ever cast.
+      await ops('/ops/respawnnodes', {});
+      // Re-armed per cast: the lever counts down, and re-arming also clears any
+      // arms the previous band left behind.
+      await ops('/ops/fish', { player: CHARACTER, item: itemId, casts: 1 });
+      const log = { peak: 0, gap: 0, serverProgress: 0, fish: null, drift: null };
       const outcome = await playOneCast(probe, spot.id, log);
-      if (outcome === 'caught' && log.fish) {
-        const rarity = rarityOf.get(log.fish.itemId) ?? 'unknown';
-        landed.push({ ...log.fish, rarity, name: nameOf.get(log.fish.itemId) ?? log.fish.itemId });
+      outcomes.push(outcome);
+      drift = log.drift ?? drift;
+      if (outcome === 'caught' && log.fish?.itemId === itemId) {
+        return { rarity, itemId, landed: true, casts: outcomes.length, outcomes, drift };
       }
+      // A refusal is a broken SETUP (wrong tier, out of range, node claimed),
+      // not a bar that was lost — repeating it four more times learns nothing
+      // and hides the reason under a budget's worth of noise.
+      if (outcome.startsWith('refused:')) break;
       await sleep(400);
     }
-    return landed;
+    return { rarity, itemId, landed: false, casts: outcomes.length, outcomes, drift };
   };
 
   // Every water the world actually has, not every water the catalogue defines:
   // T3–T5 fishing nodes are authored but have no ground to stand on until P12
-  // sculpts their zones, so their bands cannot be landed here and saying "three
-  // rarities" would be a claim about content that is not in the world.
+  // sculpts their zones, so their bands cannot be landed here and claiming
+  // "three rarities" would be a claim about content that is not in the world.
   const waters = [...new Map(shoals.map((s) => [s.nodeId, s])).values()];
-  const caught = [];
+  const BUDGET = 5;
+  const results = [];
   for (const water of waters) {
-    const landed = await fishAt(water, 8);
-    caught.push(...landed);
-    note(
-      `${water.nodeId}: ${landed.length} landed — ` +
-        (landed.map((f) => `${f.name} (${f.rarity})`).join(', ') || 'none'),
-    );
+    const def = (nodeDefs.nodes ?? []).find((n) => n.id === water.nodeId);
+    // Clear the water's TIER GATE before standing in it. This probe is about the
+    // reel, and a T2 pool refuses a level-1 angler outright — the first run to
+    // reach the weald pool spent six minutes being refused, because the gate is
+    // the profession system working exactly as designed. `/ops/setprof` is the
+    // lever for precisely this ("reach a tier gate without an afternoon").
+    await ops('/ops/setprof', {
+      player: CHARACTER,
+      profession: 'fishing',
+      level: gateForTier(def?.tier ?? 1),
+    });
+    await ops('/ops/tp', { player: CHARACTER, x: water.x + 1.4, z: water.z });
+    for (let i = 0; i < 30; i++) {
+      probe.send(0);
+      await sleep(TICK_MS);
+    }
+    // One representative fish per rarity this water stocks — the bar depends on
+    // the rarity, so a second common would replay a rung already played.
+    const perRarity = new Map();
+    for (const entry of def?.yields ?? []) {
+      const rarity = rarityOf.get(entry.itemId) ?? 'unknown';
+      if (!perRarity.has(rarity)) perRarity.set(rarity, entry.itemId);
+    }
+    for (const [rarity, itemId] of perRarity) {
+      const result = await playBand(water, itemId, rarity, BUDGET);
+      results.push({ ...result, water: water.nodeId, tier: def?.tier ?? 0 });
+      const bar = result.drift
+        ? `drift ${result.drift.driftSpeed.toFixed(3)} · half ${result.drift.markerHalf.toFixed(3)}`
+        : 'bar never opened';
+      note(
+        `${water.nodeId} T${def?.tier ?? '?'} ${rarity} (${nameOf.get(itemId) ?? itemId}): ` +
+          `${result.landed ? `landed on cast ${result.casts}` : `NOT landed in ${result.casts}`} — ` +
+          `${bar} · ${result.outcomes.join('/')}`,
+      );
+    }
   }
-  if (caught.length === 0) {
-    fail('never landed a fish in any water — a reel that cannot be won is the P10-C bug');
-  }
-  ok(`${caught.length} fish landed across ${waters.length} water(s)`);
 
-  // The DIFFICULTY BANDS are the point: `fishingDifficulty` reads the fish's
-  // rarity, so landing more than one band is what proves the bar is tuned
-  // rather than one-size-fits-all.
-  const bands = [...new Set(caught.map((f) => f.rarity))].sort();
-  const offered = [...new Set(waters.flatMap((w) => nodeRarities(w.nodeId, nodeDefs, rarityOf)))].sort();
-  note(`bands landed: ${bands.join(', ')} · bands these waters offer: ${offered.join(', ')}`);
-  if (bands.length < 2) {
+  const lost = results.filter((r) => !r.landed);
+  if (lost.length > 0) {
     fail(
-      `only the ${bands[0]} band was landed across ${caught.length} fish — ` +
-        `the placed waters offer ${offered.join(' + ')}, so the ladder is not being exercised`,
+      `${lost.length} of ${results.length} bands could not be landed in ${BUDGET} casts each: ` +
+        `${lost.map((r) => `${r.water} ${r.rarity}`).join(', ')} — a rung of the ladder that ` +
+        `cannot be won through a real server is the P10-C bug again`,
     );
   }
-  ok(`the bar is winnable in ${bands.length} difficulty bands: ${bands.join(' + ')}`);
+  // Distinct BARS, not distinct rarity names: `fishingDifficulty` folds tier and
+  // rarity into one step, so a T1 rare and a T2 common are different rungs even
+  // though they share neither label.
+  const rungs = new Set(results.map((r) => `${r.drift?.driftSpeed}/${r.drift?.markerHalf}`));
+  ok(
+    `every band the placed waters offer is winnable: ${results.length} bands over ` +
+      `${rungs.size} distinct bars, across ${waters.length} waters`,
+  );
   note(
-    'epic and legendary bands live on the T3–T5 waters, which have definitions and no ' +
-      'placements until P12 sculpts their zones — measured by the shared tests, not here',
+    `rarities exercised: ${[...new Set(results.map((r) => r.rarity))].sort().join(' + ')} — ` +
+      'epic and legendary live on the T3–T5 waters, which have definitions and no placements ' +
+      'until P12 sculpts their zones, so they are measured by the shared tests, not here',
   );
 
   const fishing = probe.level('fishing');

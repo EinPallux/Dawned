@@ -398,6 +398,11 @@ export class World {
       // runs a minigame instead of a timer — one interaction framework, two
       // kinds of channel, rather than two ways to touch the world.
       if (def && def.profession === 'fishing') {
+        const forced = this.forcedFish.get(player.id);
+        if (forced) {
+          if (forced.casts <= 1) this.forcedFish.delete(player.id);
+          else this.forcedFish.set(player.id, { ...forced, casts: forced.casts - 1 });
+        }
         const session = startFishing(
           def,
           result.channel.placementId,
@@ -407,6 +412,7 @@ export class World {
           player.movement.z,
           { fishPick: this.rng(), fishQty: this.rng() },
           this.itemContent().items,
+          forced?.itemId,
         );
         this.fishing.set(player.id, session);
         this.gathering.set(player.id, result.channel);
@@ -773,6 +779,26 @@ export class World {
    * that never expired would be a mode the world could get stuck in.
    */
   private readonly autoHook = new Map<number, number>();
+
+  /**
+   * Ops lever: put a named fish on the line for a player's next casts
+   * (`/ops/fish`). The bar's difficulty is a function of the fish's rarity, so
+   * this is how a rare or legendary bar can be PLAYED — waiting for one to be
+   * rolled is a test of the yield weights, not of the reel. It is also the
+   * tuning handle Q27 needs: judging how hard a legendary should feel means
+   * hooking one on demand rather than fishing for an hour.
+   */
+  forceFishByName(name: string, itemId: string, casts: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      this.forcedFish.set(player.id, { itemId, casts: Math.max(1, casts) });
+      return true;
+    }
+    return false;
+  }
+
+  /** Which fish is forced for a player, and for how many more casts. */
+  private readonly forcedFish = new Map<number, { itemId: string; casts: number }>();
 
   /** Profession syncs raised outside the tick (ops levers) — flushed in step. */
   private readonly pendingProfessionSync: number[] = [];

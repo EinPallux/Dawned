@@ -452,7 +452,8 @@ const run = async () => {
       // and go again. It is COUNTED, because a run where half the holds break
       // is telling you something even when it finishes.
       broken++;
-      if (broken > 25) fail(`${broken} holds broke — the last said "${result.reason ?? 'nothing'}"`);
+      if (broken > 25)
+        fail(`${broken} holds broke — the last said "${result.reason ?? 'nothing'}"`);
       await ops('/ops/respawnnodes', {});
       continue;
     }

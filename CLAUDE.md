@@ -107,15 +107,15 @@ editor's four questions were answered on 2026-08-05 with "your recommendations":
 the Orc as the Bandit Forager, Q23 makes the MAP the place camps live (its publish wins over
 the Enemies page's copy of a position), Q24 puts patrol splines out of 0.1.0, and Q25 — the
 resource-node schema — is answered by P10 starting, since its recommended default was "do it
-in the professions phase". **Two open questions: Q26 and Q27.** Q26: `zoneAmbienceSchema` is light and
-colour only, so a zone cannot carry music or sfx (recommended default — add both with the audio
-phase). Q27: how hard a T5 legendary fish should be, now that the reel's top speed has been
-re-measured against a real server (recommended default — leave it as shipped and judge it in the
-playtest).
+in the professions phase". Q27 (how hard a T5 legendary fish should be) was answered on
+2026-08-05 with the recommended default — leave the reel as shipped and judge it in the
+playtest. **One open question: Q26** — `zoneAmbienceSchema` is light and colour only, so a zone
+cannot carry music or sfx (recommended default — add both with the audio phase).
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
-then items + loot + vendors). **P9 — Enemies & AI Depth is the current phase.**
+then items + loot + vendors). **P9 and P10 are both built and measured (2026-08-05), awaiting
+the owner's playtest; P11 — Quests, POIs & Interactables is next.**
 The owner has explicitly deferred ALL fine-tuning (numbers, feel-pass on shipped systems)
 to the end of the project — do not stop mid-phase to polish balance; note it and move on.
 What P7 shipped on top of the P5/P6 caster platform: the XP pipeline (kill XP with the tag
@@ -285,7 +285,7 @@ made the published world the one thing a restore would not have brought back; th
 came from is in Postgres, so pg_dump covers re-publishing, and this covers putting the world
 straight back. DEPLOYMENT.md §6 carries the contract.
 
-**P10 — Gathering Professions (in progress, 2026-08-05). A/B/C/D are built; E–G remain.**
+**P10 — Gathering Professions is ✅ built and measured (2026-08-05), awaiting the playtest.**
 P10-A put the vocabulary in shared: `formulas/professions.ts` (the four professions, the
 1/7/13/19/25 tier gates, profession XP with §1.3's back-country halving, channel time, proc
 chance, gather range and the refusal reasons) and `content/resource-nodes.ts` — the
@@ -305,8 +305,7 @@ worst being **a bar that could not be won at all**; the marker physics were re-m
 than re-guessed. P10-D is the panel half (Dawned-Admin A1-e): Content → Professions authors
 node definitions with a gathering preview that runs THIS repo's `rollGather`, and the map
 editor's node layer places them — markers ringed at the definition's radius, and a map bake
-that refuses a placement whose definition is not published. Still ahead: the
-1→10 / two-players-one-node / three-rarity verification run (G).
+that refuses a placement whose definition is not published.
 
 **P10-F — you can gather it (2026-08-05).** The `F` prompt, the hold bar, per-profession
 depletion beats (topple/crumble/puff/ripple, each leaving the definition's own spent model),
@@ -334,7 +333,8 @@ rate and lands a fish), `tools/smoke/p10-probe.mjs` (browser: prompt → hold ba
 bag → xp → codex → the `J` panel → the fishing UI live on screen), and the `/ops/hook` lever,
 which supplies the 0.8 s reflex a bot cannot — the same argument as `/ops/hurt` keeping the P9
 boss bot alive because it cannot dodge. A `/ops/respawnnodes` that told no client was fixed with
-them. **585 unit tests green.** How hard a T5 legendary should be is open as **Q27**.
+them. How hard a T5 legendary should be was **Q27**, answered 2026-08-05 with the recommended
+default: leave the reel as shipped and judge it in the playtest.
 
 **P10-E — the gathering catalogue is content (2026-08-05).** 22 node models baked (a tree and
 a bloom per tier, a fish per water, five ore rocks tinted per ore off ONE grey KayKit boulder,
@@ -362,7 +362,31 @@ every gate reachable from the tier below, every node yielding something from its
 two nodes sharing a model) rather than re-checking what the publish rail already gates.
 The Gems & Ores pack was deliberately NOT used despite being the perfect fit: no license file,
 third-party conversion, unattributable — recorded in CREDITS.md rather than quietly shipped.
-571 unit tests green.
+
+**P10-G measured the DoD and closed the phase (built, awaiting the owner's playtest).**
+`tools/smoke/browser-p10.mjs` takes woodcutting **1 → 10 in 458 real gathers** on the live
+world — every one an actual `GatherOp`, no granted XP — with the T2 gate opening at gather 248
+and 210 wealdoaks after it. Both numbers reproduce PROFESSIONS §1.3's closed form to the gather
+(2980 xp ÷ 12, then 5040 ÷ 24), and that was checked AFTER the run rather than asserted before
+it, which is what makes it evidence rather than a tautology. The same run proves the first-tap
+claim with two real clients pressing together, the tier gate refusing then opening, relog
+persistence and the `J` panel agreeing with the server. It grinds over the PROTOCOL, not in a
+browser: at ~4 fps in a container Chromium turned 2.8 s per gather into 32, and 458 of those is
+a run nobody executes — so the browser leg is a separate short session for the UI evidence.
+**The fishing half needed a new lever to be measurable at all.** A rare is one weight in ten,
+so "is the rare's bar winnable?" answered by fishing until one appears measures the yield roll,
+not the reel. `/ops/fish` puts a named fish on the line (setup only — the bite, window, bar,
+catch and xp are the untouched real path), and the probe now walks the ladder on purpose:
+**all four bands the placed waters offer, four distinct bars, each landed within two casts**
+(T1 common 0.180/0.160 → T2 rare 0.225/0.129, a clean monotone ladder). Epic and legendary have
+definitions and no water until P12, which the run REPORTS rather than implying three rarities.
+Two harness bugs fell out, both of the "silence looks like failure" kind: a caught spot depletes
+and regrows on the normal 90–180 s timer, so a band's second cast was refused and then sat out
+the deadline as if the bar had been lost; and the probe watched only the fishing state, so a
+refusal was invisible — the first run to reach the T2 pool spent six minutes being told "your
+profession level is too low" without hearing it. It listens to `GatherState` now and aborts a
+band on a refusal instead of burning the budget. **`pnpm check` green at 587 unit tests**;
+browser-p10 and fishing-probe both pass on the same build.
 
 ### Running it locally
 
