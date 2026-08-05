@@ -5,6 +5,14 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the fast-travel price is a shared formula (2026-08-05, with Dawned-Admin A3-c)
+
+- Nothing charges it yet — shrines land with the interactable phase — but the
+  number the map editor quotes while you place them is now the number the game
+  will take: `2 × distance-in-chunks`, banded 5–40 g (WORLD.md §4.2,
+  ITEMS_LOOT.md §5), living in `@dawned/shared` alongside every other formula
+  both sides have to agree on.
+
 ### Added — the world can be republished without a deploy (2026-08-04, with Dawned-Admin A2)
 
 - **Which map is live is now a published artifact, not a compiled-in constant.**

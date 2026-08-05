@@ -255,7 +255,14 @@ newly published bake and swaps it under the running world (`World.applyMap`): en
 re-seed from the spawners against the new ground, players keep their x/z and are re-seated
 on it, discovery progress is kept (re-awarding it would make republishing a currency), and
 a bad bake throws BEFORE the swap so the old map stays live. Connected tabs get the same
-reload notice a new build gets. 418 unit tests green.
+reload notice a new build gets.
+
+**A3-c game-side half, 2026-08-05:** `fastTravelCost` (`formulas/travel.ts`) — the
+WORLD.md §4.2 / ITEMS_LOOT.md §5 price of a shrine hop, `2 × distance-in-chunks` banded
+5–40 g, plus `travelHops` for the unordered matrix. Nothing charges it yet (shrines become
+interactable with the world-objects phase); it lives in shared because the map editor
+previews the whole matrix while the owner places shrines, and a panel quoting a price the
+game will not take is exactly the drift shared exists to prevent. **425 unit tests green.**
 
 ### Running it locally
 
