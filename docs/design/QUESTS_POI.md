@@ -55,6 +55,33 @@ renders progress.
 - Toasts: accept / step complete / done (with reward icons). Turn-in moment gets a small fanfare +
   NPC emote (`Yes`/`Celebration`).
 
+### 4.1 As built (P11-D, 2026-08-05)
+
+Shipped: the tracker (three quests, counters only on steps that COUNT — a deliver or an explore
+is one act, and "0/1 Find the logging site" is noise), the journal `L` grouped by zone with the
+found-voice prose and each step's progress, the lower-third dialogue with a typewriter reveal and
+the per-class reward pick sent WITH the turn-in, discovery banners, quest toasts, and the world
+map `M` with fog, pins per kind, dashed hint circles and the shrine network priced by
+`fastTravelCost`.
+
+Three things are worth naming because they are decisions rather than implementations:
+
+- **The world map frames on the chunks the BAKE emitted**, not on the 2048 m world and not on the
+  pins. The whole world is mostly ocean (the island was a smudge with four labels overprinting);
+  the pins alone zoom past the coastline into a flat green field. The bake's own chunk list is the
+  only source that answers "where is there a world" and keeps answering it when P12 raises four
+  more isles.
+- **Undiscovered POIs are ABSENT from the map, not greyed.** A grey pin where a secret is turns
+  exploration into walking to the grey pins, which is the opposite of §1 rule 1.
+- **The quest glyph over an NPC's head is server-decided.** Availability depends on gates the
+  client does not evaluate, so an offer mark only appears once the server has said so — the same
+  rule that keeps the client from deciding what `F` means.
+
+Deferred, deliberately: the over-shoulder camera framing during dialogue (§3) — the panel is a
+lower third and the NPC is already in frame at interact range; the `Yes`/`Celebration` turn-in
+emote (§4) — the hook exists and rides the entity-event lane; and the minimap, which is P12's
+work alongside the real world it would show.
+
 ## 5. POI ↔ Quest Interlock
 
 - Each zone: 1 chain (3–4 quests) telling the zone story + 3–5 one-offs + 1 "found object" quest +

@@ -116,7 +116,7 @@ P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
 then items + loot + vendors). **P0–P10 are ✅ complete and owner-accepted (P9 + P10 closed
 2026-08-05 on their measured DoDs). P11 — Quests, POIs & Interactables is 🟨 in progress:
-A/B/C are built (protocol v14), D (client) and E (the DoD run) remain**, paired with the
+A/B/C/D are built (protocol v14, client included); E (the DoD run) remains**, paired with the
 panel's A4 quest editor, which is live.
 **A phase closes on its MEASURED DoD, not on a playtest** (owner decision, 2026-08-05): the
 priority is reaching P15 with every phase built. Record what was measured — including any
@@ -433,9 +433,38 @@ by it), and the bake now refuses an NPC placement whose definition is not publis
 **Every pilot quest says `zoneId: 'dawnshore'`, including the Weald chain** — only one landmass
 is built, `verdant_weald` is open water until P12, and a journal heading for a place the player
 has never been is worse than a slightly wrong label. Deviations from QUESTS_POI §6's specs are
-tabled in that doc's new §6.1 rather than quietly absorbed. **`pnpm check` green at 638 unit
-tests.** P11-D (the client: dialogue, journal `L`, tracker, world map `M`, discovery banners) and
-P11-E (the DoD run) are next.
+tabled in that doc's new §6.1 rather than quietly absorbed.
+
+**P11-D put it on screen.** Villagers are COMPOSED rigs (`world/world-objects.ts`), not baked
+meshes — the same body+outfit+hair a player wears, which is what gives a quest giver the whole
+UAL clip library for free. Interactables are baked props from the manifest, and both seat
+themselves only once `hasDataAt` says the ground is real (the P8 market-post lesson). The quest
+glyph over a head is SERVER-decided, never a client reading of the log. The client half of
+protocol v14 landed with them (`QuestSync`/`QuestNotice`/`DialogueState`/`DiscoverySync`/
+`InteractState` down, `InteractOp`/`QuestOp` up — the two encoders were missing from shared and
+are there now), plus the `F` prompt for people and things (the client says "use this", never what
+using it MEANS), the lower-third dialogue with a typewriter and per-class reward picks, the HUD
+tracker, the journal `L`, the world map `M`, discovery banners and quest toasts.
+**Four bugs came out of LOOKING at `tools/smoke/p11-probe.mjs`'s screenshots, and no test would
+have caught any of them:** (1) **the four pilot villagers stood in a T-pose** — authored
+`idleClip: 'Idle'` against a UAL library whose standing clip is `Idle_Loop`, and a rig plays
+NOTHING for a name it does not have; fixed in the content (migration 0020, a repair, never an
+edit to 0019), in the schema default, and in the client, which now falls back and warns.
+(2) **the world map drew 2048 m of ocean** with the island as a smudge and four pin labels
+overprinting; it frames on the chunks the BAKE emitted now — the bake's own answer to "where is
+there a world", which keeps working when P12 raises four more isles. (3) **a conversation
+followed you across the island**: `applyDialogueChoice` refused an out-of-range press but nothing
+closed a dialogue that was simply left, so the panel was a remote control for an NPC — closed on
+the tick now. (4) **`DiscoverySync` was sent once, at spawn**, so the map's fog never lifted
+inside a session and the discovery banner — the phase's headline beat — could not fire at all,
+because the client raises it from the diff between two syncs and there was never a second one.
+A fifth, found the same way: a board quest with no authored `offer` dialogue opened NOTHING; a
+posting is a synthetic dialogue node now, built from constants the resolver shares, with the
+quest's own journal prose as the parchment.
+Also moved to shared: `QUEST_REFUSALS`/`questRefusalText`, which lived in the server — the one
+place those strings have to be readable is the HUD, and it could not reach them.
+**`pnpm check` green at 638 unit tests**; `p11-probe.mjs` passes end to end. P11-E (the DoD run)
+is what remains.
 
 ### Running it locally
 
@@ -445,4 +474,5 @@ pnpm --filter @dawned/server start     # game server on :8081
 pnpm --filter @dawned/client dev       # client on :5173 (proxies /api and /game)
 node tools/smoke/two-client-sync.mjs   # headless protocol check
 node tools/smoke/browser-sync.mjs      # two real browsers (needs the client dev server running)
+node tools/smoke/p11-probe.mjs        # quests/NPCs/map on screen (browser; --screenshots DIR)
 ```

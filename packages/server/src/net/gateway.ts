@@ -79,11 +79,13 @@ import type { MetricsRing } from '../metrics/ring.js';
 import type { World } from '../world/world.js';
 import type { ServerPlayer } from '../world/player.js';
 import {
+  boardQuestOffers,
   exploreClue,
   npcQuestOffers,
   questRefusalText as questNoticeText,
   questSyncEntries,
 } from '../world/quests.js';
+import { BOARD_CHOICES, BOARD_NODE_ID } from '../world/interact-step.js';
 import { professionWire } from '../world/professions.js';
 import { nodesNear } from '../world/nodes.js';
 import type { AuthService } from '../auth/service.js';
@@ -964,6 +966,12 @@ export class Gateway {
           const target = this.findSessionByPlayer(event.playerId);
           if (!target?.player) break;
           this.sendSystemChatTo(target, `Discovered: ${event.label}`);
+          // Re-send the whole discovery set. It was only ever sent at spawn
+          // before, which meant the map's fog never lifted inside a session and
+          // the discovery BANNER — the phase's headline beat — could not fire
+          // at all, because the client raises it from the diff between two
+          // syncs and there was never a second one.
+          this.sendDiscoverySync(target);
           this.characters
             .addDiscovery(target.player.characterId, event.kind, event.refId)
             .catch((error: unknown) => {
@@ -1061,10 +1069,7 @@ export class Gateway {
           const target = this.findSessionByPlayer(event.playerId);
           if (!target) break;
           // A refusal carries a reason code; everything else carries prose.
-          const text =
-            event.kind === 'refused'
-              ? questNoticeText(event.text as Parameters<typeof questNoticeText>[0])
-              : event.text;
+          const text = event.kind === 'refused' ? questNoticeText(event.text) : event.text;
           target.send(
             encodeQuestNotice(
               {
@@ -1115,6 +1120,10 @@ export class Gateway {
           const target = this.findSessionByPlayer(event.playerId);
           if (!target?.player) break;
           this.sendInteractState(target, null);
+          // An attunement is BOTH: the interactable's own state and a thing the
+          // world map may now offer a hop to. Sending only the first left the
+          // travel list permanently empty until a relog.
+          this.sendDiscoverySync(target);
           this.persistInteraction(target.player, event.objectId);
           break;
         }
@@ -1395,18 +1404,35 @@ export class Gateway {
       session.send(encodeDialogueState({ open: null, more: [] }, session.writer));
       return;
     }
+    // A board posting is the synthetic node: the parchment's own prose and two
+    // fixed buttons. Built from the SAME constants `applyDialogueChoice`
+    // resolves against, because a board built with one node id and resolved
+    // against another is a posting you can read and cannot take — which is
+    // exactly what a board quest with no authored `offer` lines used to be.
+    const isBoard = open.nodeId === BOARD_NODE_ID;
     const nodes = quest.dialogue[open.phase];
-    const node = nodes.find((entry) => entry.id === open.nodeId) ?? nodes[0];
+    const node = isBoard
+      ? {
+          id: BOARD_NODE_ID,
+          text: quest.journalText,
+          emote: '',
+          choices: BOARD_CHOICES,
+        }
+      : (nodes.find((entry) => entry.id === open.nodeId) ?? nodes[0]);
     const actor = {
       level: player.level,
       quests: player.quests,
       discoveries: player.poisSeen,
     };
-    const more = npc
-      ? npcQuestOffers({ defs }, actor, npc.npcId)
-          .filter((offer) => offer.quest.id !== quest.id)
-          .map((offer) => ({ questId: offer.quest.id, name: offer.quest.name, kind: offer.kind }))
-      : [];
+    const more = isBoard
+      ? boardQuestOffers({ defs }, actor, open.npcPlacementId)
+          .filter((offer) => offer.id !== quest.id)
+          .map((offer) => ({ questId: offer.id, name: offer.name, kind: 'offer' }))
+      : npc
+        ? npcQuestOffers({ defs }, actor, npc.npcId)
+            .filter((offer) => offer.quest.id !== quest.id)
+            .map((offer) => ({ questId: offer.quest.id, name: offer.quest.name, kind: offer.kind }))
+        : [];
     const items = this.world.itemContent().items;
     session.send(
       encodeDialogueState(
@@ -1416,8 +1442,12 @@ export class Gateway {
                 questId: quest.id,
                 nodeId: node.id,
                 npcId: open.npcId,
-                speaker: npc?.def.name ?? '',
-                title: npc?.def.title ?? '',
+                // A board speaks as itself. Without this a posting arrived with
+                // an empty speaker line, which reads as a UI that failed to load.
+                speaker: isBoard
+                  ? (this.world.interactableAt(open.npcPlacementId)?.row.name ?? 'Notice Board')
+                  : (npc?.def.name ?? ''),
+                title: isBoard ? 'posting' : (npc?.def.title ?? ''),
                 text: node.text,
                 emote: node.emote,
                 choices: node.choices.map((choice) => ({

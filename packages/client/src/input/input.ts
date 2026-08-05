@@ -60,8 +60,11 @@ export class InputController {
    * Panel keys (P7-D, UI_UX.md §4): C Character, K Skills, Esc close. Set by
    * run-world; fires on keydown (non-repeat) while no text field owns keys.
    */
-  onUiKey: ((key: 'character' | 'skills' | 'inventory' | 'professions' | 'close') => void) | null =
-    null;
+  onUiKey:
+    | ((
+        key: 'character' | 'skills' | 'inventory' | 'professions' | 'journal' | 'map' | 'close',
+      ) => void)
+    | null = null;
   /**
    * World interactions that are not abilities: `F` loots (Shift+F takes the
    * whole bag) and talks to a vendor post, `E` drinks the quick-slot.
@@ -199,6 +202,8 @@ export class InputController {
       else if (event.code === 'KeyK') this.onUiKey?.('skills');
       else if (event.code === 'KeyI') this.onUiKey?.('inventory');
       else if (event.code === 'KeyJ') this.onUiKey?.('professions');
+      else if (event.code === 'KeyL') this.onUiKey?.('journal');
+      else if (event.code === 'KeyM') this.onUiKey?.('map');
       else if (event.code === 'Escape') this.onUiKey?.('close');
       // Items (P8-D): F loots the nearest bag (Shift+F takes all of it) or
       // opens the vendor post you are standing at; E drinks the quick slot.

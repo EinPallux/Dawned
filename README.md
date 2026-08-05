@@ -26,7 +26,10 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > four Dawnshore jobs plus the four-part chain _The Loggers' Silence_ — and the world carries a
 > notice board, a washed-up crate, four marked stumps, an attunable travel shrine and six
 > discoverable places. Everything is authored through the panel and hot-swapped onto the running
-> server; the journal, tracker, dialogue panel and world map that let you READ it are P11-D, next.
+> server. **P11-D put it on screen**: villagers you walk up to and talk to, `F` prompts that name
+> what they will do, a lower-third conversation with a typewriter and per-class reward picks, a
+> HUD tracker, the journal (`L`), a world map (`M`) with fog, pins, hint circles and the shrine
+> network, and a discovery banner for each new place. The DoD run (P11-E) is what remains.
 > Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
 > end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an

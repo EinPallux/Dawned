@@ -94,6 +94,50 @@ export const parseQuestOp = (raw: unknown): QuestOp | null => {
 };
 
 /**
+ * Why an accept, a turn-in or a delivery was refused.
+ *
+ * Shared for the same reason the interaction refusals below are: the server
+ * NAMES the reason and the client SPEAKS it, so a refusal the player cannot
+ * read is impossible by construction. (This started life in the server's
+ * `world/quests.ts`, which meant the one place the string had to be readable —
+ * the HUD — could not reach it.)
+ */
+export const QUEST_REFUSALS = {
+  Unknown: 'unknown_quest',
+  NotAvailable: 'not_available',
+  AlreadyHeld: 'already_held',
+  NotComplete: 'not_complete',
+  WrongNpc: 'wrong_npc',
+  TooFar: 'too_far',
+  BagFull: 'bag_full',
+  MissingItems: 'missing_items',
+} as const;
+export type QuestRefusal = (typeof QUEST_REFUSALS)[keyof typeof QUEST_REFUSALS];
+
+export const questRefusalText = (reason: string): string => {
+  switch (reason) {
+    case 'unknown_quest':
+      return 'That quest is gone.';
+    case 'not_available':
+      return 'Not yet.';
+    case 'already_held':
+      return 'You already have that.';
+    case 'not_complete':
+      return "You haven't finished it.";
+    case 'wrong_npc':
+      return "That's not who asked.";
+    case 'too_far':
+      return 'Too far away.';
+    case 'bag_full':
+      return 'Your pack is too full for the reward.';
+    case 'missing_items':
+      return "You don't have what they asked for.";
+    default:
+      return 'No.';
+  }
+};
+
+/**
  * Why an interaction was refused. Shared so the HUD line and the server's
  * reason are the same string — a refusal the player cannot read is the bug
  * P10's gather refusals were fixed for.

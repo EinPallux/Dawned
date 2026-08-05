@@ -30,7 +30,7 @@ nothing beyond it.
   everything so far and all seems fine"); their A1 sync points landed in the panel
   (XP-curve + skill-tree editors, then items + loot + vendors). **P9 and P10 are both built
   and measured (2026-08-05) and owner-accepted; P11 — Quests, POIs & Interactables is
-  🟨 in progress — A/B/C built (protocol v14), D (client) and E (the DoD run) remain.** ALL fine-tuning is deferred to the end of the project by the
+  🟨 in progress — A/B/C/D built (protocol v14, client included); E (the DoD run) remains.** ALL fine-tuning is deferred to the end of the project by the
   owner's decision — never pause a phase to polish balance. P7 on top of the P5/P6 caster platform: the XP pipeline
   (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
   level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
@@ -223,3 +223,22 @@ nothing beyond it.
     1). Every pilot quest says `zoneId: 'dawnshore'` — only one landmass is built, and a
     journal heading for a place the player has never been is worse than a soft label;
     deviations from QUESTS_POI §6 are tabled in its new §6.1. **638 unit tests green.**
+
+    **P11-D put it on screen (2026-08-05).** Villagers are COMPOSED rigs, not baked meshes —
+    the same body+outfit+hair a player wears, which hands a quest giver the whole UAL clip
+    library. Interactables are baked props; both seat only once `hasDataAt` says the ground is
+    real (the P8 market-post lesson). The quest glyph over a head is SERVER-decided, never a
+    client reading of the log. Client half of protocol v14 (the `InteractOp`/`QuestOp` encoders
+    were missing from shared), the `F` prompt for people and things (the client says "use this",
+    never what using it MEANS), the lower-third dialogue with a typewriter and per-class reward
+    picks, the HUD tracker, journal `L`, world map `M`, discovery banners, quest toasts.
+    **Five bugs came out of LOOKING at `tools/smoke/p11-probe.mjs`'s screenshots; no test would
+    have caught any of them.** The four pilot villagers stood in a **T-pose** (`idleClip: 'Idle'`
+    against a library whose standing clip is `Idle_Loop` — a rig plays NOTHING for a name it
+    lacks; repaired in migration 0020, in the schema default, and with a client fallback). The
+    world map drew 2048 m of ocean with the island as a smudge — it frames on the chunks the
+    BAKE emitted now. A conversation FOLLOWED you across the island (out-of-range presses were
+    refused; nothing closed a dialogue that was simply left). `DiscoverySync` was sent once at
+    spawn, so the fog never lifted and the discovery banner could not fire at all. And a board
+    quest with no authored `offer` dialogue opened NOTHING — a posting is a synthetic dialogue
+    node now, built from constants the resolver shares. **638 unit tests green.**

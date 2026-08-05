@@ -21,7 +21,7 @@
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
 | P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)      |
 | P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)      |
-| P11   | Quests, POIs & Interactables             | L    | 🟨 A–C built (2026-08-05) |
+| P11   | Quests, POIs & Interactables             | L    | 🟨 A–D built (2026-08-05) |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
 | P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
@@ -669,8 +669,13 @@ found-object quest works.
       panel and published; 4 interactable props baked; frozen into seed migration 0019.
       Proven from the game side: `/ops/worldobjects` reports 4 NPCs, 7 interactables, 6 POIs,
       0 orphans on the live bake.
-- [ ] **P11-D** client — dialogue panel, journal (`L`), HUD tracker, world map (`M`) with fog +
-      pins + fast travel, minimap final, discovery banners, interact prompts, quest toasts.
+- [x] **P11-D** client — villagers as composed rigs with nameplates and server-decided quest
+      glyphs, the `F` prompt for people and things, the lower-third dialogue panel with a
+      typewriter and per-class reward picks, the HUD tracker, the journal (`L`), the world map
+      (`M`) framed on the bake's own emitted chunks with fog, pins, hint circles and the shrine
+      network, discovery banners and quest toasts. Verified by LOOKING:
+      `tools/smoke/p11-probe.mjs` drives all of it in a browser and its screenshots found four
+      bugs no test would have — see the P11-D notes in CLAUDE.md.
 - [ ] **P11-E** verification — the DoD run (`tools/smoke/browser-p11.mjs`).
 
 ## P12 — World Building: the Dawnlands (XL) ⚙A2+A3 fully required (dogfood!)

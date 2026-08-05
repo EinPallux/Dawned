@@ -73,6 +73,7 @@ import {
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
 import {
+  INTERACT_RANGE_M,
   buildInteractables,
   buildNpcs,
   type PlacedInteractable,
@@ -1256,6 +1257,27 @@ export class World {
    * before the sim so a shrine hop moves them this tick rather than next.
    */
   private stepInteractions(nowMs: number, events: CombatEvent[]): void {
+    // Walking away ends the conversation.
+    //
+    // `applyDialogueChoice` already refuses a choice pressed from out of range,
+    // but nothing was closing a dialogue that was simply LEFT — so a panel
+    // opened in Dawnhaven followed you to the far side of the island and stayed
+    // pressable, which is exactly the "a dialogue is a remote control for an
+    // NPC" failure the range check exists to prevent. Checked every tick for
+    // the handful of players who have one open, not per op.
+    for (const player of this.players.values()) {
+      const open = player.dialogue;
+      if (!open) continue;
+      const npc = this.npcs.get(open.npcPlacementId);
+      const object = this.interactables.get(open.npcPlacementId);
+      const anchor = npc ?? object?.row;
+      if (!anchor) continue;
+      const m = player.movement;
+      if (Math.hypot(anchor.x - m.x, anchor.z - m.z) <= INTERACT_RANGE_M + 1.5) continue;
+      player.dialogue = null;
+      events.push({ type: 'dialogue-dirty', playerId: player.id });
+    }
+
     if (this.pendingInteractOps.length === 0 && this.pendingQuestOps.length === 0) return;
     const world: InteractWorld = {
       objects: this.interactables,

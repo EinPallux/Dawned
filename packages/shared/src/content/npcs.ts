@@ -56,8 +56,14 @@ export const npcDefSchema = z
      * exactly what the enemy pipeline does NOT have.
      */
     appearance: appearanceSchema,
-    /** Idle clip; the talking clip is `talkClip` so a rig can lack one. */
-    idleClip: z.string().min(1).max(48).default('Idle'),
+    /**
+     * Idle clip. `Idle_Loop` is the UAL library's name for standing still —
+     * NOT `Idle`, which is what this defaulted to at P11-A and is the reason
+     * the first four villagers stood in Dawnhaven in a bind-pose T. The rig
+     * plays nothing at all for a clip it does not have, so a wrong name here is
+     * silent everywhere except on screen.
+     */
+    idleClip: z.string().min(1).max(48).default('Idle_Loop'),
     talkClip: z.string().max(48).default(''),
     /** `vendor` role: which published vendor row their `F` opens. */
     vendorId: z.string().max(64).nullable().default(null),

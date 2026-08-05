@@ -141,6 +141,13 @@
       "when": 1785838088830,
       "tag": "0019_p11_quest_seeds",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785838089830,
+      "tag": "0020_p11_npc_idle_clip",
+      "breakpoints": true
     }
   ]
 }

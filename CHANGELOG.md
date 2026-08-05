@@ -5,6 +5,41 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — you can talk to them now (2026-08-05, P11-D)
+
+- **Villagers stand in Dawnhaven and speak.** They are built the same way your own character is —
+  body, outfit, hair on one skeleton — so they breathe, and they say something as you walk past.
+  A glyph over their head tells you at a glance whether they have work for you (`!`), whether
+  you are carrying theirs (`?` grey) or whether you can hand it in (`?` gold).
+- **`F` talks, opens, reads and attunes.** The prompt names what it will do — "Talk to Torv",
+  "Open Torv's Lost Crate", "Attune at Dawnhaven Shrine" — and an emptied chest says so rather
+  than offering a key that does nothing.
+- **Conversations** are a lower third: the NPC is the portrait, the text types itself in (click
+  to finish it), and the choices are what the SERVER offers. A chain's last turn-in lets you
+  pick your class's weapon before you hand it over. Walking away ends the conversation.
+- **The Dawnhaven notice board hands out work with nobody standing there** — the posting reads
+  in the same panel, and you take it off the parchment.
+- **A tracker** down the right edge with up to three quests and their counters, **a journal
+  (`L`)** grouped by zone with the found-voice prose and each step's progress, and **a world map
+  (`M`)** with the island, pins for every place you have found, a dashed circle where a step
+  roughly wants you, and the shrine network with the gold each hop costs.
+- **Finding a place is its own moment**: the name rises centre-screen with what kind of place it
+  is, once, the first time — not a toast queued behind three loot lines.
+
+### Fixed — four things only a screenshot would catch (2026-08-05, P11-D)
+
+- **The four pilot villagers stood in a T-pose.** They were authored with `idleClip: 'Idle'` and
+  the animation library's name for standing still is `Idle_Loop` — a rig plays nothing at all
+  for a clip it does not have. Fixed in the content, in the schema default, and in the client,
+  which now falls back to a clip that exists and says so in the log.
+- **The world map drew the whole ocean** with the island as a smudge and four pin labels piled
+  on top of each other. It frames on the chunks the map bake actually emitted now, which is the
+  bake's own answer to "where is there a world" and keeps working when the world grows.
+- **A conversation followed you across the island.** Opening a dialogue and walking away left it
+  on screen and pressable — a dialogue is not a remote control for an NPC.
+- **Discovery never updated inside a session.** The whole discovered set was sent once, when you
+  logged in, so the map's fog never lifted and the discovery banner could not fire at all.
+
 ### Added — the world has people in it (2026-08-05, P11-A/B/C)
 
 - **Four villagers now stand in and around Dawnhaven**: Marla at the gate, Torv on the jetty,

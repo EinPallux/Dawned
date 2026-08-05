@@ -4,23 +4,42 @@
  * conflicts back to select.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { NoticeCode, noticeTextFor } from '@dawned/shared';
 import { useApp } from '../store.js';
 import { tokenStore } from '../../net/api.js';
-import { runWorld, type PanelId, type WorldHandle } from '../../game/run-world.js';
+import {
+  runWorld,
+  type PanelId,
+  type QuestBridge,
+  type WorldHandle,
+} from '../../game/run-world.js';
 import { Button } from '../components/ui.js';
 import { CharacterPanel } from '../panels/CharacterPanel.js';
 import { SkillsPanel } from '../panels/SkillsPanel.js';
 import { InventoryPanel } from '../panels/InventoryPanel.js';
 import { ProfessionsPanel } from '../panels/ProfessionsPanel.js';
 import { VendorPanel } from '../panels/VendorPanel.js';
+import { DialoguePanel } from '../panels/DialoguePanel.js';
+import { JournalPanel } from '../panels/JournalPanel.js';
+import { WorldMapPanel } from '../panels/WorldMapPanel.js';
 
 interface OverlayState {
   title: string;
   text: string;
   action: 'none' | 'select' | 'login';
 }
+
+/**
+ * Subscribes to the quest bridge so the dialogue appears the moment the SERVER
+ * opens one. Its own component because the whole world screen re-rendering on
+ * every quest sync would drag the panels above it along for the ride.
+ */
+const DialogueGate = ({ bridge }: { bridge: QuestBridge }): React.JSX.Element | null => {
+  useSyncExternalStore(bridge.subscribe, bridge.version);
+  const state = bridge.dialogue();
+  return state ? <DialoguePanel bridge={bridge} state={state} /> : null;
+};
 
 export const WorldScreen = (): React.JSX.Element => {
   const { token, activeCharacter, leaveWorld, logout } = useApp();
@@ -133,6 +152,26 @@ export const WorldScreen = (): React.JSX.Element => {
           }}
         />
       ) : null}
+      {world && openPanel === 'journal' ? (
+        <JournalPanel
+          bridge={world.quests}
+          onClose={() => {
+            world.setPanel(null);
+          }}
+        />
+      ) : null}
+      {world && openPanel === 'map' ? (
+        <WorldMapPanel
+          bridge={world.quests}
+          onClose={() => {
+            world.setPanel(null);
+          }}
+        />
+      ) : null}
+      {/* Dialogue is not a PANEL: it is a lower third that sits over the game
+          while you keep looking at the person talking (QUESTS_POI §3), so the
+          server's `DialogueState` opens it, not a key. */}
+      {world ? <DialogueGate bridge={world.quests} /> : null}
       {overlay ? (
         <div className="modal-scrim">
           <div className="panel modal">

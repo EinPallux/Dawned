@@ -31,7 +31,11 @@ describe('npc definitions', () => {
   it('fills the defaults an author should not have to type', () => {
     const marla = npc();
     expect(marla.role).toBe('villager');
-    expect(marla.idleClip).toBe('Idle');
+    // `Idle_Loop`, not `Idle`. The UAL library has no clip called `Idle`, a rig
+    // plays nothing at all for a name it does not have, and the four pilot
+    // villagers therefore stood in Dawnhaven in a bind-pose T until a
+    // screenshot caught it. The default has to be a clip that exists.
+    expect(marla.idleClip).toBe('Idle_Loop');
     expect(marla.scale).toBe(1);
     expect(marla.barks).toEqual([]);
   });

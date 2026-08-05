@@ -292,6 +292,23 @@ const pickBark = (npc: ServerNpc): string => {
   return npc.def.barks[index]?.text ?? '';
 };
 
+/**
+ * A board posting is a SYNTHETIC dialogue node.
+ *
+ * §7 wants a parchment list you accept from without an NPC, and the protocol
+ * already carries a conversation — so a board reuses it with a node id no
+ * authored quest can collide with, the posting's own journal prose as the text,
+ * and two fixed buttons. The id and the buttons live HERE, next to the code
+ * that resolves a press, and the gateway imports them: a board that was built
+ * with one node id and resolved against another would be a posting you can read
+ * and cannot take, which is exactly what shipped before this comment existed.
+ */
+export const BOARD_NODE_ID = '__board__';
+export const BOARD_CHOICES: { text: string; action: string }[] = [
+  { text: 'Take the job.', action: 'accept' },
+  { text: 'Leave it.', action: 'decline' },
+];
+
 /** A board is a list, not a conversation — accept straight off the parchment. */
 const openBoard = (
   player: ServerPlayer,
@@ -302,7 +319,7 @@ const openBoard = (
   player.dialogue = {
     questId: offers[0]?.id ?? '',
     phase: 'offer',
-    nodeId: '__board__',
+    nodeId: BOARD_NODE_ID,
     npcPlacementId: boardId,
     npcId: '',
   };
@@ -443,6 +460,22 @@ const findNode = (
   open: OpenDialogue,
   nodeId: string,
 ): DialogueNode | undefined => {
+  // A board posting has no authored node — it IS the synthetic one, so resolve
+  // it here rather than falling through to "the first offer line", which for a
+  // board quest is usually nothing at all.
+  if (nodeId === BOARD_NODE_ID) {
+    return {
+      id: BOARD_NODE_ID,
+      npcId: '',
+      text: quest.journalText,
+      emote: '',
+      choices: BOARD_CHOICES.map((choice) => ({
+        text: choice.text,
+        action: choice.action as DialogueNode['choices'][number]['action'],
+        goto: '',
+      })),
+    };
+  }
   const all = [...quest.dialogue.offer, ...quest.dialogue.inProgress, ...quest.dialogue.complete];
   return all.find((node) => node.id === nodeId) ?? quest.dialogue[open.phase][0];
 };

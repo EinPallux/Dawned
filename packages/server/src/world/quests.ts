@@ -16,7 +16,9 @@
  */
 
 import {
+  QUEST_REFUSALS,
   advanceQuest,
+  questRefusalText,
   currentStep,
   questAvailability,
   questComplete,
@@ -24,6 +26,7 @@ import {
   startQuest,
   stepTarget,
   type QuestActor,
+  type QuestRefusal,
   type QuestDef,
   type QuestEvent,
   type QuestHook,
@@ -99,41 +102,12 @@ export const applyQuestEvent = (
   return outcome;
 };
 
-/** Why an accept/turn-in was refused, so the HUD can say something true. */
-export const QUEST_REFUSALS = {
-  Unknown: 'unknown_quest',
-  NotAvailable: 'not_available',
-  AlreadyHeld: 'already_held',
-  NotComplete: 'not_complete',
-  WrongNpc: 'wrong_npc',
-  TooFar: 'too_far',
-  BagFull: 'bag_full',
-  MissingItems: 'missing_items',
-} as const;
-export type QuestRefusal = (typeof QUEST_REFUSALS)[keyof typeof QUEST_REFUSALS];
-
-export const questRefusalText = (reason: QuestRefusal): string => {
-  switch (reason) {
-    case 'unknown_quest':
-      return 'That quest is gone.';
-    case 'not_available':
-      return 'Not yet.';
-    case 'already_held':
-      return 'You already have that.';
-    case 'not_complete':
-      return "You haven't finished it.";
-    case 'wrong_npc':
-      return "That's not who asked.";
-    case 'too_far':
-      return 'Too far away.';
-    case 'bag_full':
-      return 'Your pack is too full for the reward.';
-    case 'missing_items':
-      return "You don't have what they asked for.";
-    default:
-      return 'No.';
-  }
-};
+/**
+ * The refusal vocabulary lives in `@dawned/shared` (protocol/quest-ops.ts):
+ * the server names the reason and the CLIENT speaks it, so keeping the words
+ * here would mean the one place they have to be readable could not reach them.
+ */
+export { QUEST_REFUSALS, questRefusalText, type QuestRefusal };
 
 export type QuestAcceptResult =
   { ok: true; state: QuestState } | { ok: false; reason: QuestRefusal };

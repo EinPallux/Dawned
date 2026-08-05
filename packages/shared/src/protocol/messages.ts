@@ -263,6 +263,24 @@ export const encodeItemOp = (op: unknown, writer?: BinaryWriter): Uint8Array =>
 export const encodeGatherOp = (op: unknown, writer?: BinaryWriter): Uint8Array =>
   encodeJsonEnvelope(ClientOp.GatherOp, op, writer);
 
+/**
+ * Press `F` on something, or take a shrine hop (v14). Client-authored, so the
+ * server parses it with `interactOpSchema` — and note what is NOT in the
+ * envelope: the VERB. The client says "use this object"; what that means is
+ * the object's to answer (QUESTS_POI §4), or the client would be choosing
+ * whether a chest opens or a shrine attunes.
+ */
+export const encodeInteractOp = (op: unknown, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ClientOp.InteractOp, op, writer);
+
+/**
+ * Accept / turn in / abandon / pin a quest, or press a dialogue choice (v14).
+ * Client-authored like the rest; the answer is always the next `QuestSync`,
+ * because nothing about a quest is predicted.
+ */
+export const encodeQuestOp = (op: unknown, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ClientOp.QuestOp, op, writer);
+
 // ---------------------------------------------------------------------------
 // Server → Client
 // ---------------------------------------------------------------------------
