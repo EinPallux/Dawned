@@ -35,6 +35,17 @@ const citext = customType<{ data: string }>({
   },
 });
 
+/**
+ * Raw bytes (A2 map drafts). Height fields and splat maps are binary artifacts
+ * — storing them as base64 text would cost a third more space and an encode on
+ * every autosave, and the editor autosaves constantly.
+ */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Accounts & sessions
 // ---------------------------------------------------------------------------
@@ -402,6 +413,111 @@ export const contentSkillNodes = pgTable(
   },
   (table) => [primaryKey({ columns: [table.id, table.status] })],
 );
+
+// ---------------------------------------------------------------------------
+// Map editor drafts (A2/A3 — docs/MAP_EDITOR.md)
+// ---------------------------------------------------------------------------
+
+/**
+ * One draft terrain chunk. Chunk-granular on purpose: the editor autosaves 2 s
+ * after a stroke settles and a stroke usually touches one to four chunks, so
+ * saving is a handful of ~25 kB upserts rather than a whole-map write.
+ *
+ * `heights` and `splat` hold exactly the bytes `encodeChunk` would emit for
+ * those fields, so publishing is a copy, not a conversion — nothing can be lost
+ * in translation between what was painted and what ships.
+ */
+export const mapDraftChunks = pgTable(
+  'map_draft_chunks',
+  {
+    cx: smallint('cx').notNull(),
+    cy: smallint('cy').notNull(),
+    /** 65×65 little-endian f32 heights. */
+    heights: bytea('heights').notNull(),
+    /** Two RGBA 32×32 splat weight maps. */
+    splat: bytea('splat').notNull(),
+    /** Per-chunk water surface, or null for "sea level only". */
+    waterLevel: real('water_level'),
+    /** False = ocean chunk: not emitted at bake, costs the client nothing. */
+    enabled: boolean('enabled').notNull().default(true),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.cx, table.cy] })],
+);
+
+/**
+ * Everything that stands ON the terrain, one row per authored thing. Kept as
+ * rows rather than one blob so the editor can save a single moved rock without
+ * rewriting the world, and so "clear all props in this zone" is a DELETE.
+ */
+export const mapDraftObjects = pgTable(
+  'map_draft_objects',
+  {
+    id: text('id').primaryKey(),
+    /** Which editor layer owns it — also what "Clear layer…" filters on. */
+    layer: text('layer', {
+      enum: ['prop', 'scatter', 'spawner', 'node', 'npc', 'zone', 'poi', 'interactable'],
+    }).notNull(),
+    /** Row payload, validated by that layer's zod schema in shared. */
+    def: jsonb('def').notNull(),
+    /** Denormalised for fast viewport/region queries; null for zone polygons. */
+    x: real('x'),
+    z: real('z'),
+    /** Owning chunk, so the editor can stream objects with the terrain. */
+    cx: smallint('cx'),
+    cy: smallint('cy'),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('map_draft_objects_layer_idx').on(table.layer),
+    index('map_draft_objects_chunk_idx').on(table.cx, table.cy),
+  ],
+);
+
+/**
+ * Named restore points ("before redoing Dawnhaven harbor"). A checkpoint is a
+ * full snapshot of the draft, compressed into one row — the map is ~25 MB of
+ * chunks at worst and checkpoints are rare, so simplicity beats cleverness.
+ */
+export const mapCheckpoints = pgTable('map_checkpoints', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  name: text('name').notNull(),
+  /** gzipped JSON: { chunks: [...], objects: [...] }. */
+  payload: bytea('payload').notNull(),
+  chunkCount: integer('chunk_count').notNull(),
+  objectCount: integer('object_count').notNull(),
+  createdBy: bigint('created_by', { mode: 'number' }).references(() => accounts.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Single-writer lock (MAP_EDITOR.md §3). It is a friends team, so this is a
+ * lease with a heartbeat rather than anything clever: one row, whoever holds it
+ * edits, everyone else gets read-only and a "request takeover" button.
+ */
+export const mapLock = pgTable('map_lock', {
+  /** Always 1 — a one-row table, enforced by the primary key. */
+  id: smallint('id').primaryKey(),
+  holderAccountId: bigint('holder_account_id', { mode: 'number' })
+    .notNull()
+    .references(() => accounts.id),
+  holderName: text('holder_name').notNull(),
+  /** Lease expiry; a browser that dies simply stops renewing. */
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  /** Set by another user's "request takeover" — the holder sees it and can yield. */
+  takeoverRequestedBy: text('takeover_requested_by'),
+});
+
+/** Published map versions — what the game is serving and what it came from. */
+export const mapVersions = pgTable('map_versions', {
+  version: text('version').primaryKey(),
+  /** Bake summary: counts, timings, warnings. */
+  summary: jsonb('summary').notNull(),
+  publishedBy: bigint('published_by', { mode: 'number' }).references(() => accounts.id),
+  publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 export type AccountRow = typeof accounts.$inferSelect;
 export type SessionRow = typeof sessions.$inferSelect;

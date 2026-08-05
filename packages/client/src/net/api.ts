@@ -85,8 +85,13 @@ export const api = {
     request('/api/status'),
 
   /** Which build the server is running (build-info.ts compares it to ours). */
-  health: (): Promise<{ status: string; buildId?: string; protocolVersion: number }> =>
-    request('/api/health'),
+  health: (): Promise<{
+    status: string;
+    buildId?: string;
+    protocolVersion: number;
+    /** The baked map the server is simulating (A2 publish repoints it). */
+    mapVersion?: string;
+  }> => request('/api/health'),
 };
 
 /** Token persistence: remember-me picks the storage that survives the browser. */

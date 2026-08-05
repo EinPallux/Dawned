@@ -102,8 +102,11 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 21 owner decisions are answered and folded (decision log in USER_QUESTIONS.md — Q21,
-the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). No open
-questions right now.
+the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). Three open
+questions: Q22 (the Bandit Forager's model), Q23 (who owns a spawner's position now that the
+map editor can place camps) and Q24 (patrol splines need an AI state the game does not have,
+so the editor deliberately does not author them) — all three shipped with a recommended
+default, none blocking.
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
@@ -242,6 +245,24 @@ against un-streamed ground, whose sampler answers `OCEAN_FLOOR_Y`, so a teleport
 fall to −8 m; `stepMovement` now asks `hasDataAt` first and holds the column (NETWORKING.md
 §3.2). 381 unit tests green; two-client, roll-probe, predict-lag, p9-visuals, p9-load,
 browser-p9 and browser-p8 all pass on the same build.
+
+**A2 (map editor) game-side half, 2026-08-04.** The live map is no longer a compiled-in
+constant: the server resolves `assets_baked/map/current.json` at boot, reports it on
+`/api/health`, and the client asks the SERVER which bake to stream before fetching a chunk
+(NETWORKING.md §3.4 — the two must never walk on different maps; `MAP_VERSION` remains the
+fallback for a dev checkout that only ran `pnpm world:generate`). `/ops/reload-map` loads a
+newly published bake and swaps it under the running world (`World.applyMap`): enemies
+re-seed from the spawners against the new ground, players keep their x/z and are re-seated
+on it, discovery progress is kept (re-awarding it would make republishing a currency), and
+a bad bake throws BEFORE the swap so the old map stays live. Connected tabs get the same
+reload notice a new build gets.
+
+**A3-c game-side half, 2026-08-05:** `fastTravelCost` (`formulas/travel.ts`) — the
+WORLD.md §4.2 / ITEMS_LOOT.md §5 price of a shrine hop, `2 × distance-in-chunks` banded
+5–40 g, plus `travelHops` for the unordered matrix. Nothing charges it yet (shrines become
+interactable with the world-objects phase); it lives in shared because the map editor
+previews the whole matrix while the owner places shrines, and a panel quoting a price the
+game will not take is exactly the drift shared exists to prevent. **425 unit tests green.**
 
 ### Running it locally
 

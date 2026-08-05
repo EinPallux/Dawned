@@ -73,21 +73,33 @@ export class MapSource {
   private zones: ZonesFile | null = null;
   private available = new Set<string>();
 
-  constructor(readonly version: string) {}
+  /**
+   * `fallbackVersion` is the compiled-in `MAP_VERSION`, used only until the
+   * server says which bake it is running. After A2 the live version is a
+   * published artifact directory, and the SERVER is the authority on which one
+   * — a client streaming a different map than the server simulates would
+   * predict against ground that is not there.
+   */
+  constructor(private activeVersion: string) {}
+
+  get version(): string {
+    return this.activeVersion;
+  }
 
   private url(file: string): string {
-    return `/assets/map/${this.version}/${file}`;
+    return `/assets/map/${this.activeVersion}/${file}`;
   }
 
   /** Load meta + zones + open the cache. Call once before anything else. */
-  async open(): Promise<{ meta: MapMeta; zones: ZonesFile }> {
+  async open(serverVersion?: string): Promise<{ meta: MapMeta; zones: ZonesFile }> {
+    if (serverVersion) this.activeVersion = serverVersion;
     this.db = await openDatabase();
     const [metaResponse, zonesResponse] = await Promise.all([
       fetch(this.url('meta.json')),
       fetch(this.url('zones.json')),
     ]);
     if (!metaResponse.ok || !zonesResponse.ok) {
-      throw new Error(`map "${this.version}" is missing its meta/zones artifacts`);
+      throw new Error(`map "${this.activeVersion}" is missing its meta/zones artifacts`);
     }
     this.meta = (await metaResponse.json()) as MapMeta;
     this.zones = zonesFileSchema.parse(await zonesResponse.json());
@@ -101,7 +113,7 @@ export class MapSource {
 
   /** Cached-or-fetched binary artifact; null when it doesn't exist. */
   private async loadBinary(file: string): Promise<ArrayBuffer | null> {
-    const key = `${this.version}/${file}`;
+    const key = `${this.activeVersion}/${file}`;
     if (this.db) {
       const cached = await idbGet(this.db, key);
       if (cached) return cached;

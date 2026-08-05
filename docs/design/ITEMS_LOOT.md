@@ -80,17 +80,25 @@ loot_entries: tableId, ref(item|table|gold), weight, minQty, maxQty,
 
 ## 5. Gold & Economy (single-player-economy per character; no trading in 0.1.0)
 
-| Faucets (defaults)                              | Sinks                                                           |
-| ----------------------------------------------- | --------------------------------------------------------------- |
-| Kills: `~1.2 × mobLevel` avg                    | Vendor gear (fills slot gaps between drops)                     |
-| Quests: 15–80 × level                           | Consumables (potions/food)                                      |
-| Junk & surplus vendoring (25% of item value)    | Fast travel between shrines (`2 × distance-in-chunks`, ~5–40 g) |
-| Chests & caches                                 | Respec (25×level / 50×level)                                    |
-| Rare "treasure" junk items (high value, flavor) | Post-0.1: crafting, cosmetics, housing…                         |
+| Faucets (defaults)                              | Sinks                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------- |
+| Kills: `~1.2 × mobLevel` avg                    | Vendor gear (fills slot gaps between drops)                               |
+| Quests: 15–80 × level                           | Consumables (potions/food)                                                |
+| Junk & surplus vendoring (25% of item value)    | Fast travel between shrines (`2 × distance-in-chunks`, ~5–40 g) [^travel] |
+| Chests & caches                                 | Respec (25×level / 50×level)                                              |
+| Rare "treasure" junk items (high value, flavor) | Post-0.1: crafting, cosmetics, housing…                                   |
 
 Vendor **sell** price = 25% of item `value`; buy = 100%. `value = statBudget × 3 + base` auto-derived,
 overridable. Target: a leveling player is comfortably potion-funded but must choose between "that
 nice vendor blue" and respec experiments.
+
+[^travel]:
+    **As built (2026-08-05):** the travel price is `fastTravelCost` in `@dawned/shared`
+    (`packages/shared/src/formulas/travel.ts`), floored at 5 g and capped at 40 g. It lives there
+    because the map editor previews the whole shrine-to-shrine matrix while the owner is placing
+    shrines (Dawned-Admin MAP_EDITOR.md §2.4) — a panel that quotes a price the game will not
+    charge is the drift `@dawned/shared` exists to prevent. Nothing charges it yet: shrines become
+    interactable with the world-objects phase.
 
 ## 6. Vendors (0.1.0 set)
 

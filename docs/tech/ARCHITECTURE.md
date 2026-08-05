@@ -113,8 +113,17 @@ transactions (those are write-through).
 **Content cache:** published content (items, enemies, abilities, loot, quests, zones, spawn layers,
 walkgrid, node placements) loads at boot from PG + baked files; `/ops/reload-content` (admin-panel
 button / `/reloadcontent` GM command) re-loads safely between ticks (never mid-tick), diffing what
-changed: stat-only changes apply live; structural map changes flag "applies on restart" back to the
-admin caller.
+changed: stat-only changes apply live; spawner LAYOUT changes from a content publish still flag
+"applies on restart" back to the admin caller (re-seeding on an ability tweak would wipe every
+fight in progress).
+
+**Map version (A2).** Which baked map is live is a FILE, not a constant: the admin publish writes
+`assets_baked/map/<version>/` and then repoints `assets_baked/map/current.json`, last, so a failed
+bake can never take the world down. The server resolves that pointer at boot (falling back to the
+compiled-in `MAP_VERSION` for a dev checkout), reports it on `/api/health`, and re-resolves it on
+`/ops/reload-map` — which loads the new bake BEFORE swapping, so an invalid one leaves the old map
+live. The swap re-seeds enemies from the spawners against the new ground; players keep their x/z
+and are re-seated on the new terrain, and their clients are asked to reload (NETWORKING.md §3.4).
 
 **Ops API (localhost + `OPS_SECRET` header, every route).** These are the GM primitives the panel's
 Live Ops buttons and the smoke suite both drive; each queues its effect and applies it between
@@ -130,6 +139,7 @@ ticks, never mid-tick:
 | `/ops/enemyhurt`      | P9    | set a living enemy's HP by content id — reach a boss phase or an hp-threshold ability without a full fight  |
 | `/ops/tp`             | P9    | teleport a player to a world position, grounded on the terrain                                              |
 | `/ops/spawnwave`      | P9    | spawn a TRANSIENT wave of an enemy type (world events; also how the load harness reaches the 150-AI budget) |
+| `/ops/reload-map`     | A2    | re-read `current.json` and swap that bake under the running world (map publish)                             |
 
 `enemyhurt` and `tp` only move state the AI then reacts to normally: the phase walk, the announce
 and the self-shield are the real systems, never staged for the observer. Wave enemies carry a

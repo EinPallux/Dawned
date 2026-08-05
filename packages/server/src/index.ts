@@ -8,12 +8,12 @@
 import path from 'node:path';
 import Fastify, { type FastifyError, type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
-import { MAP_VERSION, TICK_RATE } from '@dawned/shared';
+import { TICK_RATE } from '@dawned/shared';
 import { loadConfig } from './config.js';
 import { createLogger } from './logger.js';
 import { MetricsRing } from './metrics/ring.js';
 import { World } from './world/world.js';
-import { loadMapTerrain } from './world/terrain.js';
+import { loadMapTerrain, resolveMapVersion } from './world/terrain.js';
 import { TickLoop } from './world/tick-loop.js';
 import { Gateway } from './net/gateway.js';
 import { registerRoutes } from './http/routes.js';
@@ -44,7 +44,10 @@ const characterService = new CharacterService(dbHandle.db);
 // --- terrain ----------------------------------------------------------------
 // The full map lives in memory (~8 MB) — the server is authoritative for
 // ground height and walkability on every tick.
-const map = await loadMapTerrain(path.join(config.MAP_DIR, MAP_VERSION));
+// Which version is live is a FILE, not a constant: the admin panel publishes a
+// new bake and repoints `current.json`, and this reads whatever it says.
+const mapVersion = await resolveMapVersion(config.MAP_DIR);
+const map = await loadMapTerrain(path.join(config.MAP_DIR, mapVersion));
 log.info({ mapVersion: map.meta.mapVersion, chunks: map.terrain.chunkCount }, 'map terrain loaded');
 
 // --- content ----------------------------------------------------------------
@@ -105,6 +108,12 @@ registerRoutes(app, {
   metrics,
   content,
   reloadContent: () => loadContent(dbHandle.db),
+  mapVersion: map.meta.mapVersion,
+  // Re-resolves the pointer every time: the panel publishes a NEW version
+  // directory and repoints `current.json`, so "reload the map" means "read the
+  // pointer again", not "re-read the directory I booted from".
+  reloadMap: async () =>
+    loadMapTerrain(path.join(config.MAP_DIR, await resolveMapVersion(config.MAP_DIR))),
 });
 registerAuthRoutes(app, { auth, characters: characterService });
 

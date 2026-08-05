@@ -30,6 +30,7 @@ import {
   type SkillNodeDef,
 } from '@dawned/shared';
 import { Connection } from '../net/connection.js';
+import { api } from '../net/api.js';
 import { InputController } from '../input/input.js';
 import { headingFromInput } from '../world/anim-math.js';
 import { GameScene } from '../world/scene.js';
@@ -247,8 +248,14 @@ export const runWorld = (
   let ambience: AmbienceController | null = null;
   let walkgridReady = false;
   let mapReady = false;
-  void mapSource
-    .open()
+  // Ask the server which bake it is running before streaming a single chunk
+  // (A2): after a map publish the compiled-in MAP_VERSION is last week's world.
+  // If health is unreachable the constant still gets us onto the dev map.
+  void api
+    .health()
+    .then((health) => health.mapVersion)
+    .catch(() => undefined)
+    .then((serverVersion) => mapSource.open(serverVersion))
     .then(async ({ zones }) => {
       ambience = new AmbienceController(scene.ambienceTargets, zones);
       mapReady = true;

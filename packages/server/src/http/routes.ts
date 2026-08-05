@@ -16,6 +16,7 @@ import type { MetricsRing } from '../metrics/ring.js';
 import type { World } from '../world/world.js';
 import type { Gateway } from '../net/gateway.js';
 import type { GameContent } from '../content/loader.js';
+import type { LoadedMap } from '../world/terrain.js';
 
 /**
  * The concrete Fastify instance type produced by our boot options (a pino
@@ -31,12 +32,16 @@ export interface RouteDeps {
   content: GameContent;
   /** Re-read published rows + hot-swap the world's content (admin publish). */
   reloadContent: () => Promise<GameContent>;
+  /** The baked map version this process booted with (A2 `current.json`). */
+  mapVersion: string;
+  /** Re-read `current.json` and load that bake (admin map publish). */
+  reloadMap: () => Promise<LoadedMap>;
 }
 
 const LOCALHOST = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 export const registerRoutes = (app: App, deps: RouteDeps): void => {
-  const { config, world, gateway, metrics, reloadContent } = deps;
+  const { config, world, gateway, metrics, reloadContent, reloadMap } = deps;
 
   /**
    * Nothing this server answers may sit in a browser cache. Without an
@@ -52,6 +57,9 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
   });
   // Mutable so /ops/reload-content refreshes what the content routes serve.
   let content = deps.content;
+  // Same for the map: /ops/reload-map swaps the live bake under the world, and
+  // this is what tells clients which artifacts to stream.
+  let mapVersion = deps.mapVersion;
 
   app.get('/api/health', () => {
     return {
@@ -59,6 +67,10 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       buildId: BUILD_ID,
       protocolVersion: PROTOCOL_VERSION,
       tickRate: TICK_RATE,
+      // The map the SERVER is simulating. The client streams whatever this
+      // says rather than a compiled-in constant, which is what stops a publish
+      // from putting the two on different ground (docs/tech/NETWORKING.md §3.4).
+      mapVersion,
       players: world.playerCount,
       uptimeSec: Math.round(process.uptime()),
     };
@@ -154,6 +166,51 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       });
     } catch (error) {
       // Validation failures keep the OLD content live — publish is the gate.
+      return await reply.code(422).send({ ok: false, error: (error as Error).message });
+    }
+  });
+
+  /**
+   * Hot map reload (A2 map publish): re-read `current.json`, load that bake and
+   * swap it under the running world. This is the endpoint that makes
+   * MAP_EDITOR.md §7's "publish — and stand on it in the live game within
+   * minutes" true without a deploy.
+   *
+   * Loading happens BEFORE the swap, so a half-written or invalid bake throws
+   * with the old map still live. Connected clients notice through the
+   * `mapVersion` on `/api/health` and offer a reload — a whole new world's
+   * worth of terrain, walkgrid, zones and placements is not something to
+   * re-stream in place while someone is mid-fight.
+   */
+  app.post('/ops/reload-map', async (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    try {
+      const next = await reloadMap();
+      const summary = world.applyMap({
+        terrain: next.terrain,
+        spawn: next.meta.spawn,
+        zones: next.zones,
+      });
+      mapVersion = next.meta.mapVersion;
+      gateway.broadcastSystemChat(
+        `The world has been republished (${mapVersion}). Reload to walk on the new map.`,
+      );
+      return await reply.send({
+        ok: true,
+        mapVersion,
+        chunks: next.terrain.chunkCount,
+        zones: next.zones.length,
+        ...summary,
+        note: 'players are asked to reload; enemies were re-seeded from spawners',
+      });
+    } catch (error) {
+      // A bad bake keeps the OLD map live — the world never runs without ground.
       return await reply.code(422).send({ ok: false, error: (error as Error).message });
     }
   });

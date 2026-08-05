@@ -97,3 +97,14 @@ nothing beyond it.
     exposed a client bug — prediction resolved against un-streamed ground and fell to the
     sea floor; `stepMovement` asks `hasDataAt` first now (NETWORKING.md §3.2). 381 tests
     green.
+    **A2 game-side half (2026-08-04):** the live map is a published artifact, not a
+    constant — the server resolves `assets_baked/map/current.json`, reports it on
+    `/api/health`, and the client asks the server which bake to stream (NETWORKING.md
+    §3.4). `/ops/reload-map` swaps a new bake under the running world: enemies re-seed
+    from the spawners, players keep x/z and are re-seated, discovery progress is kept, a
+    bad bake throws before the swap.
+    **A3-c game-side half (2026-08-05):** `fastTravelCost` in `formulas/travel.ts` — the
+    shrine-hop price from WORLD.md §4.2 / ITEMS_LOOT.md §5 (`2 × distance-in-chunks`,
+    banded 5–40 g) plus `travelHops`. Nothing charges it until shrines become
+    interactable; it is in shared so the map editor's cost matrix and the game cannot
+    disagree. 425 tests green.

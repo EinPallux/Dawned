@@ -8,6 +8,55 @@
 
 ## Open questions
 
+### Q24 — patrol splines need AI, not just an editor (A3-b, 2026-08-05)
+
+MAP_EDITOR.md §2.3 asks the spawns mode for a **patrol spline editor with per-node wait times**.
+Drawing one is the easy half. The other half does not exist: `spawnerDefSchema` has no patrol
+field, and more importantly the enemy AI has no patrol state — idle enemies stand at their spawn
+until something perceives them.
+
+**Not shipped, on purpose.** Adding the field and the path editor now would put data in the
+database that nothing reads. Project rule 1 calls that a placeholder, and this is exactly the
+shape it warns about: it would look finished in the panel and do nothing in the world.
+
+What it actually needs, as a game-side slice: a `patrol` array on the spawner schema, an AI state
+that walks it at a stroll speed and honours the wait at each node, and the interaction with leash
+and social aggro decided (does a patroller return to its LAST node or its spawn? does pulling one
+member of a moving camp drag the whole line?). That is enemy-behaviour work, so it belongs with
+the game's AI phase rather than being smuggled in as an editor feature.
+
+**Recommended default: leave patrols out of 0.1.0.** Everything else in spawns mode shipped —
+camp links, aggro/leash rings, per-zone population against the CONTENT_0.1 budget, and a
+deterministic simulate-populate — and a world of stationary camps is what P9 was measured and
+balanced against. If you want patrols, say so and it becomes a game-side task with its own DoD
+(the editor half is a day on top).
+
+---
+
+### Q23 — who owns a spawner's position, the map editor or the Enemies page? (A3, 2026-08-05)
+
+Camps can now be placed in two places: **Content → Enemies → Spawners** (where they have been
+since A1-d) and the **Map Editor's Place tool** (where you can see the hill you are putting them
+on). They are the same rows — the game reads spawners from `content_spawners` either way.
+
+Shipped for now: **the map publish wins.** Publishing the map replaces every published spawner
+row from the map's spawner layer, delete-and-insert in one transaction, because a camp you
+DELETED in the editor has to stop spawning and an update-only pass would leave it live forever.
+
+The cost of that: if you move a camp on the Enemies page and then publish the map, the map's
+copy of that camp overwrites it.
+
+**Recommended default: keep it, and treat the map as the place camps live.** Position is a
+spatial decision and the Enemies page cannot show you the terrain; the map editor's inspector
+edits the same full row (entries, counts, respawn timer), so nothing is lost by doing all of it
+there. The Enemies page stays the right surface for the BESTIARY.
+
+If you would rather keep the Enemies page authoritative, say so and the map publish becomes an
+update-in-place that never deletes — the trade is that a camp removed in the map editor would
+keep spawning until you also delete it on the Enemies page.
+
+---
+
 ### Q22 — Bandit Forager's model (P9, 2026-08-04)
 
 NPCS_ENEMIES.md §4 casts the Dawnshore **Bandit Forager** as "KA Peasant-look + dagger" — a

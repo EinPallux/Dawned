@@ -511,6 +511,19 @@ budget at 150 active.
       predicted against un-streamed ground and dropped the camera to the sea floor
       (NETWORKING.md §3.2).
 
+### Game-side work carried by Dawned-Admin's A2 (map editor)
+
+Not a P-phase of its own — the game half of the map publish pipeline, built alongside A2-b:
+
+- [x] The live map is a **published artifact, not a constant**: the server resolves
+      `assets_baked/map/current.json` at boot (falling back to `MAP_VERSION` for a dev checkout),
+      reports it on `/api/health`, and the client asks for it there before streaming a chunk
+      (NETWORKING.md §3.4 — client and server must never walk on different maps).
+- [x] `/ops/reload-map` loads the newly published bake and swaps it under the running world
+      (`World.applyMap`): enemies re-seed from the spawners against the new ground, players keep
+      their x/z and are re-seated, discovery progress is preserved. A bad bake throws before the
+      swap, so the old map stays live. Connected tabs get the same reload notice a new build gets.
+
 ## P10 — Gathering Professions (M) ⚙A3 node placement tools required
 
 **Goal:** all four professions shippable.
