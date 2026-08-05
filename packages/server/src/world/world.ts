@@ -65,6 +65,10 @@ import {
   type QuestDef,
   type QuestEvent,
   type QuestHook,
+  type InteractOp,
+  type QuestOp,
+  rollLootTable,
+  questTurnInNpc,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
 import {
@@ -74,6 +78,13 @@ import {
   type ServerNpc,
 } from './interactables.js';
 import { applyQuestEvent } from './quests.js';
+import {
+  applyInteract,
+  applyQuestOp,
+  emptyEffects,
+  type InteractEffects,
+  type InteractWorld,
+} from './interact-step.js';
 import { poisEntered } from './interactables.js';
 
 /**
@@ -902,6 +913,38 @@ export class World {
     return false;
   }
 
+  /**
+   * Ops lever: set a character's state on one quest (`/ops/quest`).
+   *
+   * The quest editor's test button and the verification run's shortcut past
+   * three chain links. It writes STATE only — the counters, the turn-in and
+   * the payout stay the real path, the same argument `/ops/fish` makes.
+   */
+  setQuestByName(name: string, questId: string, step: number, drop: boolean): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      const def = this.questDefs().get(questId);
+      if (!def) return false;
+      if (drop) {
+        player.quests.delete(questId);
+        player.pinnedQuests = player.pinnedQuests.filter((id) => id !== questId);
+      } else {
+        player.quests.set(questId, {
+          questId,
+          step: Math.min(step, def.steps.length),
+          counter: 0,
+          status: 'active',
+        });
+      }
+      this.pendingQuestSync.push(player.id);
+      return true;
+    }
+    return false;
+  }
+
+  /** Quest syncs raised outside the tick (ops levers) — flushed in step. */
+  private readonly pendingQuestSync: number[] = [];
+
   /** Which fish is forced for a player, and for how many more casts. */
   private readonly forcedFish = new Map<number, { itemId: string; casts: number }>();
 
@@ -1184,6 +1227,159 @@ export class World {
     this.pendingGatherOps.push({ playerId, op });
   }
 
+  /** Interact/quest intents (P11). Applied at the top of the next tick, so
+   * their effects and events ride the normal flush rather than landing
+   * mid-tick — the same shape item and progression ops use. */
+  queueInteractOp(playerId: number, op: InteractOp): void {
+    if (this.pendingInteractOps.length > 256) return;
+    this.pendingInteractOps.push({ playerId, op });
+  }
+
+  queueQuestOp(playerId: number, op: QuestOp): void {
+    if (this.pendingQuestOps.length > 256) return;
+    this.pendingQuestOps.push({ playerId, op });
+  }
+
+  private readonly pendingInteractOps: { playerId: number; op: InteractOp }[] = [];
+  private readonly pendingQuestOps: { playerId: number; op: QuestOp }[] = [];
+
+  /**
+   * Step 0e: resolve the interaction and quest intents.
+   *
+   * Runs AFTER gathering so a player who pressed F on a node and F on a chest
+   * in the same frame gets the node (the hold is the more specific verb), and
+   * before the sim so a shrine hop moves them this tick rather than next.
+   */
+  private stepInteractions(nowMs: number, events: CombatEvent[]): void {
+    if (this.pendingInteractOps.length === 0 && this.pendingQuestOps.length === 0) return;
+    const world: InteractWorld = {
+      objects: this.interactables,
+      npcs: this.npcs,
+      content: { defs: this.questDefs() },
+      nowMs,
+    };
+    const interacts = this.pendingInteractOps.splice(0);
+    const questOps = this.pendingQuestOps.splice(0);
+    for (const { playerId, op } of interacts) {
+      const player = this.players.get(playerId);
+      if (!player || player.dead) continue;
+      const effects = emptyEffects();
+      applyInteract(player, op, world, player.progress.gold, effects);
+      this.applyInteractEffects(player, effects, events);
+    }
+    for (const { playerId, op } of questOps) {
+      const player = this.players.get(playerId);
+      if (!player) continue;
+      const effects = emptyEffects();
+      applyQuestOp(player, op, world, effects);
+      this.applyInteractEffects(player, effects, events);
+    }
+  }
+
+  /** Turn one step's decisions into world changes and outgoing events. */
+  private applyInteractEffects(
+    player: ServerPlayer,
+    effects: InteractEffects,
+    events: CombatEvent[],
+  ): void {
+    const itemDeps = {
+      content: this.itemContent(),
+      bags: this.lootBags,
+      nowMs: Date.now(),
+      events,
+    };
+    for (const entry of effects.loot) {
+      // A chest rolls its table straight into the bag rather than dropping a
+      // world bag: you opened it, it is yours, and a chest that spat a bag onto
+      // the floor would be racing the friend standing next to you.
+      const drops = rollLootTable(
+        this.itemContent().lootTables,
+        entry.lootTableId,
+        1,
+        { killerLevel: player.level },
+        this.rng,
+      );
+      for (const drop of drops) {
+        // `rollLootTable` only ever yields items and gold; the exhaustive
+        // switch is the compiler's job, not a runtime branch nobody reaches.
+        if (drop.kind === 'item') grantItem(player, drop.itemId, drop.qty, itemDeps);
+        else grantGold(player, drop.qty, itemDeps);
+      }
+      // A chest is an INTERACT for quest purposes as well as a loot source.
+      this.questEvent(player, { kind: 'interact', refId: entry.objectId }, events);
+    }
+    for (const notice of effects.notices) {
+      if (notice.kind === 'interacted') {
+        const object = this.interactables.get(notice.objectId);
+        this.questEvent(
+          player,
+          object
+            ? { kind: 'interact', refId: notice.objectId, tag: object.row.name }
+            : { kind: 'interact', refId: notice.objectId },
+          events,
+        );
+        continue;
+      }
+      events.push({
+        type: 'interact-notice',
+        playerId: player.id,
+        objectId: notice.objectId,
+        text: notice.text,
+        kind: notice.kind,
+      });
+      if (notice.kind === 'attuned') {
+        events.push({
+          type: 'discovery',
+          playerId: player.id,
+          kind: 'shrine',
+          refId: notice.objectId,
+          label: notice.text,
+        });
+      }
+    }
+    if (effects.spendGold > 0) grantGold(player, -effects.spendGold, itemDeps);
+    if (effects.teleport) {
+      player.movement.x = effects.teleport.x;
+      player.movement.z = effects.teleport.z;
+      player.movement.y = this.terrain.heightAt(effects.teleport.x, effects.teleport.z);
+    }
+    for (const payout of effects.payouts) {
+      if (payout.xp > 0) {
+        awardXp(player, payout.xp, XpSource.Quest, this.progressionContent(), events);
+      }
+      if (payout.gold > 0) grantGold(player, payout.gold, itemDeps);
+      for (const item of payout.items) grantItem(player, item.itemId, item.qty, itemDeps);
+      events.push({
+        type: 'quest-rewarded',
+        playerId: player.id,
+        questId: payout.questId,
+        xp: payout.xp,
+        gold: payout.gold,
+        items: payout.items,
+        title: payout.title,
+      });
+      // A turn-in is itself a TALK at that NPC, which is what lets a later
+      // quest's "talk to Marla" step be satisfied by handing her the last one.
+      const def = this.questDefs().get(payout.questId);
+      const npc = def ? questTurnInNpc(def) : null;
+      if (npc) this.questEvent(player, { kind: 'talk', refId: npc }, events);
+    }
+    for (const notice of effects.notices2) {
+      events.push({
+        type: 'quest-notice',
+        playerId: player.id,
+        kind: notice.kind,
+        questId: notice.questId,
+        text: notice.text,
+      });
+    }
+    if (effects.questsDirty.length > 0) events.push({ type: 'quest-dirty', playerId: player.id });
+    for (const objectId of effects.objectsDirty) {
+      events.push({ type: 'interact-dirty', playerId: player.id, objectId });
+    }
+    if (effects.dialogueDirty) events.push({ type: 'dialogue-dirty', playerId: player.id });
+  }
+
   queueAllocateStats(playerId: number, deltas: AttributeSpread): void {
     this.pendingProgress.push({ kind: 'stats', playerId, deltas });
   }
@@ -1421,6 +1617,13 @@ export class World {
     // resolved instantly would be a duplication bug wearing a timer's clothes.
     // Fishing is NOT stepped here; it needs this tick's buttons (see step 1c).
     this.stepGathering(nowMs, events);
+    // 0e. Interact + quest intents (P11) — after gathering so a frame that
+    // pressed F at a node and a chest resolves the node, which is the more
+    // specific verb; before the sim so a shrine hop lands this tick.
+    this.stepInteractions(nowMs, events);
+    for (const playerId of this.pendingQuestSync.splice(0)) {
+      events.push({ type: 'quest-dirty', playerId });
+    }
 
     // Bags rot after 60 s (§3); whoever could see one re-syncs.
     for (const playerId of expireLootBags(this.lootBags, nowMs)) {

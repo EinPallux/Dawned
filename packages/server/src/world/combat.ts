@@ -202,7 +202,7 @@ export type CombatEvent =
   | {
       type: 'discovery';
       playerId: number;
-      kind: 'zone' | 'codex' | 'poi';
+      kind: 'zone' | 'codex' | 'poi' | 'shrine';
       refId: string;
       label: string;
       /** POI kind, for the banner's glyph and flourish (P11). */
@@ -225,6 +225,28 @@ export type CombatEvent =
   | { type: 'quest-dirty'; playerId: number }
   /** Per-character interactable state changed (chest opened, shrine attuned). */
   | { type: 'interact-dirty'; playerId: number; objectId: string }
+  /** A HUD line for the last interaction: a refusal, a signpost, an attune. */
+  | {
+      type: 'interact-notice';
+      playerId: number;
+      objectId: string;
+      text: string;
+      kind: string;
+    }
+  /** A quest beat worth a toast, resolved by the gateway into a QuestNotice. */
+  | { type: 'quest-notice'; playerId: number; kind: string; questId: string; text: string }
+  /** A quest paid out — the toast shows what landed. */
+  | {
+      type: 'quest-rewarded';
+      playerId: number;
+      questId: string;
+      xp: number;
+      gold: number;
+      items: { itemId: string; qty: number }[];
+      title: string;
+    }
+  /** The dialogue panel changed — resend DialogueState. */
+  | { type: 'dialogue-dirty'; playerId: number }
   // --- items (P8) ----------------------------------------------------------
   /** Bag/paper-doll/purse changed — resend the authoritative sheet + persist. */
   | { type: 'inventory-dirty'; playerId: number }

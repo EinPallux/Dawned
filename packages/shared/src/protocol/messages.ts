@@ -1104,3 +1104,121 @@ export const decodeJsonEnvelope = <T>(reader: BinaryReader): T => {
     throw new ProtocolError('malformed JSON envelope');
   }
 };
+
+// ---------------------------------------------------------------------------
+// Quests, dialogue, discovery and interactables (v14, P11)
+// ---------------------------------------------------------------------------
+
+/**
+ * SELF's whole quest log (v14). The client never derives quest state — not the
+ * counters, not what is turn-in-able — because a quest log is the single thing
+ * a player would most like to author themselves. Every op is a request and
+ * this is the answer, the same rule items shipped under at P8.
+ */
+export interface QuestSyncMessage {
+  quests: {
+    questId: string;
+    name: string;
+    zoneId: string;
+    status: string;
+    step: number;
+    counter: number;
+    target: number;
+    pinned: boolean;
+    hint: { x: number; z: number; radius: number } | null;
+    journalText: string;
+    steps: { text: string; have: number; need: number; done: boolean; type: string }[];
+    rewards: unknown;
+    suggestedLevel: number;
+    chainId: string;
+    trackable: boolean;
+    ready: boolean;
+    turnInNpcId: string | null;
+  }[];
+  /** Clue text for an active EXPLORE step, keyed by quest — never a marker. */
+  clues: { questId: string; text: string }[];
+}
+
+export const encodeQuestSync = (msg: QuestSyncMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.QuestSync, msg, writer);
+
+/** A quest beat worth a toast (v14): accepted, step done, completed, rewarded. */
+export interface QuestNoticeMessage {
+  kind: 'accepted' | 'step' | 'completed' | 'rewarded' | 'abandoned' | 'refused' | 'toast';
+  questId: string;
+  /** Quest name, step line, or refusal reason — whatever `kind` implies. */
+  text: string;
+  /** Rewards paid, on `rewarded`. */
+  xp?: number;
+  gold?: number;
+  items?: { itemId: string; qty: number }[];
+  title?: string;
+}
+
+export const encodeQuestNotice = (msg: QuestNoticeMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.QuestNotice, msg, writer);
+
+/**
+ * The conversation on screen (v14).
+ *
+ * The SERVER drives the tree: a choice can accept a quest, so letting the
+ * client walk its own copy would make the accept a client decision with a
+ * server rubber-stamp. `nodeId` travels back with the choice so a stale click
+ * from a conversation that has moved on is refused rather than applied to
+ * whatever is at that index now.
+ */
+export interface DialogueStateMessage {
+  /** null closes the panel. */
+  open: {
+    questId: string;
+    nodeId: string;
+    npcId: string;
+    /** Display name — the client has no NPC catalogue of its own. */
+    speaker: string;
+    title: string;
+    text: string;
+    emote: string;
+    choices: { text: string; action: string }[];
+    /**
+     * Rewards to show alongside an offer or a turn-in — the QuestRewards shape
+     * from content/quests.ts. Typed loosely on the wire for the same reason
+     * QuestSync's is: the protocol module must not import the content schema,
+     * or the codec starts depending on what a reward looks like.
+     */
+    rewards: unknown;
+    /** Per-class reward options at a chain end; empty = no choice. */
+    choicesOfReward: { classId: string; itemId: string; name: string; icon: string }[];
+  } | null;
+  /** Quests this NPC can offer right now, for a "more to say" list. */
+  more: { questId: string; name: string; kind: string }[];
+}
+
+export const encodeDialogueState = (msg: DialogueStateMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.DialogueState, msg, writer);
+
+/** Everything this character has discovered — the world map's fog (v14). */
+export interface DiscoverySyncMessage {
+  zones: string[];
+  pois: string[];
+  /** Shrines attuned, which is what the travel map may offer. */
+  shrines: string[];
+}
+
+export const encodeDiscoverySync = (msg: DiscoverySyncMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.DiscoverySync, msg, writer);
+
+/**
+ * Per-character interactable state (v14): which chests are spent and which
+ * shrines are attuned. Positions are not in here — the client already has the
+ * bake, exactly as `NodeStates` omits node positions.
+ */
+export interface InteractStateMessage {
+  /** Objects this character cannot use right now, and when that lifts (0 = never). */
+  spent: { objectId: string; untilMs: number }[];
+  attuned: string[];
+  /** A refusal or a read: the HUD line for the last interaction. */
+  notice: { objectId: string; text: string; kind: string } | null;
+}
+
+export const encodeInteractState = (msg: InteractStateMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.InteractState, msg, writer);

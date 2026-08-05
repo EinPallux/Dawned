@@ -38,6 +38,14 @@ import {
   exportCooldowns,
   parseItemOp,
   parseGatherOp,
+  parseInteractOp,
+  parseQuestOp,
+  encodeQuestSync,
+  encodeQuestNotice,
+  encodeDialogueState,
+  encodeDiscoverySync,
+  encodeInteractState,
+  interactRefusalText,
   encodeGatherState,
   encodeFishingState,
   encodeNodeStates,
@@ -70,6 +78,12 @@ import type { Config } from '../config.js';
 import type { MetricsRing } from '../metrics/ring.js';
 import type { World } from '../world/world.js';
 import type { ServerPlayer } from '../world/player.js';
+import {
+  exploreClue,
+  npcQuestOffers,
+  questRefusalText as questNoticeText,
+  questSyncEntries,
+} from '../world/quests.js';
 import { professionWire } from '../world/professions.js';
 import { nodesNear } from '../world/nodes.js';
 import type { AuthService } from '../auth/service.js';
@@ -272,6 +286,28 @@ export class Gateway {
         this.world.queueGatherOp(player.id, op);
         return;
       }
+      case ClientOp.InteractOp: {
+        const player = session.player;
+        if (session.state !== 'playing' || !player || !session.allowGeneric()) return;
+        const op = parseInteractOp(decodeJsonEnvelope(reader));
+        if (!op) {
+          player.violations++;
+          return;
+        }
+        this.world.queueInteractOp(player.id, op);
+        return;
+      }
+      case ClientOp.QuestOp: {
+        const player = session.player;
+        if (session.state !== 'playing' || !player || !session.allowGeneric()) return;
+        const op = parseQuestOp(decodeJsonEnvelope(reader));
+        if (!op) {
+          player.violations++;
+          return;
+        }
+        this.world.queueQuestOp(player.id, op);
+        return;
+      }
       default:
         throw new ProtocolError(`unknown opcode 0x${opcode.toString(16)}`);
     }
@@ -365,12 +401,24 @@ export class Gateway {
       }
 
       // Progression state (P7) + the pack (P8) ride separate tables.
-      const [nodeRanks, zonesSeen, codexSeen, inventory, professionRows] = await Promise.all([
+      const [
+        nodeRanks,
+        zonesSeen,
+        codexSeen,
+        inventory,
+        professionRows,
+        poisSeen,
+        questRows,
+        interactionRows,
+      ] = await Promise.all([
         this.characters.loadSkills(character.id),
         this.characters.loadDiscoveries(character.id, 'zone'),
         this.characters.loadDiscoveries(character.id, 'codex'),
         this.characters.loadInventory(character.id),
         this.characters.loadProfessions(character.id),
+        this.characters.loadDiscoveries(character.id, 'poi'),
+        this.characters.loadQuests(character.id),
+        this.characters.loadInteractions(character.id),
       ]);
       if (!session.isIn('authenticating')) return;
 
@@ -406,6 +454,31 @@ export class Gateway {
         inventory,
         professions: professionRows,
       });
+      // Quests, discoveries and interactable records (P11) are restored onto
+      // the fresh player rather than passed through `addPlayer`: they are pure
+      // per-character state the world never derives, and threading four more
+      // arrays through the spawn signature buys nothing.
+      for (const poi of poisSeen) player.poisSeen.add(poi);
+      for (const row of questRows) {
+        player.quests.set(row.questId, {
+          questId: row.questId,
+          step: row.step,
+          counter: row.counter,
+          status: row.status as 'active' | 'complete' | 'turned_in' | 'abandoned',
+        });
+        if (row.pinned) player.pinnedQuests.push(row.questId);
+      }
+      for (const row of interactionRows) {
+        const record = player.interactions.get(row.objectId) ?? {
+          openedUntilMs: 0,
+          attuned: false,
+          uses: 0,
+        };
+        if (row.kind === 'opened') record.openedUntilMs = row.count;
+        if (row.kind === 'attuned') record.attuned = true;
+        if (row.kind === 'used') record.uses = row.count;
+        player.interactions.set(row.objectId, record);
+      }
     }
     session.player = player;
     session.state = 'playing';
@@ -449,6 +522,13 @@ export class Gateway {
       ),
     );
     this.sendNodeStates(session);
+    // …and the quest layer (P11): the journal, the map's fog, and which
+    // chests this character has already emptied. All three are things the
+    // client cannot derive, so a relog without them shows an empty journal
+    // next to a full one on the server.
+    this.sendQuestSync(session);
+    this.sendDiscoverySync(session);
+    this.sendInteractState(session, null);
 
     if (reattached) {
       this.log.info(
@@ -939,6 +1019,126 @@ export class Gateway {
           this.persistProfessions(target.player);
           break;
         }
+        // --- quests, dialogue, interactables (P11) ---------------------------
+        case 'quest-dirty': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          this.sendQuestSync(target);
+          this.persistQuests(target.player);
+          break;
+        }
+        case 'quest-progress': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          this.sendQuestSync(target);
+          this.persistQuests(target.player);
+          break;
+        }
+        case 'quest-step': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target) break;
+          target.send(
+            encodeQuestNotice(
+              { kind: 'step', questId: event.questId, text: event.text },
+              target.writer,
+            ),
+          );
+          break;
+        }
+        case 'quest-complete': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target) break;
+          const def = this.world.questDefs().get(event.questId);
+          target.send(
+            encodeQuestNotice(
+              { kind: 'completed', questId: event.questId, text: def?.name ?? '' },
+              target.writer,
+            ),
+          );
+          break;
+        }
+        case 'quest-notice': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target) break;
+          // A refusal carries a reason code; everything else carries prose.
+          const text =
+            event.kind === 'refused'
+              ? questNoticeText(event.text as Parameters<typeof questNoticeText>[0])
+              : event.text;
+          target.send(
+            encodeQuestNotice(
+              {
+                kind: event.kind as 'accepted' | 'abandoned' | 'refused',
+                questId: event.questId,
+                text,
+              },
+              target.writer,
+            ),
+          );
+          break;
+        }
+        case 'quest-rewarded': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target) break;
+          const def = this.world.questDefs().get(event.questId);
+          target.send(
+            encodeQuestNotice(
+              {
+                kind: 'rewarded',
+                questId: event.questId,
+                text: def?.name ?? '',
+                xp: event.xp,
+                gold: event.gold,
+                items: event.items,
+                title: event.title,
+              },
+              target.writer,
+            ),
+          );
+          break;
+        }
+        case 'quest-toast': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target) break;
+          target.send(
+            encodeQuestNotice({ kind: 'toast', questId: '', text: event.text }, target.writer),
+          );
+          break;
+        }
+        case 'dialogue-dirty': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          this.sendDialogueState(target);
+          break;
+        }
+        case 'interact-dirty': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          this.sendInteractState(target, null);
+          this.persistInteraction(target.player, event.objectId);
+          break;
+        }
+        case 'interact-notice': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          this.sendInteractState(target, {
+            objectId: event.objectId,
+            kind: event.kind,
+            // A refusal is a code; a signpost is prose. Resolving the code here
+            // keeps the wording in shared, where the client reads it too.
+            text:
+              event.kind === 'refused'
+                ? interactRefusalText(event.text as Parameters<typeof interactRefusalText>[0])
+                : event.text,
+          });
+          break;
+        }
+        case 'npc-emote':
+          // Emotes ride the existing entity-event lane at P11-D; the hook is
+          // recorded here so the quest still advances without one.
+          break;
+        case 'quest-buff':
+          break;
         case 'profession-level': {
           const target = this.findSessionByPlayer(event.playerId);
           if (!target?.player) break;
@@ -1158,6 +1358,160 @@ export class Gateway {
   }
 
   /** Serialized write-through of one character's gathering professions. */
+  /**
+   * SELF's whole quest log. Sent in full on every change rather than as a
+   * delta: a log is a handful of entries, and the failure mode of a delta —
+   * one dropped message leaving a counter permanently wrong — is exactly the
+   * bug a quest system can least afford.
+   */
+  private sendQuestSync(session: Session): void {
+    const player = session.player;
+    if (!player) return;
+    const defs = this.world.questDefs();
+    const entries = questSyncEntries(player.quests, { defs }, player.pinnedQuests);
+    const clues: { questId: string; text: string }[] = [];
+    for (const [questId, state] of player.quests) {
+      const def = defs.get(questId);
+      if (!def || state.status !== 'active') continue;
+      const clue = exploreClue(def, state);
+      if (clue) clues.push({ questId, text: clue });
+    }
+    session.send(encodeQuestSync({ quests: entries, clues }, session.writer));
+  }
+
+  /** The conversation on screen, resolved against the published content. */
+  private sendDialogueState(session: Session): void {
+    const player = session.player;
+    if (!player) return;
+    const open = player.dialogue;
+    if (!open) {
+      session.send(encodeDialogueState({ open: null, more: [] }, session.writer));
+      return;
+    }
+    const defs = this.world.questDefs();
+    const quest = defs.get(open.questId);
+    const npc = this.world.npcAt(open.npcPlacementId);
+    if (!quest) {
+      session.send(encodeDialogueState({ open: null, more: [] }, session.writer));
+      return;
+    }
+    const nodes = quest.dialogue[open.phase];
+    const node = nodes.find((entry) => entry.id === open.nodeId) ?? nodes[0];
+    const actor = {
+      level: player.level,
+      quests: player.quests,
+      discoveries: player.poisSeen,
+    };
+    const more = npc
+      ? npcQuestOffers({ defs }, actor, npc.npcId)
+          .filter((offer) => offer.quest.id !== quest.id)
+          .map((offer) => ({ questId: offer.quest.id, name: offer.quest.name, kind: offer.kind }))
+      : [];
+    const items = this.world.itemContent().items;
+    session.send(
+      encodeDialogueState(
+        {
+          open: node
+            ? {
+                questId: quest.id,
+                nodeId: node.id,
+                npcId: open.npcId,
+                speaker: npc?.def.name ?? '',
+                title: npc?.def.title ?? '',
+                text: node.text,
+                emote: node.emote,
+                choices: node.choices.map((choice) => ({
+                  text: choice.text,
+                  action: choice.action,
+                })),
+                rewards: open.phase === 'inProgress' ? null : quest.rewards,
+                choicesOfReward: quest.rewards.choices.map((choice) => ({
+                  classId: choice.classId,
+                  itemId: choice.itemId,
+                  name: items.get(choice.itemId)?.name ?? choice.itemId,
+                  icon: items.get(choice.itemId)?.icon ?? '',
+                })),
+              }
+            : null,
+          more,
+        },
+        session.writer,
+      ),
+    );
+  }
+
+  /** Chests spent, shrines attuned, and the line for the last interaction. */
+  private sendInteractState(
+    session: Session,
+    notice: { objectId: string; text: string; kind: string } | null,
+  ): void {
+    const player = session.player;
+    if (!player) return;
+    const spent: { objectId: string; untilMs: number }[] = [];
+    const attuned: string[] = [];
+    for (const [objectId, record] of player.interactions) {
+      if (record.openedUntilMs !== 0) spent.push({ objectId, untilMs: record.openedUntilMs });
+      if (record.attuned) attuned.push(objectId);
+    }
+    session.send(encodeInteractState({ spent, attuned, notice }, session.writer));
+  }
+
+  /** Zones, POIs and shrines this character has found — the map's fog. */
+  private sendDiscoverySync(session: Session): void {
+    const player = session.player;
+    if (!player) return;
+    const attuned: string[] = [];
+    for (const [objectId, record] of player.interactions) {
+      if (record.attuned) attuned.push(objectId);
+    }
+    session.send(
+      encodeDiscoverySync(
+        {
+          zones: [...player.progress.zonesSeen],
+          pois: [...player.poisSeen],
+          shrines: attuned,
+        },
+        session.writer,
+      ),
+    );
+  }
+
+  /**
+   * Write-through, serialized on the same chain progression uses so a quest
+   * save can never interleave with an XP save for the same character.
+   */
+  private persistQuests(player: ServerPlayer): void {
+    const snapshot = [...player.quests].map(([questId, state]) => ({
+      questId,
+      status: state.status,
+      step: state.step,
+      counter: state.counter,
+      pinned: player.pinnedQuests.includes(questId),
+    }));
+    player.progress.persistChain = player.progress.persistChain
+      .then(async () => {
+        for (const row of snapshot) {
+          await this.characters.saveQuest(player.characterId, row);
+        }
+      })
+      .catch((error: unknown) => {
+        this.log.error({ err: error, character: player.characterId }, 'quest save failed');
+      });
+  }
+
+  private persistInteraction(player: ServerPlayer, objectId: string): void {
+    const record = player.interactions.get(objectId);
+    if (!record) return;
+    const snapshot = { ...record };
+    player.progress.persistChain = player.progress.persistChain
+      .then(async () => {
+        await this.characters.saveInteraction(player.characterId, objectId, snapshot);
+      })
+      .catch((error: unknown) => {
+        this.log.error({ err: error, character: player.characterId }, 'interaction save failed');
+      });
+  }
+
   private persistProfessions(player: ServerPlayer): void {
     const snapshot = [...player.professions].map(([profession, state]) => ({
       profession,

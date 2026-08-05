@@ -139,6 +139,21 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     return { nodes: [...content.resourceNodes.values()] };
   });
 
+  /**
+   * Published quests (P11): the client needs names, journal prose and step
+   * text to render a journal at all. The STATE is never here — that comes from
+   * `QuestSync` and is the server's alone; this is the catalogue, exactly as
+   * `/api/content/items` is.
+   */
+  app.get('/api/content/quests', () => {
+    return { quests: [...content.quests.values()] };
+  });
+
+  /** Published NPCs (P11): names, models and clips so the client can stand them up. */
+  app.get('/api/content/npcs', () => {
+    return { npcs: [...content.npcs.values()] };
+  });
+
   /** Minimal public status for the login screen's server pip. */
   app.get('/api/status', () => ({
     online: true,
@@ -215,6 +230,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
         spawn: next.meta.spawn,
         zones: next.zones,
         nodes: next.nodes,
+        world: { npcs: next.npcs, interactables: next.interactables, pois: next.pois },
       });
       mapVersion = next.meta.mapVersion;
       gateway.broadcastSystemChat(
@@ -421,6 +437,39 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       return reply.code(404).send({ error: 'player not online' });
     }
     return reply.send({ ok: true, armed: player, item, casts });
+  });
+
+  /**
+   * Put a quest on a character at a given step (P11).
+   *
+   * The A4 quest editor's "grant to my GM character at step n" button, and how
+   * a verification run reaches step 3 of a four-part chain without playing the
+   * first three. It sets STATE, never rewards: the turn-in, the payout and the
+   * counters are the untouched real path, same as `/ops/fish` supplying the
+   * fish but not the catch.
+   */
+  app.post('/ops/quest', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as
+      { player?: unknown; quest?: unknown; step?: unknown; drop?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const quest = typeof body?.quest === 'string' ? body.quest.trim() : '';
+    const step = typeof body?.step === 'number' ? Math.max(0, Math.floor(body.step)) : 0;
+    const drop = body?.drop === true;
+    if (!player || !quest) return reply.code(400).send({ error: 'player and quest required' });
+    if (!content.quests.has(quest)) {
+      return reply.code(404).send({ error: `unknown quest "${quest}"` });
+    }
+    if (!world.setQuestByName(player, quest, step, drop)) {
+      return reply.code(404).send({ error: 'player not online' });
+    }
+    return reply.send({ ok: true, player, quest, step, drop });
   });
 
   /**

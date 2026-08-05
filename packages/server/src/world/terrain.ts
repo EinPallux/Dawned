@@ -17,6 +17,9 @@ import {
   placementsFileSchema,
   zonesFileSchema,
   type NodePlacement,
+  type NpcPlacement,
+  type Interactable,
+  type Poi,
   type Zone,
 } from '@dawned/shared';
 
@@ -60,6 +63,15 @@ export interface LoadedMap {
    * there. Empty when the map predates P10 or has no gathering.
    */
   nodes: NodePlacement[];
+  /**
+   * NPCs, interactables and discovery points (P11) — read out of the same
+   * `placements.json` for the same reason nodes are: props and scatter stay
+   * client-side decoration, but anything you can press `F` on, or that pays XP
+   * for standing near it, is the authority's business.
+   */
+  npcs: NpcPlacement[];
+  interactables: Interactable[];
+  pois: Poi[];
 }
 
 /**
@@ -109,9 +121,16 @@ export const loadMapTerrain = async (mapDir: string): Promise<LoadedMap> => {
   // has none — but a malformed one is not: half a forest is worse than a loud
   // refusal, and the same argument the zones block above makes.
   let nodes: NodePlacement[] = [];
+  let npcs: NpcPlacement[] = [];
+  let interactables: Interactable[] = [];
+  let pois: Poi[] = [];
   try {
     const raw: unknown = JSON.parse(await readFile(path.join(mapDir, 'placements.json'), 'utf8'));
-    nodes = placementsFileSchema.parse(raw).nodes;
+    const parsed = placementsFileSchema.parse(raw);
+    nodes = parsed.nodes;
+    npcs = parsed.npcs;
+    interactables = parsed.interactables;
+    pois = parsed.pois;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
       throw new Error(
@@ -120,5 +139,5 @@ export const loadMapTerrain = async (mapDir: string): Promise<LoadedMap> => {
     }
   }
 
-  return { terrain, meta, zones, nodes };
+  return { terrain, meta, zones, nodes, npcs, interactables, pois };
 };

@@ -135,6 +135,13 @@ export class ServerPlayer {
 
   /** The dialogue node currently on this player's screen, if any. */
   dialogue: OpenDialogue | null = null;
+
+  /**
+   * A per-class reward the player picked but has not been paid yet. Held until
+   * the turn-in lands so there is never a window where the quest is closed and
+   * the reward is still owed.
+   */
+  pendingRewardChoice: { questId: string; itemId: string } | null = null;
   /**
    * The button bitfield from the most recently consumed input (P10-C).
    *
