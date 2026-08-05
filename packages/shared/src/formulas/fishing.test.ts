@@ -13,6 +13,7 @@ import {
   FishingPhase,
   MARKER_MAX_SPEED,
   REEL_FILL_MS,
+  REEL_LOST_PEAK,
   REEL_TIMEOUT_MS,
   biteDelayMs,
   createReelState,
@@ -283,5 +284,83 @@ describe('the bar is beatable', () => {
     const hard = SEEDS.map((seed) => play(seed, HARD)).filter((time) => time !== null);
     expect(hard.length).toBeGreaterThan(0);
     expect(hard.length).toBeLessThan(SEEDS.length);
+  });
+});
+
+describe('stepping the bar in slices', () => {
+  // The client steps the reel once a frame, so `dtMs` is whatever the last
+  // frame cost. It used to CLAMP a long frame instead of slicing it, which
+  // advanced the marker for less time than had actually passed — while the
+  // fish, a pure function of wall-clock elapsed, kept going. A hitching client
+  // therefore watched its marker fall behind a fish it could see, and below
+  // roughly 8 fps the bar stopped being winnable at all. These pin the property
+  // the sliced version relies on.
+  const drift = fishingDifficulty(1, 'common');
+
+  const stepOver = (totalMs: number, sliceMs: number, holding: boolean): ReelState => {
+    let state = createReelState();
+    const slices = Math.round(totalMs / sliceMs);
+    for (let i = 0; i < slices; i++) {
+      const at = sliceMs * (i + 1);
+      state = reelStep(state, holding, sliceMs, fishPosition(7, at, drift), drift);
+    }
+    return state;
+  };
+
+  it('carries the marker the same distance however the time is cut up', () => {
+    const coarse = stepOver(600, 200, true);
+    const fine = stepOver(600, 20, true);
+    expect(fine.marker).toBeCloseTo(coarse.marker, 1);
+  });
+
+  it('does not let a slower stepper travel further than real time allows', () => {
+    // Two seconds of holding, at 20 Hz and at 5 Hz. Both hit the speed cap, so
+    // both must end up at the same wall.
+    const fast = stepOver(2000, 50, true);
+    const slow = stepOver(2000, 200, true);
+    expect(fast.marker).toBe(1);
+    expect(slow.marker).toBe(1);
+  });
+});
+
+describe('the reel, played through a server', () => {
+  /**
+   * The tests above play the bar with the decision and the step at the same
+   * instant. No real player ever does: the press goes up, the server applies
+   * it on its next tick, and the bar the eye is steering is always a tick
+   * ahead of the bar being scored. P10-F measured the difference against a
+   * live server — the same crude strategy that lands 20/20 offline landed
+   * 0/12 through the wire — so the property worth pinning is this one, not
+   * the zero-latency one.
+   */
+  const playDelayed = (seed: number, drift = EASY, delayTicks = 1): number | null => {
+    let state = createReelState();
+    const commands: boolean[] = [];
+    for (let elapsed = 50; elapsed < REEL_TIMEOUT_MS; elapsed += 50) {
+      const fish = fishPosition(seed, elapsed, drift);
+      commands.push(state.marker < fish);
+      const applied = commands[Math.max(0, commands.length - 1 - delayTicks)] ?? false;
+      state = reelStep(state, applied, 50, fish, drift);
+      if (state.progress >= 1) return elapsed;
+      if (state.peak >= REEL_LOST_PEAK && state.progress <= 0) return null;
+    }
+    return null;
+  };
+
+  const SEEDS = Array.from({ length: 20 }, (_, index) => (index + 1) * 137);
+
+  it('still lands an easy fish when every press arrives a tick late', () => {
+    const landed = SEEDS.map((seed) => playDelayed(seed)).filter((time) => time !== null);
+    expect(landed).toHaveLength(SEEDS.length);
+  });
+
+  it('survives a second tick of delay — a bad connection is not an unwinnable one', () => {
+    const landed = SEEDS.map((seed) => playDelayed(seed, EASY, 2)).filter((time) => time !== null);
+    expect(landed.length).toBeGreaterThan(SEEDS.length / 2);
+  });
+
+  it('still refuses a legendary to the crudest strategy — the ladder survives', () => {
+    const landed = SEEDS.map((seed) => playDelayed(seed, HARD)).filter((time) => time !== null);
+    expect(landed.length).toBeLessThan(SEEDS.length);
   });
 });

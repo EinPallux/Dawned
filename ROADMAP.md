@@ -20,7 +20,7 @@
 | P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
 | P9    | Enemies & AI Depth                       | L    | ✅ built (2026-08-04)     |
-| P10   | Gathering Professions                    | M    | 🟨 A–E built (2026-08-05) |
+| P10   | Gathering Professions                    | M    | 🟨 A–F built (2026-08-05) |
 | P11   | Quests, POIs & Interactables             | L    | 🔲                        |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
@@ -600,8 +600,24 @@ minigame tuned across 3 rarities; node respawn/depletion correct under multiplay
       it the Elder Grove's T5 rare — re-tiered, with Meadowbell taking its slot in the shore's
       loot table. The Gems & Ores pack was deliberately NOT used: no license file, third-party
       conversion, unattributable (CREDITS.md).
-- [ ] **P10-F — client.** Interact prompt, hold-to-gather bar with the tool prop and animation,
-      depletion VFX, the fishing minigame UI, the `J` professions panel with its codex, toasts.
+- [x] **P10-F — client.** The `F` prompt, the hold-to-gather bar, per-profession depletion beats
+      (topple / crumble / puff / ripple) with the definition's own spent model, the fishing
+      minigame UI (line → bite → reel bar with the catch zone drawn as the fish PLUS its
+      tolerance), the `J` professions panel with its four codex grids, and item/level toasts.
+      Two browser-found holes closed with it: the panel had invented its own classes instead of
+      the `pv-*` shell every other panel uses (it rendered as a see-through slab in the corner
+      with the debug HUD showing through), and the interact prompt sat on top of the fishing bar
+      on a short window while still advertising `F` during a hold it would actually cancel.
+      **Five real bugs came out of measuring the reel against a live server**, none of which a
+      unit test had caught: the periodic correction carries the seed, so the client reset its
+      whole bar several times a second; a long frame was clamped rather than sliced, so a
+      hitching client fell behind a fish it could see; corrections cloned a value that was
+      already stale, dragging a filling bar backwards; the server stepped fishing BEFORE it
+      consumed inputs, scoring every press one tick late; and it sampled the Reel bit once per
+      tick rather than once per intent, throwing presses away on catch-up ticks. Underneath all
+      of them, `MARKER_MAX_SPEED` made the loop unwinnable through any delay (Q27).
+- [ ] **P10-G — verification.** `browser-p10`: a profession taken 1→10 for real, two players on
+      one node proving the claim rule, the fishing bar tuned across three rarities.
 - [ ] **P10-G — verification.** `browser-p10`: a profession taken 1→10 for real, two players on
       one node proving the claim rule, the fishing bar tuned across three rarities.
 

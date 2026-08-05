@@ -13,6 +13,7 @@ import { Button } from '../components/ui.js';
 import { CharacterPanel } from '../panels/CharacterPanel.js';
 import { SkillsPanel } from '../panels/SkillsPanel.js';
 import { InventoryPanel } from '../panels/InventoryPanel.js';
+import { ProfessionsPanel } from '../panels/ProfessionsPanel.js';
 import { VendorPanel } from '../panels/VendorPanel.js';
 
 interface OverlayState {
@@ -111,6 +112,14 @@ export const WorldScreen = (): React.JSX.Element => {
       {world && openPanel === 'inventory' ? (
         <InventoryPanel
           bridge={world.inventory}
+          onClose={() => {
+            world.setPanel(null);
+          }}
+        />
+      ) : null}
+      {world && openPanel === 'professions' ? (
+        <ProfessionsPanel
+          bridge={world.professions}
           onClose={() => {
             world.setPanel(null);
           }}

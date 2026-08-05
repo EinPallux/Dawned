@@ -8,10 +8,41 @@
 
 ## Open questions
 
-> One open question: **Q26** (per-zone music/sfx). Q25 was answered by P10 starting — its
-> recommended default WAS "do it in the professions phase", and that phase is now under way, so
-> the node schema lands as a P10-A deliverable and the map editor's node layer comes alive with
-> it.
+> Two open questions: **Q26** (per-zone music/sfx) and **Q27** (how hard a legendary fish should
+> be). Q25 was answered by P10 starting — its recommended default WAS "do it in the professions
+> phase", and that phase is now under way, so the node schema lands as a P10-A deliverable and the
+> map editor's node layer comes alive with it.
+
+### Q27 — how hard should a legendary fish be? (P10-F, 2026-08-05)
+
+P10-F measured the reel bar against a REAL server for the first time and found that the offline
+tests had been proving the wrong thing. They play the bar with the decision and the step at the
+same instant; no player ever does. Every press goes up, and the server applies it on its next
+tick — so the bar the eye is steering is always one tick ahead of the bar being scored. Same
+crude strategy the shared test calls "the dumbest there is", twenty seeds, a T1 common:
+
+| command delay | landed | what that is                     |
+| ------------- | ------ | -------------------------------- |
+| 0 ticks       | 20/20  | all the offline test ever proved |
+| 1 tick        | 0/20   | what the game actually does      |
+
+The cause was `MARKER_MAX_SPEED`, not the accelerations: one delayed tick at 1.5/s carried the
+marker 0.075, about half a T1 catch zone, so the correction always arrived after the overshoot
+and the loop rang instead of settling. **Shipped fix: 1.5 → 0.9/s**, which lands 20/20 through a
+tick of delay and is now pinned by tests that include the delay. Proven end to end against the
+live server by `tools/smoke/fishing-probe.mjs`.
+
+What is NOT settled is the top of the ladder. With the fix, a T3 rare needs real anticipation to
+land and a **T5 legendary refuses every simple strategy tried** — its `markerHalf` is tiny and
+its drift fast. A human who reads the sine does better than a bot, so this may be exactly the
+"legendary means legendary" feel you want; it may also be a wall.
+
+**Recommended default: leave it as shipped and judge it in the playtest.** The whole ladder is
+two numbers in `fishingDifficulty` (drift speed, marker half-width) and re-tuning them is a
+one-line change with tests that will tell you immediately whether the lower tiers still work.
+This is the fine-tuning you deferred to the end of the project — flagged here rather than guessed
+at, because "a legendary you cannot catch" and "a legendary that feels legendary" are the same
+measurement with different opinions attached.
 
 ### Q26 — a zone has no music or ambient sound yet (A3-e, 2026-08-05)
 

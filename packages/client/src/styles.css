@@ -3057,3 +3057,250 @@ canvas.game {
     background: rgba(21, 26, 38, 0.96);
   }
 }
+
+/* --- gathering (P10-F) ----------------------------------------------------
+ * The hold bar and the fishing minigame sit exactly where the cast bar does,
+ * because they are the same promise: a thing you are doing that takes time.
+ * Green rather than gold so a glance never confuses "I am casting" with "I am
+ * chopping" — different verbs, different colours (UI_UX.md §2). */
+
+.hud-gather {
+  position: relative;
+  width: 300px;
+  height: 16px;
+  margin: 0 auto 8px;
+  background: rgba(21, 26, 38, 0.85);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  overflow: hidden;
+}
+
+.hud-gather-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(180deg, #9fe08a, #4f9c3a);
+}
+
+/* Light with a dark halo, not dark ink: the label crosses BOTH the filled and
+   the unfilled half of the bar, and dark-on-dark made it invisible for the
+   whole first half of every hold. */
+.hud-gather-name {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #f3ecd8;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(10, 12, 18, 0.9);
+}
+
+/* Fishing. The line reads the phase; the bar only exists while reeling. */
+.hud-fish {
+  width: 320px;
+  margin: 0 auto 8px;
+  text-align: center;
+}
+
+.hud-fish-line {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+/* The bite is the one moment with a deadline — it is allowed to shout. */
+.hud-fish[data-phase='bite'] .hud-fish-line {
+  color: var(--gold-bright);
+  animation: fish-bite 0.28s steps(2, end) infinite;
+}
+
+@keyframes fish-bite {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.hud-fish-bar {
+  position: relative;
+  height: 22px;
+  background: rgba(21, 26, 38, 0.9);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  overflow: hidden;
+}
+
+/* The catch zone IS the fish plus its tolerance — showing one without the
+   other would be showing a target and hiding where the target ends. */
+.hud-fish-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(126, 199, 255, 0.28);
+  border-left: 1px solid rgba(126, 199, 255, 0.8);
+  border-right: 1px solid rgba(126, 199, 255, 0.8);
+}
+
+.hud-fish-marker {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 4px;
+  margin-left: -2px;
+  background: var(--text-bright, #ede6d4);
+}
+
+.hud-fish-marker[data-on='true'] {
+  background: #9fe08a;
+  box-shadow: 0 0 6px rgba(159, 224, 138, 0.9);
+}
+
+.hud-fish-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, #4f9c3a, #9fe08a);
+}
+
+/* --- professions panel (P10-F) -------------------------------------------- */
+
+.pv-professions {
+  width: min(720px, calc(100vw - 48px));
+}
+
+/* Four blocks, each one a hairline-separated card so the eye can tell where
+   woodcutting stops and mining starts without reading the headings. */
+.prof-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prof-row {
+  padding: 10px 12px 12px;
+  background: rgba(21, 26, 38, 0.5);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+.prof-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.prof-name {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.prof-level {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gold-bright);
+  line-height: 1;
+}
+
+.prof-tier {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.prof-gate {
+  opacity: 0.75;
+}
+
+.prof-bar {
+  position: relative;
+  height: 12px;
+  margin: 4px 0 6px;
+  background: rgba(21, 26, 38, 0.85);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  overflow: hidden;
+}
+
+.prof-bar-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #9fe08a, #4f9c3a);
+}
+
+.prof-bar-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: #f3ecd8;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(10, 12, 18, 0.9);
+}
+
+/* The codex. An empty cell is the point — it is the thing you came to look
+   at — so a gap is drawn as a real slot rather than left out. */
+.prof-codex-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 5px;
+  color: var(--gold);
+  font: 700 10px/1.2 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.prof-codex-head::after {
+  content: '';
+  order: 1;
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold) 0%, transparent 90%);
+  opacity: 0.5;
+}
+
+.prof-codex {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.prof-codex-cell {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  background: rgba(21, 26, 38, 0.6);
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+}
+
+.prof-codex-cell[data-found='false'] {
+  opacity: 0.4;
+}
+
+.prof-codex-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.prof-codex-unknown {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.prof-codex-count {
+  order: 2;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}

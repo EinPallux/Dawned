@@ -123,13 +123,29 @@ export const fishPosition = (seed: number, elapsedMs: number, drift: FishingDiff
  * so far behind the fish that the crudest possible strategy — hold whenever
  * the marker is below the fish — could not land a T1 common in eighteen
  * seconds. That is not "hard", it is broken: §5 wants the first fish a player
- * ever hooks to be caught. At these values that strategy lands an easy fish
- * every time in ~9 s and a T5 legendary about half the time in ~14 s, and a
- * human who anticipates does better than it. Feel is still the owner's pass.
+ * ever hooks to be caught.
+ *
+ * The second pass over-corrected the TOP SPEED, and P10-F caught it against a
+ * real server. The measurement that matters is not "can this be won" but "can
+ * this be won when the press lands a tick after the eye saw the bar" — which
+ * is every press in a server-authoritative game. Same crude strategy, twenty
+ * seeds, T1 common:
+ *
+ *   command delay 0 ticks → 20/20 landed   (all the offline test ever proved)
+ *   command delay 1 tick  →  0/20 landed   (what the game actually does)
+ *
+ * The accelerations were never the problem; the CAP was. One delayed tick at
+ * 1.5/s carries the marker 0.075 — half the width of a T1 catch zone — so the
+ * correction always arrives after the overshoot and the loop rings instead of
+ * settling. At 0.9/s that step is 0.045 and the same crude strategy lands
+ * 20/20 through a tick of delay, a T3 rare needs anticipation to land, and a
+ * T5 legendary still refuses both. The ladder survives; the
+ * unwinnable-in-practice bar does not. Feel is still the owner's pass, and
+ * how hard a legendary should be is an open question (USER_QUESTIONS Q27).
  */
 export const MARKER_GRAVITY = 3;
 export const MARKER_LIFT = 6;
-export const MARKER_MAX_SPEED = 1.5;
+export const MARKER_MAX_SPEED = 0.9;
 
 export interface ReelState {
   /** Marker centre, 0..1. */

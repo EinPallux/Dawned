@@ -16,7 +16,11 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > 4.2 ms of a 50 ms tick. **The world itself is editable now**: the live map is a published
 > artifact the server hot-loads, and Dawned-Admin's map editor (A2 + A3, closed 2026-08-05) can
 > sculpt a new islet out of open water, populate and zone it, and put it under a player's feet
-> without a deploy. **Next: the owner's P9 playtest, then P10 — Gathering Professions.**
+> without a deploy. **P10 — Gathering Professions is in progress (A–F built, protocol v13):** 65
+> resource nodes stand in the world, `F` chops/mines/picks them with a hold bar and a depletion
+> beat, fishing is a real minigame, and `J` opens four profession levels with a codex of
+> everything you have ever brought home. **Next: P10-G (the 1→10 verification run), then the
+> owner's playtest.**
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an
 > authored island open world with levels 1–30, professions, quests, loot, chat, GM tools) — not an
 > MVP, not a prototype. The companion repo **[Dawned-Admin](../Dawned-Admin)** is the web panel

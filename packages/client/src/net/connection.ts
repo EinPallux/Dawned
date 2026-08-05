@@ -7,6 +7,18 @@
  */
 
 import {
+  createReelState,
+  encodeGatherOp,
+  fishPosition,
+  reelStep,
+  type FishingStateMessage,
+  type GatherOp,
+  type GatherStateMessage,
+  type NodeStatesMessage,
+  type ProfessionSyncMessage,
+  type ReelState,
+} from '@dawned/shared';
+import {
   AbilityRejectReason,
   ActionId,
   ARCANE_SURGE_EFFECT,
@@ -212,6 +224,15 @@ export interface ConnectionEvents {
   onLootBags?: (message: LootBagsMessage) => void;
   /** A vendor opened (or closed, when null) — the React panel follows. */
   onVendorPanel?: (panel: VendorPanelMessage | null) => void;
+  // --- gathering (protocol v13) ---------------------------------------------
+  /** Which nearby nodes are taken — the world swaps their models. */
+  onNodeStates?: (message: NodeStatesMessage) => void;
+  /** Our gather channel opened, finished, was cancelled or refused. */
+  onGatherState?: (message: GatherStateMessage) => void;
+  /** Our fishing attempt moved on — cast, bite, reel, caught, lost. */
+  onFishingState?: (message: FishingStateMessage) => void;
+  /** Profession levels and codex changed (level-up, first-ever material). */
+  onProfessionSync?: (message: ProfessionSyncMessage) => void;
 }
 
 interface PendingInput {
@@ -670,7 +691,21 @@ export class Connection {
     return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
   }
 
-  /** Server time in ms, as best we can estimate it. */
+  // --- gathering (protocol v13) --------------------------------------------
+  /** Our open gather channel; null between holds. */
+  private gather: GatherStateMessage | null = null;
+  /** Our fishing attempt; null between casts. */
+  private fishing: FishingStateMessage | null = null;
+  /** The reel bar's marker/progress — ours to simulate, the server corrects. */
+  private reel: ReelState = createReelState();
+  private reelSteppedAt = 0;
+  /** Which reel the local bar belongs to, so a correction never restarts it. */
+  private reelStartedAtMs = 0;
+  /** Four profession levels + the codex, from the last ProfessionSync. */
+  private professions: ProfessionSyncMessage | null = null;
+  /** The depleted-node exception list, from the last NodeStates. */
+  private nodeStates: NodeStatesMessage | null = null;
+
   serverNow(): number {
     return performance.now() + this.clockOffsetMs;
   }
@@ -946,6 +981,43 @@ export class Connection {
         this.events.onItemNotice?.(decodeJsonEnvelope<ItemNoticeMessage>(reader));
         return;
       }
+      case ServerOp.NodeStates: {
+        const message = decodeJsonEnvelope<NodeStatesMessage>(reader);
+        this.nodeStates = message;
+        this.events.onNodeStates?.(message);
+        return;
+      }
+      case ServerOp.GatherState: {
+        const message = decodeJsonEnvelope<GatherStateMessage>(reader);
+        // `start` is the only phase that leaves a channel standing; every
+        // other one closes it, so the bar can never outlive the hold.
+        this.gather = message.phase === 'start' ? message : null;
+        this.events.onGatherState?.(message);
+        return;
+      }
+      case ServerOp.FishingState: {
+        const message = decodeJsonEnvelope<FishingStateMessage>(reader);
+        this.fishing = message.phase === 'caught' || message.phase === 'escaped' ? null : message;
+        // Restart the local bar when a NEW reel opens — keyed on the reel's
+        // start time, not on the seed being present. The periodic correction
+        // carries the seed as well, so keying on the seed reset the marker to
+        // the middle and the progress to zero several times a second: the bar
+        // could not be won at all, which is the same failure the shared
+        // fishing tests were written for, on this side of the wire.
+        if (message.phase === 'reeling' && message.startedAtMs !== this.reelStartedAtMs) {
+          this.reelStartedAtMs = message.startedAtMs ?? 0;
+          this.reel = createReelState();
+          this.reelSteppedAt = performance.now();
+        }
+        this.events.onFishingState?.(message);
+        return;
+      }
+      case ServerOp.ProfessionSync: {
+        const message = decodeJsonEnvelope<ProfessionSyncMessage>(reader);
+        this.professions = message;
+        this.events.onProfessionSync?.(message);
+        return;
+      }
       default:
         console.warn(`[net] ignoring unknown opcode 0x${opcode.toString(16)}`);
     }
@@ -998,6 +1070,99 @@ export class Connection {
    */
   sendItemOp(op: ItemOp): void {
     this.sendRaw(encodeItemOp(op));
+  }
+
+  /**
+   * Send one gathering intent (P10). Same contract as an item op: a REQUEST,
+   * never a prediction. Nothing about a gather is predicted — the claim, the
+   * tier gate and the range are all the server's to decide, and the
+   * GatherState that comes back is the answer.
+   */
+  sendGatherOp(op: GatherOp): void {
+    this.sendRaw(encodeGatherOp(op));
+  }
+
+  /** Our open gather channel, or null. The HUD draws its bar from `endsAtMs`. */
+  get gatherChannel(): GatherStateMessage | null {
+    return this.gather;
+  }
+
+  /** Our fishing attempt, or null between casts. */
+  get fishingState(): FishingStateMessage | null {
+    return this.fishing;
+  }
+
+  /** The reel bar's local state — marker, progress, and the peak it reached. */
+  get reelState(): ReelState {
+    return this.reel;
+  }
+
+  /** Our four professions and their codex, or null before the first sync. */
+  get professionState(): ProfessionSyncMessage | null {
+    return this.professions;
+  }
+
+  /** The depleted-node exception list, for the world's model swaps. */
+  get nodeStateMessage(): NodeStatesMessage | null {
+    return this.nodeStates;
+  }
+
+  /**
+   * Advance the reel bar one frame.
+   *
+   * Run from the render loop rather than the 20 Hz tick because it is what the
+   * player is LOOKING at: a marker that moves five times a second reads as
+   * broken input. The server steps the same function on its own tick with the
+   * held-button state off the input stream and sends `progress` as a
+   * correction, so this can be smooth without being authoritative.
+   */
+  stepReel(holding: boolean, nowMs: number): void {
+    const state = this.fishing;
+    if (!state || state.phase !== 'reeling' || state.startedAtMs === undefined) return;
+    const sinceMs = Math.min(1000, nowMs - this.reelSteppedAt);
+    this.reelSteppedAt = nowMs;
+    if (sinceMs <= 0) return;
+    const drift = {
+      driftSpeed: state.driftSpeed ?? 0.18,
+      markerHalf: state.markerHalf ?? 0.16,
+    };
+    // Sub-step long frames instead of clamping them away. The FISH moves on
+    // wall-clock time, so a client that clamped a 250 ms frame to 120 ms
+    // advanced its marker at half speed and fell behind a fish it could see —
+    // the bar stops being winnable below roughly 8 fps, which is a hitch
+    // costing a catch rather than the player missing one. Slicing keeps the
+    // physics stable AND the elapsed time honest.
+    const slices = Math.max(1, Math.ceil(sinceMs / 40));
+    const sliceMs = sinceMs / slices;
+    const endedAt = this.serverNow() - state.startedAtMs;
+    for (let i = slices; i >= 1; i--) {
+      const fish = fishPosition(state.seed ?? 0, endedAt - sliceMs * (i - 1), drift);
+      this.reel = reelStep(this.reel, holding, sliceMs, fish, drift);
+    }
+    // The marker stays ours (it is input); the PROGRESS is the server's. But
+    // converge on it rather than cloning it: the correction only arrives every
+    // few ticks, so by the time it lands it describes a bar that has since
+    // moved on, and snapping to it dragged a filling bar BACKWARDS at every
+    // sync — a visible stutter, and a player watching their progress lurch
+    // down while they are dead on the fish. A big divergence still snaps,
+    // because that is a genuine disagreement rather than staleness.
+    if (state.progress !== undefined) {
+      const error = state.progress - this.reel.progress;
+      if (Math.abs(error) > 0.3) this.reel = { ...this.reel, progress: state.progress };
+      else if (Math.abs(error) > 0.02) {
+        this.reel = { ...this.reel, progress: this.reel.progress + error * 0.25 };
+      }
+    }
+  }
+
+  /** Where the fish is right now, 0..1, or null when no bar is up. */
+  get fishPositionNow(): number | null {
+    const state = this.fishing;
+    if (!state || state.phase !== 'reeling' || state.startedAtMs === undefined) return null;
+    return fishPosition(state.seed ?? 0, this.serverNow() - state.startedAtMs, {
+      driftSpeed: state.driftSpeed ?? 0.18,
+      markerHalf: state.markerHalf ?? 0.16,
+    });
   }
 
   /** Allocated attribute points (zero spread until the first sync). */

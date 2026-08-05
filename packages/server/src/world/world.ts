@@ -433,8 +433,6 @@ export class World {
       });
     }
 
-    this.stepFishingSessions(nowMs, events);
-
     // Advance the in-flight holds.
     for (const [playerId, channel] of [...this.gathering]) {
       const player = this.players.get(playerId);
@@ -546,7 +544,9 @@ export class World {
     // Regrowth. Only the ids that changed travel; the gateway decides who is
     // close enough to care.
     const back = respawnNodes(this.nodes, nowMs);
-    if (back.length > 0) events.push({ type: 'nodes-dirty', placementIds: back });
+    const forced = this.pendingNodeSync.splice(0);
+    const dirty = forced.length > 0 ? [...new Set([...back, ...forced])] : back;
+    if (dirty.length > 0) events.push({ type: 'nodes-dirty', placementIds: dirty });
   }
 
   /**
@@ -556,7 +556,11 @@ export class World {
    * the client is drawing, from the same seed. Its progress is the authority;
    * the client's is a prediction that the periodic state message corrects.
    */
-  private stepFishingSessions(nowMs: number, events: CombatEvent[]): void {
+  private stepFishingSessions(
+    nowMs: number,
+    events: CombatEvent[],
+    reelBits: ReadonlyMap<number, boolean[]>,
+  ): void {
     const defs = this.content?.resourceNodes ?? new Map<string, ResourceNodeDef>();
     for (const [playerId, session] of [...this.fishing]) {
       const player = this.players.get(playerId);
@@ -565,8 +569,39 @@ export class World {
         this.endGather(playerId, 'cancelled', GatherRefusal.Busy, events);
         continue;
       }
-      const holding = (player.heldButtons & InputButton.Reel) !== 0;
-      const tick = stepFishing(session, holding, nowMs, TICK_MS);
+      // One step per intent CONSUMED this tick, in order — the same sequence
+      // of presses the client stepped its own bar with. An empty list is a
+      // starved tick: hold what we last had, which is what the movement code
+      // does with the same gap.
+      const bits = reelBits.get(playerId);
+      const presses =
+        bits && bits.length > 0 ? bits : [(player.heldButtons & InputButton.Reel) !== 0];
+      let tick = { changed: false, resolved: null as 'caught' | 'escaped' | null };
+      for (const holding of presses) {
+        const step = stepFishing(session, holding, nowMs, TICK_MS);
+        tick = { changed: tick.changed || step.changed, resolved: step.resolved ?? tick.resolved };
+        if (step.resolved) break;
+      }
+      // `/ops/hook`: answer the bite on the tick it opens. It runs the SAME
+      // `hookFishing` the key does, inside the same window — the lever supplies
+      // the reflex, not the outcome.
+      const armed = this.autoHook.get(playerId) ?? 0;
+      if (session.phase === 'bite' && armed > 0 && hookFishing(session, nowMs)) {
+        if (armed <= 1) this.autoHook.delete(playerId);
+        else this.autoHook.set(playerId, armed - 1);
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: 'reeling',
+          placementId: session.placementId,
+          seed: session.seed,
+          startedAtMs: session.reelStartedAtMs,
+          driftSpeed: session.driftSpeed,
+          markerHalf: session.markerHalf,
+          progress: 0,
+        });
+        continue;
+      }
       if (tick.resolved === 'caught') {
         const def = defs.get(session.nodeId);
         const node = this.nodes.get(session.placementId);
@@ -711,16 +746,56 @@ export class World {
     return false;
   }
 
+  /**
+   * Ops lever: answer the bite for an online player (`/ops/hook`).
+   *
+   * The hook window is 0.8 s of human reaction time, which is the one thing a
+   * headless bot cannot supply — a browser stalling on chunk geometry loses a
+   * whole window to a single frame. This queues the SAME `hook` op the key
+   * sends, so everything downstream (the window check, the reel physics, the
+   * catch, the xp) is the real path; only the reflex is stood in for. Same
+   * argument as `/ops/hurt` keeping the P9 boss bot alive because it cannot
+   * dodge (ARCHITECTURE.md §3).
+   */
+  hookFishingByName(name: string, bites: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      this.autoHook.set(player.id, Math.max(1, bites));
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * How many more bites are answered for a player (`/ops/hook`). A count
+   * rather than a flag because a fish that gets away is answered by casting
+   * again, so a run that wants to land one needs several arms, and a lever
+   * that never expired would be a mode the world could get stuck in.
+   */
+  private readonly autoHook = new Map<number, number>();
+
   /** Profession syncs raised outside the tick (ops levers) — flushed in step. */
   private readonly pendingProfessionSync: number[] = [];
 
-  /** Ops lever: bring every depleted node back at once (`/ops/respawnnodes`). */
+  /** Node respawns raised outside the tick (ops lever) — flushed in step. */
+  private readonly pendingNodeSync: string[] = [];
+
+  /**
+   * Ops lever: bring every depleted node back at once (`/ops/respawnnodes`).
+   *
+   * The ids have to be QUEUED for the next tick, not just cleared here: a
+   * client's copy of the depleted set is an exception list it only updates
+   * when told, so a silent server-side respawn leaves connected players
+   * looking at a stump they cannot gather until something else happens to
+   * dirty the same node.
+   */
   respawnAllNodes(): number {
     let count = 0;
     for (const node of this.nodes.values()) {
       if (node.readyAtMs !== null) {
         node.readyAtMs = null;
         node.claimedBy = 0;
+        this.pendingNodeSync.push(node.id);
         count++;
       }
     }
@@ -1213,6 +1288,7 @@ export class World {
     // 0d. Gathering (P10). Intents first, then the in-flight holds, so a start
     // and its completion can never land in the same tick — a 3 s channel that
     // resolved instantly would be a duplication bug wearing a timer's clothes.
+    // Fishing is NOT stepped here; it needs this tick's buttons (see step 1c).
     this.stepGathering(nowMs, events);
 
     // Bags rot after 60 s (§3); whoever could see one re-syncs.
@@ -1259,8 +1335,24 @@ export class World {
     };
 
     // 1. Player movement — re-simulated from client intents with the shared step.
+    // The Reel bit for every intent consumed this tick, per player. The reel
+    // is the one system driven by a HELD button, and sampling it once per tick
+    // is a lossy resample of the client's command stream: a catch-up tick that
+    // consumes two intents would throw one press away, and a starved tick
+    // repeats the last one. Either way the server's marker drifts out of phase
+    // with the bar the player is watching, and a bang-bang input around a
+    // moving target turns a one-tick phase error into an oscillation that
+    // never settles inside the catch zone. Measured before this: the same
+    // strategy that lands 20/20 fish offline landed 0/12 through the server.
+    const reelBits = new Map<number, boolean[]>();
     for (const player of this.players.values()) {
       const intents = player.takeInputsForTick();
+      if (this.fishing.has(player.id)) {
+        reelBits.set(
+          player.id,
+          intents.map((intent) => (intent.buttons & InputButton.Reel) !== 0),
+        );
+      }
       for (const intent of intents) {
         // Death locks controls: the body stays put until respawn (§10).
         if (player.dead) {
@@ -1388,6 +1480,16 @@ export class World {
         }
       }
     }
+
+    // 1c. Fishing (P10). It has to run AFTER the input phase, because the reel
+    // is the only system driven by a HELD button: `player.heldButtons` is set
+    // by `consumeInputs` in step 1, so stepping the bar before that scored the
+    // player's press one tick late, every tick. The client draws its bar from
+    // the press immediately and the server scored it from the press before —
+    // two bars that slowly disagree, and a measured run showed the client at
+    // 0.31 progress while the server sat at 0.04. "The marker is on the fish
+    // and the game says you missed" is the worst thing this minigame can do.
+    this.stepFishingSessions(nowMs, events, reelBits);
 
     // 2. Ability pipeline: pending contacts resolve, projectiles fly.
     const abilityDeps = this.content

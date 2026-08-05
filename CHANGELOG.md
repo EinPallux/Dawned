@@ -5,6 +5,45 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — you can gather it now (2026-08-05, P10-F)
+
+- **Walk up to a tree and press `F`.** The prompt tells you what you are about to do and what
+  tier it is, a bar fills while you work, and the node reacts when it gives out: a tree topples
+  and leaves a felled log, an ore vein crumbles to bare stone, a herb puffs away, a fishing spot
+  ripples. What is left behind is the definition's own spent model, so a depleted node still
+  reads as a place rather than as a hole where something used to be.
+- **Fishing is a minigame.** Cast, wait for the bobber, answer the bite inside its window, then
+  hold `F` to keep your marker on a fish that will not sit still. The catch zone is drawn as the
+  fish PLUS its tolerance, because the tolerance is the thing you are actually aiming at.
+- **`J` opens Professions** — four levels, the node tier each one has reached and the level the
+  next tier needs, and a codex grid per profession showing everything it can bring home with the
+  ones you have never found still in their empty slots. The codex is what the SERVER remembers
+  you gathering, so selling a stack does not un-discover it.
+- A hold the server breaks now says why, instead of the bar simply stopping.
+
+### Fixed — the fishing bar could not be won (2026-08-05, P10-F)
+
+- **The reel was unwinnable through a real server**, and the tests could not see it: they play
+  the bar with the press and the step at the same instant, which no player ever does. Measured
+  against the live server, the strategy that lands 20 fish out of 20 offline landed 0 out of 12.
+  The marker's top speed was the cause — one tick of delay carried it half the width of a catch
+  zone, so every correction arrived after the overshoot. It is 0.9/s now, the tests include the
+  delay, and a fish lands on the first or second cast.
+- The client reset its whole reel bar several times a second, because the server's periodic
+  progress correction carries the same seed a new reel does.
+- A slow frame no longer costs you the fish: the bar is stepped in slices instead of clamped, so
+  a client that hitches keeps up with a fish that never stops moving.
+- Progress corrections converge instead of snapping, so a filling bar no longer lurches backwards
+  every time one arrives.
+- The server scored every reel press one tick late (fishing was stepped before inputs were read)
+  and sampled the button once per tick rather than once per input, throwing presses away.
+- `/ops/respawnnodes` brought nodes back for the server but told nobody, so anyone already in the
+  world kept looking at a stump they could not gather.
+- The Professions panel is on the same panel shell as every other one — it was rendering as a
+  see-through slab in the corner with the debug overlay showing through it.
+- The interact prompt no longer sits on top of the fishing bar on a short window, and stops
+  offering `F` while you are already using it.
+
 ### Added — there is something to gather (2026-08-05, P10-E)
 
 - **The world has resource nodes in it.** 65 of them across Dawnshore and the Verdant Weald:

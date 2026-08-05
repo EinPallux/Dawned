@@ -107,9 +107,11 @@ editor's four questions were answered on 2026-08-05 with "your recommendations":
 the Orc as the Bandit Forager, Q23 makes the MAP the place camps live (its publish wins over
 the Enemies page's copy of a position), Q24 puts patrol splines out of 0.1.0, and Q25 — the
 resource-node schema — is answered by P10 starting, since its recommended default was "do it
-in the professions phase". **One open question: Q26** (`zoneAmbienceSchema` is light and
-colour only, so a zone cannot carry music or sfx; recommended default is to add both with the
-audio phase).
+in the professions phase". **Two open questions: Q26 and Q27.** Q26: `zoneAmbienceSchema` is light and
+colour only, so a zone cannot carry music or sfx (recommended default — add both with the audio
+phase). Q27: how hard a T5 legendary fish should be, now that the reel's top speed has been
+re-measured against a real server (recommended default — leave it as shipped and judge it in the
+playtest).
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
@@ -303,9 +305,36 @@ worst being **a bar that could not be won at all**; the marker physics were re-m
 than re-guessed. P10-D is the panel half (Dawned-Admin A1-e): Content → Professions authors
 node definitions with a gathering preview that runs THIS repo's `rollGather`, and the map
 editor's node layer places them — markers ringed at the definition's radius, and a map bake
-that refuses a placement whose definition is not published. Still ahead: node models and the
-material/fish item sets (E), the client's gather bar, fishing UI and `J` panel (F), and the
+that refuses a placement whose definition is not published. Still ahead: the
 1→10 / two-players-one-node / three-rarity verification run (G).
+
+**P10-F — you can gather it (2026-08-05).** The `F` prompt, the hold bar, per-profession
+depletion beats (topple/crumble/puff/ripple, each leaving the definition's own spent model),
+the fishing minigame (line → bite → reel bar whose catch zone is the fish PLUS its tolerance),
+the `J` panel with four codex grids, and toasts. Two holes came out of LOOKING at screenshots
+rather than from a failing test: the Professions panel had invented its own classes instead of
+the `pv-*` shell every other panel uses, so it rendered as a see-through slab in the corner with
+the debug HUD showing through; and the interact prompt sat on top of the fishing bar on a short
+window while still offering `F` during a hold it would have cancelled.
+**The reel was the real story: it could not be won through a real server.** The shared tests
+play the bar with the press and the step at the same instant, which no player ever does — every
+press goes up and the server applies it a tick later. Measured against the live server with the
+strategy those tests call "the dumbest there is": **20/20 fish offline, 0/12 through the wire.**
+Five bugs fell out of chasing that, in order of discovery: the client reset its whole bar
+several times a second (the periodic correction carries the same seed a new reel does); a long
+frame was CLAMPED rather than sliced, so a hitching client fell behind a fish it could see;
+corrections cloned a value that was already stale, jerking a filling bar backwards; the server
+stepped fishing BEFORE it consumed inputs, scoring every press one tick late; and it sampled the
+Reel bit once per tick instead of once per intent, throwing presses away on catch-up ticks.
+Underneath all of them, `MARKER_MAX_SPEED` 1.5 carried the marker half a catch zone in one
+delayed tick, so the loop rang instead of settling — **0.9 now**, and the tests that pin
+"beatable" include a tick of delay, because the zero-latency version of that claim is not about
+this game. New: `tools/smoke/fishing-probe.mjs` (headless, plays the real protocol at the tick
+rate and lands a fish), `tools/smoke/p10-probe.mjs` (browser: prompt → hold bar → deplete →
+bag → xp → codex → the `J` panel → the fishing UI live on screen), and the `/ops/hook` lever,
+which supplies the 0.8 s reflex a bot cannot — the same argument as `/ops/hurt` keeping the P9
+boss bot alive because it cannot dodge. A `/ops/respawnnodes` that told no client was fixed with
+them. **585 unit tests green.** How hard a T5 legendary should be is open as **Q27**.
 
 **P10-E — the gathering catalogue is content (2026-08-05).** 22 node models baked (a tree and
 a bloom per tier, a fish per water, five ore rocks tinted per ore off ONE grey KayKit boulder,

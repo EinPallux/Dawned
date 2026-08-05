@@ -6,6 +6,12 @@
 
 import * as THREE from 'three';
 import {
+  gatherRefusalText,
+  gateForTier,
+  type GatherOp,
+  nodeItemRefs,
+  type ProfessionSyncMessage,
+  type ResourceNodeDef,
   AbilityRejectReason,
   ActionId,
   BASIC_COMBOS,
@@ -55,6 +61,13 @@ import { loadSkillNodeDefs } from '../content/skill-node-defs.js';
 import { loadItemDefs } from '../content/item-defs.js';
 import { LootBagManager } from '../world/loot-bags.js';
 import { VendorPostManager, loadVendorAnchors } from '../world/vendor-posts.js';
+import {
+  GATHER_VERB,
+  ResourceNodeManager,
+  loadNodeModels,
+  type NodeInReach,
+} from '../world/resource-nodes.js';
+import { loadResourceNodeDefs } from '../content/resource-node-defs.js';
 import { loadIconUrls } from '../content/icon-urls.js';
 import { setAbilityNames } from '../app/panels/panel-format.js';
 import { rarityTone, refusalText as itemRefusalText } from '../app/panels/item-format.js';
@@ -71,7 +84,7 @@ import type {
 } from '@dawned/shared';
 
 /** The overlay panels P7 ships (UI_UX.md §4 grows this list per phase). */
-export type PanelId = 'character' | 'skills' | 'inventory' | 'vendor';
+export type PanelId = 'character' | 'skills' | 'inventory' | 'vendor' | 'professions';
 
 /** What the HUD says when `V` cannot roll (COMBAT.md §7 gates the dodge). */
 const DODGE_REFUSAL_TEXT: Record<DodgeRefusal, string> = {
@@ -136,6 +149,21 @@ export interface InventoryBridge {
   send: (op: ItemOp) => void;
 }
 
+/** Data the `J` panel reads (P10). Same external-store shape as the others. */
+export interface ProfessionsBridge {
+  subscribe: (listener: () => void) => () => void;
+  version: () => number;
+  /** Levels + codex from the last ProfessionSync; null before the first. */
+  state: () => ProfessionSyncMessage | null;
+  /**
+   * Everything a profession CAN produce, so the codex can show gaps as gaps.
+   * Derived from the published node definitions rather than from a list here —
+   * authoring a new herb must not need a client change to be collectable.
+   */
+  catalogue: (profession: string) => ItemDef[];
+  iconUrl: (slug: string) => string | undefined;
+}
+
 export interface WorldHandle {
   dispose: () => void;
   /** Open/close an overlay panel (the React close buttons drive this). */
@@ -144,6 +172,8 @@ export interface WorldHandle {
   progression: ProgressionBridge;
   /** Data + actions for the bag/vendor panels. */
   inventory: InventoryBridge;
+  /** Data for the professions panel. */
+  professions: ProfessionsBridge;
 }
 
 export interface WorldCallbacks {
@@ -200,6 +230,22 @@ export const runWorld = (
   // all funnel through setPanel: it owns the pointer-lock handoff (panels need
   // the cursor; closing re-locks into mouselook) and tells the React shell.
   let openPanel: PanelId | null = null;
+  // --- professions (P10-F) ---------------------------------------------------
+  /** What the `J` panel is drawn from; bumped on every ProfessionSync. */
+  let professionsVersion = 0;
+  const professionListeners = new Set<() => void>();
+  const notifyProfessions = (): void => {
+    for (const listener of professionListeners) listener();
+  };
+  /** Last seen level per profession, so a sync can announce what CHANGED. */
+  const professionLevels = new Map<string, number>();
+  /** The word the gather bar uses while you are holding (§1.1's verbs). */
+  const GATHER_GERUND: Record<string, string> = {
+    woodcutting: 'Chopping',
+    mining: 'Mining',
+    herbalism: 'Picking',
+    fishing: 'Fishing',
+  };
   /** Edge tracker so one refused dodge press produces one message. */
   let lastDodgeRefusal: string | null = null;
   /** Edge tracker for the roll itself (its sound + buffer consume fire once). */
@@ -262,6 +308,10 @@ export const runWorld = (
       const walkgrid = await mapSource.loadWalkgrid();
       if (walkgrid) terrain.sampler.attachWalkgrid(walkgrid);
       walkgridReady = true;
+      // Nodes wait for the map because their positions live in ITS bake — a
+      // client that built them against the fallback version would plant a
+      // forest on ground the server is not simulating.
+      await buildNodes();
     })
     .catch((error: unknown) => {
       console.error('[terrain] map artifacts failed to load:', error);
@@ -588,6 +638,78 @@ export const runWorld = (
       onLootBags: (message) => {
         lootBags.sync(message.bags, message.serverTimeMs);
       },
+      // --- gathering (P10-F) ------------------------------------------------
+      onNodeStates: (message) => {
+        resourceNodes?.setDepleted(message.depleted, message.serverTimeMs);
+      },
+      onGatherState: (message) => {
+        if (message.phase === 'start') {
+          hud.setGatherBar({
+            label: `${GATHER_GERUND[message.profession ?? ''] ?? 'Gathering'} ${
+              nodeDefs.get(message.nodeId ?? '')?.name ?? ''
+            }`.trim(),
+            startedAtMs: message.startedAtMs ?? 0,
+            endsAtMs: message.endsAtMs ?? 0,
+          });
+          // Face the node you are working: swinging at ninety degrees off is
+          // the difference between chopping a tree and chopping the air.
+          const at = message.placementId ? resourceNodes?.positionOf(message.placementId) : null;
+          if (at) {
+            const self = connection.renderPosition();
+            input.yaw = Math.atan2(at.x - self.x, at.z - self.z);
+          }
+          return;
+        }
+        hud.setGatherBar(null);
+        // A refusal never opened; a cancel with a reason is a hold the SERVER
+        // broke under you — taking a hit, walking off. Both have to say why:
+        // a bar that just stops is the player wondering whether the key even
+        // registered (the dodge-refusal precedent, COMBAT.md §9).
+        if (message.phase === 'refused' || (message.phase === 'cancelled' && message.reason)) {
+          hud.showRefusal(gatherRefusalText(message.reason ?? ''));
+          return;
+        }
+        if (message.phase !== 'done') return;
+        for (const stack of message.gained ?? []) {
+          const def = connection.itemDefs.get(stack.itemId);
+          hud.toast(`+${stack.qty} ${def?.name ?? stack.itemId}`, {
+            tone: (def?.rarity as 'uncommon' | undefined) ?? 'plain',
+          });
+        }
+        if (message.proc) {
+          const def = connection.itemDefs.get(message.proc.itemId);
+          hud.toast(`Rare find: ${def?.name ?? message.proc.itemId}`, { tone: 'gold' });
+        }
+      },
+      onFishingState: (message) => {
+        if (message.phase === 'caught' && message.fish) {
+          const def = connection.itemDefs.get(message.fish.itemId);
+          hud.toast(`Landed: ${def?.name ?? message.fish.itemId}`, {
+            tone: (def?.rarity as 'rare' | undefined) ?? 'plain',
+          });
+        }
+        if (message.phase === 'escaped') hud.toast('It got away.', { tone: 'red' });
+        if (message.phase === 'bite') sfx.play('deny');
+      },
+      onProfessionSync: (message) => {
+        // Level-ups are announced from the DIFF rather than from a message the
+        // server would have to send twice: the sync is the whole truth, so the
+        // client just notices what changed.
+        for (const entry of message.professions) {
+          const before = professionLevels.get(entry.profession);
+          if (before !== undefined && entry.level > before) {
+            hud.toast(`${entry.profession} ${entry.level}`, {
+              tone: 'gold',
+              onClick: () => {
+                setPanel('professions');
+              },
+            });
+          }
+          professionLevels.set(entry.profession, entry.level);
+        }
+        professionsVersion++;
+        notifyProfessions();
+      },
       onVendorPanel: (panel) => {
         // The server opens and closes the conversation (walking away breaks
         // the lease), so the panel follows it rather than the other way round.
@@ -664,6 +786,28 @@ export const runWorld = (
     else togglePanel(key);
   };
 
+  /**
+   * What `F` says in front of a node (§1.1 step 2).
+   *
+   * A locked node shows the REQUIREMENT rather than a dead key, and a depleted
+   * one shows its countdown — the two ways a player learns the system without
+   * being told about it.
+   */
+  const nodePromptText = (node: NodeInReach): string => {
+    const level =
+      connection.professionState?.professions.find(
+        (entry) => entry.profession === node.def.profession,
+      )?.level ?? 1;
+    if (node.depleted) {
+      return `${node.def.name} — taken · back in ${node.readyInSec}s`;
+    }
+    const gate = gateForTier(node.def.tier);
+    if (level < gate) {
+      return `${node.def.name} — needs ${node.def.profession} ${gate}`;
+    }
+    return `F — ${GATHER_VERB[node.def.profession] ?? 'Gather'} ${node.def.name}  ·  T${node.def.tier}`;
+  };
+
   /** The bag we could reach right now (ITEMS_LOOT §3: 4 m), nearest first. */
   const nearestBag = (): { id: number; distance: number } | null => {
     const self = connection.renderPosition();
@@ -689,7 +833,28 @@ export const runWorld = (
       connection.sendItemOp({ kind: 'use', from: entry[0] });
       return;
     }
-    // F: loot what is in reach, otherwise talk to the market post you stand at.
+    if (key === 'interactUp') {
+      // Letting go ends a hold. Harmless when nothing is being gathered — the
+      // server ignores a cancel with no channel, which is what makes this
+      // safe to send on every F release rather than only the ones that matter.
+      if (connection.gatherChannel) connection.sendGatherOp({ kind: 'cancel' });
+      return;
+    }
+    // A bite is answered with the same key, and it beats everything else: the
+    // window is 0.8 s, so a press that got spent opening a vendor is a fish
+    // lost to the UI.
+    const fishing = connection.fishingState;
+    if (fishing?.phase === 'bite') {
+      connection.sendGatherOp({ kind: 'hook' });
+      return;
+    }
+    // F: gather the node you are standing at, then loot, then talk.
+    const self0 = connection.renderPosition();
+    const node = resourceNodes?.inReach(self0.x, self0.z) ?? null;
+    if (node && !node.depleted && fishing === null) {
+      connection.sendGatherOp({ kind: 'start', placementId: node.placementId });
+      return;
+    }
     const bag = nearestBag();
     if (bag && bag.distance <= LOOT_REACH_M) {
       connection.sendItemOp(
@@ -749,6 +914,30 @@ export const runWorld = (
   void loadVendorAnchors().then((vendors) => {
     if (!disposed) vendorPosts.build(vendors);
   });
+  // Resource nodes (P10): the placements come from the bake the SERVER told us
+  // to stream, the definitions from the published content, and the models from
+  // the manifest. All three have to be in hand before a node can be drawn, so
+  // they load together and build once.
+  let resourceNodes: ResourceNodeManager | null = null;
+  let nodeDefs = new Map<string, ResourceNodeDef>();
+  const buildNodes = async (): Promise<void> => {
+    const [placements, defs, models] = await Promise.all([
+      mapSource.loadPlacements(),
+      loadResourceNodeDefs(),
+      loadNodeModels(),
+    ]);
+    if (disposed) return;
+    nodeDefs = defs;
+    resourceNodes = new ResourceNodeManager(scene.scene, models);
+    resourceNodes.build(placements?.nodes ?? [], defs);
+    // A NodeStates may have landed while we were loading; adopt it now rather
+    // than waiting for the next one, or a node taken before you arrived would
+    // stand there whole until somebody else chopped it.
+    const pending = connection.nodeStateMessage;
+    if (pending) resourceNodes.setDepleted(pending.depleted, pending.serverTimeMs);
+    professionsVersion++;
+    notifyProfessions();
+  };
   // Published ability + skill-node defs → the prediction layer (hotbar,
   // chains, costs, node folds), plus the icon wiring: baked game-icons urls
   // and the effectId → icon map (buff chips wear their ability's icon).
@@ -1322,6 +1511,69 @@ export const runWorld = (
     sendItemOp: (op: ItemOp): void => {
       connection.sendItemOp(op);
     },
+    /**
+     * Gathering truth + drivers (P10 smoke). Everything the browser run needs
+     * to answer "is there a node here, what does F say about it, and did the
+     * hold finish" without reading pixels for facts that are data.
+     */
+    gatheringState: (): {
+      nodes: { total: number; seated: number; depleted: number; depletedIds: string[] };
+      inReach: {
+        placementId: string;
+        nodeId: string;
+        profession: string;
+        tier: number;
+        distance: number;
+        depleted: boolean;
+      } | null;
+      prompt: string | null;
+      channel: { nodeId: string; endsAtMs: number } | null;
+      fishing: { phase: string; markerHalf: number | null; progress: number } | null;
+      professions: { profession: string; level: number; xp: number; codex: number }[];
+      openPanel: PanelId | null;
+    } => {
+      const self = connection.renderPosition();
+      const node = resourceNodes?.inReach(self.x, self.z) ?? null;
+      const channel = connection.gatherChannel;
+      const fishing = connection.fishingState;
+      const professions = connection.professionState;
+      return {
+        nodes: resourceNodes?.stats ?? { total: 0, seated: 0, depleted: 0, depletedIds: [] },
+        inReach: node
+          ? {
+              placementId: node.placementId,
+              nodeId: node.def.id,
+              profession: node.def.profession,
+              tier: node.def.tier,
+              distance: node.distance,
+              depleted: node.depleted,
+            }
+          : null,
+        prompt: node ? nodePromptText(node) : null,
+        channel: channel ? { nodeId: channel.nodeId ?? '', endsAtMs: channel.endsAtMs ?? 0 } : null,
+        fishing: fishing
+          ? {
+              phase: fishing.phase,
+              markerHalf: fishing.markerHalf ?? null,
+              progress: connection.reelState.progress,
+            }
+          : null,
+        professions: (professions?.professions ?? []).map((entry) => ({
+          profession: entry.profession,
+          level: entry.level,
+          xp: entry.xp,
+          codex: professions?.codex[entry.profession]?.length ?? 0,
+        })),
+        openPanel,
+      };
+    },
+    sendGatherOp: (op: GatherOp): void => {
+      connection.sendGatherOp(op);
+    },
+    /** Hold/release the reel without a real keyboard (input.ts has the why). */
+    setReel: (held: boolean): void => {
+      input.debugSetReel(held);
+    },
     allocateStats: (deltas: AttributeSpread): void => {
       connection.sendAllocateStats(deltas);
     },
@@ -1333,6 +1585,33 @@ export const runWorld = (
     setPanel: (panel: PanelId | null): void => {
       setPanel(panel);
     },
+  };
+
+  const professionsBridge: ProfessionsBridge = {
+    subscribe: (listener) => {
+      professionListeners.add(listener);
+      return () => professionListeners.delete(listener);
+    },
+    version: () => professionsVersion,
+    state: () => connection.professionState,
+    /**
+     * Everything a profession can produce, derived from the node definitions
+     * it owns rather than from a list in the client: authoring a new herb
+     * makes it collectable without a client change, which is the whole point
+     * of content-as-data.
+     */
+    catalogue: (profession) => {
+      const ids = new Set<string>();
+      for (const def of nodeDefs.values()) {
+        if (def.profession !== profession) continue;
+        for (const itemId of nodeItemRefs(def)) ids.add(itemId);
+      }
+      return [...ids]
+        .map((id) => connection.itemDefs.get(id))
+        .filter((def): def is ItemDef => def !== undefined)
+        .sort((a, b) => a.ilvl - b.ilvl || a.name.localeCompare(b.name));
+    },
+    iconUrl: (slug) => iconUrlMap.get(slug),
   };
 
   // --- loop ------------------------------------------------------------------
@@ -1491,6 +1770,12 @@ export const runWorld = (
     vfx.update(dtSeconds);
     lootBags.update(dtSeconds, now / 1000);
     vendorPosts.update(terrain.sampler);
+    resourceNodes?.update(terrain.sampler, now);
+    // The reel bar runs per FRAME, not per tick: it is the one thing on screen
+    // the player steers directly, and a marker that moves twenty times a second
+    // reads as input lag. The server steps the same shared function on its own
+    // tick and corrects the progress; the marker stays local.
+    connection.stepReel(input.reelHeld, now);
 
     ambience?.update(dtSeconds, position.x, position.z);
     updateWaterTime(now / 1000);
@@ -1537,13 +1822,42 @@ export const runWorld = (
     // you are standing in, because that is the order the key handler tries.
     const interactBag = nearestBag();
     const interactVendor = vendorPosts.inReach(position.x, position.z);
+    const interactNode = resourceNodes?.inReach(position.x, position.z) ?? null;
+    // Nothing to advertise while an interaction is already running: `F` means
+    // "let go" then, not "start this", and the prompt shares the lower middle
+    // of the screen with the gather and fishing bars — on a short window it
+    // sat on top of "HOLD F TO REEL".
+    const interacting = connection.gatherChannel !== null || connection.fishingState !== null;
     hud.setInteractPrompt(
-      interactBag && interactBag.distance <= LOOT_REACH_M
-        ? 'F — Loot  ·  Shift+F — Loot all'
-        : interactVendor
-          ? `F — Trade with ${interactVendor.name}`
-          : null,
+      interacting
+        ? null
+        : interactBag && interactBag.distance <= LOOT_REACH_M
+          ? 'F — Loot  ·  Shift+F — Loot all'
+          : interactNode
+            ? nodePromptText(interactNode)
+            : interactVendor
+              ? `F — Trade with ${interactVendor.name}`
+              : null,
     );
+
+    // The gathering surfaces: the hold bar closes itself when the channel does
+    // (the server's every non-`start` phase clears it), and the fishing block
+    // is rebuilt each frame from the attempt plus the locally-stepped bar.
+    const fishState = connection.fishingState;
+    if (fishState && fishState.phase !== 'caught' && fishState.phase !== 'escaped') {
+      const fish = connection.fishPositionNow;
+      const reel = connection.reelState;
+      hud.setFishing({
+        phase: fishState.phase,
+        ...(fish !== null ? { fish } : {}),
+        marker: reel.marker,
+        ...(fishState.markerHalf !== undefined ? { markerHalf: fishState.markerHalf } : {}),
+        progress: reel.progress,
+        onTarget: fish !== null && Math.abs(reel.marker - fish) <= (fishState.markerHalf ?? 0.16),
+      });
+    } else {
+      hud.setFishing(null);
+    }
     hud.setGold(connection.inventory?.gold ?? null);
 
     const cast = connection.castView();
@@ -1558,6 +1872,7 @@ export const runWorld = (
       snapshotAgeMs:
         connection.stats.lastSnapshotAtMs > 0 ? now - connection.stats.lastSnapshotAtMs : 0,
       snapshotIntervalMs: connection.stats.snapshotIntervalMs,
+      serverNowMs: connection.serverNow(),
       bytesIn: connection.stats.bytesIn,
       bytesOut: connection.stats.bytesOut,
       netsim: connection.netsim,
@@ -1820,11 +2135,13 @@ export const runWorld = (
       vfx.dispose();
       lootBags.dispose();
       vendorPosts.dispose();
+      resourceNodes?.dispose();
       terrain.dispose();
       container.replaceChildren();
     },
     setPanel,
     progression,
     inventory,
+    professions: professionsBridge,
   };
 };

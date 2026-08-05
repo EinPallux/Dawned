@@ -83,7 +83,15 @@ binary.
 > position: the fish's path is `fishPosition(seed, elapsed)` evaluated on both
 > sides, so the bar the player watches and the bar the server judges are the
 > same bar and a marker sitting on a fish can never read as a miss. Progress
-> rides along ~4×/s as a correction, not a stream). Snapshots remain **full-state
+> rides along ~4×/s as a correction, not a stream — and it is CONVERGED onto,
+> never cloned, because by the time it lands it describes a bar that has since
+> moved on and snapping to it drags a filling bar backwards. **The Reel bit is
+> the only HELD input the sim reads per-intent rather than per-tick**: the
+> server steps the reel once for each intent it consumed this tick, in order,
+> after the input phase — sampling `heldButtons` once per tick instead threw
+> presses away on a catch-up tick, repeated them on a starved one, and scored
+> every press a tick late, which is enough to make the bar unwinnable (P10-F,
+> PROFESSIONS.md §5.2)). Snapshots remain **full-state
 > within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
 > (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
 > total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16

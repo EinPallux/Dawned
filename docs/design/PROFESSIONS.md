@@ -163,11 +163,33 @@ The reel's numbers were set by MEASUREMENT, not taste. The first physics pass le
 marker lagging so far behind the fish that the crudest possible strategy — hold whenever
 the marker is under the fish — could not land a T1 common in eighteen seconds at any
 seed. That is not difficulty, it is a broken minigame, and §5 wants the first fish a
-player ever hooks to be caught. At the shipped values that strategy lands an easy fish
-from every seed in about nine seconds and a T5 legendary about half the time in
-fourteen, and a human who anticipates does better than it. A test pins that property so
-a future tuning pass cannot quietly break it again. Feel remains the owner's end-of-
-project pass.
+player ever hooks to be caught.
+
+### 5.2 As built (P10-F) — the measurement that was missing
+
+The second pass over-corrected, and only a run against a LIVE server found it. Every
+test above plays the bar with the decision and the step at the same instant; no player
+ever does. A press goes up, the server applies it on its next tick, and the bar the eye
+is steering is always a tick ahead of the bar being scored. Same crude strategy, twenty
+seeds, a T1 common:
+
+| command delay | landed | what that is                     |
+| ------------- | ------ | -------------------------------- |
+| 0 ticks       | 20/20  | all the offline test ever proved |
+| 1 tick        | 0/20   | what the game actually does      |
+
+The cause was the marker's TOP SPEED, not its accelerations: one delayed tick at 1.5/s
+carried it 0.075 — half a T1 catch zone — so the correction always arrived after the
+overshoot and the loop rang instead of settling. `MARKER_MAX_SPEED` is 0.9/s now, and
+the tests that pin "beatable" include a tick of delay, because the zero-latency version
+of that claim is not about this game. A T3 rare needs real anticipation to land; a T5
+legendary refuses every simple strategy tried, which may be right and is flagged as
+USER_QUESTIONS Q27 rather than guessed at.
+
+Proven end to end by `tools/smoke/fishing-probe.mjs`, which plays the real protocol at
+the tick rate. It is headless on purpose: the browser probe renders at ~4 fps in a
+container and steps the reel once a frame, so it could only ever measure the container.
+Feel remains the owner's end-of-project pass.
 
 ## 6. Why gather in 0.1.0 (pre-crafting honesty)
 

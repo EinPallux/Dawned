@@ -127,6 +127,18 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     };
   });
 
+  /**
+   * Published resource-node definitions (P10): what each node standing in the
+   * baked map IS — its model, its depleted model, its profession and tier, and
+   * the hold time. The client already has WHERE every node stands (the bake's
+   * `placements.json`, which it streams with the terrain); this is the other
+   * half, and it is why the wire only ever needs to carry the exceptions —
+   * which nodes are currently taken.
+   */
+  app.get('/api/content/resource-nodes', () => {
+    return { nodes: [...content.resourceNodes.values()] };
+  });
+
   /** Minimal public status for the login screen's server pip. */
   app.get('/api/status', () => ({
     online: true,
@@ -348,6 +360,35 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       return reply.code(404).send({ error: 'player not online' });
     }
     return reply.send({ ok: true, profession, level });
+  });
+
+  /**
+   * Answer the next fishing bite for an online player (P10).
+   *
+   * The hook window is 0.8 s of reaction, which a headless browser cannot
+   * supply — one stalled frame eats the whole window, so a bot could never
+   * reach the reel bar the run exists to measure. This arms the SAME
+   * `hookFishing` the key calls, on the tick the bite opens: the lever is the
+   * reflex, never the outcome. Same shape as `/ops/hurt` keeping the P9 boss
+   * bot alive because it cannot dodge.
+   */
+  app.post('/ops/hook', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as { player?: unknown; bites?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const bites =
+      typeof body?.bites === 'number' ? Math.min(50, Math.max(1, Math.floor(body.bites))) : 1;
+    if (!player) return reply.code(400).send({ error: 'player required' });
+    if (!world.hookFishingByName(player, bites)) {
+      return reply.code(404).send({ error: 'player not online' });
+    }
+    return reply.send({ ok: true, armed: player, bites });
   });
 
   /**
