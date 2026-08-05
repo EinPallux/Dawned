@@ -260,6 +260,14 @@ script at Phase 0.
   `/var/lib/dawned/published` → rotation **14 daily + 8 weekly**; `--quick` mode (pre-update) keeps
   last 5 separately; `--verify` (monthly timer) restores newest into `dawned_verify` scratch DB and
   runs row-count sanity, alerting into the admin dashboard on failure.
+- **The live map bake too** (added 2026-08-05 with the panel's A2/A3). Published bakes land in the
+  game checkout next to the committed `dev-2` fallback — they are in neither git nor `published/`,
+  which made the world the one thing a restore would not have brought back. `archive_live_map`
+  reads `current.json`, tars that version plus the pointer to `backups/map-YYYYMMDD.tar.gz`, and
+  keeps the last 7 (each ~8.6 MB; a publish already sweeps all but the newest five bakes on disk).
+  The DRAFT those bakes came from is in Postgres, so the pg_dump covers re-publishing; this covers
+  the faster path of putting the live world straight back. Override the location with `MAP_DIR` if
+  the checkout ever moves.
 - Maintenance same timer: purge expired sessions, chat_log >7 d, metrics >14 d, `vacuumdb --analyze`.
 - Off-box copies: owner's choice (2026-08-02) — manual snapshots via the Hostinger hPanel; the
   `AFTER_BACKUP_CMD` hook point in `/etc/dawned/backup.env` remains for future automation. Local

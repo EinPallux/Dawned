@@ -13,3 +13,11 @@ coverage/
 # assets_baked/ IS committed (see the pipeline doc); these are caches only.
 tools/.cache/
 packages/client/public/assets/
+
+# Published map bakes and the pointer at the live one (A2 publish pipeline).
+# `assets_baked/map/dev-2` — what `pnpm world:generate` emits — IS committed and
+# is the fallback a fresh checkout boots on. A `map-<epoch>` bake is machine
+# state: the panel writes it, the draft it came from lives in Postgres, and the
+# owner's live pointer must never be overwritten by someone else's `git pull`.
+assets_baked/map/current.json
+assets_baked/map/map-*/

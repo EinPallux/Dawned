@@ -102,11 +102,14 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 21 owner decisions are answered and folded (decision log in USER_QUESTIONS.md — Q21,
-the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). Three open
+the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). Five open
 questions: Q22 (the Bandit Forager's model), Q23 (who owns a spawner's position now that the
-map editor can place camps) and Q24 (patrol splines need an AI state the game does not have,
-so the editor deliberately does not author them) — all three shipped with a recommended
-default, none blocking.
+map editor can place camps), and three the map editor surfaced by hitting the wall — Q24
+(patrol splines need an AI state the game does not have), Q25 (no resource-node schema, so
+the editor's node layer cannot author anything until P10-A) and Q26 (`zoneAmbienceSchema` is
+light and colour only, so a zone cannot carry music or sfx). All five shipped with a
+recommended default, none blocking; the last three are why the §7 run reports three of its
+steps as "not possible yet" rather than faking them.
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
@@ -263,6 +266,22 @@ WORLD.md §4.2 / ITEMS_LOOT.md §5 price of a shrine hop, `2 × distance-in-chun
 interactable with the world-objects phase); it lives in shared because the map editor
 previews the whole matrix while the owner places shrines, and a panel quoting a price the
 game will not take is exactly the drift shared exists to prevent. **425 unit tests green.**
+**A3-d game-side half, 2026-08-05:** migration 0015 + `mapEditorCollections` — the panel's
+named selections and stampable prefabs. Editor-side only (a prefab flattens to plain
+placements when stamped), in Postgres rather than a browser because both are shared between
+the owner and any GM (DATABASE.md §4).
+**A2/A3 are closed panel-side (2026-08-05) and the world is editable end to end.** The
+panel's `map-scenario.mjs` sculpts an islet out of open water, populates and zones it,
+publishes, and this server hot-swaps onto it with no restart — that whole loop is proven
+against a running game, not mocked. The game-side follow-up that landed here: **published
+map bakes are machine state.** They are written into `assets_baked/map/` next to the
+committed `dev-2` fallback, so they are now git-ignored (`map-*/` + `current.json`) — a
+`git pull` during `deploy/UPDATE.sh` must never repoint the live world at a bake from a dev
+checkout — and `deploy/BACKUP.sh` archives the LIVE bake plus its pointer nightly
+(`backups/map-*.tar.gz`, last 7). They were in neither git nor the backups before, which
+made the published world the one thing a restore would not have brought back; the draft it
+came from is in Postgres, so pg_dump covers re-publishing, and this covers putting the world
+straight back. DEPLOYMENT.md §6 carries the contract.
 
 ### Running it locally
 

@@ -13,6 +13,13 @@ set -euo pipefail
 DATA_DIR=/var/lib/dawned
 BACKUP_DIR="$DATA_DIR/backups"
 ETC_DIR=/etc/dawned
+# Must match DEPLOY.sh / UPDATE.sh / ROLLBACK.sh.
+APP_DIR=/opt/dawned
+# The map bakes the admin panel publishes (A2) land in the game checkout, next
+# to the committed `dev-2` fallback — they are not in git and not in the
+# database, so without this they are the one piece of the world a restore would
+# not bring back.
+MAP_DIR="${MAP_DIR:-$APP_DIR/game/assets_baked/map}"
 MODE="${1:-nightly}"
 STAMP="$(date -u +%Y%m%d-%H%M%S)"
 
@@ -40,6 +47,22 @@ archive_published() {
     tar -czf "$target" -C "$DATA_DIR" published
     log "published artifacts → $target ($(du -h "$target" | cut -f1))"
   fi
+}
+
+archive_live_map() {
+  local target="$1"
+  [[ -d "$MAP_DIR" ]] || return 0
+  local live
+  live="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    "$MAP_DIR/current.json" 2>/dev/null || true)"
+  if [[ -z "$live" || ! -d "$MAP_DIR/$live" ]]; then
+    # No pointer yet: the game is on the committed dev fallback, which git has.
+    return 0
+  fi
+  # The LIVE bake only — older ones are a rollback window the publish sweeps,
+  # not history worth 8 MB a night.
+  tar -czf "$target" -C "$MAP_DIR" current.json "$live"
+  log "live map bake ($live) → $target ($(du -h "$target" | cut -f1))"
 }
 
 case "$MODE" in
@@ -70,6 +93,7 @@ case "$MODE" in
   nightly)
     dump_db "$BACKUP_DIR/db-$STAMP.dump" || true
     archive_published "$BACKUP_DIR/published-$STAMP.tar.gz"
+    archive_live_map "$BACKUP_DIR/map-$STAMP.tar.gz"
 
     # Rotation: keep 14 daily, plus one per week for 8 weeks.
     ls -1t "$BACKUP_DIR"/db-*.dump 2>/dev/null | tail -n +15 | while read -r old; do
@@ -81,6 +105,7 @@ case "$MODE" in
     done
     ls -1t "$BACKUP_DIR"/db-*.dump 2>/dev/null | tail -n +71 | xargs -r rm -f
     ls -1t "$BACKUP_DIR"/published-*.tar.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+    ls -1t "$BACKUP_DIR"/map-*.tar.gz 2>/dev/null | tail -n +8 | xargs -r rm -f
 
     log "backup dir now $(du -sh "$BACKUP_DIR" | cut -f1)"
     ;;

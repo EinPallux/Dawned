@@ -8,6 +8,42 @@
 
 ## Open questions
 
+### Q26 — a zone has no music or ambient sound yet (A3-e, 2026-08-05)
+
+MAP_EDITOR.md §2.4 lists a zone's ambience as "fog color/density/light tint/**music/sfx set**/
+weather weights", and WORLD.md §3 says the same. What `zoneAmbienceSchema` actually holds is
+light and colour: fog, sky, sun, hemisphere. No music track, no ambient sfx set, no weather.
+
+The §7 acceptance run therefore zones its islet with custom FOG and says out loud that it could
+not set music — rather than adding fields the game has no audio system to read. Same reasoning
+as Q24: an editor for data nothing consumes looks finished and does nothing.
+
+What it needs, game-side: a `musicTrack` and `ambientSfx` on the zone ambience, the baked audio
+to reference, and a client that cross-fades them on zone entry the way it already cross-fades
+fog. AUDIO.md's zone-music section is the design; it is a P-phase of its own.
+
+**Recommended default: leave zone audio out until the audio phase**, then add both fields and
+the editor picks up the music/sfx dropdowns for free (the form is schema-driven). If you would
+rather have the fields NOW so you can fill them in while building the world, say so — it is a
+five-line schema change here plus two selects in the panel, and the game would ignore them until
+the audio phase lands.
+
+### Q25 — resource nodes have no schema, so §7's "ring it with T2 nodes" cannot run (A3-e, 2026-08-05)
+
+The §7 acceptance scenario includes "ring it with T2 nodes" — ore veins, herbs, the gathering
+content PROFESSIONS.md specifies. The map editor has a `node` layer in its draft table and the
+bake carries it, but there is no `nodeSchema` in `@dawned/shared`, no published node content, and
+no game-side gathering. So the Place tool cannot offer it: a placed row would have no shape to
+validate against and nothing would ever read it.
+
+**Recommended default: leave it until the professions phase**, which is where the schema, the
+models, the loot bindings and the gathering interaction all arrive together. When they do, the
+Place tool gains the layer with no editor work beyond a defaults entry — the same way shrines
+did once `interactableSchema` existed.
+
+The §7 run reports this step as skipped rather than quietly passing, so the DoD is honest about
+what was and was not demonstrated.
+
 ### Q24 — patrol splines need AI, not just an editor (A3-b, 2026-08-05)
 
 MAP_EDITOR.md §2.3 asks the spawns mode for a **patrol spline editor with per-node wait times**.

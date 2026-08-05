@@ -125,6 +125,15 @@ chat_log         id · channel · from_character · to_character NULL · text ·
 metrics_snapshots at · tick_p50/p95 REAL · entities INT · players INT · net_out_kbps REAL · rss_mb INT  [1/min, 14-day retention]
 ```
 
+**Map editor tables** (migration 0014, Dawned-Admin A2/A3 — drafts only, the game reads baked
+artifacts): `map_draft_chunks` (PK cx,cy — heights/splat bytea, water, enabled),
+`map_draft_objects` (id PK, layer, def JSONB, denormalised x/z/cx/cy), `map_checkpoints` (gzipped
+full-draft snapshots), `map_lock` (single-writer lease), `map_versions` (published bakes; also
+holds the scatter-set settings row). Migration 0015 adds `map_editor_collections` (id PK, kind
+'selection'|'prefab', name, data JSONB) — named selections and stampable prefabs. Nothing in it
+reaches the game: a prefab flattens to plain placements when stamped, and a selection is pure UI.
+It is in Postgres rather than the browser because both are shared between the owner and any GM.
+
 ## 5. Migrations & Environments
 
 - `drizzle-kit generate` produces SQL migrations committed to the repo (`packages/shared/drizzle/`);

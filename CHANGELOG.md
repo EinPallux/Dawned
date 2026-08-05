@@ -5,6 +5,16 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — the live map is backed up, and cannot be clobbered by an update (2026-08-05, with Dawned-Admin A2/A3-e)
+
+- The map bakes the admin panel publishes were in neither git nor the nightly
+  backup — the one piece of the world a restore would not have brought back.
+  `deploy/BACKUP.sh` now archives the live bake and its pointer alongside the
+  database dump (last 7 kept), and published bakes are git-ignored so an update
+  on the server can never repoint the live world at a map from a dev checkout.
+  The bake the repo ships (`dev-2`, what `pnpm world:generate` emits) is
+  unaffected and stays committed as the fallback a fresh checkout boots on.
+
 ### Added — the fast-travel price is a shared formula (2026-08-05, with Dawned-Admin A3-c)
 
 - Nothing charges it yet — shrines land with the interactable phase — but the
