@@ -11,8 +11,10 @@
 import {
   Walkgrid,
   decodeChunk,
+  placementsFileSchema,
   zonesFileSchema,
   type MapChunk,
+  type PlacementsFile,
   type ZonesFile,
 } from '@dawned/shared';
 
@@ -138,5 +140,25 @@ export class MapSource {
   async loadWalkgrid(): Promise<Walkgrid | null> {
     const bytes = await this.loadBinary('walkgrid.bin');
     return bytes ? Walkgrid.decode(new Uint8Array(bytes)) : null;
+  }
+
+  /**
+   * Placed objects from the bake (P10 needs the `nodes` layer).
+   *
+   * Deliberately NOT cached in IndexedDB with the chunks: placements change on
+   * every map publish while a chunk usually does not, and the file is small.
+   * Parsed through the shared schema rather than cast — this is the same file
+   * the server reads, and a client that silently accepted a malformed one
+   * would render a world the server does not simulate.
+   */
+  async loadPlacements(): Promise<PlacementsFile | null> {
+    try {
+      const response = await fetch(this.url('placements.json'));
+      if (!response.ok || response.headers.get('content-type')?.includes('text/html')) return null;
+      return placementsFileSchema.parse(await response.json());
+    } catch (error) {
+      console.warn('[map] placements unavailable:', error);
+      return null;
+    }
   }
 }

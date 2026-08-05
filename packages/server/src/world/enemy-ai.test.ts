@@ -62,6 +62,7 @@ const emptyContent = (): GameContent => ({
   items: new Map(),
   lootTables: new Map(),
   vendors: new Map(),
+  resourceNodes: new Map(),
   worldSettings: defaultWorldSettings(),
 });
 

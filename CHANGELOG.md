@@ -5,6 +5,113 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — you can gather it now (2026-08-05, P10-F)
+
+- **Walk up to a tree and press `F`.** The prompt tells you what you are about to do and what
+  tier it is, a bar fills while you work, and the node reacts when it gives out: a tree topples
+  and leaves a felled log, an ore vein crumbles to bare stone, a herb puffs away, a fishing spot
+  ripples. What is left behind is the definition's own spent model, so a depleted node still
+  reads as a place rather than as a hole where something used to be.
+- **Fishing is a minigame.** Cast, wait for the bobber, answer the bite inside its window, then
+  hold `F` to keep your marker on a fish that will not sit still. The catch zone is drawn as the
+  fish PLUS its tolerance, because the tolerance is the thing you are actually aiming at.
+- **`J` opens Professions** — four levels, the node tier each one has reached and the level the
+  next tier needs, and a codex grid per profession showing everything it can bring home with the
+  ones you have never found still in their empty slots. The codex is what the SERVER remembers
+  you gathering, so selling a stack does not un-discover it.
+- A hold the server breaks now says why, instead of the bar simply stopping.
+
+### Fixed — the fishing bar could not be won (2026-08-05, P10-F)
+
+- **The reel was unwinnable through a real server**, and the tests could not see it: they play
+  the bar with the press and the step at the same instant, which no player ever does. Measured
+  against the live server, the strategy that lands 20 fish out of 20 offline landed 0 out of 12.
+  The marker's top speed was the cause — one tick of delay carried it half the width of a catch
+  zone, so every correction arrived after the overshoot. It is 0.9/s now, the tests include the
+  delay, and a fish lands on the first or second cast.
+- The client reset its whole reel bar several times a second, because the server's periodic
+  progress correction carries the same seed a new reel does.
+- A slow frame no longer costs you the fish: the bar is stepped in slices instead of clamped, so
+  a client that hitches keeps up with a fish that never stops moving.
+- Progress corrections converge instead of snapping, so a filling bar no longer lurches backwards
+  every time one arrives.
+- The server scored every reel press one tick late (fishing was stepped before inputs were read)
+  and sampled the button once per tick rather than once per input, throwing presses away.
+- `/ops/respawnnodes` brought nodes back for the server but told nobody, so anyone already in the
+  world kept looking at a stump they could not gather.
+- The Professions panel is on the same panel shell as every other one — it was rendering as a
+  see-through slab in the corner with the debug overlay showing through it.
+- The interact prompt no longer sits on top of the fishing bar on a short window, and stops
+  offering `F` while you are already using it.
+
+### Added — there is something to gather (2026-08-05, P10-E)
+
+- **The world has resource nodes in it.** 65 of them across Dawnshore and the Verdant Weald:
+  birch groves and wealdoaks, copper and iron veins, meadowbell and mossbloom patches, and
+  fishing spots on the lake and the south coast — placed in clusters near landmarks rather than
+  sprinkled evenly, so a gathering trip is also a walk somewhere.
+- **42 things to gather**, each with its own icon: logs, ores, herbs, six gems, resin, sap,
+  heartwood, geodes, seeds and stone, and fifteen fish from the Dawn Sprat to the Old One.
+- **Every tier of every profession is defined**, all the way to 30 — the T3–T5 nodes have no
+  ground to stand on until their zones are built, but the ladder is whole and the panel can
+  already tune it.
+- Each node looks like what it is: a different tree per tier, a different bloom per tier, a fish
+  you can see under the water, and ore veins tinted per metal.
+
+### Changed
+
+- **Dawnpetal is the Elder Grove's flower again.** It shipped as an ordinary level-4 herb that a
+  Dawnshore spore-dweller could drop, which is not what it is — it is the rare bloom you make a
+  journey for. Re-tiered, and the Dawnshore drop is Meadowbell now, which is the herb that shore
+  actually grows.
+- **The game downloads a third of what it did.** Model textures were being shipped at their
+  source resolution for everything except characters; they are compressed now. Total assets went
+  from 101 MB to under 15 — with twenty-two more models in the game than before.
+
+
+### Added — the panel can author what you gather (2026-08-05, P10-D)
+
+- **Dawned-Admin's Professions page** authors resource-node definitions — what a birch, a copper
+  vein, a herb patch or a shoal IS — with a preview that rolls a thousand gathers through the
+  game's own roller, so the items it lists are the items the server will hand over. The map
+  editor's node layer places them; a map publish refuses a placement whose definition is not
+  published, the same way a spawner cannot go live pointing at an enemy that does not exist.
+- Nothing about this is visible in the game yet — nodes need models and item sets (P10-E) and a
+  gather bar to hold (P10-F).
+
+
+### Added — fishing (2026-08-05, P10-C)
+
+- **The minigame is in.** Hold at a fishing spot, the line goes out, and after a
+  few seconds something bites — answer it in time and a bar opens with a fish
+  drifting inside it. Hold to lift your marker, let go to drop it, keep it over
+  the fish for about six seconds and it is yours. Slip and the progress drains,
+  though more slowly than it fills: one mistake is not fatal.
+- **Rarer, deeper fish fight harder** — faster drift, smaller marker.
+- **A fish that gets away leaves the spot alone**, so the answer to a miss is to
+  cast again; a fish you land depletes it like any other node.
+- The bar you watch and the bar the server judges are the same bar, so a marker
+  sitting on a fish is never a miss.
+
+### Added — the server half of gathering (2026-08-05, P10-B)
+
+- **Resource nodes are live in the world.** The server reads the map bake's
+  node layer, seats every one on the ground, and owns the three things a bake
+  cannot say: is it standing, when does it come back, and who is holding it.
+- **Hold to gather.** Press and hold near a node; the server times the channel
+  and the yield lands in your pack when it finishes. Walking away, taking a
+  hit or dying breaks the hold and frees the node for whoever is next. Every
+  refusal comes back as a reason you can read — too far, too low a level,
+  already harvested, someone else got there first.
+- **Two players, one tree, one set of logs.** The node belongs to whoever
+  starts, and the second person is told immediately rather than after three
+  seconds of holding — being refused up front is information; being refused at
+  the end is a waste of your time.
+- **The four professions level independently** and persist. Gathering also
+  trickles character XP, and the first time you gather a material it goes in
+  your codex.
+
+
 ### Fixed — the live map is backed up, and cannot be clobbered by an update (2026-08-05, with Dawned-Admin A2/A3-e)
 
 - The map bakes the admin panel publishes were in neither git nor the nightly

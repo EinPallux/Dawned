@@ -8,6 +8,11 @@
 
 ## Open questions
 
+> One open question: **Q26** (per-zone music/sfx). Q27 was answered on 2026-08-05 — the reel is
+> left as shipped and judged in the playtest. Q25 was answered by P10 starting — its recommended default WAS "do it in the professions
+> phase", and that phase is now under way, so the node schema lands as a P10-A deliverable and the
+> map editor's node layer comes alive with it.
+
 ### Q26 — a zone has no music or ambient sound yet (A3-e, 2026-08-05)
 
 MAP_EDITOR.md §2.4 lists a zone's ambience as "fog color/density/light tint/**music/sfx set**/
@@ -28,90 +33,22 @@ rather have the fields NOW so you can fill them in while building the world, say
 five-line schema change here plus two selects in the panel, and the game would ignore them until
 the audio phase lands.
 
-### Q25 — resource nodes have no schema, so §7's "ring it with T2 nodes" cannot run (A3-e, 2026-08-05)
-
-The §7 acceptance scenario includes "ring it with T2 nodes" — ore veins, herbs, the gathering
-content PROFESSIONS.md specifies. The map editor has a `node` layer in its draft table and the
-bake carries it, but there is no `nodeSchema` in `@dawned/shared`, no published node content, and
-no game-side gathering. So the Place tool cannot offer it: a placed row would have no shape to
-validate against and nothing would ever read it.
-
-**Recommended default: leave it until the professions phase**, which is where the schema, the
-models, the loot bindings and the gathering interaction all arrive together. When they do, the
-Place tool gains the layer with no editor work beyond a defaults entry — the same way shrines
-did once `interactableSchema` existed.
-
-The §7 run reports this step as skipped rather than quietly passing, so the DoD is honest about
-what was and was not demonstrated.
-
-### Q24 — patrol splines need AI, not just an editor (A3-b, 2026-08-05)
-
-MAP_EDITOR.md §2.3 asks the spawns mode for a **patrol spline editor with per-node wait times**.
-Drawing one is the easy half. The other half does not exist: `spawnerDefSchema` has no patrol
-field, and more importantly the enemy AI has no patrol state — idle enemies stand at their spawn
-until something perceives them.
-
-**Not shipped, on purpose.** Adding the field and the path editor now would put data in the
-database that nothing reads. Project rule 1 calls that a placeholder, and this is exactly the
-shape it warns about: it would look finished in the panel and do nothing in the world.
-
-What it actually needs, as a game-side slice: a `patrol` array on the spawner schema, an AI state
-that walks it at a stroll speed and honours the wait at each node, and the interaction with leash
-and social aggro decided (does a patroller return to its LAST node or its spawn? does pulling one
-member of a moving camp drag the whole line?). That is enemy-behaviour work, so it belongs with
-the game's AI phase rather than being smuggled in as an editor feature.
-
-**Recommended default: leave patrols out of 0.1.0.** Everything else in spawns mode shipped —
-camp links, aggro/leash rings, per-zone population against the CONTENT_0.1 budget, and a
-deterministic simulate-populate — and a world of stationary camps is what P9 was measured and
-balanced against. If you want patrols, say so and it becomes a game-side task with its own DoD
-(the editor half is a day on top).
-
----
-
-### Q23 — who owns a spawner's position, the map editor or the Enemies page? (A3, 2026-08-05)
-
-Camps can now be placed in two places: **Content → Enemies → Spawners** (where they have been
-since A1-d) and the **Map Editor's Place tool** (where you can see the hill you are putting them
-on). They are the same rows — the game reads spawners from `content_spawners` either way.
-
-Shipped for now: **the map publish wins.** Publishing the map replaces every published spawner
-row from the map's spawner layer, delete-and-insert in one transaction, because a camp you
-DELETED in the editor has to stop spawning and an update-only pass would leave it live forever.
-
-The cost of that: if you move a camp on the Enemies page and then publish the map, the map's
-copy of that camp overwrites it.
-
-**Recommended default: keep it, and treat the map as the place camps live.** Position is a
-spatial decision and the Enemies page cannot show you the terrain; the map editor's inspector
-edits the same full row (entries, counts, respawn timer), so nothing is lost by doing all of it
-there. The Enemies page stays the right surface for the BESTIARY.
-
-If you would rather keep the Enemies page authoritative, say so and the map publish becomes an
-update-in-place that never deletes — the trade is that a camp removed in the map editor would
-keep spawning until you also delete it on the Enemies page.
-
----
-
-### Q22 — Bandit Forager's model (P9, 2026-08-04)
-
-NPCS_ENEMIES.md §4 casts the Dawnshore **Bandit Forager** as "KA Peasant-look + dagger" — a
-KayKit Adventurers rig. That pack is not in `assets/` (we have KayKit Skeletons and the
-Quaternius Monster Bundle). Everything else in the Dawnshore + Weald bestiary matched a model
-already on disk; this is the one gap.
-
-Shipped for now: **`Orc.glb`** from the Quaternius bundle. It is the closest humanoid that
-actually walks — the first pick, `Tribal.glb`, _looks_ the part but is rigged in the pack's
-flyer family with no `Idle` or `Walk` clip at all, so it would have T-posed on the ground.
-
-**Recommended default: keep the Orc.** A bandit camp of orcish foragers reads fine on the
-Dawnshore, and it costs nothing. If you would rather have a human bandit, dropping the free
-KayKit Adventurers pack into `assets/enemy_models/` and changing one `modelRef` in the panel is
-the whole job — no code. Either way this is a one-line content edit, not a rebuild.
-
----
-
 ## Decision log
+
+### 2026-08-05 — the reel's difficulty ladder (owner: "Go with the recommended default")
+
+| #   | Topic                    | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Folded into                                                                                    |
+| --- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Q27 | How hard a legendary fish should be | **Leave it as shipped and judge it in the playtest.** `MARKER_MAX_SPEED` stays at the measured 0.9/s that makes a T1 common landable through a tick of command delay (it was unwinnable at 1.5); a T3 rare needs real anticipation, and a T5 legendary refuses every simple strategy tried. That is accepted as "legendary means legendary" until the fine-tuning pass at the end of the project. The whole ladder is two numbers in `fishingDifficulty` (drift speed, marker half-width), so re-tuning stays a one-line change with tests that report immediately whether the lower bands still work | `formulas/fishing.ts` as-built note, PROFESSIONS.md §5.2, `fishing.test.ts` delayed-command suite |
+
+### 2026-08-05 — the map editor's four open questions (owner: "Q22, Q23, Q24: Your recommendations")
+
+| #   | Topic                         | Decision                                                                                                                                                                                                                                                                                                                       | Folded into                                                            |
+| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Q22 | Bandit Forager's model        | **Keep the Orc** (`Orc.glb`, Quaternius). The doc's KayKit Peasant is not in `assets/`, and the closest human-looking alternative has no `Idle`/`Walk` clip so it would T-pose. Swapping later is one `modelRef` in the panel, no code                                                                                         | NPCS_ENEMIES.md §4 as-built note; the published `enemy_bandit_forager` |
+| Q23 | Who owns a spawner's position | **The map publish wins, and the map is where camps live.** Publishing replaces the published spawner rows from the map's spawner layer (delete-and-insert), because a camp deleted in the editor has to stop spawning. The Enemies page stays the surface for the BESTIARY; the map editor's inspector edits the same full row | MAP_EDITOR.md §4.1, CONTENT_EDITORS.md, admin publish pipeline         |
+| Q24 | Patrol splines                | **Out of 0.1.0.** The editor half is a day; the missing half is an AI patrol state plus decisions about leash and social aggro on a moving camp. P9 was measured and balanced against stationary camps. Revisit post-0.1.0 as a game-side slice with its own DoD                                                               | MAP_EDITOR.md §2.3, ROADMAP P12 note                                   |
+| Q25 | Resource-node schema          | **Closed 2026-08-05** — the recommended default was "leave it until the professions phase", and P10-A shipped `resourceNodeDefSchema` + `nodePlacementSchema` there. The panel's A1-e slice turned the map editor's node layer on against them, so the editor authors placements of definitions rather than rows nothing reads | ROADMAP P10-A, PROFESSIONS.md §1.4                                     |
 
 ### 2026-08-04 — P7 + P8 closed (owner playtest: "I tested everything so far and all seems fine")
 

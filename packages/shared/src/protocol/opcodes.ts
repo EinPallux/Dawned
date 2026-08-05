@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 12; // v12 (P9): enemy casts + boss phases
+export const PROTOCOL_VERSION = 13; // v13 (P10): gathering nodes + professions
 
 /** Client → server opcodes. */
 export const ClientOp = {
@@ -29,6 +29,12 @@ export const ClientOp = {
    * re-prices everything; the client's copy is a prediction.
    */
   ItemOp: 0x09,
+  /**
+   * Start/stop a gather hold (v13). JSON envelope for the same reason ItemOp
+   * is one — ids rather than fixed-width fields — and zod-gated at the
+   * boundary. Held inputs do NOT come this way; they ride InputIntent.
+   */
+  GatherOp: 0x0a,
 } as const;
 export type ClientOp = (typeof ClientOp)[keyof typeof ClientOp];
 
@@ -66,6 +72,25 @@ export const ServerOp = {
   VendorPanel: 0x9d,
   /** Something entered/left the bag: toast + juice (JSON envelope, v10). */
   ItemNotice: 0x9e,
+  /**
+   * Which nearby resource nodes are STANDING and which are taken (v13).
+   *
+   * Positions are not in here — the client already has every node from the
+   * baked `placements.json`, the same way it has props. This carries the one
+   * thing a bake cannot: whether someone chopped it thirty seconds ago.
+   */
+  NodeStates: 0x9f,
+  /** SELF's gather channel: started, finished, or refused with a reason (v13). */
+  GatherState: 0xa0,
+  /** SELF's four profession levels + the discovered-material codex (v13). */
+  ProfessionSync: 0xa1,
+  /**
+   * SELF's fishing attempt (v13): the phase, the seed the bar's fish drifts
+   * from, and the authoritative progress. The fish's PATH is never sent —
+   * both sides evaluate `fishPosition(seed, t)`, which is the only way the
+   * client's bar and the server's judgement cannot disagree.
+   */
+  FishingState: 0xa2,
 } as const;
 export type ServerOp = (typeof ServerOp)[keyof typeof ServerOp];
 
@@ -76,6 +101,12 @@ export const InputButton = {
   Dodge: 1 << 2,
   PrimaryAction: 1 << 3,
   SecondaryAction: 1 << 4,
+  /**
+   * Reel held (v13, P10 fishing). A continuously-held input, so it rides the
+   * 20 Hz input stream rather than the GatherOp envelope — JSON per frame
+   * would be the wrong lane for a fact that is true or false every tick.
+   */
+  Reel: 1 << 5,
 } as const;
 export type InputButton = (typeof InputButton)[keyof typeof InputButton];
 

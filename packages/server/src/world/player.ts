@@ -20,11 +20,13 @@ import {
   type CombatStats,
   type MovementIntent,
   type MovementState,
+  type Profession,
   type ResourceState,
 } from '@dawned/shared';
 import { isUntargetable, type ActiveEffect } from './effects.js';
 import type { PlayerProgress } from './progression.js';
 import type { PlayerItems } from './items.js';
+import { createProfessions, type ProfessionState } from './professions.js';
 
 /** A committed instant ability waiting for its contact frame. */
 export interface PendingAbility {
@@ -96,6 +98,18 @@ export class ServerPlayer {
   progress: PlayerProgress;
   /** Bag, paper-doll, consumable lanes and vendor session (P8). */
   items: PlayerItems;
+  /** Gathering-profession levels (P10) — loaded at spawn, written through. */
+  professions: Map<Profession, ProfessionState> = createProfessions();
+  /**
+   * The button bitfield from the most recently consumed input (P10-C).
+   *
+   * Held inputs that are NOT movement need somewhere to be read outside the
+   * movement step — the fishing reel is checked once a tick by a system that
+   * never touches `stepMovement`. Kept in sync by `takeIntents`, including the
+   * starvation repeat, so a player whose packets stop is holding nothing
+   * rather than holding for ever.
+   */
+  heldButtons = 0;
   /** Countdown of Flurry-empowered basics left (capstone rider). */
   empoweredBasicsLeft = 0;
   empoweredBasicsCp = 0;
@@ -240,6 +254,7 @@ export class ServerPlayer {
         buttons: starvedOut ? 0 : this.lastIntent.buttons & ~ONE_SHOT_BUTTONS,
       };
       this.lastIntent = repeat;
+      this.heldButtons = repeat.buttons;
       return [repeat];
     }
 
@@ -256,6 +271,7 @@ export class ServerPlayer {
         yaw: input.yaw,
         buttons: input.buttons,
       };
+      this.heldButtons = input.buttons;
       intents.push(this.lastIntent);
     }
     return intents;

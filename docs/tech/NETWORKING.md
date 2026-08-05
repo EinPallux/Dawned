@@ -65,7 +65,33 @@ binary.
 > `InventoryRefusal` code; RosterEntry gained mainhandModel/offhandModel so held weapons are
 > visible to everyone), v11 the dodge roll (the snapshot's self block gained rollTimeLeft u16
 > ms + rollDir u16 angle + rollCooldown u16 ms — without them reconciliation cancelled the
-> player's own roll ~150 ms in, see §3.1; +6 B per snapshot, self only). Snapshots remain **full-state
+> player's own roll ~150 ms in, see §3.1; +6 B per snapshot, self only). **v13 gathering
+> (P10: GatherOp 0x0a up — the SECOND client-authored JSON envelope, a zod-parsed
+> `{kind:'start', placementId}` / `{kind:'cancel'}` union re-validated against range, tier gate
+> and the node's claim before it touches anything; NodeStates 0x9f — only the DEPLETED nodes
+> near you plus the server time each returns, because the client already has every node's
+> position and definition from the baked `placements.json`, so "standing" is the default and
+> this is the exception list; GatherState 0xa0 — SELF's channel as start/done/cancelled/refused
+> with `startedAtMs`/`endsAtMs` so the hold bar is drawn from server stamps rather than counted
+> in frames, `reason` carrying a shared `GatherRefusal` code, and the yield/proc/XP on `done`
+> for the toast; ProfessionSync 0xa1 — the four profession levels with their xpToNext and
+> unlocked tier, plus the discovered-material codex. Held inputs deliberately do NOT ride the
+> envelope: anything continuous belongs on the 20 Hz InputIntent stream —
+> `InputButton.Reel` (1 << 5) is the fishing hold, and `GatherOp` gained a
+> discrete `{kind:'hook'}` for answering a bite; FishingState 0xa2 — SELF's
+> attempt as waiting/bite/reeling/caught/escaped. It carries a **seed**, not a
+> position: the fish's path is `fishPosition(seed, elapsed)` evaluated on both
+> sides, so the bar the player watches and the bar the server judges are the
+> same bar and a marker sitting on a fish can never read as a miss. Progress
+> rides along ~4×/s as a correction, not a stream — and it is CONVERGED onto,
+> never cloned, because by the time it lands it describes a bar that has since
+> moved on and snapping to it drags a filling bar backwards. **The Reel bit is
+> the only HELD input the sim reads per-intent rather than per-tick**: the
+> server steps the reel once for each intent it consumed this tick, in order,
+> after the input phase — sampling `heldButtons` once per tick instead threw
+> presses away on a catch-up tick, repeated them on a starved one, and scored
+> every press a tick late, which is enough to make the bar unwinnable (P10-F,
+> PROFESSIONS.md §5.2)). Snapshots remain **full-state
 > within AOI** (id/kind/pos/yaw/flags + hp each tick, f32 positions); at P4 entity counts
 > (16 enemies + players) this stays an order of magnitude under budget — measured 15.7 kB/s
 > total egress with 2 clients in a camp fight. The ENTER/UPDATE/LEAVE delta sections and i16

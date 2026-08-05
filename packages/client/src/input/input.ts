@@ -60,12 +60,13 @@ export class InputController {
    * Panel keys (P7-D, UI_UX.md §4): C Character, K Skills, Esc close. Set by
    * run-world; fires on keydown (non-repeat) while no text field owns keys.
    */
-  onUiKey: ((key: 'character' | 'skills' | 'inventory' | 'close') => void) | null = null;
+  onUiKey: ((key: 'character' | 'skills' | 'inventory' | 'professions' | 'close') => void) | null =
+    null;
   /**
    * World interactions that are not abilities: `F` loots (Shift+F takes the
    * whole bag) and talks to a vendor post, `E` drinks the quick-slot.
    */
-  onWorldKey: ((key: 'loot' | 'lootAll' | 'quickUse') => void) | null = null;
+  onWorldKey: ((key: 'loot' | 'lootAll' | 'quickUse' | 'interactUp') => void) | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -137,6 +138,21 @@ export class InputController {
     return !this.textEntryActive && this.held.has('Mouse2');
   }
 
+  /** F held right now — the fishing reel, drawn every frame by the HUD. */
+  get reelHeld(): boolean {
+    return !this.textEntryActive && this.held.has('KeyF');
+  }
+
+  /**
+   * Smoke-test hook: hold/release F without a real keyboard, exactly like the
+   * stance hook above. Headless runs cannot press-and-hold, and the reel is a
+   * HELD input — without this the fishing bar is untestable in a browser.
+   */
+  debugSetReel(held: boolean): void {
+    if (held) this.held.add('KeyF');
+    else this.held.delete('KeyF');
+  }
+
   /**
    * Smoke-test hook: hold/release the stance button without pointer lock
    * (headless browsers can't). Exactly equivalent to a real RMB hold — the
@@ -182,6 +198,7 @@ export class InputController {
       if (event.code === 'KeyC') this.onUiKey?.('character');
       else if (event.code === 'KeyK') this.onUiKey?.('skills');
       else if (event.code === 'KeyI') this.onUiKey?.('inventory');
+      else if (event.code === 'KeyJ') this.onUiKey?.('professions');
       else if (event.code === 'Escape') this.onUiKey?.('close');
       // Items (P8-D): F loots the nearest bag (Shift+F takes all of it) or
       // opens the vendor post you are standing at; E drinks the quick slot.
@@ -209,6 +226,10 @@ export class InputController {
       this.altReleased = false;
       return;
     }
+    // Letting go of F ends a gather hold (P10 §1.1: hold-to-gather). Sent on
+    // key-up rather than inferred from the next keydown, because a hold that
+    // only ends when you press something else is a hold you cannot abandon.
+    if (event.code === 'KeyF') this.onWorldKey?.('interactUp');
     this.held.delete(event.code);
   };
 
@@ -259,6 +280,9 @@ export class InputController {
     if (performance.now() < this.dodgeBufferedUntil) buttons |= InputButton.Dodge;
     // Stance is HELD state (no tap latch): the server folds it per intent.
     if (this.held.has('Mouse2')) buttons |= InputButton.SecondaryAction;
+    // Fishing's reel is a HELD fact, so it rides the 20 Hz input stream rather
+    // than a JSON envelope per frame (opcodes.ts has the argument).
+    if (this.held.has('KeyF')) buttons |= InputButton.Reel;
 
     this.tapped.clear();
     return { moveX, moveZ, yaw: this.yaw, buttons };

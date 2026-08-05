@@ -255,6 +255,14 @@ export const decodeRespec = (reader: BinaryReader): RespecMessage => ({
 export const encodeItemOp = (op: unknown, writer?: BinaryWriter): Uint8Array =>
   encodeJsonEnvelope(ClientOp.ItemOp, op, writer);
 
+/**
+ * Start/stop a gather hold (v13). Client-authored like ItemOp, so the SERVER
+ * parses it with `gatherOpSchema` before touching a node — the decoder hands
+ * back `unknown` on purpose.
+ */
+export const encodeGatherOp = (op: unknown, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ClientOp.GatherOp, op, writer);
+
 // ---------------------------------------------------------------------------
 // Server → Client
 // ---------------------------------------------------------------------------
@@ -960,6 +968,105 @@ export interface ItemNoticeMessage {
 
 export const encodeItemNotice = (msg: ItemNoticeMessage, writer?: BinaryWriter): Uint8Array =>
   encodeJsonEnvelope(ServerOp.ItemNotice, msg, writer);
+
+/**
+ * Which nearby nodes are taken (v13, P10).
+ *
+ * Only the DEPLETED ones travel. The client has every node's position and
+ * definition from the baked map already, so the default is "standing" and this
+ * message is the exception list — a world of 400 nodes with three chopped
+ * sends three entries, not four hundred.
+ */
+export interface NodeStatesMessage {
+  /** Placement ids currently harvested, with the server time they return. */
+  depleted: { id: string; readyAtMs: number }[];
+  /** Server time the payload was built (etas are absolute against this). */
+  serverTimeMs: number;
+}
+
+export const encodeNodeStates = (msg: NodeStatesMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.NodeStates, msg, writer);
+
+/**
+ * SELF's gather channel (v13). The client draws its hold bar from `endsAtMs`
+ * rather than counting its own frames, so a stutter cannot finish the bar
+ * early — same contract the cast bar uses.
+ */
+export interface GatherStateMessage {
+  /** `start` opens the bar; every other phase closes it. */
+  phase: 'start' | 'done' | 'cancelled' | 'refused';
+  /** The node being worked (absent once the channel is over). */
+  placementId?: string;
+  /** Content id, so the client can name the node and pick the tool prop. */
+  nodeId?: string;
+  profession?: string;
+  tier?: number;
+  /** Server time the hold began and completes — the bar's two ends. */
+  startedAtMs?: number;
+  endsAtMs?: number;
+  /** `refused` only: a GatherRefusal code the client turns into words. */
+  reason?: string;
+  /** `done` only: what came out, for the toast (the bag sync is authoritative). */
+  gained?: { itemId: string; qty: number }[];
+  /** `done` only: whether the rare extra landed — worth its own flourish. */
+  proc?: { itemId: string; qty: number } | null;
+  /** `done` only: profession XP awarded. */
+  profXp?: number;
+}
+
+export const encodeGatherState = (msg: GatherStateMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.GatherState, msg, writer);
+
+/** SELF's four professions + the codex of what each has ever gathered (v13). */
+export interface ProfessionSyncMessage {
+  professions: {
+    profession: string;
+    level: number;
+    xp: number;
+    /** XP the current level needs (0 at the cap) — saves the client the curve. */
+    xpToNext: number;
+    /** Highest node tier this level may take. */
+    tier: number;
+  }[];
+  /** Item ids discovered per profession, for the codex's collection ticks. */
+  codex: Record<string, string[]>;
+}
+
+/**
+ * SELF's fishing attempt (v13, P10 §5).
+ *
+ * `seed` is the whole trick: the fish's path is `fishPosition(seed, elapsed)`
+ * evaluated on both sides, so the bar the player watches and the bar the
+ * server judges are the same bar. Nothing about the fish's POSITION travels —
+ * only the seed, once, and the authoritative progress as a correction.
+ */
+export interface FishingStateMessage {
+  phase: 'waiting' | 'bite' | 'reeling' | 'caught' | 'escaped';
+  /** The fishing node being worked. */
+  placementId?: string;
+  /** Drift seed, sent when the bar opens. */
+  seed?: number;
+  /** Server time the reel began — the client's `elapsed` reference. */
+  startedAtMs?: number;
+  /** `bite`: when the hook window closes. A late press is a miss. */
+  hookUntilMs?: number;
+  /** Fish difficulty, so the client draws the right marker width and speed. */
+  driftSpeed?: number;
+  markerHalf?: number;
+  /** Authoritative progress 0..1 — the correction for the client's own run. */
+  progress?: number;
+  /** `caught`: what came out, for the hold-up beat and the toast. */
+  fish?: { itemId: string; qty: number };
+  profXp?: number;
+}
+
+export const encodeFishingState = (msg: FishingStateMessage, writer?: BinaryWriter): Uint8Array =>
+  encodeJsonEnvelope(ServerOp.FishingState, msg, writer);
+
+export const encodeProfessionSync = (
+  msg: ProfessionSyncMessage,
+  writer?: BinaryWriter,
+): Uint8Array => encodeJsonEnvelope(ServerOp.ProfessionSync, msg, writer);
 
 export interface SystemNoticeMessage {
   code: NoticeCode;

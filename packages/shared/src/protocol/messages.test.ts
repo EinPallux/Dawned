@@ -48,6 +48,13 @@ import {
   encodeInventorySync,
   encodeItemNotice,
   encodeItemOp,
+  encodeGatherOp,
+  encodeGatherState,
+  encodeNodeStates,
+  encodeProfessionSync,
+  type GatherStateMessage,
+  type NodeStatesMessage,
+  type ProfessionSyncMessage,
   encodeLootBags,
   encodeProgressSync,
   encodeVendorPanel,
@@ -56,6 +63,8 @@ import {
   type SnapshotMessage,
 } from './messages.js';
 import { parseItemOp } from './item-ops.js';
+import { parseGatherOp } from './gather-ops.js';
+import { GatherRefusal, PROFESSIONS, gatherRefusalText } from '../formulas/professions.js';
 import {
   AbilityRejectReason,
   ActionId,
@@ -571,5 +580,74 @@ describe('items (v10)', () => {
       prefer: 'ring2',
     });
     expect(parseItemOp({ kind: 'sort' })).toEqual({ kind: 'sort' });
+  });
+});
+
+describe('gathering (v13, P10)', () => {
+  it('gates client-authored gather ops through zod (the envelope is untrusted)', () => {
+    const start = { kind: 'start' as const, placementId: 'node_2015_2152' };
+    const packet = encodeGatherOp(start);
+    expect(peekOpcode(packet)).toBe(ClientOp.GatherOp);
+    expect(parseGatherOp(decodeJsonEnvelope(body(packet)))).toEqual(start);
+
+    expect(parseGatherOp({ kind: 'cancel' })).toEqual({ kind: 'cancel' });
+
+    // Unknown kinds, missing ids, extra keys and junk all refuse.
+    expect(parseGatherOp({ kind: 'start' })).toBeNull();
+    expect(parseGatherOp({ kind: 'start', placementId: '' })).toBeNull();
+    expect(parseGatherOp({ kind: 'start', placementId: 'a'.repeat(81) })).toBeNull();
+    expect(parseGatherOp({ kind: 'start', placementId: 'n', extra: 1 })).toBeNull();
+    expect(parseGatherOp({ kind: 'chop', placementId: 'n' })).toBeNull();
+    expect(parseGatherOp(null)).toBeNull();
+    expect(parseGatherOp('start')).toBeNull();
+  });
+
+  it('sends only the DEPLETED nodes — standing is the default', () => {
+    const message: NodeStatesMessage = {
+      depleted: [{ id: 'node_2015_2152', readyAtMs: 1_700_000_120_000 }],
+      serverTimeMs: 1_700_000_000_000,
+    };
+    const packet = encodeNodeStates(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.NodeStates);
+    expect(decodeJsonEnvelope<NodeStatesMessage>(body(packet))).toEqual(message);
+  });
+
+  it('round-trips a finished gather with its yield, proc and XP', () => {
+    const message: GatherStateMessage = {
+      phase: 'done',
+      placementId: 'node_2015_2152',
+      nodeId: 'node_woodcutting_birch',
+      profession: 'woodcutting',
+      tier: 1,
+      gained: [{ itemId: 'item_material_birchwood_logs', qty: 2 }],
+      proc: { itemId: 'item_material_resin', qty: 1 },
+      profXp: 12,
+    };
+    const packet = encodeGatherState(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.GatherState);
+    expect(decodeJsonEnvelope<GatherStateMessage>(body(packet))).toEqual(message);
+  });
+
+  it('carries a refusal reason rather than a bare failure', () => {
+    const message: GatherStateMessage = { phase: 'refused', reason: GatherRefusal.TierLocked };
+    const decoded = decodeJsonEnvelope<GatherStateMessage>(body(encodeGatherState(message)));
+    expect(decoded.reason).toBe('tier_locked');
+    expect(gatherRefusalText(decoded.reason ?? '')).toContain('profession level');
+  });
+
+  it('round-trips all four professions and the codex', () => {
+    const message: ProfessionSyncMessage = {
+      professions: PROFESSIONS.map((profession, index) => ({
+        profession,
+        level: index + 1,
+        xp: 10 * index,
+        xpToNext: 60,
+        tier: 1,
+      })),
+      codex: { woodcutting: ['item_material_birchwood_logs'], mining: [] },
+    };
+    const packet = encodeProfessionSync(message);
+    expect(peekOpcode(packet)).toBe(ServerOp.ProfessionSync);
+    expect(decodeJsonEnvelope<ProfessionSyncMessage>(body(packet))).toEqual(message);
   });
 });

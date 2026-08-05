@@ -31,9 +31,11 @@ import {
   validateItemDef,
   validateLootTableDef,
   validateVendorDef,
+  validateResourceNodeDef,
   type ItemDef,
   type LootTableDef,
   type VendorDef,
+  type ResourceNodeDef,
 } from '@dawned/shared';
 import {
   contentAbilities,
@@ -45,6 +47,7 @@ import {
   contentItems,
   contentLootTables,
   contentVendors,
+  contentResourceNodes,
 } from '@dawned/shared/schema';
 import type { Db } from '../db/client.js';
 
@@ -69,6 +72,8 @@ export interface GameContent {
   lootTables: Map<string, LootTableDef>;
   /** Vendors (P8) — stock + world anchors for the market posts. */
   vendors: Map<string, VendorDef>;
+  /** Resource-node definitions (P10) — what each kind of node yields. */
+  resourceNodes: Map<string, ResourceNodeDef>;
 }
 
 export const slotKey = (classId: ClassId, slot: number): string => `${classId}:${slot}`;
@@ -193,6 +198,20 @@ export const loadContent = async (db: Db): Promise<GameContent> => {
     }
   }
 
+  const resourceNodes = new Map<string, ResourceNodeDef>();
+  const resourceNodeRows = await db
+    .select()
+    .from(contentResourceNodes)
+    .where(eq(contentResourceNodes.status, 'published'));
+  for (const row of resourceNodeRows) {
+    try {
+      const def = validateResourceNodeDef(row.def);
+      resourceNodes.set(def.id, def);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+
   if (problems.length > 0) {
     throw new Error(`published content failed validation:\n  ${problems.join('\n  ')}`);
   }
@@ -286,5 +305,6 @@ export const loadContent = async (db: Db): Promise<GameContent> => {
     items,
     lootTables,
     vendors,
+    resourceNodes,
   };
 };

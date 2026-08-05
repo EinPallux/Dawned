@@ -15,6 +15,7 @@
 
 import { z } from 'zod';
 import { WORLD_SIZE_M } from '../world/map.js';
+import { nodePlacementSchema } from './resource-nodes.js';
 
 /** Slugs for editor-authored rows — same shape the content editors use. */
 export const placementSlug = z
@@ -185,6 +186,13 @@ export const placementsFileSchema = z
     ),
     pois: z.array(poiSchema),
     interactables: z.array(interactableSchema),
+    /**
+     * Resource nodes (P10). Thin placements pointing at `content_resource_nodes`
+     * definitions — see content/resource-nodes.ts for why the split. Defaulted
+     * rather than required so a bake published before P10 still parses; the
+     * server treats a missing array as "this world has no gathering yet".
+     */
+    nodes: z.array(nodePlacementSchema).default([]),
   })
   .strict();
 export type PlacementsFile = z.infer<typeof placementsFileSchema>;

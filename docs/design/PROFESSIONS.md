@@ -44,6 +44,47 @@ profession (collection-completion itch).
   sightseeing); ~15% of nodes in risky spots (inside camps, cliff ledges) with +1 proc bonus roll.
 - Density target per zone: ~25 tree, ~20 ore, ~20 herb, ~8 fish spots (counts in CONTENT_0.1.md).
 
+### 1.5 As built (P10-A) — a node's definition and its placements are separate rows
+
+The obvious shape is one row per tree. The shipped shape is the one enemies already use: a
+**definition** (`content_resource_nodes`) says what a birch IS — profession, tier, what it
+yields, what it can proc, how long the hold is, how long until it regrows, which model stands
+and which stump replaces it — and a **placement** in the map bake says where one is. Two
+hundred birches share one definition, so retuning birchwood is one row in the panel rather
+than two hundred, and a placement stays small enough that a forest costs the bake almost
+nothing.
+
+The gates are DETERMINISTIC end to end: nothing in `rollGather` can fail to produce the
+ordinary yield. §1.1's "no fail-rolls" is a rule the code cannot break rather than a number
+someone chose. The only randomness is which yield entry, how many, and whether the proc lands
+— and all three arrive as explicit rolls the caller supplies, so the panel's gathering preview
+and the live drop run the same function rather than two similar ones.
+
+### 1.6 As built (P10-E) — what is authored, and what is planted
+
+The **definitions** are complete: 21 resource nodes covering all five tiers of all four
+professions plus Dawnpetal, and 42 material/gem/proc/fish items, authored through the panel's
+Professions editor and frozen into migration 0017. Every node has its own model — one tree per
+tier, one flower per tier, a fish you can see under the surface per water, and five ore rocks
+whose atlas is tinted per ore, because the rock pack ships one grey boulder and five identical
+grey boulders would make mining tierless.
+
+The **placements** are T1–T2 only: 65 nodes across Dawnshore and the Verdant Weald, which are
+the zones that exist. T3–T5 nodes stand nowhere until P12 sculpts Emberwood, Sungraze and
+Ashcrag. Authoring coordinates for ground nobody has made would be content written to be
+deleted.
+
+Two things the shipped rows say that this document did not:
+
+- **Stone is a yield, not a proc.** §3 lists a "stone side-yield every gather"; it is a second
+  weighted entry on every vein rather than a proc, because a proc is a surprise and stone is
+  simply what mining mostly gives you.
+- **Dawnpetal was re-tiered.** P8 shipped it as an ilvl-4 Dawnshore loot material, before this
+  ladder existed. §4 makes it the Elder Grove's T5 rare, so the item was re-authored at ilvl 27
+  and the Dawnshore spore table now drops Meadowbell instead — the herb that shore actually
+  grows. Found by a test asserting that every node yields something from its own tier band, not
+  by reading the rows.
+
 ## 2. Woodcutting
 
 | Tier (gate)                                                                                        | Wood            | Zone             | Node models (assets)                       |
@@ -101,6 +142,54 @@ smaller markers. Success → catch splash + hold-up-the-fish beat (`PickUp_Table
 | Fish models: Quaternius Animated Fish Bundle (world ambience + catch hold-up); items get icons. |
 | Procs: Sunken Cache (mini loot table: gold, rings, messages in bottles → tiny treasure-map      |
 | curiosities pointing at Hidden Caches).                                                         |
+
+### 5.1 As built (P10-C) — a fishing SPOT is a resource node
+
+§5 says "waters carry fish tables, painted in the map editor". Shipped: a fishing
+spot is a resource node whose profession is `fishing`, and the node's yields ARE its
+fish table. That buys the whole of the rest of gathering for free — tier gates, XP,
+respawn, the codex, the first-tap claim — instead of a second, parallel system that
+would need its own version of each. Coast, river, pond and deep-sea variety comes from
+authoring different node definitions and placing them on the right water, which is the
+same expressiveness with tools that already exist; a waterbody-tagging brush is A-phase
+work the editor does not have.
+
+**Not shipped, deliberately:** the cast's aim reticle and hold-strength distance. The
+minigame §5 describes is bite + reel, and that is built; the cast is its entry, and
+"walk to the ripple and hold" keeps one interaction framework rather than two. Aiming
+is polish worth adding later, not a mechanic that is missing.
+
+The reel's numbers were set by MEASUREMENT, not taste. The first physics pass left the
+marker lagging so far behind the fish that the crudest possible strategy — hold whenever
+the marker is under the fish — could not land a T1 common in eighteen seconds at any
+seed. That is not difficulty, it is a broken minigame, and §5 wants the first fish a
+player ever hooks to be caught.
+
+### 5.2 As built (P10-F) — the measurement that was missing
+
+The second pass over-corrected, and only a run against a LIVE server found it. Every
+test above plays the bar with the decision and the step at the same instant; no player
+ever does. A press goes up, the server applies it on its next tick, and the bar the eye
+is steering is always a tick ahead of the bar being scored. Same crude strategy, twenty
+seeds, a T1 common:
+
+| command delay | landed | what that is                     |
+| ------------- | ------ | -------------------------------- |
+| 0 ticks       | 20/20  | all the offline test ever proved |
+| 1 tick        | 0/20   | what the game actually does      |
+
+The cause was the marker's TOP SPEED, not its accelerations: one delayed tick at 1.5/s
+carried it 0.075 — half a T1 catch zone — so the correction always arrived after the
+overshoot and the loop rang instead of settling. `MARKER_MAX_SPEED` is 0.9/s now, and
+the tests that pin "beatable" include a tick of delay, because the zero-latency version
+of that claim is not about this game. A T3 rare needs real anticipation to land; a T5
+legendary refuses every simple strategy tried, which may be right and is flagged as
+USER_QUESTIONS Q27 rather than guessed at.
+
+Proven end to end by `tools/smoke/fishing-probe.mjs`, which plays the real protocol at
+the tick rate. It is headless on purpose: the browser probe renders at ~4 fps in a
+container and steps the reel once a frame, so it could only ever measure the container.
+Feel remains the owner's end-of-project pass.
 
 ## 6. Why gather in 0.1.0 (pre-crafting honesty)
 

@@ -9,7 +9,13 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { FastifyInstance, RawServerDefault } from 'fastify';
 import type { Logger } from 'pino';
-import { PROTOCOL_VERSION, TICK_RATE } from '@dawned/shared';
+import {
+  MAX_PROFESSION_LEVEL,
+  PROFESSIONS,
+  PROTOCOL_VERSION,
+  TICK_RATE,
+  type Profession,
+} from '@dawned/shared';
 import { BUILD_ID } from '../build-id.js';
 import type { Config } from '../config.js';
 import type { MetricsRing } from '../metrics/ring.js';
@@ -121,6 +127,18 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     };
   });
 
+  /**
+   * Published resource-node definitions (P10): what each node standing in the
+   * baked map IS — its model, its depleted model, its profession and tier, and
+   * the hold time. The client already has WHERE every node stands (the bake's
+   * `placements.json`, which it streams with the terrain); this is the other
+   * half, and it is why the wire only ever needs to carry the exceptions —
+   * which nodes are currently taken.
+   */
+  app.get('/api/content/resource-nodes', () => {
+    return { nodes: [...content.resourceNodes.values()] };
+  });
+
   /** Minimal public status for the login screen's server pip. */
   app.get('/api/status', () => ({
     online: true,
@@ -196,6 +214,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
         terrain: next.terrain,
         spawn: next.meta.spawn,
         zones: next.zones,
+        nodes: next.nodes,
       });
       mapVersion = next.meta.mapVersion;
       gateway.broadcastSystemChat(
@@ -308,6 +327,86 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       return reply.code(404).send({ error: 'player not online' });
     }
     return reply.send({ ok: true, fraction });
+  });
+
+  /**
+   * Set an online player's gathering-profession level (P10).
+   *
+   * The verification run needs to reach a T3 node without gathering 1 → 13
+   * first, and the owner will want to check a tier gate without an afternoon
+   * of chopping. Same shape as `/ops/setlevel`, and audited the same way.
+   */
+  app.post('/ops/setprof', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as
+      { player?: unknown; profession?: unknown; level?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const profession = typeof body?.profession === 'string' ? body.profession.trim() : '';
+    const level =
+      typeof body?.level === 'number'
+        ? Math.min(MAX_PROFESSION_LEVEL, Math.max(1, Math.floor(body.level)))
+        : 0;
+    if (!player || !level) return reply.code(400).send({ error: 'player and level required' });
+    if (!(PROFESSIONS as readonly string[]).includes(profession)) {
+      return reply.code(400).send({ error: `profession must be one of ${PROFESSIONS.join(', ')}` });
+    }
+    if (!world.setProfessionByName(player, profession as Profession, level)) {
+      return reply.code(404).send({ error: 'player not online' });
+    }
+    return reply.send({ ok: true, profession, level });
+  });
+
+  /**
+   * Answer the next fishing bite for an online player (P10).
+   *
+   * The hook window is 0.8 s of reaction, which a headless browser cannot
+   * supply — one stalled frame eats the whole window, so a bot could never
+   * reach the reel bar the run exists to measure. This arms the SAME
+   * `hookFishing` the key calls, on the tick the bite opens: the lever is the
+   * reflex, never the outcome. Same shape as `/ops/hurt` keeping the P9 boss
+   * bot alive because it cannot dodge.
+   */
+  app.post('/ops/hook', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as { player?: unknown; bites?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const bites =
+      typeof body?.bites === 'number' ? Math.min(50, Math.max(1, Math.floor(body.bites))) : 1;
+    if (!player) return reply.code(400).send({ error: 'player required' });
+    if (!world.hookFishingByName(player, bites)) {
+      return reply.code(404).send({ error: 'player not online' });
+    }
+    return reply.send({ ok: true, armed: player, bites });
+  });
+
+  /**
+   * Bring every depleted resource node back at once (P10).
+   *
+   * Respawns are 90–180 s by design, which is right in play and tedious in a
+   * test: a run that has to wait three minutes to gather the same tree twice
+   * is a run nobody will execute.
+   */
+  app.post('/ops/respawnnodes', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    return reply.send({ ok: true, respawned: world.respawnAllNodes(), ...world.nodeStats });
   });
 
   /**

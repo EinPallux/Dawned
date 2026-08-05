@@ -61,6 +61,13 @@ export interface PlayerProgress {
   boltCounters: Map<string, number>;
   /** Zone slugs already discovered (loaded at spawn; grows in play). */
   zonesSeen: Set<string>;
+  /**
+   * Material item ids this character has ever gathered (P10 codex). Loaded at
+   * spawn from `character_discoveries` kind='codex'; the DB primary key is the
+   * real dedupe, so this set exists only to keep a repeat gather from asking
+   * the gateway to write a row it already has.
+   */
+  codexSeen: Set<string>;
   /** Serializes write-through saves so updates never interleave. */
   persistChain: Promise<void>;
 }
@@ -73,6 +80,7 @@ export const createPlayerProgress = (spec: {
   unspentSkillPoints: number;
   nodeRanks: Map<string, number>;
   zonesSeen: Set<string>;
+  codexSeen?: Set<string>;
 }): PlayerProgress => ({
   xp: spec.xp,
   gold: spec.gold,
@@ -86,6 +94,7 @@ export const createPlayerProgress = (spec: {
   resourceSpentAccum: 0,
   boltCounters: new Map(),
   zonesSeen: spec.zonesSeen,
+  codexSeen: spec.codexSeen ?? new Set<string>(),
   persistChain: Promise.resolve(),
 });
 

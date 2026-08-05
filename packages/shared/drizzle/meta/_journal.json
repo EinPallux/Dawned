@@ -113,6 +113,20 @@
       "when": 1785838087827,
       "tag": "0015_a3_editor_collections",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1785838087828,
+      "tag": "0016_p10_professions",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785838087829,
+      "tag": "0017_p10_gathering_seeds",
+      "breakpoints": true
     }
   ]
 }

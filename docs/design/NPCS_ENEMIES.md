@@ -85,9 +85,17 @@ KayKit Adventurers (humanoid enemies use Adventurer rigs + weapon bits).
 | Meadow Blob / Bog Blob          | 2–4 | Grunt (slow, bouncy) | Q Green/Pink Blob           |
 | Young Mushnub                   | 3–5 | Grunt                | Q Mushnub                   |
 | Cliff Pigeon (aggressive)       | 3–4 | Swarm (dive)         | Q Pigeon                    |
-| Bandit Forager                  | 4–6 | Ranged (thrown)      | KA Peasant-look + dagger    |
+| Bandit Forager                  | 4–6 | Ranged (thrown)      | Q Orc[^forager]             |
 | Spore Lobber (P5 test camp)     | 3–5 | Ranged (spore bolt)  | Q Mushnub (until KA bandit) |
 | **Mossback** (mini-boss, quest) | 6   | Elite Grunt          | Q Glub Evolved (scale 1.6)  |
+
+[^forager]:
+    **As built (P9-C, owner decision 2026-08-05 — USER_QUESTIONS Q22):** the KayKit Adventurers
+    peasant this row originally called for is not in `assets/`, and the closest human-looking
+    stand-in in the packs we do have (`Tribal.glb`) is rigged in the flyer family with no `Idle`
+    or `Walk` clip, so it would have T-posed on the ground. Shipped as Quaternius `Orc.glb` — a
+    camp of orcish foragers reads fine on the Dawnshore. Swapping to a human bandit later is one
+    `modelRef` in the Enemies editor plus the pack on disk; no code.
 
 ### Verdant Weald (6–12)
 

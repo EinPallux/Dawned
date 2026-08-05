@@ -52,8 +52,36 @@ import {
   type EquipSlot,
   type ItemOp,
   type ItemStack,
+  GatherRefusal,
+  gatherXp,
+  type GatherOp,
+  type Profession,
+  type NodePlacement,
+  type ResourceNodeDef,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
+import {
+  buildNodes,
+  channelBreak,
+  finishGather,
+  releaseClaim,
+  respawnNodes,
+  startGather,
+  type GatherChannel,
+  type ServerNode,
+} from './nodes.js';
+import { awardProfessionXp, createProfessions, professionLevel } from './professions.js';
+import {
+  fishingExpired,
+  fishingXp,
+  hookFishing,
+  startFishing,
+  stepFishing,
+  type FishingSession,
+} from './fishing.js';
+
+/** Ticks between authoritative reel-progress corrections (20 Hz → ~4/s). */
+const FISHING_SYNC_TICKS = 5;
 import { ServerEnemy } from './enemy.js';
 import type { GameContent } from '../content/loader.js';
 import {
@@ -151,8 +179,38 @@ export class World {
     private readonly rng: Rng = Math.random,
     /** Zone polygons (P7 zone-entry XP; baked zones.json, empty in tests). */
     private zonePolys: readonly Zone[] = [],
+    /** Resource-node placements from the bake (P10; empty in tests). */
+    nodePlacements: readonly NodePlacement[] = [],
   ) {
     if (content) this.populateFromSpawners();
+    this.seedNodes(nodePlacements);
+  }
+
+  /**
+   * (Re)build the resource-node set from a bake's placements.
+   *
+   * Orphans — a placement whose definition is gone — are logged and dropped
+   * rather than throwing: publish already cross-checks node refs, so reaching
+   * here means map and content drifted between two publishes, and taking the
+   * world down over one stale rock would turn a content typo into an outage.
+   */
+  private seedNodes(placements: readonly NodePlacement[]): void {
+    const built = buildNodes(
+      placements,
+      { defs: this.content?.resourceNodes ?? new Map() },
+      (x, z) => this.terrain.heightAt(x, z),
+    );
+    this.nodes.clear();
+    for (const [id, node] of built.nodes) this.nodes.set(id, node);
+    this.orphanNodeRefs = built.orphans;
+  }
+
+  /** Node ids in the bake with no published definition — surfaced on health. */
+  private orphanNodeRefs: string[] = [];
+  get nodeStats(): { total: number; depleted: number; orphans: number } {
+    let depleted = 0;
+    for (const node of this.nodes.values()) if (node.readyAtMs !== null) depleted++;
+    return { total: this.nodes.size, depleted, orphans: this.orphanNodeRefs.length };
   }
 
   /**
@@ -169,7 +227,12 @@ export class World {
    * Anyone the new terrain leaves under the ground gets pushed up by it; anyone
    * left over open sea swims, which is honest and visible.
    */
-  applyMap(next: { terrain: TerrainSampler; spawn: SpawnPoint; zones: readonly Zone[] }): {
+  applyMap(next: {
+    terrain: TerrainSampler;
+    spawn: SpawnPoint;
+    zones: readonly Zone[];
+    nodes?: readonly NodePlacement[];
+  }): {
     enemies: number;
   } {
     this.terrain = next.terrain;
@@ -179,6 +242,12 @@ export class World {
     this.tickets.length = 0;
     this.campIndex.clear();
     this.populateFromSpawners();
+    // Nodes re-seed against the new ground for the same reason camps do: a
+    // birch authored on a hill that just became a bay has to sit on the bay.
+    // Depletion timers are NOT carried across — a republish is a new world, and
+    // preserving "this tree is stumped" across a bake that may not contain that
+    // tree is more surprising than a forest that comes back standing.
+    this.seedNodes(next.nodes ?? []);
     for (const player of this.players.values()) {
       const m = player.movement;
       m.y = this.terrain.heightAt(m.x, m.z);
@@ -201,6 +270,11 @@ export class World {
     };
   }
 
+  /** Published resource-node definitions (P10) — empty until content lands. */
+  resourceNodeDefs(): ReadonlyMap<string, ResourceNodeDef> {
+    return this.content?.resourceNodes ?? new Map();
+  }
+
   /** Published item/loot/vendor rows (empty maps until P8 content lands). */
   itemContent(): ItemContent {
     return {
@@ -209,6 +283,13 @@ export class World {
       vendors: this.content?.vendors ?? new Map(),
     };
   }
+
+  /** Resource nodes by placement id (P10) — position from the bake, state here. */
+  readonly nodes = new Map<string, ServerNode>();
+  /** In-flight gather holds, one per player (you cannot chop two trees). */
+  private readonly gathering = new Map<number, GatherChannel>();
+  /** In-flight fishing attempts (P10-C) — a gather hold with a minigame. */
+  private readonly fishing = new Map<number, FishingSession>();
 
   /** Live loot bags by id — the gateway reads them to build LootBags. */
   readonly lootBags = new Map<number, LootBag>();
@@ -244,6 +325,481 @@ export class World {
       if (player.accountId === accountId) return player;
     }
     return undefined;
+  }
+
+  // -------------------------------------------------------------------------
+  // Gathering (P10)
+  // -------------------------------------------------------------------------
+
+  /**
+   * One tick of gathering: drain intents, then advance the holds.
+   *
+   * Order matters. Intents are drained FIRST so a start becomes a channel this
+   * tick and can only complete on a later one — resolving both in the same pass
+   * would make a 3 s hold finish instantly for anyone who could send two
+   * messages between ticks, which is a duplication bug wearing a timer's
+   * clothes.
+   */
+  private stepGathering(nowMs: number, events: CombatEvent[]): void {
+    const defs = this.content?.resourceNodes ?? new Map<string, ResourceNodeDef>();
+
+    for (const request of this.pendingGatherOps.splice(0)) {
+      const player = this.players.get(request.playerId);
+      if (!player) continue;
+      if (request.op.kind === 'cancel') {
+        this.endGather(player.id, 'cancelled', undefined, events);
+        this.endFishing(player.id, events);
+        continue;
+      }
+      if (request.op.kind === 'hook') {
+        // Answering a bite. The SERVER decides whether the press was in the
+        // window it opened — a late one must not get to argue it was early.
+        const session = this.fishing.get(player.id);
+        if (session && hookFishing(session, nowMs)) {
+          events.push({
+            type: 'fishing-state',
+            playerId: player.id,
+            phase: 'reeling',
+            placementId: session.placementId,
+            seed: session.seed,
+            startedAtMs: session.reelStartedAtMs,
+            driftSpeed: session.driftSpeed,
+            markerHalf: session.markerHalf,
+            progress: 0,
+          });
+        }
+        continue;
+      }
+      // Already holding something? Treat a new start as "switch": drop the old
+      // claim first, or a player who re-clicks mid-hold locks two nodes.
+      this.endGather(player.id, 'cancelled', undefined, events);
+      const node = this.nodes.get(request.op.placementId);
+      const def = node ? defs.get(node.nodeId) : undefined;
+      const level = professionLevel(player.professions, def?.profession ?? 'woodcutting');
+      // Anything that already owns the character: dead, mid-cast, mid-channel,
+      // or a committed swing waiting for its contact frame.
+      const busy =
+        player.dead ||
+        player.abilityMachine.cast !== null ||
+        player.abilityMachine.channel !== null ||
+        player.pendingAbility !== null;
+      const result = startGather(player, node, def, level, nowMs, busy);
+      if (!result.ok || !result.channel) {
+        events.push({
+          type: 'gather-state',
+          playerId: player.id,
+          phase: 'refused',
+          placementId: request.op.placementId,
+          reason: result.refusal ?? GatherRefusal.Unknown,
+        });
+        continue;
+      }
+      // A fishing spot passes the SAME gates (range, tier, claim) and then
+      // runs a minigame instead of a timer — one interaction framework, two
+      // kinds of channel, rather than two ways to touch the world.
+      if (def && def.profession === 'fishing') {
+        const session = startFishing(
+          def,
+          result.channel.placementId,
+          Math.floor(this.rng() * 0xffff_ffff),
+          nowMs,
+          player.movement.x,
+          player.movement.z,
+          { fishPick: this.rng(), fishQty: this.rng() },
+          this.itemContent().items,
+        );
+        this.fishing.set(player.id, session);
+        this.gathering.set(player.id, result.channel);
+        events.push({
+          type: 'fishing-state',
+          playerId: player.id,
+          phase: 'waiting',
+          placementId: session.placementId,
+          seed: session.seed,
+        });
+        continue;
+      }
+      this.gathering.set(player.id, result.channel);
+      events.push({
+        type: 'gather-state',
+        playerId: player.id,
+        phase: 'start',
+        placementId: result.channel.placementId,
+        nodeId: result.channel.nodeId,
+        profession: result.channel.profession,
+        tier: result.channel.tier,
+        startedAtMs: result.channel.startedAtMs,
+        endsAtMs: result.channel.endsAtMs,
+      });
+    }
+
+    // Advance the in-flight holds.
+    for (const [playerId, channel] of [...this.gathering]) {
+      const player = this.players.get(playerId);
+      if (!player) {
+        releaseClaim(this.nodes.get(channel.placementId), playerId);
+        this.gathering.delete(playerId);
+        continue;
+      }
+      const node = this.nodes.get(channel.placementId);
+      const broke = channelBreak(channel, player, node);
+      if (broke) {
+        this.endGather(playerId, 'cancelled', broke, events);
+        this.endFishing(playerId, events);
+        continue;
+      }
+      // Fishing holds are advanced by `stepFishingSessions`, not by a clock.
+      if (this.fishing.has(playerId)) continue;
+      if (nowMs < channel.endsAtMs) continue;
+
+      const def = defs.get(channel.nodeId);
+      if (!def || !node) {
+        this.endGather(playerId, 'cancelled', GatherRefusal.Unknown, events);
+        continue;
+      }
+      const level = professionLevel(player.professions, def.profession);
+      const award = finishGather(
+        def,
+        level,
+        {
+          yieldPick: this.rng(),
+          yieldQty: this.rng(),
+          proc: this.rng(),
+          procPick: this.rng(),
+          procQty: this.rng(),
+        },
+        nowMs,
+      );
+
+      // Deplete BEFORE handing out anything: if the bag write throws, the tree
+      // is still gone, which is the safe direction. The reverse would print
+      // materials from a node that stayed up.
+      node.readyAtMs = award.readyAtMs;
+      node.claimedBy = 0;
+      this.gathering.delete(playerId);
+      events.push({ type: 'nodes-dirty', placementIds: [node.id] });
+
+      const itemDeps = { content: this.itemContent(), bags: this.lootBags, nowMs, events };
+      const gained: { itemId: string; qty: number }[] = [];
+      for (const stack of award.yields) {
+        const leftover = grantItem(player, stack.itemId, stack.qty, itemDeps);
+        if (stack.qty - leftover > 0)
+          gained.push({ itemId: stack.itemId, qty: stack.qty - leftover });
+      }
+      let proc: { itemId: string; qty: number } | null = null;
+      if (award.proc) {
+        const leftover = grantItem(player, award.proc.itemId, award.proc.qty, itemDeps);
+        if (award.proc.qty - leftover > 0) {
+          proc = { itemId: award.proc.itemId, qty: award.proc.qty - leftover };
+        }
+      }
+
+      const result = awardProfessionXp(player.professions, def.profession, award.profXp);
+      events.push({ type: 'professions-dirty', playerId });
+      if (result.levelsGained > 0) {
+        events.push({
+          type: 'profession-level',
+          playerId,
+          profession: def.profession,
+          level: result.level,
+        });
+      }
+      // The CHARACTER trickle comes from PROGRESSION.md's own formula, applied
+      // through the same award path kills use so the xpRate lever covers it.
+      awardXp(player, gatherXp(def.tier), XpSource.Gather, this.progressionContent(), events);
+
+      // Codex: first time this material has ever been gathered by this
+      // character. The dedupe lives in the DB's primary key; this only decides
+      // whether to bother the gateway with a write.
+      for (const stack of [...gained, ...(proc ? [proc] : [])]) {
+        if (player.progress.codexSeen.has(stack.itemId)) continue;
+        player.progress.codexSeen.add(stack.itemId);
+        events.push({
+          type: 'discovery',
+          playerId,
+          kind: 'codex',
+          refId: stack.itemId,
+          label: this.itemContent().items.get(stack.itemId)?.name ?? stack.itemId,
+        });
+      }
+
+      events.push({
+        type: 'gather-state',
+        playerId,
+        phase: 'done',
+        placementId: node.id,
+        nodeId: def.id,
+        profession: def.profession,
+        tier: def.tier,
+        gained,
+        proc,
+        profXp: award.profXp,
+      });
+    }
+
+    for (const playerId of this.pendingProfessionSync.splice(0)) {
+      if (this.players.has(playerId)) events.push({ type: 'professions-dirty', playerId });
+    }
+
+    // Regrowth. Only the ids that changed travel; the gateway decides who is
+    // close enough to care.
+    const back = respawnNodes(this.nodes, nowMs);
+    const forced = this.pendingNodeSync.splice(0);
+    const dirty = forced.length > 0 ? [...new Set([...back, ...forced])] : back;
+    if (dirty.length > 0) events.push({ type: 'nodes-dirty', placementIds: dirty });
+  }
+
+  /**
+   * Advance every fishing attempt by one tick.
+   *
+   * The Reel button rides the input stream, so the server steps the SAME bar
+   * the client is drawing, from the same seed. Its progress is the authority;
+   * the client's is a prediction that the periodic state message corrects.
+   */
+  private stepFishingSessions(
+    nowMs: number,
+    events: CombatEvent[],
+    reelBits: ReadonlyMap<number, boolean[]>,
+  ): void {
+    const defs = this.content?.resourceNodes ?? new Map<string, ResourceNodeDef>();
+    for (const [playerId, session] of [...this.fishing]) {
+      const player = this.players.get(playerId);
+      if (!player || fishingExpired(session, nowMs)) {
+        this.endFishing(playerId, events);
+        this.endGather(playerId, 'cancelled', GatherRefusal.Busy, events);
+        continue;
+      }
+      // One step per intent CONSUMED this tick, in order — the same sequence
+      // of presses the client stepped its own bar with. An empty list is a
+      // starved tick: hold what we last had, which is what the movement code
+      // does with the same gap.
+      const bits = reelBits.get(playerId);
+      const presses =
+        bits && bits.length > 0 ? bits : [(player.heldButtons & InputButton.Reel) !== 0];
+      let tick = { changed: false, resolved: null as 'caught' | 'escaped' | null };
+      for (const holding of presses) {
+        const step = stepFishing(session, holding, nowMs, TICK_MS);
+        tick = { changed: tick.changed || step.changed, resolved: step.resolved ?? tick.resolved };
+        if (step.resolved) break;
+      }
+      // `/ops/hook`: answer the bite on the tick it opens. It runs the SAME
+      // `hookFishing` the key does, inside the same window — the lever supplies
+      // the reflex, not the outcome.
+      const armed = this.autoHook.get(playerId) ?? 0;
+      if (session.phase === 'bite' && armed > 0 && hookFishing(session, nowMs)) {
+        if (armed <= 1) this.autoHook.delete(playerId);
+        else this.autoHook.set(playerId, armed - 1);
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: 'reeling',
+          placementId: session.placementId,
+          seed: session.seed,
+          startedAtMs: session.reelStartedAtMs,
+          driftSpeed: session.driftSpeed,
+          markerHalf: session.markerHalf,
+          progress: 0,
+        });
+        continue;
+      }
+      if (tick.resolved === 'caught') {
+        const def = defs.get(session.nodeId);
+        const node = this.nodes.get(session.placementId);
+        const level = professionLevel(player.professions, 'fishing');
+        const itemDeps = { content: this.itemContent(), bags: this.lootBags, nowMs, events };
+        const leftover = session.fishItemId
+          ? grantItem(player, session.fishItemId, session.fishQty, itemDeps)
+          : session.fishQty;
+        const landed = session.fishQty - leftover;
+        const xp = fishingXp(session, level);
+        if (xp > 0) {
+          const award = awardProfessionXp(player.professions, 'fishing', xp);
+          events.push({ type: 'professions-dirty', playerId });
+          if (award.levelsGained > 0) {
+            events.push({
+              type: 'profession-level',
+              playerId,
+              profession: 'fishing',
+              level: award.level,
+            });
+          }
+        }
+        awardXp(player, gatherXp(session.tier), XpSource.Gather, this.progressionContent(), events);
+        // A caught fish depletes the spot the same way a chopped tree does —
+        // the ripples go out, and it comes back on its own timer.
+        if (node && def) {
+          node.readyAtMs = nowMs + def.respawnMs;
+          node.claimedBy = 0;
+          events.push({ type: 'nodes-dirty', placementIds: [node.id] });
+        }
+        if (landed > 0 && !player.progress.codexSeen.has(session.fishItemId)) {
+          player.progress.codexSeen.add(session.fishItemId);
+          events.push({
+            type: 'discovery',
+            playerId,
+            kind: 'codex',
+            refId: session.fishItemId,
+            label: this.itemContent().items.get(session.fishItemId)?.name ?? session.fishItemId,
+          });
+        }
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: 'caught',
+          placementId: session.placementId,
+          progress: 1,
+          fish: { itemId: session.fishItemId, qty: landed },
+          profXp: xp,
+        });
+        this.fishing.delete(playerId);
+        this.gathering.delete(playerId);
+        continue;
+      }
+      if (tick.resolved === 'escaped') {
+        // The spot is NOT depleted: a fish that got away leaves the water
+        // where it was, so the answer to a miss is to cast again.
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: 'escaped',
+          placementId: session.placementId,
+          progress: session.reel.progress,
+        });
+        this.endFishing(playerId, events);
+        this.endGather(playerId, 'cancelled', undefined, events);
+        continue;
+      }
+      if (tick.changed) {
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: session.phase === 'bite' ? 'bite' : 'waiting',
+          placementId: session.placementId,
+          seed: session.seed,
+          hookUntilMs: session.hookUntilMs,
+        });
+      } else if (session.phase === 'reeling' && this.tickCounter % FISHING_SYNC_TICKS === 0) {
+        // A periodic correction rather than one per tick: the client is
+        // running the same bar, so this only has to catch drift.
+        events.push({
+          type: 'fishing-state',
+          playerId,
+          phase: 'reeling',
+          placementId: session.placementId,
+          seed: session.seed,
+          startedAtMs: session.reelStartedAtMs,
+          driftSpeed: session.driftSpeed,
+          markerHalf: session.markerHalf,
+          progress: session.reel.progress,
+        });
+      }
+    }
+  }
+
+  /** Drop a fishing attempt (cancel, break, disconnect). */
+  private endFishing(playerId: number, events: CombatEvent[]): void {
+    const session = this.fishing.get(playerId);
+    if (!session) return;
+    this.fishing.delete(playerId);
+    events.push({
+      type: 'fishing-state',
+      playerId,
+      phase: 'escaped',
+      placementId: session.placementId,
+    });
+  }
+
+  /** Drop a hold without completing it. Safe to call when there is none. */
+  private endGather(
+    playerId: number,
+    phase: 'cancelled',
+    reason: GatherRefusal | undefined,
+    events: CombatEvent[],
+  ): void {
+    const channel = this.gathering.get(playerId);
+    if (!channel) return;
+    releaseClaim(this.nodes.get(channel.placementId), playerId);
+    this.gathering.delete(playerId);
+    events.push(
+      reason
+        ? { type: 'gather-state', playerId, phase, placementId: channel.placementId, reason }
+        : { type: 'gather-state', playerId, phase, placementId: channel.placementId },
+    );
+  }
+
+  /** A disconnect must not leave a node claimed for ever. */
+  releaseGather(playerId: number): void {
+    const channel = this.gathering.get(playerId);
+    if (!channel) return;
+    releaseClaim(this.nodes.get(channel.placementId), playerId);
+    this.gathering.delete(playerId);
+  }
+
+  /** Ops lever: set an online player's profession level by character name. */
+  setProfessionByName(name: string, profession: Profession, level: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      player.professions.set(profession, { level, xp: 0 });
+      this.pendingProfessionSync.push(player.id);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Ops lever: answer the bite for an online player (`/ops/hook`).
+   *
+   * The hook window is 0.8 s of human reaction time, which is the one thing a
+   * headless bot cannot supply — a browser stalling on chunk geometry loses a
+   * whole window to a single frame. This queues the SAME `hook` op the key
+   * sends, so everything downstream (the window check, the reel physics, the
+   * catch, the xp) is the real path; only the reflex is stood in for. Same
+   * argument as `/ops/hurt` keeping the P9 boss bot alive because it cannot
+   * dodge (ARCHITECTURE.md §3).
+   */
+  hookFishingByName(name: string, bites: number): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      this.autoHook.set(player.id, Math.max(1, bites));
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * How many more bites are answered for a player (`/ops/hook`). A count
+   * rather than a flag because a fish that gets away is answered by casting
+   * again, so a run that wants to land one needs several arms, and a lever
+   * that never expired would be a mode the world could get stuck in.
+   */
+  private readonly autoHook = new Map<number, number>();
+
+  /** Profession syncs raised outside the tick (ops levers) — flushed in step. */
+  private readonly pendingProfessionSync: number[] = [];
+
+  /** Node respawns raised outside the tick (ops lever) — flushed in step. */
+  private readonly pendingNodeSync: string[] = [];
+
+  /**
+   * Ops lever: bring every depleted node back at once (`/ops/respawnnodes`).
+   *
+   * The ids have to be QUEUED for the next tick, not just cleared here: a
+   * client's copy of the depleted set is an exception list it only updates
+   * when told, so a silent server-side respawn leaves connected players
+   * looking at a stump they cannot gather until something else happens to
+   * dirty the same node.
+   */
+  respawnAllNodes(): number {
+    let count = 0;
+    for (const node of this.nodes.values()) {
+      if (node.readyAtMs !== null) {
+        node.readyAtMs = null;
+        node.claimedBy = 0;
+        this.pendingNodeSync.push(node.id);
+        count++;
+      }
+    }
+    return count;
   }
 
   // -------------------------------------------------------------------------
@@ -364,7 +920,11 @@ export class World {
       unspentSkillPoints: number;
       nodeRanks: Map<string, number>;
       zonesSeen: Set<string>;
+      /** Material ids already in the codex (P10) — first-gather dedupe. */
+      codexSeen?: Set<string>;
     };
+    /** Persisted gathering professions (P10); absent = all four at level 1. */
+    professions?: readonly { profession: string; level: number; xp: number }[];
     /** Persisted bag + paper-doll (P8); absent = an empty pack. */
     inventory?: {
       bag: Map<number, ItemStack>;
@@ -411,6 +971,7 @@ export class World {
       spawn.yaw,
       spec.hp ?? null,
     );
+    player.professions = createProfessions(spec.professions ?? []);
     // Worn gear contributes to the very same fold, so price it first.
     refreshEquipmentBonus(player.items, this.itemContent().items);
     // Fold the allocated tree into stats/pools/defs (never refills — the
@@ -482,6 +1043,14 @@ export class World {
     // Bounded: a spamming client fills its own queue, not the server's heap.
     if (this.pendingItemOps.length > 512) return;
     this.pendingItemOps.push({ playerId, op });
+  }
+
+  /** Gather intents (P10) ride the tick like item drags do. */
+  private readonly pendingGatherOps: { playerId: number; op: GatherOp }[] = [];
+
+  queueGatherOp(playerId: number, op: GatherOp): void {
+    if (this.pendingGatherOps.length > 256) return;
+    this.pendingGatherOps.push({ playerId, op });
   }
 
   queueAllocateStats(playerId: number, deltas: AttributeSpread): void {
@@ -716,6 +1285,12 @@ export class World {
       }
     }
 
+    // 0d. Gathering (P10). Intents first, then the in-flight holds, so a start
+    // and its completion can never land in the same tick — a 3 s channel that
+    // resolved instantly would be a duplication bug wearing a timer's clothes.
+    // Fishing is NOT stepped here; it needs this tick's buttons (see step 1c).
+    this.stepGathering(nowMs, events);
+
     // Bags rot after 60 s (§3); whoever could see one re-syncs.
     for (const playerId of expireLootBags(this.lootBags, nowMs)) {
       events.push({ type: 'loot-dirty', playerId });
@@ -760,8 +1335,24 @@ export class World {
     };
 
     // 1. Player movement — re-simulated from client intents with the shared step.
+    // The Reel bit for every intent consumed this tick, per player. The reel
+    // is the one system driven by a HELD button, and sampling it once per tick
+    // is a lossy resample of the client's command stream: a catch-up tick that
+    // consumes two intents would throw one press away, and a starved tick
+    // repeats the last one. Either way the server's marker drifts out of phase
+    // with the bar the player is watching, and a bang-bang input around a
+    // moving target turns a one-tick phase error into an oscillation that
+    // never settles inside the catch zone. Measured before this: the same
+    // strategy that lands 20/20 fish offline landed 0/12 through the server.
+    const reelBits = new Map<number, boolean[]>();
     for (const player of this.players.values()) {
       const intents = player.takeInputsForTick();
+      if (this.fishing.has(player.id)) {
+        reelBits.set(
+          player.id,
+          intents.map((intent) => (intent.buttons & InputButton.Reel) !== 0),
+        );
+      }
       for (const intent of intents) {
         // Death locks controls: the body stays put until respawn (§10).
         if (player.dead) {
@@ -889,6 +1480,16 @@ export class World {
         }
       }
     }
+
+    // 1c. Fishing (P10). It has to run AFTER the input phase, because the reel
+    // is the only system driven by a HELD button: `player.heldButtons` is set
+    // by `consumeInputs` in step 1, so stepping the bar before that scored the
+    // player's press one tick late, every tick. The client draws its bar from
+    // the press immediately and the server scored it from the press before —
+    // two bars that slowly disagree, and a measured run showed the client at
+    // 0.31 progress while the server sat at 0.04. "The marker is on the fish
+    // and the game says you missed" is the worst thing this minigame can do.
+    this.stepFishingSessions(nowMs, events, reelBits);
 
     // 2. Ability pipeline: pending contacts resolve, projectiles fly.
     const abilityDeps = this.content

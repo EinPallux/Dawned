@@ -47,6 +47,12 @@ export interface HudStats {
   snapshotAgeMs: number;
   /** Smoothed arrival gap between snapshots (healthy ≈ 50 ms). */
   snapshotIntervalMs: number;
+  /**
+   * The server's clock right now (P10). Bars that promise WHEN something
+   * lands — the gather hold — fill against this rather than against local
+   * time, because their two ends are server timestamps.
+   */
+  serverNowMs: number;
   bytesIn: number;
   bytesOut: number;
   /** Lag-lab injection currently active (all zero = off). */
@@ -97,7 +103,7 @@ export interface HudStats {
   unspentStatPoints: number;
   unspentSkillPoints: number;
   /** Which panel is open (micro-menu tiles light up). */
-  openPanel: 'character' | 'skills' | 'inventory' | 'vendor' | null;
+  openPanel: 'character' | 'skills' | 'inventory' | 'vendor' | 'professions' | null;
 }
 
 export class Hud {
@@ -169,6 +175,17 @@ export class Hud {
   private readonly correctionHistory: number[] = [];
   // --- progression (P7-D) ---------------------------------------------------
   private readonly toastsEl: HTMLElement;
+  private readonly gatherEl!: HTMLElement;
+  private readonly gatherFill!: HTMLElement;
+  private readonly gatherName!: HTMLElement;
+  private readonly fishEl!: HTMLElement;
+  private readonly fishLine!: HTMLElement;
+  private readonly fishBar!: HTMLElement;
+  private readonly fishZone!: HTMLElement;
+  private readonly fishMarker!: HTMLElement;
+  private readonly fishProgress!: HTMLElement;
+  /** The open gather hold, so `update` can advance its fill each frame. */
+  private gatherBar: { label: string; startedAtMs: number; endsAtMs: number } | null = null;
   private readonly xpFillEl: HTMLElement;
   private readonly xpLabelEl: HTMLElement;
   private readonly xpBarEl: HTMLElement;
@@ -193,8 +210,9 @@ export class Hud {
     private readonly onChatSubmit: (text: string) => void,
     private readonly onChatFocusChange: (focused: boolean) => void,
     private readonly onRespawn: () => void = () => undefined,
-    private readonly onMenuAction: (panel: 'character' | 'skills' | 'inventory') => void = () =>
-      undefined,
+    private readonly onMenuAction: (
+      panel: 'character' | 'skills' | 'inventory' | 'professions',
+    ) => void = () => undefined,
   ) {
     this.root = document.createElement('div');
     this.root.className = 'hud';
@@ -230,6 +248,21 @@ export class Hud {
           <div class="hud-cast-fill" data-cast-fill></div>
           <div class="hud-cast-ticks" data-cast-ticks></div>
           <span class="hud-cast-name" data-cast-name></span>
+        </div>
+        <!-- Gathering (P10): the hold bar, and the fishing minigame above it.
+             Both sit where the cast bar does, because they are the same beat —
+             a thing you are doing that takes time and can be interrupted. -->
+        <div class="hud-gather" data-gather hidden>
+          <div class="hud-gather-fill" data-gather-fill></div>
+          <span class="hud-gather-name" data-gather-name></span>
+        </div>
+        <div class="hud-fish" data-fish hidden>
+          <div class="hud-fish-line" data-fish-line></div>
+          <div class="hud-fish-bar" data-fish-bar hidden>
+            <div class="hud-fish-zone" data-fish-zone></div>
+            <div class="hud-fish-marker" data-fish-marker></div>
+            <div class="hud-fish-progress" data-fish-progress></div>
+          </div>
         </div>
         <div class="hud-cluster">
           <div class="hud-globe is-hp">
@@ -272,6 +305,10 @@ export class Hud {
           <span class="hud-micro-glyph">▣</span>
           <span class="hud-micro-label">Pack · I</span>
         </button>
+        <button class="hud-micro" data-micro="professions" type="button">
+          <span class="hud-micro-glyph">⛏</span>
+          <span class="hud-micro-label">Professions · J</span>
+        </button>
         <span class="hud-purse" data-purse hidden></span>
       </div>
       <!-- World interaction prompt (P8): loot bags and market posts. -->
@@ -307,6 +344,15 @@ export class Hud {
     this.castFill = this.query('[data-cast-fill]');
     this.castName = this.query('[data-cast-name]');
     this.castTicksEl = this.query('[data-cast-ticks]');
+    this.gatherEl = this.query('[data-gather]');
+    this.gatherFill = this.query('[data-gather-fill]');
+    this.gatherName = this.query('[data-gather-name]');
+    this.fishEl = this.query('[data-fish]');
+    this.fishLine = this.query('[data-fish-line]');
+    this.fishBar = this.query('[data-fish-bar]');
+    this.fishZone = this.query('[data-fish-zone]');
+    this.fishMarker = this.query('[data-fish-marker]');
+    this.fishProgress = this.query('[data-fish-progress]');
     this.ccEl = this.query('[data-cc]');
     this.reticleEl = this.query('[data-reticle]');
     this.attuneEl = this.query('[data-attune]');
@@ -331,7 +377,7 @@ export class Hud {
     this.microBadgeC = this.query('[data-badge-c]');
     this.microBadgeK = this.query('[data-badge-k]');
     for (const tile of this.root.querySelectorAll<HTMLElement>('[data-micro]')) {
-      const panel = tile.dataset.micro as 'character' | 'skills' | 'inventory';
+      const panel = tile.dataset.micro as 'character' | 'skills' | 'inventory' | 'professions';
       this.microTiles.set(panel, tile);
       tile.addEventListener('click', () => {
         this.onMenuAction(panel);
@@ -391,6 +437,60 @@ export class Hud {
   setInteractPrompt(text: string | null): void {
     this.interactEl.hidden = text === null;
     if (text !== null) this.interactEl.textContent = text;
+  }
+
+  /**
+   * The gather hold bar (P10 §1.1).
+   *
+   * Driven by the server's `startedAtMs`/`endsAtMs` rather than by counting
+   * frames — same contract the cast bar uses, and for the same reason: a
+   * stutter must not finish the bar early, because the bar is a promise about
+   * when the thing lands.
+   */
+  setGatherBar(bar: { label: string; startedAtMs: number; endsAtMs: number } | null): void {
+    this.gatherEl.hidden = bar === null;
+    this.gatherBar = bar;
+    if (bar) this.gatherName.textContent = bar.label;
+  }
+
+  /**
+   * The fishing minigame (§5). One line for the states with nothing to aim at
+   * (waiting, bite) and the bar for the one that does.
+   *
+   * The catch zone is drawn as a WIDTH around the fish rather than as a fish
+   * icon plus a separate tolerance, because the tolerance IS the thing the
+   * player is aiming at — showing the fish without it would be showing a
+   * target and hiding where the target ends.
+   */
+  setFishing(
+    state: {
+      phase: 'waiting' | 'bite' | 'reeling';
+      fish?: number;
+      marker?: number;
+      markerHalf?: number;
+      progress?: number;
+      onTarget?: boolean;
+    } | null,
+  ): void {
+    this.fishEl.hidden = state === null;
+    if (!state) return;
+    const reeling = state.phase === 'reeling';
+    this.fishBar.hidden = !reeling;
+    this.fishEl.dataset.phase = state.phase;
+    this.fishLine.textContent =
+      state.phase === 'waiting'
+        ? 'The line is out…'
+        : state.phase === 'bite'
+          ? 'A bite! — F'
+          : 'Hold F to reel';
+    if (!reeling) return;
+    const half = (state.markerHalf ?? 0.16) * 100;
+    const fish = (state.fish ?? 0.5) * 100;
+    this.fishZone.style.left = `${Math.max(0, fish - half)}%`;
+    this.fishZone.style.width = `${Math.min(100, half * 2)}%`;
+    this.fishMarker.style.left = `${(state.marker ?? 0.5) * 100}%`;
+    this.fishMarker.dataset.on = String(state.onTarget === true);
+    this.fishProgress.style.width = `${Math.round((state.progress ?? 0) * 100)}%`;
   }
 
   /** Purse readout beside the micro menu; hidden until the first sync. */
@@ -747,6 +847,13 @@ export class Hud {
   update(stats: HudStats): void {
     // Throughput from the cumulative byte counters, refreshed twice a second.
     const now = performance.now();
+    // The gather bar fills against the SERVER's two timestamps. `serverNowMs`
+    // comes in with the stats so the bar and the channel share one clock.
+    if (this.gatherBar) {
+      const span = Math.max(1, this.gatherBar.endsAtMs - this.gatherBar.startedAtMs);
+      const done = (stats.serverNowMs - this.gatherBar.startedAtMs) / span;
+      this.gatherFill.style.width = `${Math.round(Math.min(1, Math.max(0, done)) * 100)}%`;
+    }
     if (this.lastBytes.at === 0) {
       this.lastBytes = { in: stats.bytesIn, out: stats.bytesOut, at: now };
     } else if (now - this.lastBytes.at >= 500) {

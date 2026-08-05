@@ -279,6 +279,45 @@ export const contentVendors = pgTable(
   (table) => [primaryKey({ columns: [table.id, table.status] })],
 );
 
+/** Resource nodes (PROFESSIONS.md §2–5) — what a birch IS, authored in the panel (P10). */
+export const contentResourceNodes = pgTable(
+  'content_resource_nodes',
+  {
+    id: text('id').notNull(),
+    status: text('status', { enum: ['draft', 'published'] }).notNull(),
+    /** ResourceNodeDef (shared/src/content/resource-nodes.ts). */
+    def: jsonb('def').notNull(),
+    updatedBy: bigint('updated_by', { mode: 'number' }).references(() => accounts.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.status] })],
+);
+
+/**
+ * Per-character gathering-profession progress (PROFESSIONS.md §1.3, P10).
+ *
+ * One row per (character, profession) rather than four columns on `characters`:
+ * professions level independently, a fifth one post-0.1.0 is a row and not a
+ * migration of the hottest table in the schema, and the primary key already
+ * says a character has exactly one Woodcutting.
+ */
+export const characterProfessions = pgTable(
+  'character_professions',
+  {
+    characterId: bigint('character_id', { mode: 'number' })
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    profession: text('profession', {
+      enum: ['woodcutting', 'mining', 'herbalism', 'fishing'],
+    }).notNull(),
+    level: smallint('level').notNull().default(1),
+    /** XP into the CURRENT level, not cumulative — matches the wire and the bar. */
+    xp: integer('xp').notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.characterId, table.profession] })],
+);
+
 // ---------------------------------------------------------------------------
 // Ops trail (DATABASE.md §4) — append-only, written by both servers
 // ---------------------------------------------------------------------------
@@ -560,3 +599,5 @@ export type CharacterItemRow = typeof characterItems.$inferSelect;
 export type ContentItemRow = typeof contentItems.$inferSelect;
 export type ContentLootTableRow = typeof contentLootTables.$inferSelect;
 export type ContentVendorRow = typeof contentVendors.$inferSelect;
+export type ContentResourceNodeRow = typeof contentResourceNodes.$inferSelect;
+export type CharacterProfessionRow = typeof characterProfessions.$inferSelect;

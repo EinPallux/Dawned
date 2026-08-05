@@ -102,14 +102,16 @@ prediction, asset pipeline v1, deploy scripts — `pnpm check` green, both smoke
 2026-08-02 review commit for netcode-robustness fixes).
 
 All 21 owner decisions are answered and folded (decision log in USER_QUESTIONS.md — Q21,
-the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). Five open
-questions: Q22 (the Bandit Forager's model), Q23 (who owns a spawner's position now that the
-map editor can place camps), and three the map editor surfaced by hitting the wall — Q24
-(patrol splines need an AI state the game does not have), Q25 (no resource-node schema, so
-the editor's node layer cannot author anything until P10-A) and Q26 (`zoneAmbienceSchema` is
-light and colour only, so a zone cannot carry music or sfx). All five shipped with a
-recommended default, none blocking; the last three are why the §7 run reports three of its
-steps as "not possible yet" rather than faking them.
+the P7 tree-authoring defaults, was accepted as shipped with the P7/P8 playtest). The map
+editor's four questions were answered on 2026-08-05 with "your recommendations": Q22 keeps
+the Orc as the Bandit Forager, Q23 makes the MAP the place camps live (its publish wins over
+the Enemies page's copy of a position), Q24 puts patrol splines out of 0.1.0, and Q25 — the
+resource-node schema — is answered by P10 starting, since its recommended default was "do it
+in the professions phase". **Two open questions: Q26 and Q27.** Q26: `zoneAmbienceSchema` is light and
+colour only, so a zone cannot carry music or sfx (recommended default — add both with the audio
+phase). Q27: how hard a T5 legendary fish should be, now that the reel's top speed has been
+re-measured against a real server (recommended default — leave it as shipped and judge it in the
+playtest).
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
@@ -282,6 +284,85 @@ checkout — and `deploy/BACKUP.sh` archives the LIVE bake plus its pointer nigh
 made the published world the one thing a restore would not have brought back; the draft it
 came from is in Postgres, so pg_dump covers re-publishing, and this covers putting the world
 straight back. DEPLOYMENT.md §6 carries the contract.
+
+**P10 — Gathering Professions (in progress, 2026-08-05). A/B/C/D are built; E–G remain.**
+P10-A put the vocabulary in shared: `formulas/professions.ts` (the four professions, the
+1/7/13/19/25 tier gates, profession XP with §1.3's back-country halving, channel time, proc
+chance, gather range and the refusal reasons) and `content/resource-nodes.ts` — the
+definition/placement split enemies already use, so retuning birchwood is one row rather than
+two hundred placements, plus `rollGather` itself. Protocol v13 (`GatherOp` up;
+`NodeStates`/`GatherState`/`ProfessionSync` down), migration 0016 for
+`content_resource_nodes` + `character_professions`. P10-B built the runtime: nodes seeded from
+the map's placements, **first-tap claim** (a second player is refused immediately rather than
+racing), channels broken by range/damage/movement, respawn scheduling, write-through
+profession XP, `/ops/setprof` and `/ops/respawnnodes` — tested by driving the real
+`World.step()`, not a stub. P10-C shipped fishing (`formulas/fishing.ts`): cast → bite window
+→ a reel bar whose fish path is a PURE FUNCTION of a seed and a time, so the client draws and
+the server judges the same bar and only the seed travels. That is the one place in the game
+where both sides track a fast-moving thing at once, and a marker sitting on a fish that is
+told it missed is the worst thing a minigame can do. Four bugs came out of its tests, the
+worst being **a bar that could not be won at all**; the marker physics were re-measured rather
+than re-guessed. P10-D is the panel half (Dawned-Admin A1-e): Content → Professions authors
+node definitions with a gathering preview that runs THIS repo's `rollGather`, and the map
+editor's node layer places them — markers ringed at the definition's radius, and a map bake
+that refuses a placement whose definition is not published. Still ahead: the
+1→10 / two-players-one-node / three-rarity verification run (G).
+
+**P10-F — you can gather it (2026-08-05).** The `F` prompt, the hold bar, per-profession
+depletion beats (topple/crumble/puff/ripple, each leaving the definition's own spent model),
+the fishing minigame (line → bite → reel bar whose catch zone is the fish PLUS its tolerance),
+the `J` panel with four codex grids, and toasts. Two holes came out of LOOKING at screenshots
+rather than from a failing test: the Professions panel had invented its own classes instead of
+the `pv-*` shell every other panel uses, so it rendered as a see-through slab in the corner with
+the debug HUD showing through; and the interact prompt sat on top of the fishing bar on a short
+window while still offering `F` during a hold it would have cancelled.
+**The reel was the real story: it could not be won through a real server.** The shared tests
+play the bar with the press and the step at the same instant, which no player ever does — every
+press goes up and the server applies it a tick later. Measured against the live server with the
+strategy those tests call "the dumbest there is": **20/20 fish offline, 0/12 through the wire.**
+Five bugs fell out of chasing that, in order of discovery: the client reset its whole bar
+several times a second (the periodic correction carries the same seed a new reel does); a long
+frame was CLAMPED rather than sliced, so a hitching client fell behind a fish it could see;
+corrections cloned a value that was already stale, jerking a filling bar backwards; the server
+stepped fishing BEFORE it consumed inputs, scoring every press one tick late; and it sampled the
+Reel bit once per tick instead of once per intent, throwing presses away on catch-up ticks.
+Underneath all of them, `MARKER_MAX_SPEED` 1.5 carried the marker half a catch zone in one
+delayed tick, so the loop rang instead of settling — **0.9 now**, and the tests that pin
+"beatable" include a tick of delay, because the zero-latency version of that claim is not about
+this game. New: `tools/smoke/fishing-probe.mjs` (headless, plays the real protocol at the tick
+rate and lands a fish), `tools/smoke/p10-probe.mjs` (browser: prompt → hold bar → deplete →
+bag → xp → codex → the `J` panel → the fishing UI live on screen), and the `/ops/hook` lever,
+which supplies the 0.8 s reflex a bot cannot — the same argument as `/ops/hurt` keeping the P9
+boss bot alive because it cannot dodge. A `/ops/respawnnodes` that told no client was fixed with
+them. **585 unit tests green.** How hard a T5 legendary should be is open as **Q27**.
+
+**P10-E — the gathering catalogue is content (2026-08-05).** 22 node models baked (a tree and
+a bloom per tier, a fish per water, five ore rocks tinted per ore off ONE grey KayKit boulder,
+a felled log + a spent rock for the depleted states), 41 new material/gem/proc/fish items with
+unique game-icons, and all 21 node definitions authored through the panel's Professions editor
+and published — then frozen into seed migration 0017. 65 T1–T2 placements planted across
+Dawnshore and the Weald through the map editor's node layer; T3–T5 have definitions and
+deliberately no coordinates until P12 sculpts their zones. Proof it reaches the game:
+`/ops/respawnnodes` on the live server reports **65 nodes, 0 orphans**.
+**The asset pipeline had to be fixed first.** Only SKINNED models were having their textures
+compressed — fine while every prop came from KayKit's tiny shared atlas, and not fine the
+moment a pack shipped 2K bark maps: the first tree baked at **23.5 MB** and five of them alone
+blew the 64 MB total budget (the report caught it, which is what the report is for). Props and
+items squeeze to 512 px webp now, and `PIPELINE_VERSION` joins every source hash so changing a
+default transform re-bakes the tree instead of hiding behind a cache that only watches the
+source file. **101 MB → 14.8 MB, with 22 more models in it.**
+Two content bugs came out of checks rather than out of reading: (1) the first placement pass
+put every fishing cluster on dry land and planted **zero** shoals — cluster entries are HINTS
+now and the script searches outward for ground that suits them, refusing loudly if there is
+none within 90 m; (2) **Dawnpetal was an ilvl-4 Dawnshore drop** while PROFESSIONS §4 calls it
+the Elder Grove's T5 rare, so a "legendary" bloom sold for ten gold and fell out of a level-3
+spore-dweller. Re-tiered, with Meadowbell taking its slot in the shore's loot table; found by
+`gathering-content.test.ts`, which asserts the LADDER holds (every profession at every tier,
+every gate reachable from the tier below, every node yielding something from its own band, no
+two nodes sharing a model) rather than re-checking what the publish rail already gates.
+The Gems & Ores pack was deliberately NOT used despite being the perfect fit: no license file,
+third-party conversion, unattributable — recorded in CREDITS.md rather than quietly shipped.
+571 unit tests green.
 
 ### Running it locally
 

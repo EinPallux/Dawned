@@ -199,7 +199,7 @@ export type CombatEvent =
   /** Progression state changed: gateway sends ProgressSync + persists. */
   | { type: 'progress-dirty'; playerId: number }
   /** First-time discovery: gateway persists the row + toasts the finder. */
-  | { type: 'discovery'; playerId: number; kind: 'zone'; refId: string; label: string }
+  | { type: 'discovery'; playerId: number; kind: 'zone' | 'codex'; refId: string; label: string }
   // --- items (P8) ----------------------------------------------------------
   /** Bag/paper-doll/purse changed — resend the authoritative sheet + persist. */
   | { type: 'inventory-dirty'; playerId: number }
@@ -218,7 +218,45 @@ export type CombatEvent =
   /** A vendor panel should open/refresh (or close, when the lease broke). */
   | { type: 'vendor-panel'; playerId: number; vendorId: string; open: boolean }
   /** The paper-doll changed: re-derive stats and re-broadcast the loadout. */
-  | { type: 'equipment-changed'; playerId: number };
+  | { type: 'equipment-changed'; playerId: number }
+  // --- gathering (P10) -----------------------------------------------------
+  /** A gather channel opened, ended or was refused — gateway sends GatherState. */
+  | {
+      type: 'gather-state';
+      playerId: number;
+      phase: 'start' | 'done' | 'cancelled' | 'refused';
+      placementId?: string;
+      nodeId?: string;
+      profession?: string;
+      tier?: number;
+      startedAtMs?: number;
+      endsAtMs?: number;
+      reason?: string;
+      gained?: { itemId: string; qty: number }[];
+      proc?: { itemId: string; qty: number } | null;
+      profXp?: number;
+    }
+  /** Nodes changed state (taken or regrown) — whoever is near them re-syncs. */
+  | { type: 'nodes-dirty'; placementIds: string[] }
+  /** A profession's level/xp moved: gateway sends ProfessionSync + persists. */
+  | { type: 'professions-dirty'; playerId: number }
+  /** A profession leveled — worth its own toast and sound. */
+  | { type: 'profession-level'; playerId: number; profession: string; level: number }
+  /** SELF's fishing attempt moved — gateway sends FishingState (P10-C §5). */
+  | {
+      type: 'fishing-state';
+      playerId: number;
+      phase: 'waiting' | 'bite' | 'reeling' | 'caught' | 'escaped';
+      placementId?: string;
+      seed?: number;
+      startedAtMs?: number;
+      hookUntilMs?: number;
+      driftSpeed?: number;
+      markerHalf?: number;
+      progress?: number;
+      fish?: { itemId: string; qty: number };
+      profXp?: number;
+    };
 
 export interface ServerProjectile {
   id: number;
