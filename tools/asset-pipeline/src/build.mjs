@@ -46,6 +46,30 @@ const io = new NodeIO().registerExtensions(KHRONOS_EXTENSIONS);
 /** Bump when the behavior behind rule options (skinned/animationsOnly/…) changes. */
 const OPTION_TRANSFORM_VERSION = 3;
 
+/**
+ * Bump when the DEFAULT transform changes — it joins every source hash, so a
+ * bump re-bakes the whole tree rather than leaving old outputs behind a cache
+ * that only watches the source file.
+ *
+ * v2: world/prop textures are compressed. Skinned models were the only ones
+ * being compressed, which was fine while every prop came from KayKit's tiny
+ * shared atlas and stopped being fine the moment a pack shipped 2K bark maps:
+ * P10's first tree baked at **23.5 MB** and five of them put the tree over the
+ * 64 MB total budget on their own (ASSET_PIPELINE.md §8). The report caught it,
+ * which is what the report is for — but the right fix is upstream of the gate.
+ */
+const PIPELINE_VERSION = 2;
+
+/**
+ * Texture ceiling for world props and items, in pixels.
+ *
+ * 512 rather than the characters' 1024: a tree is looked at from ten metres in
+ * a stylised low-poly world, and the packs' 2048² bark maps carry detail the
+ * art style never shows. Measured on the P10 set, this is the difference
+ * between 87 MB of trees and about 1.5.
+ */
+const PROP_TEXTURE_MAX = 512;
+
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 
 const slugify = (value) =>
@@ -337,7 +361,7 @@ export const build = async ({ force = false, verbose = true } = {}) => {
   const manifest = {
     generatedBy: 'tools/asset-pipeline',
     generatedFor: 'Dawned',
-    pipelineVersion: 1,
+    pipelineVersion: PIPELINE_VERSION,
     assets: {},
   };
 
@@ -388,6 +412,7 @@ export const build = async ({ force = false, verbose = true } = {}) => {
       // without churning the manifest entries of plain rules.
       const dependencies = await gatherDependencies(sourcePath, rule.imageOverrides);
       const hasher = createHash('sha256');
+      hasher.update(`pipeline:${PIPELINE_VERSION}`);
       hasher.update(await readFile(sourcePath));
       for (const dependency of dependencies) {
         hasher.update(await readFile(dependency).catch(() => Buffer.alloc(0)));
@@ -461,7 +486,21 @@ export const build = async ({ force = false, verbose = true } = {}) => {
           prune(),
         );
       } else {
-        await document.transform(dedup(), flatten(), join(), weld(), prune());
+        // Props and items: structural optimization, then the same webp squeeze
+        // the characters get at a tighter size. Compression runs BEFORE prune so
+        // textures dropped by prune are never encoded in the first place.
+        await document.transform(
+          dedup(),
+          flatten(),
+          join(),
+          weld(),
+          textureCompress({
+            encoder: sharp,
+            targetFormat: 'webp',
+            resize: [PROP_TEXTURE_MAX, PROP_TEXTURE_MAX],
+          }),
+          prune(),
+        );
       }
 
       const glb = Buffer.from(await io.writeBinary(document));

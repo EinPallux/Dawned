@@ -30,18 +30,18 @@
 
 ## 3. Items (≈210 total)
 
-| Category                    | Count        | Notes                                                                        |
-| --------------------------- | ------------ | ---------------------------------------------------------------------------- |
-| Weapons                     | 60           | 4 classes × 5 zone tiers × ~2 variants + rarity uprolls + 6 named Rare/Epics |
-| Armor (5 slots)             | 55           | tiered sets per zone band × armor classes, stat templates                    |
-| Jewelry                     | 24           | rings/amulets/trinkets across tiers                                          |
-| Legendaries                 | 6            | handcrafted, one per zone + Elder Grove (Emberbrand etc.)                    |
-| Consumables                 | 22           | potion/tonic tiers, foods, 5 zone elixirs, antidote                          |
-| Materials                   | 30           | 5 tiers × (log, ore, herb) + gems ×6 + procs (resin, heartwood, geode…)      |
-| Fish                        | 12           | 10 + 2 trophy rares                                                          |
-| Quest items                 | ~20          | per quest needs                                                              |
-| Junk/treasure               | 12           | flavor vendor trash incl. 3 "treasure" high-value                            |
-| **Every item: unique icon** | 210 mappings | game-icons pipeline, zero reuse                                              |
+| Category                    | Count        | Notes                                                                                                                                           |
+| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Weapons                     | 60           | 4 classes × 5 zone tiers × ~2 variants + rarity uprolls + 6 named Rare/Epics                                                                    |
+| Armor (5 slots)             | 55           | tiered sets per zone band × armor classes, stat templates                                                                                       |
+| Jewelry                     | 24           | rings/amulets/trinkets across tiers                                                                                                             |
+| Legendaries                 | 6            | handcrafted, one per zone + Elder Grove (Emberbrand etc.)                                                                                       |
+| Consumables                 | 22           | potion/tonic tiers, foods, 5 zone elixirs, antidote                                                                                             |
+| Materials                   | 30           | 5 tiers × (log, ore, herb) + gems ×6 + procs (resin, heartwood, geode…) — **27 live** (P10-E; copper + dawnpetal came from P8)                  |
+| Fish                        | 15           | 2 signature per tier + the tier rare, + the Old One — **15 live** (P10-E). Was 12 here; PROFESSIONS.md §5 names fifteen and the design doc wins |
+| Quest items                 | ~20          | per quest needs                                                                                                                                 |
+| Junk/treasure               | 12           | flavor vendor trash incl. 3 "treasure" high-value                                                                                               |
+| **Every item: unique icon** | 210 mappings | game-icons pipeline, zero reuse                                                                                                                 |
 
 ## 4. Abilities & Progression
 
@@ -66,11 +66,11 @@
 
 ## 6. Gathering
 
-| Item                     | Target                                                            |
-| ------------------------ | ----------------------------------------------------------------- |
-| Resource node placements | ~370: trees ~120, ore ~95, herbs ~95, fish spots ~40 + 8 deep-sea |
-| Node types               | 5 tiers × 4 professions + Dawnpetal + geode variants              |
-| Fishing minigame         | 1 tuned (parameters per fish rarity)                              |
+| Item                     | Target                                                                                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resource node placements | ~370: trees ~120, ore ~95, herbs ~95, fish spots ~40 + 8 deep-sea — **65 live** on the dev island (P10-E planted T1–T2; the rest need P12's zones) |
+| Node types               | 5 tiers × 4 professions + Dawnpetal — **21 live** (P10-E, all five tiers defined)                                                                  |
+| Fishing minigame         | 1 tuned (parameters per fish rarity)                                                                                                               |
 
 ## 7. Audio (per design/AUDIO.md)
 

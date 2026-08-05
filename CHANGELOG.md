@@ -5,6 +5,31 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — there is something to gather (2026-08-05, P10-E)
+
+- **The world has resource nodes in it.** 65 of them across Dawnshore and the Verdant Weald:
+  birch groves and wealdoaks, copper and iron veins, meadowbell and mossbloom patches, and
+  fishing spots on the lake and the south coast — placed in clusters near landmarks rather than
+  sprinkled evenly, so a gathering trip is also a walk somewhere.
+- **42 things to gather**, each with its own icon: logs, ores, herbs, six gems, resin, sap,
+  heartwood, geodes, seeds and stone, and fifteen fish from the Dawn Sprat to the Old One.
+- **Every tier of every profession is defined**, all the way to 30 — the T3–T5 nodes have no
+  ground to stand on until their zones are built, but the ladder is whole and the panel can
+  already tune it.
+- Each node looks like what it is: a different tree per tier, a different bloom per tier, a fish
+  you can see under the water, and ore veins tinted per metal.
+
+### Changed
+
+- **Dawnpetal is the Elder Grove's flower again.** It shipped as an ordinary level-4 herb that a
+  Dawnshore spore-dweller could drop, which is not what it is — it is the rare bloom you make a
+  journey for. Re-tiered, and the Dawnshore drop is Meadowbell now, which is the herb that shore
+  actually grows.
+- **The game downloads a third of what it did.** Model textures were being shipped at their
+  source resolution for everything except characters; they are compressed now. Total assets went
+  from 101 MB to under 15 — with twenty-two more models in the game than before.
+
+
 ### Added — the panel can author what you gather (2026-08-05, P10-D)
 
 - **Dawned-Admin's Professions page** authors resource-node definitions — what a birch, a copper

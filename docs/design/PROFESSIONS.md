@@ -60,6 +60,31 @@ someone chose. The only randomness is which yield entry, how many, and whether t
 — and all three arrive as explicit rolls the caller supplies, so the panel's gathering preview
 and the live drop run the same function rather than two similar ones.
 
+### 1.6 As built (P10-E) — what is authored, and what is planted
+
+The **definitions** are complete: 21 resource nodes covering all five tiers of all four
+professions plus Dawnpetal, and 42 material/gem/proc/fish items, authored through the panel's
+Professions editor and frozen into migration 0017. Every node has its own model — one tree per
+tier, one flower per tier, a fish you can see under the surface per water, and five ore rocks
+whose atlas is tinted per ore, because the rock pack ships one grey boulder and five identical
+grey boulders would make mining tierless.
+
+The **placements** are T1–T2 only: 65 nodes across Dawnshore and the Verdant Weald, which are
+the zones that exist. T3–T5 nodes stand nowhere until P12 sculpts Emberwood, Sungraze and
+Ashcrag. Authoring coordinates for ground nobody has made would be content written to be
+deleted.
+
+Two things the shipped rows say that this document did not:
+
+- **Stone is a yield, not a proc.** §3 lists a "stone side-yield every gather"; it is a second
+  weighted entry on every vein rather than a proc, because a proc is a surprise and stone is
+  simply what mining mostly gives you.
+- **Dawnpetal was re-tiered.** P8 shipped it as an ilvl-4 Dawnshore loot material, before this
+  ladder existed. §4 makes it the Elder Grove's T5 rare, so the item was re-authored at ilvl 27
+  and the Dawnshore spore table now drops Meadowbell instead — the herb that shore actually
+  grows. Found by a test asserting that every node yields something from its own tier band, not
+  by reading the rows.
+
 ## 2. Woodcutting
 
 | Tier (gate)                                                                                        | Wood            | Zone             | Node models (assets)                       |

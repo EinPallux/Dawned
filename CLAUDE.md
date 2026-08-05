@@ -307,6 +307,34 @@ that refuses a placement whose definition is not published. Still ahead: node mo
 material/fish item sets (E), the client's gather bar, fishing UI and `J` panel (F), and the
 1→10 / two-players-one-node / three-rarity verification run (G).
 
+**P10-E — the gathering catalogue is content (2026-08-05).** 22 node models baked (a tree and
+a bloom per tier, a fish per water, five ore rocks tinted per ore off ONE grey KayKit boulder,
+a felled log + a spent rock for the depleted states), 41 new material/gem/proc/fish items with
+unique game-icons, and all 21 node definitions authored through the panel's Professions editor
+and published — then frozen into seed migration 0017. 65 T1–T2 placements planted across
+Dawnshore and the Weald through the map editor's node layer; T3–T5 have definitions and
+deliberately no coordinates until P12 sculpts their zones. Proof it reaches the game:
+`/ops/respawnnodes` on the live server reports **65 nodes, 0 orphans**.
+**The asset pipeline had to be fixed first.** Only SKINNED models were having their textures
+compressed — fine while every prop came from KayKit's tiny shared atlas, and not fine the
+moment a pack shipped 2K bark maps: the first tree baked at **23.5 MB** and five of them alone
+blew the 64 MB total budget (the report caught it, which is what the report is for). Props and
+items squeeze to 512 px webp now, and `PIPELINE_VERSION` joins every source hash so changing a
+default transform re-bakes the tree instead of hiding behind a cache that only watches the
+source file. **101 MB → 14.8 MB, with 22 more models in it.**
+Two content bugs came out of checks rather than out of reading: (1) the first placement pass
+put every fishing cluster on dry land and planted **zero** shoals — cluster entries are HINTS
+now and the script searches outward for ground that suits them, refusing loudly if there is
+none within 90 m; (2) **Dawnpetal was an ilvl-4 Dawnshore drop** while PROFESSIONS §4 calls it
+the Elder Grove's T5 rare, so a "legendary" bloom sold for ten gold and fell out of a level-3
+spore-dweller. Re-tiered, with Meadowbell taking its slot in the shore's loot table; found by
+`gathering-content.test.ts`, which asserts the LADDER holds (every profession at every tier,
+every gate reachable from the tier below, every node yielding something from its own band, no
+two nodes sharing a model) rather than re-checking what the publish rail already gates.
+The Gems & Ores pack was deliberately NOT used despite being the perfect fit: no license file,
+third-party conversion, unattributable — recorded in CREDITS.md rather than quietly shipped.
+571 unit tests green.
+
 ### Running it locally
 
 ```bash

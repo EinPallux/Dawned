@@ -80,6 +80,38 @@
       "verified": true,
       "source": "https://game-icons.net/",
       "root": "assets_vendor/game-icons"
+    },
+    "kaykit-resourcebits": {
+      "name": "KayKit Resource Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://kaylousberg.itch.io/",
+      "root": "assets/world/KayKit_ResourceBits_1.0_FREE"
+    },
+    "quaternius-nature-kit2": {
+      "name": "Quaternius Ultimate Nature Kit 2 (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/world/Ultimate Nature Kit2[Standard]"
+    },
+    "quaternius-stylized-nature": {
+      "name": "Quaternius Stylized Nature MegaKit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/world/Stylizied Mega Nature Kit[Standard]"
+    },
+    "quaternius-fish": {
+      "name": "Quaternius Animated Fish Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "source": "https://quaternius.com/",
+      "root": "assets/world/Quaternius Animated Fish Bundle"
     }
   },
   "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land — the pipeline itself does not change.",
@@ -397,6 +429,175 @@
         "Melee_Hook",
         "OverhandThrow"
       ]
+    },
+    {
+      "$comment": "P10 woodcutting nodes (PROFESSIONS.md §2) — one tree per tier so a forest reads as its tier from a distance, plus the felled log every chopped tree leaves behind.",
+      "pack": "quaternius-nature-kit2",
+      "category": "world/nature",
+      "glob": "glTF/BirchTree_2.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-stylized-nature",
+      "category": "world/nature",
+      "glob": "glTF/CommonTree_3.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-nature-kit2",
+      "category": "world/nature",
+      "glob": "glTF/MapleTree_2.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-stylized-nature",
+      "category": "world/nature",
+      "glob": "glTF/TwistedTree_2.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-nature-kit2",
+      "category": "world/nature",
+      "glob": "glTF/DeadTree_4.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "kaykit-resourcebits",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Wood_Log_B.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "P10 mining nodes (PROFESSIONS.md §3). The forest pack ships one grey rock; a different SHAPE per tier plus an atlas tint per ore is what makes copper readable as copper at thirty metres. The tint multiplies each baked copy's own embedded texture, so the plain scatter rocks are untouched.",
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Rock_2_A_Color1.gltf",
+      "limit": 1,
+      "imageOverrides": {
+        "forest_texture.png": {
+          "multiplyRGB": [1.35, 0.78, 0.5]
+        }
+      }
+    },
+    {
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Rock_2_C_Color1.gltf",
+      "limit": 1,
+      "imageOverrides": {
+        "forest_texture.png": {
+          "multiplyRGB": [0.72, 0.82, 0.95]
+        }
+      }
+    },
+    {
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Rock_3_D_Color1.gltf",
+      "limit": 1,
+      "imageOverrides": {
+        "forest_texture.png": {
+          "multiplyRGB": [1.15, 1.18, 1.25]
+        }
+      }
+    },
+    {
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Rock_2_E_Color1.gltf",
+      "limit": 1,
+      "imageOverrides": {
+        "forest_texture.png": {
+          "multiplyRGB": [1.4, 1.12, 0.42]
+        }
+      }
+    },
+    {
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Rock_3_H_Color1.gltf",
+      "limit": 1,
+      "imageOverrides": {
+        "forest_texture.png": {
+          "multiplyRGB": [1.55, 0.85, 0.72]
+        }
+      },
+      "$comment": "Dawnstone. Pushed rosy rather than the obvious amber: at the first tint it averaged within a dozen levels of copper on every channel, and two ore rocks a player cannot tell apart is the same failure as not tinting them at all."
+    },
+    {
+      "$comment": "The spent vein: a plain small rock, deliberately untinted so a mined-out node reads as ordinary stone.",
+      "pack": "kaykit-forest",
+      "category": "world/nature",
+      "glob": "Assets/gltf/Rock_1_C_Color1.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "P10 herbalism nodes (PROFESSIONS.md §4) — a distinct bloom per tier plus the Elder Grove's Dawnpetal. Picked herbs leave nothing behind, so these have no depleted model.",
+      "pack": "quaternius-nature-kit2",
+      "category": "world/nature",
+      "glob": "glTF/Flower_1_Clump.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-nature-kit2",
+      "category": "world/nature",
+      "glob": "glTF/Flower_2_Clump.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-stylized-nature",
+      "category": "world/nature",
+      "glob": "glTF/Fern_1.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-nature-kit2",
+      "category": "world/nature",
+      "glob": "glTF/Flower_4_Clump.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-nature-kit2",
+      "category": "world/nature",
+      "glob": "glTF/Bush_Small_Flowers.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-nature-kit2",
+      "category": "world/nature",
+      "glob": "glTF/Flower_5_Clump.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "P10 fishing spots (PROFESSIONS.md §5). The node IS the fish you can see under the surface — a marker buoy would be someone else's gear, and an empty patch of water is not a thing you can aim at. One species per tier; a fished-out spot shows nothing at all.",
+      "pack": "quaternius-fish",
+      "category": "world/nature",
+      "glob": "Goldfish.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-fish",
+      "category": "world/nature",
+      "glob": "Koi.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-fish",
+      "category": "world/nature",
+      "glob": "Red Snapper.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-fish",
+      "category": "world/nature",
+      "glob": "Yellow Tang.glb",
+      "limit": 1
+    },
+    {
+      "pack": "quaternius-fish",
+      "category": "world/nature",
+      "glob": "Swordfish.glb",
+      "limit": 1
     }
   ]
 }

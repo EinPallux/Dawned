@@ -20,7 +20,7 @@
 | P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
 | P9    | Enemies & AI Depth                       | L    | ✅ built (2026-08-04)     |
-| P10   | Gathering Professions                    | M    | 🟨 A–D built (2026-08-05) |
+| P10   | Gathering Professions                    | M    | 🟨 A–E built (2026-08-05) |
 | P11   | Quests, POIs & Interactables             | L    | 🔲                        |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
@@ -581,9 +581,25 @@ minigame tuned across 3 rarities; node respawn/depletion correct under multiplay
       gathers-to-the-next-gate — and, for fishing nodes, each catch's bar difficulty. The map
       editor's node layer places them: kind picker, thin placements, markers ringed at the
       definition's radius, and a bake that refuses a placement whose definition is not published.
-- [ ] **P10-E — content.** Bake node models (tree/stump, vein/cracked rock, herb, ripple), author
-      the material and fish item sets ×5 tiers with icons, then the node definitions and their
-      placements through the panel; freeze the published result into a seed migration.
+- [x] **P10-E — content.** 22 node models baked (a tree and a bloom per tier, a fish per water,
+      five ore rocks tinted per ore from one grey boulder, a felled log and a spent rock for the
+      depleted states), 41 new material/gem/proc/fish items with unique icons, and all 21 node
+      definitions authored through the panel's Professions editor and published. 65 T1–T2
+      placements planted across Dawnshore and the Weald; T3–T5 have definitions and no ground to
+      stand on until P12. Frozen into seed migration 0017; the live server seeds **65 nodes,
+      0 orphans**.
+      **The asset pipeline needed fixing first.** Only skinned models had their textures
+      compressed, which was fine while every prop came from KayKit's tiny shared atlas and stopped
+      being fine the moment a pack shipped 2K bark maps: the first tree baked at **23.5 MB** and
+      five of them alone blew the 64 MB total budget. Props and items are squeezed to 512 px webp
+      now (`PIPELINE_VERSION` joins every source hash so a transform change re-bakes rather than
+      hiding behind the cache) — 101 MB → **14.8 MB total, with 22 more models in it**.
+      Two content bugs fell out of checks rather than reading: the first placement pass put every
+      fishing cluster on dry land and planted **zero** shoals (cluster hints now search outward
+      for ground that suits them), and **Dawnpetal was an ilvl-4 Dawnshore drop** while §4 calls
+      it the Elder Grove's T5 rare — re-tiered, with Meadowbell taking its slot in the shore's
+      loot table. The Gems & Ores pack was deliberately NOT used: no license file, third-party
+      conversion, unattributable (CREDITS.md).
 - [ ] **P10-F — client.** Interact prompt, hold-to-gather bar with the tool prop and animation,
       depletion VFX, the fishing minigame UI, the `J` professions panel with its codex, toasts.
 - [ ] **P10-G — verification.** `browser-p10`: a profession taken 1→10 for real, two players on
