@@ -15,7 +15,15 @@ const npc = (over: Record<string, unknown> = {}) =>
     id: 'npc_marla',
     name: 'Marla',
     title: 'Dawnhaven gate farmer',
-    modelRef: 'characters_villager_f',
+    appearance: {
+      body: 'f',
+      skin: 1,
+      outfit: 'peasant',
+      outfitTint: 0,
+      hair: 'buns',
+      hairColor: 2,
+      beard: false,
+    },
     ...over,
   });
 

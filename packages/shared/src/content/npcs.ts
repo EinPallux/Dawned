@@ -16,6 +16,7 @@
 
 import { z } from 'zod';
 import { WORLD_SIZE_M } from '../world/map.js';
+import { appearanceSchema } from '../api/requests.js';
 import { npcSlug } from './quests.js';
 
 const worldX = z.number().min(-WORLD_SIZE_M).max(WORLD_SIZE_M);
@@ -44,8 +45,17 @@ export const npcDefSchema = z
     /** Shown under the name on the nameplate — "Dawnhaven gate farmer". */
     title: z.string().max(64).default(''),
     role: z.enum(NPC_ROLES).default('villager'),
-    /** A baked character/enemy model id; publish checks the manifest. */
-    modelRef: z.string().min(1).max(64),
+    /**
+     * NPCs wear the PLAYER appearance, not a `modelRef`.
+     *
+     * A character in this game is composed — base body + outfit + hair, one
+     * skeleton — so pointing an NPC at a single baked mesh would stand a
+     * floating tunic in Dawnhaven. Reusing the composition the client already
+     * runs for players means every villager gets the UAL clip library for free
+     * (idle, talking, gestures), which is exactly what a quest giver needs and
+     * exactly what the enemy pipeline does NOT have.
+     */
+    appearance: appearanceSchema,
     /** Idle clip; the talking clip is `talkClip` so a rig can lack one. */
     idleClip: z.string().min(1).max(48).default('Idle'),
     talkClip: z.string().max(48).default(''),

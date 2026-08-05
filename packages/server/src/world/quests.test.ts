@@ -51,7 +51,15 @@ const BIRCH = validateResourceNodeDef({
 const MARLA = validateNpcDef({
   id: 'npc_marla',
   name: 'Marla',
-  modelRef: 'characters_villager_f',
+  appearance: {
+    body: 'f',
+    skin: 1,
+    outfit: 'peasant',
+    outfitTint: 0,
+    hair: 'buns',
+    hairColor: 2,
+    beard: false,
+  },
   barkCooldownSec: 0,
 });
 
