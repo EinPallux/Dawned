@@ -8,6 +8,30 @@
 
 ## Open questions
 
+### Q23 — who owns a spawner's position, the map editor or the Enemies page? (A3, 2026-08-05)
+
+Camps can now be placed in two places: **Content → Enemies → Spawners** (where they have been
+since A1-d) and the **Map Editor's Place tool** (where you can see the hill you are putting them
+on). They are the same rows — the game reads spawners from `content_spawners` either way.
+
+Shipped for now: **the map publish wins.** Publishing the map replaces every published spawner
+row from the map's spawner layer, delete-and-insert in one transaction, because a camp you
+DELETED in the editor has to stop spawning and an update-only pass would leave it live forever.
+
+The cost of that: if you move a camp on the Enemies page and then publish the map, the map's
+copy of that camp overwrites it.
+
+**Recommended default: keep it, and treat the map as the place camps live.** Position is a
+spatial decision and the Enemies page cannot show you the terrain; the map editor's inspector
+edits the same full row (entries, counts, respawn timer), so nothing is lost by doing all of it
+there. The Enemies page stays the right surface for the BESTIARY.
+
+If you would rather keep the Enemies page authoritative, say so and the map publish becomes an
+update-in-place that never deletes — the trade is that a camp removed in the map editor would
+keep spawning until you also delete it on the Enemies page.
+
+---
+
 ### Q22 — Bandit Forager's model (P9, 2026-08-04)
 
 NPCS_ENEMIES.md §4 casts the Dawnshore **Bandit Forager** as "KA Peasant-look + dagger" — a
