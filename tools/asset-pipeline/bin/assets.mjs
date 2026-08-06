@@ -5,12 +5,14 @@
  *   pnpm assets:build [--force]   convert selected source packs → assets_baked/
  *   pnpm assets:report            validate the manifest, licenses, budgets, rigs
  *   pnpm assets:sync              copy assets_baked/ → packages/client/public/assets
+ *   pnpm assets:clips             regenerate shared's ENEMY_MODEL_CLIPS from the bakes
  */
 
 import { build } from '../src/build.mjs';
 import { bakeIcons, fetchIcons } from '../src/icons.mjs';
 import { report } from '../src/report.mjs';
 import { sync } from '../src/sync.mjs';
+import { generateEnemyClips } from '../src/enemy-clips.mjs';
 
 const [command = 'report', ...flags] = process.argv.slice(2);
 
@@ -26,6 +28,14 @@ const run = async () => {
       if (!result.ok) process.exitCode = 1;
       return;
     }
+    case 'clips': {
+      const result = await generateEnemyClips(
+        'assets_baked',
+        'packages/shared/src/content/enemy-clips.ts',
+      );
+      console.log(`enemy clips: ${result.models} model(s), ${result.clips} clip name(s)`);
+      break;
+    }
     case 'sync': {
       await sync();
       return;
@@ -36,7 +46,9 @@ const run = async () => {
       return;
     }
     default:
-      console.error(`unknown command "${command}" — expected "build", "icons", "report" or "sync"`);
+      console.error(
+        `unknown command "${command}" — expected "build", "clips", "icons", "report" or "sync"`,
+      );
       process.exitCode = 1;
   }
 };

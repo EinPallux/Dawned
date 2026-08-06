@@ -151,6 +151,27 @@ KayKit Adventurers (humanoid enemies use Adventurer rigs + weapon bits).
 | Ashcrag Dragon (rare roamer) | 28    | Elite Charger (dive strafe)                                                                              | Q Dragon                     |
 | **Ashwing** (world boss)     | 30    | Boss: fire breath cone, wing-gust ring, dive rect, ember rain w/ safe wedges, 50% phase: airborne volley | Q Dragon Evolved (scale 2.0) |
 
+### 4.1 As built — what the models can actually do (P12-C, 2026-08-06)
+
+39 enemy models are baked, which covers every row above. One blocks a whole zone:
+
+**The four KayKit skeletons animate nothing.** `Skeleton_Minion/Rogue/Mage/Warrior` bake with
+zero clips, because the pack ships meshes and animations in SEPARATE files — the clips live in
+`Animations/gltf/Rig_Medium/{General,MovementBasic}.glb`, the same split our own player rigs use.
+The enemy pipeline bakes one model per file and the enemy renderer expects the clips to be inside
+it, so a skeleton would stand frozen and slide. **No Emberwood enemy may be authored onto one
+until the pipeline can merge a shared rig's clips into a mesh**, which is a slice of its own.
+
+Found by `pnpm assets:clips`, which regenerates `ENEMY_MODEL_CLIPS` from the bakes — until P12-C
+that regeneration was a comment in the file rather than a command, and the empty list had been
+sitting in shared since P9-C baked `Skeleton_Minion` with nobody noticing.
+
+What the shared rig does offer, once merged: `Idle_A/B`, `Walking_A/B/C`, `Running_A/B`,
+`Hit_A/B`, `Death_A/B`, `Throw`, `Spawn_Ground`. **There is no melee swing** — KayKit keeps the
+combat set in a paid `Rig_Medium_Combat` file this FREE pack does not include. So the Emberwood
+skeletons as designed (Rogue's backstab, Warrior's shielded frontal) need either that pack, a
+retarget from the Quaternius humanoid set, or a re-design around `Throw` and charges.
+
 ### Elder Grove (30 elite pocket)
 
 Elder Sporeling (elite Mushnub, glow), Grove Sentinel (elite Goleling, moss), **Elder Treant**

@@ -78,7 +78,10 @@ Pack id `kaykit-resourcebits` · author **Kay Lousberg (KayKit)** · license **C
 ### KayKit Skeletons 1.1 FREE
 Pack id `kaykit-skeletons` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
 
+- `enemies_skeleton_mage` — assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Mage.glb
 - `enemies_skeleton_minion` — assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Minion.glb
+- `enemies_skeleton_rogue` — assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Rogue.glb
+- `enemies_skeleton_warrior` — assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Warrior.glb
 
 ### KayKit RPG Tools Bits 1.0 FREE
 Pack id `kaykit-tools` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
@@ -163,21 +166,41 @@ Pack id `quaternius-fish` · author **Quaternius** · license **CC0-1.0** · htt
 ### Quaternius Monster Bundle
 Pack id `quaternius-monsters` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/
 
+- `enemies_alpaking` — assets/enemy_models/Quaternius Monster Bundle/Alpaking.glb
+- `enemies_alpaking_evolved` — assets/enemy_models/Quaternius Monster Bundle/Alpaking Evolved.glb
 - `enemies_armabee` — assets/enemy_models/Quaternius Monster Bundle/Armabee.glb
 - `enemies_armabee_evolved` — assets/enemy_models/Quaternius Monster Bundle/Armabee Evolved.glb
+- `enemies_birb` — assets/enemy_models/Quaternius Monster Bundle/Birb.glb
+- `enemies_blue_demon` — assets/enemy_models/Quaternius Monster Bundle/Blue Demon.glb
+- `enemies_bunny` — assets/enemy_models/Quaternius Monster Bundle/Bunny.glb
+- `enemies_cactoro` — assets/enemy_models/Quaternius Monster Bundle/Cactoro.glb
 - `enemies_cat` — assets/enemy_models/Quaternius Monster Bundle/Cat.glb
+- `enemies_chicken` — assets/enemy_models/Quaternius Monster Bundle/Chicken.glb
+- `enemies_demon` — assets/enemy_models/Quaternius Monster Bundle/Demon.glb
+- `enemies_dino` — assets/enemy_models/Quaternius Monster Bundle/Dino.glb
+- `enemies_dragon` — assets/enemy_models/Quaternius Monster Bundle/Dragon.glb
+- `enemies_dragon_evolved` — assets/enemy_models/Quaternius Monster Bundle/Dragon Evolved.glb
 - `enemies_frog` — assets/enemy_models/Quaternius Monster Bundle/Frog.glb
 - `enemies_ghost` — assets/enemy_models/Quaternius Monster Bundle/Ghost.glb
+- `enemies_ghost_skull` — assets/enemy_models/Quaternius Monster Bundle/Ghost Skull.glb
 - `enemies_glub` — assets/enemy_models/Quaternius Monster Bundle/Glub.glb
 - `enemies_glub_evolved` — assets/enemy_models/Quaternius Monster Bundle/Glub Evolved.glb
+- `enemies_goleling` — assets/enemy_models/Quaternius Monster Bundle/Goleling.glb
+- `enemies_goleling_evolved` — assets/enemy_models/Quaternius Monster Bundle/Goleling Evolved.glb
 - `enemies_green_blob` — assets/enemy_models/Quaternius Monster Bundle/Green Blob.glb
+- `enemies_hywirl` — assets/enemy_models/Quaternius Monster Bundle/Hywirl.glb
+- `enemies_monkroose` — assets/enemy_models/Quaternius Monster Bundle/Monkroose.glb
 - `enemies_mushnub` — assets/enemy_models/Quaternius Monster Bundle/Mushnub.glb
 - `enemies_mushnub_evolved` — assets/enemy_models/Quaternius Monster Bundle/Mushnub Evolved.glb
 - `enemies_mushroom_king` — assets/enemy_models/Quaternius Monster Bundle/Mushroom King.glb
 - `enemies_orc` — assets/enemy_models/Quaternius Monster Bundle/Orc.glb
+- `enemies_orc_enemy` — assets/enemy_models/Quaternius Monster Bundle/Orc Enemy.glb
 - `enemies_pigeon` — assets/enemy_models/Quaternius Monster Bundle/Pigeon.glb
 - `enemies_pink_blob` — assets/enemy_models/Quaternius Monster Bundle/Pink Blob.glb
+- `enemies_squidle` — assets/enemy_models/Quaternius Monster Bundle/Squidle.glb
+- `enemies_tribal` — assets/enemy_models/Quaternius Monster Bundle/Tribal.glb
 - `enemies_wizard` — assets/enemy_models/Quaternius Monster Bundle/Wizard.glb
+- `enemies_yeti` — assets/enemy_models/Quaternius Monster Bundle/Yeti.glb
 
 ### Quaternius Ultimate Nature Kit 2 (Standard)
 Pack id `quaternius-nature-kit2` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/

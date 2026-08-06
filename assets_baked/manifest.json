@@ -3420,6 +3420,860 @@
         ]
       },
       "animations": []
+    },
+    "enemies_alpaking": {
+      "id": "enemies_alpaking",
+      "category": "enemies",
+      "file": "assets_baked/enemies/alpaking.2e408369.glb",
+      "bytes": 125724,
+      "sourceHash": "1e721b70b1cb275077199334bc0f3e49e17733d5e0485989c08ce2f7773a096b",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Alpaking.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2508,
+      "bounds": {
+        "min": [
+          -0.0215,
+          -0.0027,
+          0.0116
+        ],
+        "max": [
+          0.0215,
+          0.0197,
+          0.033
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_alpaking_evolved": {
+      "id": "enemies_alpaking_evolved",
+      "category": "enemies",
+      "file": "assets_baked/enemies/alpaking_evolved.cf632397.glb",
+      "bytes": 226616,
+      "sourceHash": "81f227fb934c39a5f183a7505579e10ac7ff2c059d3bc3ab3c159304aee88b41",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Alpaking Evolved.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4684,
+      "bounds": {
+        "min": [
+          -0.0215,
+          -0.0083,
+          0.0054
+        ],
+        "max": [
+          0.0215,
+          0.0214,
+          0.0373
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_dino": {
+      "id": "enemies_dino",
+      "category": "enemies",
+      "file": "assets_baked/enemies/dino.a4e47d0b.glb",
+      "bytes": 334388,
+      "sourceHash": "e006e19963e13da85332dff2ada6c93c8d4a70d7c2ca95d1cad865bdb8919274",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Dino.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5414,
+      "bounds": {
+        "min": [
+          -0.0232,
+          -0.0104,
+          0
+        ],
+        "max": [
+          0.0232,
+          0.0087,
+          0.0322
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Duck",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|Jump_Idle",
+        "CharacterArmature|Jump_Land",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Run",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Wave",
+        "CharacterArmature|Weapon",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_orc_enemy": {
+      "id": "enemies_orc_enemy",
+      "category": "enemies",
+      "file": "assets_baked/enemies/orc_enemy.8f136888.glb",
+      "bytes": 123244,
+      "sourceHash": "4ee1ab29845513d471cbad9425d8c51f86c58d783e183a261fdfddae8f68f170",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Orc Enemy.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2296,
+      "bounds": {
+        "min": [
+          -0.0078,
+          -0.0053,
+          0
+        ],
+        "max": [
+          0.0086,
+          0.005,
+          0.0146
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_tribal": {
+      "id": "enemies_tribal",
+      "category": "enemies",
+      "file": "assets_baked/enemies/tribal.ec3ea557.glb",
+      "bytes": 272828,
+      "sourceHash": "fcb4ae2ead25ce3b92f97a322b59917630eeeebe9b48c316944bc259a46eebdd",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Tribal.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5252,
+      "bounds": {
+        "min": [
+          -0.0275,
+          -0.0053,
+          0.0033
+        ],
+        "max": [
+          0.0275,
+          0.0085,
+          0.0444
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_hywirl": {
+      "id": "enemies_hywirl",
+      "category": "enemies",
+      "file": "assets_baked/enemies/hywirl.258049b4.glb",
+      "bytes": 173320,
+      "sourceHash": "19261af209d4767060de023e9a5f3535eaa1e346b5de9a18a982ac372c49c736",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Hywirl.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3296,
+      "bounds": {
+        "min": [
+          -0.0277,
+          -0.008,
+          0.0003
+        ],
+        "max": [
+          0.0277,
+          0.0097,
+          0.0277
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_cactoro": {
+      "id": "enemies_cactoro",
+      "category": "enemies",
+      "file": "assets_baked/enemies/cactoro.b176c29e.glb",
+      "bytes": 118016,
+      "sourceHash": "a65371323ceffd34dfd5557943d6283490f707868f587bbb743fbe1017ac4bab",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Cactoro.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2388,
+      "bounds": {
+        "min": [
+          -0.0209,
+          -0.0191,
+          0
+        ],
+        "max": [
+          0.0198,
+          0.0175,
+          0.0357
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_monkroose": {
+      "id": "enemies_monkroose",
+      "category": "enemies",
+      "file": "assets_baked/enemies/monkroose.4452e61f.glb",
+      "bytes": 349960,
+      "sourceHash": "e765676112ae28b88ac9bea7db99f357d4231f4d5dbf71c39503cb967ec52217",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Monkroose.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5824,
+      "bounds": {
+        "min": [
+          -0.0232,
+          -0.0072,
+          0
+        ],
+        "max": [
+          0.0232,
+          0.0077,
+          0.0298
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Duck",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|Jump_Idle",
+        "CharacterArmature|Jump_Land",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Run",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Wave",
+        "CharacterArmature|Weapon",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_ghost_skull": {
+      "id": "enemies_ghost_skull",
+      "category": "enemies",
+      "file": "assets_baked/enemies/ghost_skull.2f37cb2b.glb",
+      "bytes": 205156,
+      "sourceHash": "95daabe3d15e4392b538355896281db53ea8a1cf378505640f911d9ac1358aa5",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Ghost Skull.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3144,
+      "bounds": {
+        "min": [
+          -0.0276,
+          -0.0069,
+          0.0028
+        ],
+        "max": [
+          0.0274,
+          0.0085,
+          0.0338
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_goleling": {
+      "id": "enemies_goleling",
+      "category": "enemies",
+      "file": "assets_baked/enemies/goleling.69ca7374.glb",
+      "bytes": 177536,
+      "sourceHash": "5e5870e51a3d8bd4bc0a5c6208a9db04f3092b30d957a101b61fd297c217e1ee",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Goleling.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3696,
+      "bounds": {
+        "min": [
+          -0.0219,
+          -0.0051,
+          0.0149
+        ],
+        "max": [
+          0.0219,
+          0.0143,
+          0.0304
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_goleling_evolved": {
+      "id": "enemies_goleling_evolved",
+      "category": "enemies",
+      "file": "assets_baked/enemies/goleling_evolved.9cfdd1fb.glb",
+      "bytes": 258728,
+      "sourceHash": "d6eb55cf8bb4fd970dd9877d123f08e47c5cdb0a6d6f7f06fc857cc97d81cc9d",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Goleling Evolved.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5864,
+      "bounds": {
+        "min": [
+          -0.0219,
+          -0.0076,
+          0.0124
+        ],
+        "max": [
+          0.0219,
+          0.0143,
+          0.0381
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_demon": {
+      "id": "enemies_demon",
+      "category": "enemies",
+      "file": "assets_baked/enemies/demon.0855047e.glb",
+      "bytes": 254932,
+      "sourceHash": "3cfa09a8ead365e33b19d49aa454c3e5c02f8c47bea9b5fd45ad2cf638a81df1",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Demon.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4784,
+      "bounds": {
+        "min": [
+          -0.0274,
+          -0.0063,
+          0.0114
+        ],
+        "max": [
+          0.0274,
+          0.0143,
+          0.0281
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_blue_demon": {
+      "id": "enemies_blue_demon",
+      "category": "enemies",
+      "file": "assets_baked/enemies/blue_demon.f7774be8.glb",
+      "bytes": 355352,
+      "sourceHash": "1b0f1f858d0a7146e24df2430100099e539528900eb29e0c80684fea9e164d5e",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Blue Demon.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5800,
+      "bounds": {
+        "min": [
+          -0.0429,
+          -0.0285,
+          -0.0001
+        ],
+        "max": [
+          0.0429,
+          0.0115,
+          0.0525
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Duck",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|Jump_Idle",
+        "CharacterArmature|Jump_Land",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Run",
+        "CharacterArmature|Run2",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Wave",
+        "CharacterArmature|Weapon",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_yeti": {
+      "id": "enemies_yeti",
+      "category": "enemies",
+      "file": "assets_baked/enemies/yeti.782a3408.glb",
+      "bytes": 103960,
+      "sourceHash": "c94429287ef4cc8e43b0986a25042d2d4f9b58865bbd68c2e8bf1645b0444cae",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Yeti.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2136,
+      "bounds": {
+        "min": [
+          -0.0127,
+          -0.0132,
+          -0.0002
+        ],
+        "max": [
+          0.0127,
+          0.0127,
+          0.0241
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_squidle": {
+      "id": "enemies_squidle",
+      "category": "enemies",
+      "file": "assets_baked/enemies/squidle.27d71e5f.glb",
+      "bytes": 250304,
+      "sourceHash": "c87fd5c5630c3580a03aabee8cd748c371402aff7a8f7fa481162fec9289e2da",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Squidle.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4880,
+      "bounds": {
+        "min": [
+          -0.036,
+          -0.0091,
+          0.0131
+        ],
+        "max": [
+          0.036,
+          0.0188,
+          0.0392
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_dragon": {
+      "id": "enemies_dragon",
+      "category": "enemies",
+      "file": "assets_baked/enemies/dragon.219005f4.glb",
+      "bytes": 207000,
+      "sourceHash": "fadae2f2208ff9bd7f35d6991d0ece61469992d4fdc38b7948c1b0e2f7507a81",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Dragon.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4562,
+      "bounds": {
+        "min": [
+          -0.0219,
+          -0.01,
+          0.016
+        ],
+        "max": [
+          0.0219,
+          0.0143,
+          0.0314
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_dragon_evolved": {
+      "id": "enemies_dragon_evolved",
+      "category": "enemies",
+      "file": "assets_baked/enemies/dragon_evolved.01652638.glb",
+      "bytes": 367880,
+      "sourceHash": "44baaf34b21ff6e3a8f6ecda684c9026461d7d3114996e975df500bcf9601707",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Dragon Evolved.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 7438,
+      "bounds": {
+        "min": [
+          -0.0274,
+          -0.0098,
+          0.003
+        ],
+        "max": [
+          0.0274,
+          0.0143,
+          0.0316
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_bunny": {
+      "id": "enemies_bunny",
+      "category": "enemies",
+      "file": "assets_baked/enemies/bunny.d95ee072.glb",
+      "bytes": 452432,
+      "sourceHash": "190f076d6055d4cbc92baed72ba0e7fd543549cf32f787c21b76b13bd53219a2",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Bunny.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 8284,
+      "bounds": {
+        "min": [
+          -0.0232,
+          -0.0092,
+          0
+        ],
+        "max": [
+          0.0245,
+          0.0088,
+          0.0344
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Duck",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|Jump_Idle",
+        "CharacterArmature|Jump_Land",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Run",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Wave",
+        "CharacterArmature|Weapon",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_chicken": {
+      "id": "enemies_chicken",
+      "category": "enemies",
+      "file": "assets_baked/enemies/chicken.e36eee3d.glb",
+      "bytes": 119148,
+      "sourceHash": "6507bf6a8e4c7f1f897eb2e1e106cefa42eca4ff11917dbed0a4c002f382db21",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Chicken.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2904,
+      "bounds": {
+        "min": [
+          -0.0117,
+          -0.013,
+          -0.0001
+        ],
+        "max": [
+          0.0117,
+          0.008,
+          0.0234
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_birb": {
+      "id": "enemies_birb",
+      "category": "enemies",
+      "file": "assets_baked/enemies/birb.e5a1672f.glb",
+      "bytes": 145672,
+      "sourceHash": "66d98e6cd96b8983ae16e6a348c7783fefd65a020ef0a363768c2176db596770",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Birb.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3164,
+      "bounds": {
+        "min": [
+          -0.014,
+          -0.0201,
+          -0.0003
+        ],
+        "max": [
+          0.014,
+          0.0074,
+          0.0258
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_skeleton_rogue": {
+      "id": "enemies_skeleton_rogue",
+      "category": "enemies",
+      "file": "assets_baked/enemies/skeleton_rogue.6aabe24b.glb",
+      "bytes": 315184,
+      "sourceHash": "0f71a33a53fdd530e7d13014d38bf5ff84da52eef013debacaeab375b376b564",
+      "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Rogue.glb",
+      "pack": "kaykit-skeletons",
+      "packName": "KayKit Skeletons 1.1 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 5278,
+      "bounds": {
+        "min": [
+          -0.9713,
+          -1.1218,
+          -0.5816
+        ],
+        "max": [
+          0.9713,
+          2.1661,
+          0.5712
+        ]
+      },
+      "animations": []
+    },
+    "enemies_skeleton_mage": {
+      "id": "enemies_skeleton_mage",
+      "category": "enemies",
+      "file": "assets_baked/enemies/skeleton_mage.b4b29d50.glb",
+      "bytes": 249788,
+      "sourceHash": "7c2a809e297b4a07a4525b2ed8ff646b438e242c53311a2dcd0368115318277b",
+      "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Mage.glb",
+      "pack": "kaykit-skeletons",
+      "packName": "KayKit Skeletons 1.1 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 4588,
+      "bounds": {
+        "min": [
+          -0.9691,
+          -0.4222,
+          -0.8483
+        ],
+        "max": [
+          0.9691,
+          2.1661,
+          0.887
+        ]
+      },
+      "animations": []
+    },
+    "enemies_skeleton_warrior": {
+      "id": "enemies_skeleton_warrior",
+      "category": "enemies",
+      "file": "assets_baked/enemies/skeleton_warrior.c776080c.glb",
+      "bytes": 351472,
+      "sourceHash": "c7fbb1b70704f11e13e3473a3b006285c9990a30b7da0f44d0b1c208fa1a81ca",
+      "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Warrior.glb",
+      "pack": "kaykit-skeletons",
+      "packName": "KayKit Skeletons 1.1 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 5934,
+      "bounds": {
+        "min": [
+          -0.9713,
+          0,
+          -0.7582
+        ],
+        "max": [
+          0.9713,
+          2.1661,
+          0.7005
+        ]
+      },
+      "animations": []
     }
   }
 }

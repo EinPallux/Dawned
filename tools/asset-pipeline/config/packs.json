@@ -805,6 +805,167 @@
       "category": "world/buildings",
       "glob": "glTF/Logs.gltf",
       "limit": 1
+    },
+    {
+      "$comment": "Sungraze grazer herds \u2014 \u00a73.4's 'learn to pick your fights' zone is built around them.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Alpaking.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "The bull, and at 1.7 scale the Alpaking Prime zone boss.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Alpaking Evolved.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Steppe Raptor: the savanna's pack-pounce swarm.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Dino.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Orc Headhunter \u2014 a second orc silhouette so a warband is not one model twice.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Orc Enemy.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Tribal Windcaller. Flyer-family rig, so it is a CASTER that hovers rather than a walker.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Tribal.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Dust Hywirl: the whirl that contact-damages across open ground.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Hywirl.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Ember and Sun Cactoro \u2014 needle-spray ranged, recoloured per zone.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Cactoro.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Feral Monkroose, Emberwood's charger in the gone-wild orchards.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Monkroose.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Grave Wisp and, ember-tinted, the Ashcrag Skull Swarm.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Ghost Skull.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Ash Goleling \u2014 the stagger-resistant wall of the canyons.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Goleling.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Crag Goleling, and giant-scaled the Elder Treant.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Goleling Evolved.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Canyon Demon: the fire-trail dash.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Demon.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Void-Touched Demon, the fire-rain caster.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Blue Demon.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Yeti \u2014 charger with a boulder toss, in the shaded north face.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Yeti.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Rift Squidle and its toxic pools.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Squidle.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "The Ashcrag Dragon rare roamer.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Dragon.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Ashwing, the level-30 world boss, at 2.0 scale.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Dragon Evolved.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Ambient. \u00a74.5's 'alive' pillar is mostly these.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Bunny.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Ambient, around the farmsteads.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Chicken.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Ambient flyer.",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Birb.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Fast, backstab-bonus grunt \u2014 the skeleton that flanks.",
+      "pack": "kaykit-skeletons",
+      "category": "enemies",
+      "glob": "characters/gltf/Skeleton_Rogue.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Bone bolt and a bone-wall self-shield.",
+      "pack": "kaykit-skeletons",
+      "category": "enemies",
+      "glob": "characters/gltf/Skeleton_Mage.glb",
+      "limit": 1
+    },
+    {
+      "$comment": "Shielded grunt: 50 % frontal mitigation, so you flank it. Dark-tinted and 1.5-scaled it is Bonelord Varkas.",
+      "pack": "kaykit-skeletons",
+      "category": "enemies",
+      "glob": "characters/gltf/Skeleton_Warrior.glb",
+      "limit": 1
     }
   ]
 }

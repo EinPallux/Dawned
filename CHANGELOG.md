@@ -5,6 +5,18 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the rest of the bestiary's models (2026-08-06, P12-C)
+
+- **23 more enemy models baked** — the alpakings and raptors of the savanna, the demons, golelings,
+  yeti and squidle of the canyons, both dragons, the cactoros, monkroose, hywirls and grave wisps,
+  and the rabbits, chickens and birds that make a place feel lived in. 39 enemy models in all,
+  137 baked assets / 23.27 MB of the 64 MB budget.
+- **The four skeletons cannot animate.** They bake with no clips at all, because the pack keeps
+  meshes and animations in separate files. Nothing has shipped onto them and nothing will until
+  the pipeline can merge a shared rig's clips into a mesh — Emberwood's undead are blocked on it,
+  and it is written down in NPCS_ENEMIES §4.1 rather than discovered by a player watching a
+  skeleton slide across a graveyard without moving its legs.
+
 ### Added — the Dawnlands exist (2026-08-06, P12-A)
 
 - **The real world is generated**: five isles and the hidden Elder Grove, four islets, and the
