@@ -74,6 +74,43 @@ Tested in `tools/asset-pipeline/src/merge-clips.test.mjs` against the real pack 
 channel bound to it, geometry untouched, a walk cycle that actually moves joints, and a foreign rig
 refused) — `vitest` collects `tools/**/*.test.mjs` for this.
 
+### 2.2 The other front doors — OBJ, `scale`, `emissive` (P12-F)
+
+The reader was glTF/GLB only, which left **three packs and ~200 models unreachable for a format
+reason**: the Medieval Village Pack, the Low Poly Nature Models and the Desert Assets all ship
+Blends/FBX/OBJ. That mattered once the world needed a **campfire** — WORLD.md §5 makes it a real
+interactable (sit → +regen "Cozy" 60 s) and the Medieval Village bonfire is the only one in the
+entire library. A design-required object blocked by a container format is a worse reason than a
+licensing one.
+
+- **`.obj` sources** are converted in memory with `obj2gltf` (the `.mtl` folds into materials) and
+  then run the ordinary transform chain — a second front door, not a second pipeline. The `.mtl`
+  joins the source hash, so editing a material colour re-bakes. **FBX is deliberately not handled**:
+  every OBJ-only pack here ships FBX of the same meshes, so nothing is gained.
+- **`scale: <n>`** normalises a pack authored in something other than metres, applied to the scene's
+  root nodes before `flatten()` bakes it into the vertices. The Medieval Village pack is ~1/2.5
+  scale — its well is 1.25 units tall. This belongs at bake time because a placement deliberately
+  carries **no** scale: an interactable row is id/model/position/rotation, and a chest that is the
+  right size in one spot is the right size in every spot.
+- **`emissive: { "<material>": "#rrggbb" }`** raises a named material's emissive factor. The bonfire
+  models its flame as a separate material called `Fire`; without this it is orange triangles lit by
+  the sun, and the thing that makes fire read as fire across a dark clearing is that it emits.
+  **Throws on a material name the file does not have**, like `mergeClips` throws on an unmatched
+  joint — a silent miss ships an unlit campfire nobody notices until they walk past one at night.
+
+**Measure a prop in WORLD space, never from its accessors.** `model-size.mjs` exists because the
+naive check (read POSITION min/max) is confidently wrong: it reported the bonfire at 41 cm when it
+is 1.02 m, and the KayKit shrine at **one centimetre** when it is 2.4 m tall — a glTF node carries a
+transform, and both packs put the scale there. `model-size.test.mjs` pins nine props to loose metre
+bands; the failure it guards against is off by 2.5×, not by 10 %.
+
+**One manifest, two producers.** `assets:build` writes models and `assets:icons` writes the
+game-icons.net set into the same `manifest.json`. `build()` started from an empty asset map, so a
+plain `pnpm assets:build` **deleted all 256 icon entries** — files stayed on disk, the report stayed
+green, and every item, ability and node in the game silently lost its icon. It only ever survived
+because the habitual order is build-then-icons. Each producer now owns its categories and carries
+the rest (`carryForeignAssets`, `FOREIGN_CATEGORIES`), pinned by `manifest-merge.test.mjs`.
+
 ## 3. Texture/Image Pipeline
 
 - Palette + splat + particle textures → PNG optimized (sharp: strip metadata, correct sRGB), sizes

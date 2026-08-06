@@ -12,7 +12,7 @@ no ledger entry). An in-game credits screen renders this file.
 | **Quaternius** (quaternius.com) | Universal Base Characters, Modular Character Outfits – Fantasy, Universal Animation Library 1 [PRO] & 2 [Standard], Monster Bundle, Animated Fish Bundle, Ultimate Nature Kit 2 [Standard], Stylized Nature MegaKit [Standard], Fantasy Props MegaKit [Standard], **Ultimate Fantasy Buildings Kit [Standard]**, Cube World, Farm, Pirate bundles | CC0 1.0 Universal. Two of these ship `License_Standard.txt` in-folder stating exactly that; **Ultimate Nature Kit 2 and the Buildings Kit do not**, and are shipped on the judgement that they are the same publisher, the same `[Standard]` packaging and the same glTF export as their siblings. Written down rather than assumed — if that is ever wrong, these two are what to pull. |
 | **KayKit** (Kay Lousberg, kaylousberg.com) | Adventurers 2.0 FREE, Skeletons 1.1 FREE, Fantasy Weapon Bits, RPG Tools Bits, ResourceBits, Forest Nature Pack, Low Poly Dungeon Pack, Halloween Bundle | CC0 (credit appreciated — hereby given!) |
 | **Kenney** (kenney.nl) | Fantasy UI Borders, Particle Pack | CC0 |
-| Various (Sketchfab & itch sources) | Low Poly Fantasy Weapons, Misc Weapons MiniPoly, Gems & Ores, Nature/Rocks/Desert/Egypt/**Medieval Village** packs, Noise Texture Pack | Per-pack — **license verification is a gate** before any file is served. P10 wanted the Gems & Ores pack for its ore-in-stone rocks and did **not** use it: the folder carries no license file and its glTF is a third-party conversion, so its provenance cannot be attributed. The mining nodes are tinted KayKit rocks instead. P12 wanted the **Medieval Village Pack** for Sungraze farmsteads and did not use it for the same reason — no license file, FBX/OBJ only, unattributable; the farmsteads come from the Buildings Kit's own `Farm_*` and `Windmill_*` models instead. |
+| Various (Sketchfab & itch sources) | Low Poly Fantasy Weapons, Misc Weapons MiniPoly, Gems & Ores, Nature/Rocks/Desert/Egypt/**Medieval Village**/**Fantasy FREE** packs, Noise Texture Pack | **Owner-asserted rights** (decision 2026-08-06, USER_QUESTIONS Q31). These folders carry no license file, so they cannot be attributed to a named author — the owner states they hold the rights to use every pack they uploaded, and that is the basis on which they ship. Recorded, never disguised: each such pack is `ownerAsserted: true` + `verified: false` in `config/packs.json`, and `pnpm assets:report` prints one provenance line naming them on every run. **If that claim is ever wrong, the `ownerAsserted` packs are exactly the list to pull.** This reverses two earlier refusals made on provenance grounds — P10 declined the Gems & Ores pack, and P12-B declined the **Medieval Village Pack** for the Sungraze farmsteads. The Medieval Village Pack is now in use for the village dressing and, notably, the **campfire**: it holds the only one in the whole library, and WORLD.md §5 makes campfires a real interactable. |
 | **Owner-made** | `assets/backgrounds/*` (menu/board art) | Project-internal |
 
 ## Icons
@@ -37,6 +37,11 @@ from these games are used.
 <!-- GENERATED LEDGER BELOW — do not edit by hand; `pnpm assets:build` rewrites it -->
 
 ## Per-file ledger
+
+### Fantasy FREE Pack
+Pack id `fantasy-free-pack` · author **unattributed (owner-supplied)** · license **owner-asserted** · owner upload
+
+- `world_props_pointer_001` — assets/world/Fantasy Free Pack/Separate_assets_glb/pointer_001.glb
 
 ### Game-icons.net
 Pack id `game-icons` · author **caro-asercion (game-icons.net)** · license **CC-BY-3.0** · https://creativecommons.org/licenses/by/3.0/
@@ -330,6 +335,13 @@ Pack id `kaykit-forest` · author **Kay Lousberg (KayKit)** · license **CC0-1.0
 - `world_nature_tree_bare_1_b_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_B_Color1.gltf
 - `world_nature_tree_bare_1_c_color1` — assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_C_Color1.gltf
 
+### KayKit Halloween Bundle
+Pack id `kaykit-halloween` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
+
+- `world_props_arch_gate` — assets/world/Halloween Bundle KayKit/Arch Gate.glb
+- `world_props_gravemarker` — assets/world/Halloween Bundle KayKit/Gravemarker.glb
+- `world_props_shrine` — assets/world/Halloween Bundle KayKit/Shrine.glb
+
 ### KayKit Resource Bits 1.0 FREE
 Pack id `kaykit-resourcebits` · author **Kay Lousberg (KayKit)** · license **CC0-1.0** · https://kaylousberg.itch.io/
 
@@ -375,6 +387,22 @@ Pack id `kaykit-weapons` · author **Kay Lousberg (KayKit)** · license **CC0-1.
 - `items_weapons_sword_d` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_D.gltf
 - `items_weapons_sword_e` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_E.gltf
 - `items_weapons_wand_a` — assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/wand_A.gltf
+
+### Medieval Village Pack
+Pack id `medieval-village` · author **unattributed (owner-supplied)** · license **owner-asserted** · owner upload
+
+- `world_props_barrel` — assets/world/Medieval Village Pack/Props/OBJ/Barrel.obj
+- `world_props_bench_1` — assets/world/Medieval Village Pack/Props/OBJ/Bench_1.obj
+- `world_props_bonfire_lit` — assets/world/Medieval Village Pack/Props/OBJ/Bonfire_Lit.obj
+- `world_props_cart` — assets/world/Medieval Village Pack/Props/OBJ/Cart.obj
+- `world_props_cauldron` — assets/world/Medieval Village Pack/Props/OBJ/Cauldron.obj
+- `world_props_crate` — assets/world/Medieval Village Pack/Props/OBJ/Crate.obj
+- `world_props_fence` — assets/world/Medieval Village Pack/Props/OBJ/Fence.obj
+- `world_props_gazebo` — assets/world/Medieval Village Pack/Props/OBJ/Gazebo.obj
+- `world_props_hay` — assets/world/Medieval Village Pack/Props/OBJ/Hay.obj
+- `world_props_marketstand_1` — assets/world/Medieval Village Pack/Props/OBJ/MarketStand_1.obj
+- `world_props_marketstand_2` — assets/world/Medieval Village Pack/Props/OBJ/MarketStand_2.obj
+- `world_props_well` — assets/world/Medieval Village Pack/Props/OBJ/Well.obj
 
 ### Quaternius Universal Base Characters (Standard)
 Pack id `quaternius-base-characters` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/

@@ -1259,7 +1259,7 @@
       "category": "enemies",
       "file": "assets_baked/enemies/skeleton_minion.b93b36c9.glb",
       "bytes": 493560,
-      "sourceHash": "dd1ad9e3a5802322f2f41a15730be362daaf4bb313808e637852140815c117d0",
+      "sourceHash": "7553f9508f249ce95c6fcb50eaab13f2a3ee79c294c0935648a0e0cd475add8c",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Minion.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -1801,7 +1801,7 @@
       "category": "characters",
       "file": "assets_baked/characters/superhero_female_fullbody.4e9e115c.glb",
       "bytes": 292520,
-      "sourceHash": "c544e91561aebc16708493519d67f47eb2b7eb52c6a72fd56f6b13003c0aa10a",
+      "sourceHash": "377f7a5a421eb53b1c681c0ba5942fd3710826be7ed76da788d16d00f2fefd30",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1829,7 +1829,7 @@
       "category": "characters",
       "file": "assets_baked/characters/superhero_male_fullbody.da8ac88d.glb",
       "bytes": 260480,
-      "sourceHash": "39827febc1bcad0627c95ca81912888c42b66990f87ebfadf2b17be7cb697717",
+      "sourceHash": "58177965c691fb0a21b492c19aaadb74fe711d9eb515c310185d4ad6625f823b",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1857,7 +1857,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_beard.a821a2a0.glb",
       "bytes": 91224,
-      "sourceHash": "4184ca6caa430c24d3550295c0629400445043498054a721e927ab0cefea7a73",
+      "sourceHash": "d3cb0d772b02ef1d28b466311691d7e6d47f62e73b1a1f548667d1be2e4bca57",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Beard.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1885,7 +1885,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buns.1fc68dd7.glb",
       "bytes": 264612,
-      "sourceHash": "a6e57f56d69b1fc13cb05033df55e66b90ad65745addf9463aaecc6519a3b622",
+      "sourceHash": "6c9984b77165418e9f2f6c74bd5aaf9f31b040e8fb804bb6f40bcf6c313090e1",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buns.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1913,7 +1913,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buzzed.8dbf3857.glb",
       "bytes": 83244,
-      "sourceHash": "4013562527e04957b4384b4a9db25cfcf08028b299f5bc6edb0f2a0a50125e55",
+      "sourceHash": "006a2d3941bf7501c11f4bea296eebf55cd5f0c7a3452f476de74e3025035257",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buzzed.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1941,7 +1941,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buzzedfemale.5e8faee0.glb",
       "bytes": 83772,
-      "sourceHash": "d2c49600381059c095774e473141e9e394a395fcbb142bbc452ac697f1586246",
+      "sourceHash": "c26b1f46e27930bf6b638b8e4f01912236955c2263a67ab969b6d9bad1ea3d48",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_BuzzedFemale.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1969,7 +1969,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_long.6eb203db.glb",
       "bytes": 240456,
-      "sourceHash": "593a6c1647d58c454270a107bc4307c6953a702c16561eb5ce0d2760b25ba47b",
+      "sourceHash": "eca43a0a14680a3d8940c5ee41fba4f4e7d67c0dde9a47cc00ff1a01e367986e",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Long.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1997,7 +1997,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_simpleparted.cd612f7c.glb",
       "bytes": 101204,
-      "sourceHash": "c141cf3c96850b7018fdbf1c7e882b90b8563ebbfc2823d927e0da7c0d3cf7f1",
+      "sourceHash": "e16d726db3616f3a2efac29d9ac569bbf1f454edfc27ca40578e6d5da70cb3dd",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -2025,7 +2025,7 @@
       "category": "characters",
       "file": "assets_baked/characters/female_peasant.1a3743a0.glb",
       "bytes": 686464,
-      "sourceHash": "42a340f202cdf2d0694852029c956dcbba3aee584cb19c1373bb7160148a9f90",
+      "sourceHash": "9a7144c7a90e9fab4427d90ec912af9ff057c7871498f50dc06691bc3422ebd9",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Peasant.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -2053,7 +2053,7 @@
       "category": "characters",
       "file": "assets_baked/characters/female_ranger.f344256f.glb",
       "bytes": 1654600,
-      "sourceHash": "2d68fed53f6155ebb2eefe6a109054fc7801039b25cfce78c42d65807ddff6d2",
+      "sourceHash": "9c8296843dfc104577b0e5118492482f4118dcf0f41883b1f47a8faa2ee41dae",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Ranger.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -2081,7 +2081,7 @@
       "category": "characters",
       "file": "assets_baked/characters/male_peasant.1ff17763.glb",
       "bytes": 654824,
-      "sourceHash": "d6580f7eb095c53947a5b9943c49e71a243be9553b431182ef5a0b88985a1b71",
+      "sourceHash": "556479ed32a38fcceebeeb4a75fec08d68de2a30e63120935634c59f2c0de2a6",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Peasant.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -2109,7 +2109,7 @@
       "category": "characters",
       "file": "assets_baked/characters/male_ranger.fa540f1a.glb",
       "bytes": 1644860,
-      "sourceHash": "14d5df0dbb421fe7e9b2ab9337609280100bdded964b3691209b4050350141b6",
+      "sourceHash": "270a10734b481d0a5e211a6e7855fc6fa31f162b98fb08dba94194a0d080986c",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Ranger.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -2137,7 +2137,7 @@
       "category": "characters",
       "file": "assets_baked/characters/ual1.f1959b9d.glb",
       "bytes": 2074608,
-      "sourceHash": "0e1f14a78436c0d15806fbbabc4423a99c91efdea07cbd8e178dc1372ae44bfd",
+      "sourceHash": "3b7f9c6ff72254b1e253ef32f69d9eec9ac95de2fa20f211cfce793045c02a45",
       "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
       "pack": "quaternius-ual1",
       "packName": "Quaternius Universal Animation Library 1 (PRO)",
@@ -2194,7 +2194,7 @@
       "category": "characters",
       "file": "assets_baked/characters/ual2_standard.56b3b900.glb",
       "bytes": 718816,
-      "sourceHash": "4a445958a54bfc4f2d29c7a04ded33ffa0bc0c6965f8dbaa60c6949966ad23a8",
+      "sourceHash": "d40f3d08fffd449973e55fa3499b4b834155141b8843434bad24314707042995",
       "source": "assets/player_characters/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
       "pack": "quaternius-ual2",
       "packName": "Quaternius Universal Animation Library 2 (Standard)",
@@ -2392,7 +2392,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_a_color1.61709477.glb",
       "bytes": 9004,
-      "sourceHash": "8d821d42b8ef2a73f26859daf2f096364165d968ea91e45bd2dc2f13d0dc3c32",
+      "sourceHash": "72389935ecbcb7e1f72377305c61881a7e441aa5133cfb414f62bf2269e40e5c",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_A_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2420,7 +2420,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_c_color1.fb0ebf69.glb",
       "bytes": 10624,
-      "sourceHash": "9c4d513f2d5e9689c5d21c8e91884b6b5536a21ca5e787bbdb813dd6bd378d42",
+      "sourceHash": "d311c5b9e557590ffc24dd845b30dc38ec1cff2fe267b4670f42e3be2dd86145",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_C_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2448,7 +2448,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_3_d_color1.89c92bb5.glb",
       "bytes": 12428,
-      "sourceHash": "72666c9f355cdef57956ae2ae00741d7b0566960537590e7b80731d800f1d536",
+      "sourceHash": "0dbb7b4f196200b7a7825cfc961b51602a61a71223082e4eda44dd5935565338",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_3_D_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2476,7 +2476,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_e_color1.76a4623a.glb",
       "bytes": 23756,
-      "sourceHash": "d4274055b2e6eab58628abeacbe7fde72d4b9df508c5e0241c08e94ffaa79b2b",
+      "sourceHash": "aa447655d20315e0a289e3473712c4c55e31baa9c14149fd320ac9fb3db28aa7",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_E_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2504,7 +2504,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_3_h_color1.28de8924.glb",
       "bytes": 15348,
-      "sourceHash": "8b66493df7d9315aeaf7e8dbb864f2baded63ea22622d4e5315a29122321d7fa",
+      "sourceHash": "8088bbea33931dc827c6b1dcc5a2114d16af448a6bf948f153a0f33fb294682e",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_3_H_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -4373,7 +4373,7 @@
       "category": "enemies",
       "file": "assets_baked/enemies/skeleton_rogue.d2733d0f.glb",
       "bytes": 506132,
-      "sourceHash": "11ac98b8db3f4928a9dc025d163ee5cb09c4a66dde4568f634de6cf054043a84",
+      "sourceHash": "b4a9089dca7c9d5e12d8219325d1803473e577fd7306a97d79bd9f3123dbddb1",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Rogue.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -4410,7 +4410,7 @@
       "category": "enemies",
       "file": "assets_baked/enemies/skeleton_mage.42165d90.glb",
       "bytes": 440732,
-      "sourceHash": "0fb1280b0570debfd6bc290b756e38300ee603a8bd76328669a3fd8d94b3375b",
+      "sourceHash": "9e7ffb775f34b53906277897adff83b4103d5c0e364f7b2f3c156784a3b7c58a",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Mage.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -4447,7 +4447,7 @@
       "category": "enemies",
       "file": "assets_baked/enemies/skeleton_warrior.19f8247d.glb",
       "bytes": 542388,
-      "sourceHash": "644ac133410aef248d541caee842587ebb27fec26116d00f8568ff04001654e9",
+      "sourceHash": "26caf863ed4194ec819c94c143227d987564e83fd37c82aa3ab37b9313988fc6",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Warrior.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -4516,6 +4516,454 @@
         "CharacterArmature|Walk",
         "CharacterArmature|Yes"
       ]
+    },
+    "world_props_bonfire_lit": {
+      "id": "world_props_bonfire_lit",
+      "category": "world/props",
+      "file": "assets_baked/world/props/bonfire_lit.631e6779.glb",
+      "bytes": 48648,
+      "sourceHash": "765389d01bd49cac9dab3fa65006dd9d04802c744da4709a14411330c654b294",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Bonfire_Lit.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1162,
+      "bounds": {
+        "min": [
+          -0.2024,
+          -0.0138,
+          -0.1795
+        ],
+        "max": [
+          0.2042,
+          0.339,
+          0.1829
+        ]
+      },
+      "animations": []
+    },
+    "world_props_well": {
+      "id": "world_props_well",
+      "category": "world/props",
+      "file": "assets_baked/world/props/well.f4617382.glb",
+      "bytes": 84044,
+      "sourceHash": "2718b2d218b9f06acfbc5452cee3d3215c0fe6b3c2e5f52c3a96a270265a291f",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Well.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1870,
+      "bounds": {
+        "min": [
+          -0.3374,
+          -0.2523,
+          -0.365
+        ],
+        "max": [
+          0.3289,
+          0.9981,
+          0.6385
+        ]
+      },
+      "animations": []
+    },
+    "world_props_marketstand_1": {
+      "id": "world_props_marketstand_1",
+      "category": "world/props",
+      "file": "assets_baked/world/props/marketstand_1.98b77b69.glb",
+      "bytes": 73288,
+      "sourceHash": "5f5c77de8c80b22f54df834e27847d4c40ed1a8df7bca745f773380ca22a7a06",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/MarketStand_1.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1548,
+      "bounds": {
+        "min": [
+          -0.4755,
+          -0.0047,
+          -0.5965
+        ],
+        "max": [
+          0.4755,
+          1.0444,
+          0.5933
+        ]
+      },
+      "animations": []
+    },
+    "world_props_marketstand_2": {
+      "id": "world_props_marketstand_2",
+      "category": "world/props",
+      "file": "assets_baked/world/props/marketstand_2.5988900b.glb",
+      "bytes": 54656,
+      "sourceHash": "0740c31e4b9cff68461cdfc0032261741311fb325cc575ecd43f40e7ff72d47b",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/MarketStand_2.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1132,
+      "bounds": {
+        "min": [
+          -0.3014,
+          -0.0029,
+          -0.5771
+        ],
+        "max": [
+          0.2158,
+          1.0393,
+          0.5771
+        ]
+      },
+      "animations": []
+    },
+    "world_props_cart": {
+      "id": "world_props_cart",
+      "category": "world/props",
+      "file": "assets_baked/world/props/cart.f8047d12.glb",
+      "bytes": 105156,
+      "sourceHash": "b7b7c46ae80d49907c258db52c4bc6df6854509b22c4865cb67820015f18c524",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Cart.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 2660,
+      "bounds": {
+        "min": [
+          -0.231,
+          -0.0005,
+          -0.3224
+        ],
+        "max": [
+          0.231,
+          0.7955,
+          0.605
+        ]
+      },
+      "animations": []
+    },
+    "world_props_hay": {
+      "id": "world_props_hay",
+      "category": "world/props",
+      "file": "assets_baked/world/props/hay.df0fffea.glb",
+      "bytes": 26932,
+      "sourceHash": "d4d4f6942fece0362d1d2e18090b0b49a71e8b8a23242eee37e09a5e7c055e50",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Hay.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 488,
+      "bounds": {
+        "min": [
+          -0.0618,
+          0.0004,
+          -0.0636
+        ],
+        "max": [
+          0.0592,
+          0.1789,
+          0.0612
+        ]
+      },
+      "animations": []
+    },
+    "world_props_bench_1": {
+      "id": "world_props_bench_1",
+      "category": "world/props",
+      "file": "assets_baked/world/props/bench_1.7884ae8b.glb",
+      "bytes": 18356,
+      "sourceHash": "ae1560fe8a59cee5ca535708a9784ae0f08b6facd2321975f35c72478535c9c0",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Bench_1.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 376,
+      "bounds": {
+        "min": [
+          -0.3325,
+          -0.0013,
+          -0.0813
+        ],
+        "max": [
+          0.3325,
+          0.3145,
+          0.1611
+        ]
+      },
+      "animations": []
+    },
+    "world_props_barrel": {
+      "id": "world_props_barrel",
+      "category": "world/props",
+      "file": "assets_baked/world/props/barrel.ee217aad.glb",
+      "bytes": 51296,
+      "sourceHash": "6fd0dff7b4ee0299920cd8ff5c50d811d3f2e9ea03b55f3513b549109c8d0bbb",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Barrel.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1312,
+      "bounds": {
+        "min": [
+          -0.0791,
+          0.0009,
+          -0.0787
+        ],
+        "max": [
+          0.0791,
+          0.2052,
+          0.0781
+        ]
+      },
+      "animations": []
+    },
+    "world_props_crate": {
+      "id": "world_props_crate",
+      "category": "world/props",
+      "file": "assets_baked/world/props/crate.b04f88f2.glb",
+      "bytes": 34944,
+      "sourceHash": "757a623805e5b03be13cdd307dc27168c6630f91275c658c51d0122065fc0c84",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Crate.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 784,
+      "bounds": {
+        "min": [
+          -0.0801,
+          -0.002,
+          -0.0801
+        ],
+        "max": [
+          0.0801,
+          0.1583,
+          0.0801
+        ]
+      },
+      "animations": []
+    },
+    "world_props_gazebo": {
+      "id": "world_props_gazebo",
+      "category": "world/props",
+      "file": "assets_baked/world/props/gazebo.f71d9e27.glb",
+      "bytes": 37772,
+      "sourceHash": "f3748ec7fa8b102479c9eebf78a49829bcf1c649a39380cb2c2bd20deb96e595",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Gazebo.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 698,
+      "bounds": {
+        "min": [
+          -0.5236,
+          0,
+          -0.6213
+        ],
+        "max": [
+          0.5134,
+          1.3471,
+          0.6381
+        ]
+      },
+      "animations": []
+    },
+    "world_props_fence": {
+      "id": "world_props_fence",
+      "category": "world/props",
+      "file": "assets_baked/world/props/fence.a7ae104b.glb",
+      "bytes": 10280,
+      "sourceHash": "2c57f16dd38c2e450135597daf5fc4745ebcd3b529fb51de86b9be47da277522",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Fence.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 208,
+      "bounds": {
+        "min": [
+          -0.4009,
+          -0.0028,
+          -0.0128
+        ],
+        "max": [
+          0.3901,
+          0.3232,
+          0.0131
+        ]
+      },
+      "animations": []
+    },
+    "world_props_cauldron": {
+      "id": "world_props_cauldron",
+      "category": "world/props",
+      "file": "assets_baked/world/props/cauldron.b1b18229.glb",
+      "bytes": 45340,
+      "sourceHash": "8a79463cb50f3b2d484dde37a5dd6de2fc556815c85108b565f2050f80dd53c4",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Cauldron.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1238,
+      "bounds": {
+        "min": [
+          -0.1803,
+          -0.0028,
+          -0.1494
+        ],
+        "max": [
+          0.1803,
+          0.249,
+          0.1494
+        ]
+      },
+      "animations": []
+    },
+    "world_props_shrine": {
+      "id": "world_props_shrine",
+      "category": "world/props",
+      "file": "assets_baked/world/props/shrine.bd2221fa.glb",
+      "bytes": 11008,
+      "sourceHash": "c0f3301bede0ef589d0628651b122d6b27a131a0cdcffcb71f179bf680f3c3d0",
+      "source": "assets/world/Halloween Bundle KayKit/Shrine.glb",
+      "pack": "kaykit-halloween",
+      "packName": "KayKit Halloween Bundle",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 94,
+      "bounds": {
+        "min": [
+          -0.0055,
+          0,
+          -0.0055
+        ],
+        "max": [
+          0.0055,
+          0.024,
+          0.0055
+        ]
+      },
+      "animations": []
+    },
+    "world_props_arch_gate": {
+      "id": "world_props_arch_gate",
+      "category": "world/props",
+      "file": "assets_baked/world/props/arch_gate.2e2f71fa.glb",
+      "bytes": 63096,
+      "sourceHash": "ab1a9ecb479cf6418306577eab17191ba0da57a823f78c723b0c9dbb78762e3b",
+      "source": "assets/world/Halloween Bundle KayKit/Arch Gate.glb",
+      "pack": "kaykit-halloween",
+      "packName": "KayKit Halloween Bundle",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 868,
+      "bounds": {
+        "min": [
+          -0.0211,
+          0,
+          -0.0038
+        ],
+        "max": [
+          0.0211,
+          0.0441,
+          0.0038
+        ]
+      },
+      "animations": []
+    },
+    "world_props_gravemarker": {
+      "id": "world_props_gravemarker",
+      "category": "world/props",
+      "file": "assets_baked/world/props/gravemarker.0f01fbd8.glb",
+      "bytes": 15472,
+      "sourceHash": "a6dffdc33ae4dcf54948b132ab9c0ede926c2c628ba4169a97a5f48a2739c271",
+      "source": "assets/world/Halloween Bundle KayKit/Gravemarker.glb",
+      "pack": "kaykit-halloween",
+      "packName": "KayKit Halloween Bundle",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 136,
+      "bounds": {
+        "min": [
+          -0.0041,
+          0,
+          -0.0004
+        ],
+        "max": [
+          0.0039,
+          0.0118,
+          0.0038
+        ]
+      },
+      "animations": []
+    },
+    "world_props_pointer_001": {
+      "id": "world_props_pointer_001",
+      "category": "world/props",
+      "file": "assets_baked/world/props/pointer_001.78b89d50.glb",
+      "bytes": 53128,
+      "sourceHash": "675cb3cf51adb2e0f1c65415c4dba440c93820556540250b07292c0402174964",
+      "source": "assets/world/Fantasy Free Pack/Separate_assets_glb/pointer_001.glb",
+      "pack": "fantasy-free-pack",
+      "packName": "Fantasy FREE Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 140,
+      "bounds": {
+        "min": [
+          -0.2209,
+          0,
+          -0.3957
+        ],
+        "max": [
+          0.3463,
+          2.1736,
+          0.2985
+        ]
+      },
+      "animations": []
     },
     "icon_caro-asercion__round-potion": {
       "id": "icon_caro-asercion__round-potion",

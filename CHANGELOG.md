@@ -5,6 +5,22 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the world gets its village props, and a campfire that is lit (2026-08-06, P12-F)
+
+- **16 new props**: a real campfire whose flame glows, a well, market stalls, carts, hay, benches,
+  barrels, crates, a gazebo, fencing and a cauldron — plus a standing **shrine** stone (the Ancient
+  Shrines had been decorated dungeon pillars), a **portal arch** for the Elder Grove, **gravemarkers**,
+  and a **signpost** so the world's twelve signposts have something to be.
+- Two thirds of the asset library had been unreachable because of the file format it shipped in.
+  That is fixed, which is what finally made a campfire possible — there is exactly one in every pack
+  the project owns.
+
+### Fixed — every item icon could vanish without a word (2026-08-06, P12-F)
+
+- Rebuilding the 3D models wiped all 256 icon references out of the asset manifest. The icon files
+  were untouched and every check stayed green, so the only symptom would have been every item,
+  ability and resource node in the game rendering a blank square.
+
 ### Added — there is something to gather everywhere (2026-08-06, P12-E)
 
 - **362 resource nodes stand across the Dawnlands**, up from 65 on the old island: 120 trees,
