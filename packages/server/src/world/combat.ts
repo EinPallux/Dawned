@@ -523,7 +523,11 @@ export const advancePlayerContact = (
   const schoolPct =
     combo.school === 'magic' ? nodeAgg.stats.magicDamagePct : nodeAgg.stats.physicalDamagePct;
   const dealtMult =
-    (nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1) * damageDealtMultOf(player);
+    (nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1) *
+    damageDealtMultOf(player) *
+    // Epic+ item `stat_pct` riders (P12-D). P8 shipped the schema and a helper
+    // nobody called, so every item effect in the game was decoration.
+    (1 + (player.items.bonus.pct.damageDealt ?? 0) / 100);
   const rewind = rewindTicksFor(player.rttMs);
   // Flurry (P7 capstone): empowered basics grant a CP each and count down;
   // the visible speed buff drops with the last empowered swing.

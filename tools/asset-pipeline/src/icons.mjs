@@ -82,6 +82,11 @@ export const fetchIcons = async () => {
   const map = await loadMap();
   let fetched = 0;
   let kept = 0;
+  // Every miss, not the first. game-icons slugs are typed from memory of a
+  // 4 000-icon library and a content pass adds them a hundred at a time —
+  // throwing on the first bad one turns a five-minute fix into a hundred
+  // round trips, which is the same lesson `placeAll` learned about wishes.
+  const missing = [];
   for (const slug of uniqueIcons(map)) {
     const target = path.join(VENDOR_DIR, `${slug}.svg`);
     const existing = await readFile(target, 'utf8').catch(() => null);
@@ -91,16 +96,25 @@ export const fetchIcons = async () => {
     }
     const response = await fetch(`${RAW_BASE}/${slug}.svg`);
     if (!response.ok) {
-      throw new Error(`game-icons fetch failed for ${slug} (HTTP ${response.status})`);
+      missing.push(`${slug} (HTTP ${response.status})`);
+      continue;
     }
     const svg = await response.text();
-    if (!svg.includes('<svg')) throw new Error(`game-icons ${slug}: response is not an SVG`);
+    if (!svg.includes('<svg')) {
+      missing.push(`${slug} (response is not an SVG)`);
+      continue;
+    }
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, svg);
     fetched++;
     console.log(`  ↓ ${slug}`);
   }
   console.log(`icons: ${fetched} fetched, ${kept} already vendored`);
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.length} icon(s) do not exist in game-icons:\n  • ${missing.join('\n  • ')}`,
+    );
+  }
 };
 
 /**

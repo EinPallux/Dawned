@@ -963,7 +963,9 @@ const applyAbilityEffects = (
           tickCoef: effect.tick.coef,
           casterSp: player.stats.sp,
           casterLevel: player.level,
-          healMult: 1 + nodeAgg.stats.healingDonePct / 100,
+          healMult:
+            (1 + nodeAgg.stats.healingDonePct / 100) *
+            (1 + (player.items.bonus.pct.healingDone ?? 0) / 100),
           allyMods: zoneAllyMods,
         });
         events.push({
@@ -1221,7 +1223,12 @@ export const healPlayer = (
   abilityId: string | null = null,
 ): number => {
   const agg = healer.progress.aggregates;
-  let amount = coef * healer.stats.sp * (1 + agg.stats.healingDonePct / 100);
+  let amount =
+    coef *
+    healer.stats.sp *
+    (1 + agg.stats.healingDonePct / 100) *
+    // Epic+ item riders (P12-D) ride the same product as the node scalar.
+    (1 + (healer.items.bonus.pct.healingDone ?? 0) / 100);
   if (healer.classId === 'cleric' && target.id === healer.id) {
     amount *= 1 + GRACE_SELF_HEAL_PCT / 100;
   }

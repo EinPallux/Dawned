@@ -216,6 +216,43 @@
       "limit": 1
     },
     {
+      "$comment": "P12-D deep catalogue — the top-tier weapon shapes the T3–T5 bands need so a level-30 warrior is not carrying the level-2 sword mesh (ITEMS_LOOT §1: held gear is visible).",
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/sword_D.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/sword_E.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/spear_A.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/halberd.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/fistweapon_A.gltf",
+      "limit": 1
+    },
+    {
+      "pack": "kaykit-weapons",
+      "category": "items/weapons",
+      "glob": "Assets/gltf/fistweapon_B.gltf",
+      "limit": 1
+    },
+    {
       "pack": "kaykit-tools",
       "category": "items/tools",
       "glob": "Assets/gltf/pickaxe.gltf",

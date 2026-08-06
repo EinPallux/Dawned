@@ -621,6 +621,39 @@ reported a zone WORLD.md does not have. `world:author` clears the zone layer now
 checkout (`map-1786002856`) so the camps could be counted; the quests, nodes and villagers come
 back with P12-E/F.
 
+**P12-D — the deep catalogue (2026-08-06).** **223 items live** (from 103): 60 weapons and
+offhands, 57 armour, 25 jewellery, 22 consumables, 12 junk, 47 materials/fish, and the **6
+Legendaries**, one per zone. 21 loot tables, 16 vendors, **256 icons baked with zero duplicates**.
+T3–T5 authoring follows P8's contract exactly — identity is chosen (name, slot, ilvl, rarity,
+attribute weights, one line of flavour), every number comes out of the ITEMS_LOOT §2 formulas.
+Armour ships as SETS (Cinderplate, Ashweave, Sunplate, Duststride, Cragplate, Riftsilk,
+Grovemail…): five slots with one authored name each, which is the opposite of the procedural
+naming §8 forbids. Loot nests through per-tier pools so a zone names its gear once, and each boss
+has its OWN table with no `nothing` entry at all — that absence is what makes §4's "guaranteed
+Rare+" a property of the data rather than a promise.
+**Item effects are real now, and they were not.** P8 shipped `itemEffectSchema` and a server
+helper (`itemEffectPct`) that **nothing ever called**, so every Epic and every Legendary effect in
+the game was decoration — the one thing "a handcrafted unique with a named effect" cannot be.
+`equipmentBonus` folds `stat_pct` and `on_kill_gold` in SHARED (so the character sheet shows what
+the server fights with — the same argument attributes are folded there), and the server applies
+them to max HP, armour, move speed, damage dealt, healing done and kill gold. +3 shared tests.
+Two design promises are recorded as OWED rather than faked: `on_hit_effect` has no consumer, so
+Emberbrand's burn is a damage rider and the burn is written down in ITEMS_LOOT §9.1; and §4's
+pity counter is a per-character server counter that does not exist — the floor is real, the pity
+is not.
+**The bug that mattered is content ownership.** `item_material_dawnpetal` was authored in BOTH the
+item catalogue and the profession node catalogue at different ilvls, so whichever script ran last
+won — republishing the items silently reverted P10-E's re-tiering of Dawnpetal from a Dawnshore
+common to the Elder Grove's T5 rare, and put it back in a level-3 mob's loot table. Caught by
+`gathering-content.test.ts`, which asserts the LADDER holds rather than re-checking rows. The
+gathering materials belong to the node catalogue; the duplicate is gone.
+**Every vendor moved**: the P8 shops were anchored on the dev island, which is open sea now.
+Also: `pnpm assets:icons --fetch` reports EVERY missing slug instead of dying on the first —
+59 of the 120 new icons needed a different author or a different name, and that is one run to
+find out rather than fifty-nine.
+**`pnpm check` green at 659 unit tests**, 144 baked assets. The map draft's `node` layer was
+cleared: its 43 placements still carried dev-island coordinates, and P12-E re-places them.
+
 ### Running it locally
 
 ```bash

@@ -142,8 +142,16 @@ export const rebuildPlayerDerived = (player: ServerPlayer, refill: boolean): voi
     end: player.progress.allocated.end + (gear.stats.end ?? 0),
   };
   const stats = playerStats(player.classId, player.level, allocated);
-  stats.maxHp = Math.max(1, Math.round(stats.maxHp * (1 + agg.maxHpPct / 100)));
-  stats.armor = (stats.armor + (gear.stats.armor ?? 0)) * (1 + agg.armorPct / 100);
+  // Epic+ item effects are percent riders on the DERIVED number, so they ride
+  // alongside the node scalars rather than being folded into attributes: a
+  // "+8 % max HP" amulet is 8 % of what you actually have, not 8 % of VIT.
+  const itemPct = gear.pct;
+  stats.maxHp = Math.max(
+    1,
+    Math.round(stats.maxHp * (1 + (agg.maxHpPct + (itemPct.maxHp ?? 0)) / 100)),
+  );
+  stats.armor =
+    (stats.armor + (gear.stats.armor ?? 0)) * (1 + (agg.armorPct + (itemPct.armor ?? 0)) / 100);
   stats.critPct += agg.critPct + (gear.stats.critPct ?? 0);
   player.stats = stats;
   player.maxHp = stats.maxHp;

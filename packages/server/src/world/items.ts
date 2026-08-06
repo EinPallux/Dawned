@@ -100,7 +100,7 @@ export const createPlayerItems = (
     equipment: new Map<EquipSlot, ItemStack>(persisted?.equipment),
     gold,
   },
-  bonus: { stats: {}, weapon: null },
+  bonus: { stats: {}, weapon: null, pct: {}, killGold: 0 },
   cooldowns: new Map(),
   openVendorId: null,
   buyback: [],
@@ -220,6 +220,9 @@ export const rollEnemyLoot = (
     } else {
       share.gold += killGold(enemy.level, rng);
     }
+    // `on_kill_gold` trinkets (§2 "treasure-hunter"), the other half of the
+    // item-effect wiring P8 left unread.
+    share.gold += player.items.bonus.killGold;
     if (share.items.length > 0 || share.gold > 0) shares.set(player.id, share);
   }
   if (shares.size === 0) return null;

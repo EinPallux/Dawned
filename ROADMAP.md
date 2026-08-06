@@ -757,7 +757,25 @@ against its palette/mood spec; owner walkthrough signoff zone by zone.
       diff review whose only job is to say what changed. A fourth was found BY the new lever: the
       map draft still carried `ashen_reach` from the dev island, a smaller ring that therefore WON
       inside the savanna and the canyons — 9 camps reported a zone WORLD.md does not have.
-- [ ] **P12-D** items T3–T5, legendaries, loot and vendors
+- [x] **P12-D** items T3–T5, legendaries, loot and vendors. **223 items live** — 60 weapons and
+      offhands, 57 armour, 25 jewellery, 22 consumables, 12 junk, 47 materials, and the **6
+      Legendaries**, one per zone. 21 loot tables (the seven the bestiary stubbed, now filled and
+      nesting through per-tier pools, plus a dedicated table per boss with no `nothing` entry, so
+      "guaranteed Rare+" is a property of the data). 16 vendors: every P8 shop re-anchored onto a
+      building the map publish actually placed, and Mosshollow, Cinderfall, Sunwatch and Rustpick
+      given their own. Every item carries a unique icon — 256 baked, 0 duplicates.
+      **Item effects are real now.** P8 shipped the schema and a server helper NOTHING called, so
+      every Epic and every Legendary effect in the game was decoration; `equipmentBonus` folds
+      `stat_pct`/`on_kill_gold` in shared (the sheet cannot lie about it) and the server applies
+      them to max HP, armour, move speed, damage dealt, healing done and kill gold. Two design
+      promises are recorded as owed rather than faked: `on_hit_effect` has no consumer (Emberbrand's
+      burn), and §4's pity counter is a per-character server counter that does not exist.
+      **The bug that mattered is content ownership**: `item_material_dawnpetal` was authored in the
+      item catalogue AND the profession node catalogue at different ilvls, so whichever script ran
+      last won — republishing the items silently reverted P10-E's re-tiering of it from a Dawnshore
+      common to the Elder Grove's T5 rare. Caught by `gathering-content.test.ts`, which asserts the
+      ladder holds. The icon fetcher also reports EVERY missing slug now instead of dying on the
+      first: 59 of 120 new icons needed a different author or name, and that is one run to find out.
 - [ ] **P12-E** ~370 resource node placements
 - [ ] **P12-F** POIs, interactables, NPCs and the remaining quests
 - [ ] **P12-G** the DoD run (content report, 1→30 route, per-zone perf)

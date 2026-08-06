@@ -131,6 +131,47 @@ Vendor UI: buy/sell tabs, buyback (last 10 sold, session-scoped), shift-click qu
   "Dagger of the Bear +2"). The 6 Legendaries carry zone lore (e.g. **Emberbrand**, blade quenched
   in Cinderfall's last fire — Epic effect: basic step-3 leaves a 2 s burn).
 
+## 9.1 As built (P12-D, 2026-08-06) — the deep catalogue
+
+**223 items**: 60 weapons and offhands, 57 armour pieces, 25 jewellery, 22
+consumables, 12 junk, 47 materials and fish — and **6 Legendaries**, one per
+zone. Every item carries a unique icon (256 baked, zero duplicates, enforced by
+publish). 21 loot tables, 16 vendors across all five settlements.
+
+- **Numbers stay derived.** T3–T5 authoring chose identity — name, slot, ilvl,
+  rarity, attribute weights, one line of flavour — and every stat block, damage
+  band and price came out of the §2 formulas, exactly as T1–T2 did.
+- **Armour ships as SETS** (Cinderplate, Ashweave, Emberhide, Sunplate,
+  Duststride, Hornhide, Cragplate, Riftsilk, Grovemail): five slots with one
+  authored name each. That is the opposite of the procedural naming §8 forbids —
+  "Cinderplate Greaves" is a piece of a thing somebody made.
+- **Item effects are real now.** P8 shipped `itemEffectSchema` and a server
+  helper (`itemEffectPct`) that **nothing ever called**, so every Epic and every
+  Legendary effect in the game was decoration — the one thing "a handcrafted
+  unique with a named effect" cannot be. `equipmentBonus` folds them in SHARED
+  (so the character sheet shows what the server fights with), and the server
+  applies `stat_pct` to max HP, armour, move speed, damage dealt and healing
+  done, and `on_kill_gold` to the loot roll.
+- **`on_hit_effect` is still unread**, and the design's Emberbrand burn wants
+  it. Rather than author an effect nothing consumes, Emberbrand carries a
+  `stat_pct` damage rider and the burn is recorded here as owed: it needs an
+  on-hit hook into the P6 status-effect system.
+- **The §4 pity counter is not built.** Boss tables have no `nothing` entry at
+  all, which is what makes "guaranteed Rare+" true, and each carries its zone's
+  Legendary at roughly 1-in-25 — but the "+2 % per boss kill without one" is a
+  per-character server counter that does not exist. The floor is real; the pity
+  is not.
+- **Every vendor moved.** The P8 shops were anchored on the dev island, which
+  the Dawnlands put under open water; all five Dawnhaven vendors are re-sited
+  onto buildings the map publish actually placed, and Mosshollow, Cinderfall,
+  Sunwatch and Rustpick have their own.
+- **One content-ownership bug fell out of it**: `item_material_dawnpetal` was
+  authored in BOTH the item catalogue and the profession node catalogue, at
+  different ilvls. Whichever script ran last won, so republishing the items
+  silently reverted P10-E's re-tiering of Dawnpetal from a Dawnshore common to
+  the Elder Grove's T5 rare. The gathering materials belong to the node
+  catalogue; the duplicate row is gone.
+
 ## 9. As built (P8, 2026-08-04)
 
 The design above shipped with these decisions worth writing down:

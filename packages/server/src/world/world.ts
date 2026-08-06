@@ -1894,6 +1894,10 @@ export class World {
             (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) *
             (player.focusing ? FOCUS_MOVE_SPEED_MULT : 1) *
             (1 + nodeStats.moveSpeedPct / 100) *
+            // Epic+ item `stat_pct` riders (P12-D). Same multiplier chain as
+            // the node scalar, because a player cannot tell which of the two
+            // a "+6 % move speed" line came from and should not have to.
+            (1 + (player.items.bonus.pct.moveSpeed ?? 0) / 100) *
             whirlMult *
             castMult,
           dodgeCostDelta:

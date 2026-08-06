@@ -5,6 +5,23 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the deep catalogue (2026-08-06, P12-D)
+
+- **223 items in the world**, up from 103: the Emberwood's cinder-forged steel and ashweave, the
+  savanna's sunplate and duststride leathers, the canyons' obsidian and riftsilk, and the Elder
+  Grove's living grovemail — 60 weapons, 57 armour pieces, 25 rings and amulets, 22 things to
+  drink, and every one of them with its own icon.
+- **Six Legendaries, one per zone**, and they finally DO something: Tideturner off Mossback,
+  the Sporecrown off the Mushroom King, Emberbrand out of Cinderfall's last great fire,
+  Herdbreaker off Alpaking Prime, Ashwing's Talon, and the Elder Treant's Heartwood Stave.
+  Every Epic and Legendary effect in the game used to be a line of text that changed nothing.
+- **Each boss drops from its own table** with no empty result at all — a zone boss is a
+  guaranteed piece of gear and roughly a one-in-twenty-five shot at its Legendary.
+- **Every settlement trades now.** The old shops were anchored where the sea is, so all five
+  Dawnhaven merchants moved onto real buildings, and Mosshollow, Cinderfall, Sunwatch and
+  Rustpick have their own — potions tiered to the zone, a forge in Cinderfall, an apothecary
+  in Rustpick that sells you grit and calls it a tonic.
+
 ### Added — the Dawnlands have a bestiary (2026-08-06, P12-C)
 
 - **The whole world is populated: 50 enemy types across 124 camps, 400 enemies.** The Emberwood's
