@@ -47,7 +47,10 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > the sixteen shops, guards, villagers, the Grove's Warden — **46 places to discover** across all
 > six regions, and **61 things to press `F` on** (chests, signposts, campfires, shrines, the
 > Elder Arch). The five settlements are dressed with wells, market stalls, carts and benches
-> instead of standing as bare building shells. Still to author: the ~20 remaining side quests.
+> instead of standing as bare building shells. And there is **work to do: 28 quests in five
+> chains**, one per region, with every marker worked out from the real camps and herbs and chests
+> rather than typed by hand — which is how five of the original eight turned out to be pointing
+> 420–815 m into empty ground after the world moved under them.
 > Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
 > end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an

@@ -56,13 +56,13 @@
 
 ## 5. Quests & Dialogue
 
-| Item                      | Target                                                                                                                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Side quests               | 28: Dawnshore 6 (incl. 4-part starter-ish chain "Getting Started" flavored), Weald 5 (chain 4 + 1), Emberwood 5, Sungraze 5, Ashcrag 4, Elder Grove 2, found-object 1 (bottle) |
-| Quest chains (mini-sagas) | 5 (one per main zone)                                                                                                                                                          |
-| Dialogue sets             | ~45 NPCs × 2–6 nodes + ~30 ambient bark lines                                                                                                                                  |
-| Codex collections         | Castaway Logs ×6, per-profession codices                                                                                                                                       |
-| Quest boards              | 5 (one per settlement, 2–3 posts each)                                                                                                                                         |
+| Item                      | Target                                                                                                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Side quests               | **28 live** (P12-F). 28: Dawnshore 6 (incl. 4-part starter-ish chain "Getting Started" flavored), Weald 5 (chain 4 + 1), Emberwood 5, Sungraze 5, Ashcrag 4, Elder Grove 2, found-object 1 (bottle) |
+| Quest chains (mini-sagas) | 5 (one per main zone) — **5 live** (P12-F)                                                                                                                                                          |
+| Dialogue sets             | ~45 NPCs × 2–6 nodes + ~30 ambient bark lines                                                                                                                                                       |
+| Codex collections         | Castaway Logs ×6, per-profession codices                                                                                                                                                            |
+| Quest boards              | 5 (one per settlement, 2–3 posts each)                                                                                                                                                              |
 
 ## 6. Gathering
 

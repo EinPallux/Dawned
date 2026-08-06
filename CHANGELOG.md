@@ -5,6 +5,19 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — twenty-eight quests, and a map that points at the right place (2026-08-06, P12-F)
+
+- **20 more quests**, bringing the world to **28 across five chains** — one per region. Lissa's
+  road, Odo's timber, Niamh's humming stone circle, Brann's dead that will not stay down, Kesh's
+  herds moving the wrong way, Holt's collapsed adit, and the Warden's two in the Elder Grove.
+- **Every quest marker now points at something that is actually there.** Markers are worked out
+  from the real camps, herbs and chests rather than typed in by hand, and they point at the nearest
+  concentration instead of drawing a ring around half an island.
+- **Five of the original eight quests were pointing 420–815 m off** — they were written when the
+  world was one small island, and everything moved. Fixed. One of them named a crate that no
+  longer existed at all, so it could never be finished; the crate is back.
+- The Weald chain says **Verdant Weald** in the journal now, because there is one.
+
 ### Added — the Dawnlands are inhabited (2026-08-06, P12-F)
 
 - **41 people** stand in the world: sixteen shopkeepers behind the sixteen shops that had been

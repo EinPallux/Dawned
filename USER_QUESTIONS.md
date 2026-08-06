@@ -8,9 +8,11 @@
 
 ## Open questions
 
-> Four open questions: **Q26** (per-zone music/sfx), **Q28–Q29** from the P11-E DoD run — both
+> Five open questions: **Q26** (per-zone music/sfx), **Q28–Q29** from the P11-E DoD run — both
 > already implemented as their recommended default, say the word and either reverts in minutes —
-> and **Q30**, which P12 has to answer to build a bridge at all.
+> **Q30**, which P12 had to answer to build a bridge at all, and **Q32**, which is the sharpest of
+> them: the starter town currently resolves to the wrong ZONE, measured, with three candidate
+> fixes and none applied.
 > Q27 was answered on 2026-08-05 — the reel is
 > left as shipped and judged in the playtest. Q25 was answered by P10 starting — its recommended default WAS "do it in the professions
 > phase", and that phase is now under way, so the node schema lands as a P10-A deliverable and the
@@ -99,6 +101,56 @@ this phase, it costs one new mask kind in the terrain synthesis, and it does not
 walkgrid rewrite on a feature four bridges use. If you would rather props carried walkable surfaces, say
 so and it becomes its own phase after P12 — the causeways would stay as the land under the
 bridges either way.
+
+### Q32 — Dawnhaven is in the Verdant Weald, because "smallest ring wins" is the wrong tie-break (P12-F, 2026-08-06)
+
+`zoneAt` returns the first zone whose polygon contains the point, and P12-B made
+that deterministic by sorting zones by **polygon area ascending** — "the smaller,
+more specific zone wins". That is exactly right when one zone CONTAINS another:
+the Dawnsea's ring covers the whole map and must always lose to an isle.
+
+It is arbitrary when two peer zones merely overlap at their edges, and the coin
+came down wrong. Measured:
+
+| Settlement    | resolves to                  | should be           |
+| ------------- | ---------------------------- | ------------------- |
+| **Dawnhaven** | **verdant_weald** (lvl 6–12) | dawnshore (lvl 1–6) |
+| Mosshollow    | verdant_weald                | ✔                   |
+| Cinderfall    | emberwood                    | ✔                   |
+| Sunwatch      | sungraze                     | ✔                   |
+| Rustpick      | ashcrag                      | ✔                   |
+
+Dawnshore's ring is 977 427 m², the Weald's is 912 487 — 6 % smaller, so the
+Weald wins where they overlap, and that overlap includes the starter town. A new
+level-1 character is told they are in the level 6–12 zone; the ambience, the
+discovery XP attribution and every journal heading follow the same wrong answer.
+Publish already warns that **8 893 sampled land points sit in more than one
+zone**, which is the same fact stated less alarmingly.
+
+Three ways out, roughly in order of how much they cost:
+
+1. **Trim the polygons so peer zones do not overlap.** The honest fix — the rings
+   were drawn generously and nothing needs them to intersect. Pure content, no
+   code, but publish BLOCKS on land in no zone, so every metre given up has to be
+   given to someone: it is a careful pass over six rings, not a quick edit.
+2. **Beat containment, then nearest centroid.** Drop any candidate zone that
+   contains another candidate (kills the Dawnsea), then pick the nearest centroid
+   among what is left. Measured: this puts all five settlements right. Nearest
+   centroid ALONE does not — it drags 572 of 3 100 land samples into the Dawnsea,
+   because the sea's centroid is the middle of the map. It changes `zoneAt` from
+   an ordering into a function, which the bake, the server and the client all
+   share.
+3. **Let a zone declare its own priority.** One integer on the zone row, authored.
+   Simplest to reason about and the easiest to get wrong later, because nothing
+   checks that the numbers still describe the geometry.
+
+**Recommended default: (1), trimmed polygons, as its own slice.** It removes the
+ambiguity rather than ruling on it, and it makes the existing publish warning go
+quiet for the right reason. (2) is the fallback if the rings turn out to need the
+overlap for coverage. Nothing is implemented yet — this was measured during
+P12-F and is recorded rather than patched, because changing zone resolution late
+in a content phase would re-point ambience, discovery and journal headings for
+the whole world at once.
 
 ## Decision log
 

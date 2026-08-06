@@ -805,8 +805,7 @@ against its palette/mood spec; owner walkthrough signoff zone by zone.
       zones, which is the editor-side guard the script fix cannot give — the owner drags nodes by
       hand too. Warning, not blocker, on `questHintCoverage`'s precedent: two regions can be a
       design choice, 5 of 19 across a line is not.
-- [ ] **P12-F** POIs, interactables, NPCs and the remaining quests. **Places and people are
-      done; the ~20 remaining quests are not.** Measured from the GAME
+- [x] **P12-F** POIs, interactables, NPCs and the remaining quests. Measured from the GAME
       (`/ops/worldobjects`): **41 NPCs, 61 interactables, 46 POIs, 0 orphans** — against
       CONTENT_0.1 §1/§2's ~40 / ≥60 / ≥45. POIs are exactly §1's mix (8 vista, 14 landmark,
       8 cache, 10 camp, 5 curiosity); interactables are 26 chests, 12 signposts, 8 campfires,

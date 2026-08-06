@@ -743,6 +743,39 @@ quest givers are named by no quest yet, which the publish rail already warns abo
 is the honest state, not noise. **`pnpm check` green at 674 unit tests** here and **264** in the
 panel; **416 baked assets / 25.42 MB** (160 models + 256 icons).
 
+**P12-F closed with the quest set (2026-08-06).** **28 quests in 5 chains** — §5's exact target,
+Dawnshore 7 / Weald 5 / Emberwood 5 / Sungraze 5 / Ashcrag 4 / Elder Grove 2, one chain per main
+zone. 38 steps, 33 with a hint circle (the 5 without are `explore`, which never gets one — §1
+rule 4 makes finding the place the objective).
+**A hint is DERIVED, never typed.** A step declares WHAT it points at (`{ enemy: … }`,
+`{ node: … }`, `{ object: … }`, `{ npc: … }`, `{ poi: … }`) and the authoring pass resolves it
+against the live map draft — the same rows the bake reads — then circles the DENSEST cluster of
+matches. Encircling EVERY match sounds right and produced a **327 m** ring when two camps sat on
+opposite sides of an isle: a circle you can stand in the middle of and see nothing, which is not
+what "roughly where" means. Matches outside the chosen cluster are reported rather than absorbed,
+and a derived radius over 260 m FAILS the run instead of shipping a shrug.
+**Repairing P11's pilot set was the find, and it is the same bug arriving by a different road.**
+Five of its eight quests pointed **420–815 m** from their targets — not a typo this time, but the
+WORLD moving: they were authored against the dev island and P12 re-placed every spawner, node and
+villager under them. Repaired through the same resolver rather than re-typed, so it cannot rot the
+same way twice. `quest_shore_lost_crate` was worse than a bad circle: the crate it names was pruned
+as drowned back in P12-B, so a live quest referenced a placement that did not exist and no check
+was looking for that. Re-placed. The Weald chain's four `zoneId: 'dawnshore'` labels became
+`verdant_weald`, which is precisely the edit P11-C wrote down as owed ("open water until P12").
+Teague became a villager: Hesta already owns the logging chain, and a second forester with the same
+complaint and no work to hand out is an `F` that opens nothing.
+**Recorded, not patched — Q32: Dawnhaven resolves to the Verdant Weald.** `zoneAt` takes the first
+containing polygon, ordered smallest-area-first (P12-B's fix for non-determinism), and Dawnshore's
+ring is 6 % LARGER than the Weald's where the two overlap — an overlap that contains the starter
+town. A level-1 character is told they are in the level 6–12 zone, and ambience, discovery XP and
+journal headings all follow. Publish already warns that 8 893 land samples sit in more than one
+zone; this is that warning with a name. Three fixes measured (trim the rings / containment-then-
+nearest-centroid / an authored priority); nearest-centroid ALONE is wrong — it drags 572 of 3 100
+land samples into the Dawnsea. Not done here because re-pointing zone resolution moves the whole
+world's ambience at once, which is its own slice.
+**Verified from the GAME**: 41 NPCs, 62 interactables, 46 POIs, 0 orphans; 124 camps / 400 enemies;
+362 nodes / 0 orphans; 28 quests / 5 chains served by `/api/content/quests`.
+
 ### Running it locally
 
 ```bash
