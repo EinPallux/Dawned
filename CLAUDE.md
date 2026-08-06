@@ -931,6 +931,36 @@ carries a new mtime while its name still says when it was taken. Caught by testi
 including a dump older than every archive.
 **680 unit tests green.**
 
+**The world you built is finally the world you see (2026-08-06).** Two mirror-image bugs, found by
+the owner reporting "I only see the NPCs + the Waypoint, nothing else but there are some invisible
+bounding boxes." **Nothing in the client ever read `placements.props` or `placements.scatter`** —
+`world-objects.ts` draws NPCs/interactables/POIs and `foliage.ts` scatters from splat weights, its
+header promising that hand-placed props "arrive with the map editor's placements at A3/P12", which
+nothing kept. The bake stamps every `solid` prop into the walkgrid, so all forty of Dawnhaven's
+buildings were collision with no mesh. **And `loadPropModels` never named `world/buildings`**, so
+even a client that asked for a house had no mesh to give it. `map-props.ts` draws both layers
+INSTANCED, seating each item only once `hasDataAt` says its ground is real, resolving scatter
+through the shared `resolveScatter` the editor previews with and the bake emits with. Built by its
+OWN loader, not folded into `buildWorldObjects` — that one awaits published NPC definitions, and a
+town has no business disappearing because the content API is empty; they were coupled for one
+commit and `tools/smoke/props-probe.mjs` caught it on the first run. That probe waits for the
+BUILD rather than a stopwatch: the static layers arrive after the map, walkgrid, nodes and
+villagers, which on a slow box is past any fixed sleep, and an early sample reports "placed NONE"
+for a client that was still loading — two false failures before it was fixed.
+**Production can never serve the dev island (owner: "No Dev Server, No Dev Instance, No Dev
+Island, nothing").** `assets_baked/map/dev-2` is COMMITTED, so 8.7 MB of test island lands on the
+VPS with every pull, while `current.json` — the pointer naming the live world — is deliberately
+machine state. Both halves fell back to the island silently: the server whenever the pointer could
+not be read (missing after a restore, truncated by a full disk), and the client whenever the health
+request failed, its own comment saying "if health is unreachable the constant still gets us onto
+the dev map". Either one looks exactly like an update that did nothing; together they put two
+players on different worlds. The server refuses in production and names the fix; the client no
+longer catches the health call into a guess. **The guards also had to be switched ON**: every
+production check here is gated on `NODE_ENV`, `DEPLOY.sh` writes it once at provision time, and
+nothing had verified it since — `UPDATE.sh` checks both env files every run now. `map-version.test.ts`
+pins it, including the corrupt-pointer case and a source assertion that the client's health call has
+no `.catch`, because that bug was one word long. **685 unit tests green.**
+
 ### Running it locally
 
 ```bash

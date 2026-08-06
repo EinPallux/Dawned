@@ -5,6 +5,21 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — you can see the world, and production is production (2026-08-06)
+
+- **The towns were invisible.** Every building, all the town dressing, the bridge planks and every
+  painted forest were baked and shipped and drawn by nobody — so a town was collision you could
+  walk into with nothing to see. Both layers render now, and the buildings the world uses are
+  actually loaded (their whole category was missing from the model loader).
+- **The map editor shows the real world.** Placed objects were coloured boxes — a house, an oak, a
+  chest and a villager were the same cube. They are the real models now, so the editor and the game
+  finally show the same thing.
+- **A live server can never fall back to the test island.** The pointer naming the live world is
+  not in git while the old dev island is, so a missing or damaged pointer used to silently serve
+  the test island — as did any browser that failed one health request. Production refuses both and
+  says how to fix it. `UPDATE.sh` also checks the services are actually marked as production,
+  because every one of these guards is switched off when they aren't.
+
 ### Fixed — the safety net, the rollback and the ops lock (2026-08-06)
 
 - **Backups can no longer fill the disk.** Retention kept up to 70 database dumps, at a size that
