@@ -6,6 +6,7 @@
  * (docs/tech/SECURITY.md §3).
  */
 
+import { timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { FastifyInstance, RawServerDefault } from 'fastify';
 import type { Logger } from 'pino';
@@ -46,6 +47,18 @@ export interface RouteDeps {
 
 const LOCALHOST = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
+/** Constant-time secret comparison that tolerates different lengths. */
+const secretMatches = (offered: string, expected: string): boolean => {
+  const a = Buffer.from(offered);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) {
+    // Still compare something of equal length so the reject path costs the same.
+    timingSafeEqual(b, b);
+    return false;
+  }
+  return timingSafeEqual(a, b);
+};
+
 export const registerRoutes = (app: App, deps: RouteDeps): void => {
   const { config, world, gateway, metrics, reloadContent, reloadMap } = deps;
 
@@ -61,6 +74,39 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     void reply.header('cache-control', 'no-store');
     done(null, payload);
   });
+  /**
+   * ONE gate for every `/ops/*` route — localhost + shared secret, applied by
+   * the router rather than repeated in each handler.
+   *
+   * It used to be a copy of the same six lines inside all nineteen handlers.
+   * All nineteen had it, and that is the problem: nothing made a twentieth
+   * route carry it, and a missed one is an unauthenticated lever that grants
+   * items, sets levels and teleports players. Same class as `AbilityStart.cast`
+   * being rebuilt field-by-field until the field was made REQUIRED — the fix
+   * for "someone will forget" is to remove the opportunity, not to be careful.
+   *
+   * `timingSafeEqual` because comparing a secret with `!==` leaks its length and
+   * a prefix through response timing. Localhost-only makes that impractical
+   * rather than impossible, and constant-time costs nothing.
+   */
+  app.addHook('onRequest', (request, reply, done) => {
+    if (!request.url.startsWith('/ops/')) {
+      done();
+      return;
+    }
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      void reply.code(403).send({ error: 'ops API is localhost-only' });
+      return;
+    }
+    const offered = request.headers['x-ops-secret'];
+    if (typeof offered !== 'string' || !secretMatches(offered, config.OPS_SECRET)) {
+      void reply.code(401).send({ error: 'bad ops secret' });
+      return;
+    }
+    done();
+  });
+
   // Mutable so /ops/reload-content refreshes what the content routes serve.
   let content = deps.content;
   // Same for the map: /ops/reload-map swaps the live bake under the world, and
@@ -161,14 +207,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     maxPlayers: config.MAX_PLAYERS,
   }));
 
-  app.get('/ops/metrics', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
+  app.get('/ops/metrics', (_request, reply) => {
     return reply.send({
       ...metrics.snapshot(world.playerCount, world.entityCount),
       sessions: gateway.sessionCount,
@@ -180,14 +219,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * swap them into the live world between ticks. Ability/enemy defs apply to
    * future uses immediately; spawner LAYOUT changes need a restart (reported).
    */
-  app.post('/ops/reload-content', async (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
+  app.post('/ops/reload-content', async (_request, reply) => {
     try {
       const next = await reloadContent();
       content = next;
@@ -215,14 +247,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * worth of terrain, walkgrid, zones and placements is not something to
    * re-stream in place while someone is mid-fight.
    */
-  app.post('/ops/reload-map', async (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
+  app.post('/ops/reload-map', async (_request, reply) => {
     try {
       const next = await reloadMap();
       const summary = world.applyMap({
@@ -251,13 +276,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
   });
 
   app.post('/ops/announce', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as { text?: unknown } | undefined;
     const text = typeof body?.text === 'string' ? body.text.trim().slice(0, 300) : '';
     if (!text) return reply.code(400).send({ error: 'text required' });
@@ -271,13 +289,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * path until P9 enemies cast control themselves. Full DR rules apply.
    */
   app.post('/ops/cc', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as
       { player?: unknown; kind?: unknown; durationMs?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
@@ -301,13 +312,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * Runs the same setLevel path as the in-game /setlevel command.
    */
   app.post('/ops/setlevel', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as { player?: unknown; level?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
     const level =
@@ -327,13 +331,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * erases any pre-damaged fixture within seconds). Marks combat, never kills.
    */
   app.post('/ops/hurt', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as { player?: unknown; fraction?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
     const fraction =
@@ -353,13 +350,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * of chopping. Same shape as `/ops/setlevel`, and audited the same way.
    */
   app.post('/ops/setprof', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as
       { player?: unknown; profession?: unknown; level?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
@@ -389,13 +379,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * bot alive because it cannot dodge.
    */
   app.post('/ops/hook', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as { player?: unknown; bites?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
     const bites =
@@ -419,13 +402,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * one on demand. Ignored if the water does not stock that fish.
    */
   app.post('/ops/fish', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as { player?: unknown; item?: unknown; casts?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
     const item = typeof body?.item === 'string' ? body.item.trim() : '';
@@ -449,13 +425,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * fish but not the catch.
    */
   app.post('/ops/quest', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as
       { player?: unknown; quest?: unknown; step?: unknown; drop?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
@@ -483,13 +452,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * SETUP, never the thing being measured.
    */
   app.post('/ops/forget', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as
       | {
           player?: unknown;
@@ -520,14 +482,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * produced nothing. 124 camps published into open water look exactly like
    * 124 camps published onto land from the publish button's side.
    */
-  app.get('/ops/camps', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
+  app.get('/ops/camps', (_request, reply) => {
     return reply.send({ ok: true, ...world.campReport });
   });
 
@@ -540,14 +495,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * outside. This is the line that proves the content crossed the boundary, and
    * `orphanNpcs` names the placements whose definition did not resolve.
    */
-  app.get('/ops/worldobjects', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
+  app.get('/ops/worldobjects', (_request, reply) => {
     return reply.send({ ok: true, ...world.worldObjects });
   });
 
@@ -558,14 +506,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * test: a run that has to wait three minutes to gather the same tree twice
    * is a run nobody will execute.
    */
-  app.post('/ops/respawnnodes', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
+  app.post('/ops/respawnnodes', (_request, reply) => {
     return reply.send({ ok: true, respawned: world.respawnAllNodes(), ...world.nodeStats });
   });
 
@@ -575,13 +516,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * the same planner a pickup does, so a full bag refuses like a full bag.
    */
   app.post('/ops/grant', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as
       { player?: unknown; itemId?: unknown; qty?: unknown; gold?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
@@ -613,13 +547,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * and the shield are the real AI reacting, never staged.
    */
   app.post('/ops/enemyhurt', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as { enemyId?: unknown; fraction?: unknown } | undefined;
     const typeId = typeof body?.enemyId === 'string' ? body.enemyId.trim() : '';
     const fraction =
@@ -636,13 +563,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * bestiary does not by itself stand up. Wave enemies never respawn.
    */
   app.post('/ops/spawnwave', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as
       | { enemyId?: unknown; count?: unknown; x?: unknown; z?: unknown; radius?: unknown }
       | undefined;
@@ -665,13 +585,6 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
    * with a two-minute walk to whichever camp or arena it is about to test.
    */
   app.post('/ops/tp', (request, reply) => {
-    const remote = request.socket.remoteAddress ?? '';
-    if (!LOCALHOST.has(remote)) {
-      return reply.code(403).send({ error: 'ops API is localhost-only' });
-    }
-    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
-      return reply.code(401).send({ error: 'bad ops secret' });
-    }
     const body = request.body as { player?: unknown; x?: unknown; z?: unknown } | undefined;
     const player = typeof body?.player === 'string' ? body.player.trim() : '';
     const x = typeof body?.x === 'number' ? body.x : NaN;
