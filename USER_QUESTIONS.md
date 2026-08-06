@@ -69,16 +69,17 @@ The alternative is to keep one-shot props and make the QUEST tolerant instead (c
 approach if the object is already spent). That is more code in the quest runtime for a case a
 respawn timer solves in one field, which is why it is not the recommendation.
 
-### Q30 — a bridge cannot be a bridge, because props have no collision (P12-B, 2026-08-06)
+### Q30 — a bridge cannot be a bridge, because the walkgrid only runs one way (P12-B, 2026-08-06)
 
 WORLD.md §1 has the isles "joined by bridges", §6 calls bridges landmark art pieces where
 "crossing one should feel like a chapter turn", and CONTENT_0.1 counts four of them. P12-A cut
 real channels between the isles, and the flood fill confirms each one is now its own landmass.
 
 Then two things met. **No pack we own contains a bridge model** — I searched all 24. And, more
-decisively: **walkability comes from the terrain heightfield, not from props.** A player walks on
-the walkgrid the map bake computes from the ground; a prop is something they see. So a bridge laid
-across a channel is scenery you swim underneath, and the isles stay swim-only.
+decisively: **the walkgrid is one-directional.** A prop can SUBTRACT from it — `solid` + `radius`
+stamps its footprint unwalkable, which is what stops you walking through a house — but nothing can
+ADD to it. Walkable ground comes from the terrain heightfield alone. So a bridge laid across a
+channel is scenery you swim underneath, and the isles stay swim-only.
 
 That is a contradiction with §1, not a missing asset. Two ways out:
 
@@ -87,13 +88,15 @@ That is a contradiction with §1, not a missing asset. Two ways out:
    bridge. The link is genuinely walkable, it is a single visible chokepoint, and swimming stays
    the shortcut for the impatient. Cost: the isles are technically one landmass through each
    neck, so "five separate isles" becomes "five isles and four necks".
-2. **Give props collision.** A walkgrid props can write into — a real feature touching the bake,
-   the shared walkgrid and the server's movement step. It would also fix standing on a rooftop, a
-   jetty or a fallen trunk, all of which are decoration today. Nothing else in 0.1.0 needs it.
+2. **Let a prop add walkable ground, not just remove it.** The stamp already exists and runs one
+   way; making it two-way means a surface height per prop, which the bake would have to resolve
+   against the terrain and the server's movement step would have to sample. It would also fix
+   standing on a rooftop, a jetty or a fallen trunk, all of which are decoration today. Nothing
+   else in 0.1.0 needs it.
 
 **Recommended default: causeways (option 1), built now.** It is the only one that makes §1 true
 this phase, it costs one new mask kind in the terrain synthesis, and it does not spend a
-walkgrid rewrite on a feature four bridges use. If you would rather have real prop collision, say
+walkgrid rewrite on a feature four bridges use. If you would rather props carried walkable surfaces, say
 so and it becomes its own phase after P12 — the causeways would stay as the land under the
 bridges either way.
 

@@ -242,8 +242,9 @@ Three deviations from the text above, each reported rather than quietly absorbed
 | **The Dawnsea** is "n/a" in §2's zone table              | it is a real zone row, listed LAST so the six land zones win the first-match test | publish blocks on land in no zone, and the sandbars stand in water no isle's ring reaches. Its ambience is the open-ocean profile the zones file would otherwise carry as `defaultAmbience`.                 |
 
 **Bridges are causeways** (P12-B). §6 wants them to be landmark art pieces, and they are dressed
-that way — but the crossing itself is GROUND, not a prop. Walkability is computed from the terrain
-heightfield; a prop is something you see, so a bridge model laid over a channel is scenery you swim
+that way — but the crossing itself is GROUND, not a prop. The walkgrid runs one way: a prop can
+subtract from it (`solid` stamps its footprint unwalkable, which is what stops you walking through
+a house) but nothing can add to it. So a bridge model laid over a channel is scenery you swim
 underneath and §1's "joined by bridges" would be false. Each of the four crossings is therefore a
 22 m-wide neck of terrain raised back over its own strait, standing ~5 m above the waterline, with
 plank and dock props on top. The consequence is honest and worth naming: the five main isles are
