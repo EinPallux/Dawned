@@ -66,11 +66,11 @@
 
 ## 6. Gathering
 
-| Item                     | Target                                                                                                                                             |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Resource node placements | ~370: trees ~120, ore ~95, herbs ~95, fish spots ~40 + 8 deep-sea — **65 live** on the dev island (P10-E planted T1–T2; the rest need P12's zones) |
-| Node types               | 5 tiers × 4 professions + Dawnpetal — **21 live** (P10-E, all five tiers defined)                                                                  |
-| Fishing minigame         | 1 tuned (parameters per fish rarity)                                                                                                               |
+| Item                     | Target                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resource node placements | ~370: trees ~120, ore ~95, herbs ~95, fish spots ~40 + 8 deep-sea — **362 live** across all six zones (P12-E): 120 trees, 95 ore, 107 herbs, 40 fishing |
+| Node types               | 5 tiers × 4 professions + Dawnpetal — **21 live** (P10-E defined them; P12-E gave all 21 a place to stand, 0 without one)                               |
+| Fishing minigame         | 1 tuned (parameters per fish rarity)                                                                                                                    |
 
 ## 7. Audio (per design/AUDIO.md)
 

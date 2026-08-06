@@ -776,7 +776,35 @@ against its palette/mood spec; owner walkthrough signoff zone by zone.
       common to the Elder Grove's T5 rare. Caught by `gathering-content.test.ts`, which asserts the
       ladder holds. The icon fetcher also reports EVERY missing slug now instead of dying on the
       first: 59 of 120 new icons needed a different author or name, and that is one run to find out.
-- [ ] **P12-E** ~370 resource node placements
+- [x] **P12-E** ~370 resource node placements. **362 nodes across the Dawnlands** (from 65 on the
+      dev island): 120 trees, 95 ore, 107 herbs, 40 fishing spots — **all 21 published definitions
+      placed, 0 without a home**, and every tier of every profession standing in the zone
+      PROFESSIONS §4 gives it. The T3–T5 fishing waters are the gap P10-G explicitly reported and
+      declined to fake ("epic and legendary have definitions and no water until P12"); all five
+      bands have water now. Proven from the GAME: `/ops/respawnnodes` reports **362 total, 0
+      orphans** on the hot-swapped bake.
+      **The clusters are wishes, not coordinates** — the same `placeAll` the camps use, plus a
+      per-member ground check that reads the DRAFT CHUNKS and a 6-attempt retry that shrinks
+      toward a centre already known to be good. That retry is what makes a shoal land 8 of 8
+      instead of 3 of 8.
+      **The bug that mattered was invisible to every check that existed: 39 of 322 land nodes
+      stood in a zone they were never authored for.** `placeAll` validates the cluster CENTRE's
+      zone; the members scatter up to `spread` metres off it and were only ever asked about the
+      GROUND. So T5 dawnstone, duskthorn and ashwood sat in the T4 savanna — where no gate stops
+      a player reaching them — and 4 of the 12 Dawnpetal grew in Emberwood, which is P12-D's
+      ownership bug re-made out of geometry a day after the data version was fixed. The member
+      loop asks the draft's zone layer now, ordered exactly as `bakeDraft` orders it, and the
+      existing retry absorbed every stray: **362 placed, 0 dropped**, per zone 70/70/70/70/70 and
+      12 in the Grove. It cost nothing because the remedy was already there.
+      Also: **`waterLevel` was `null` for all 1024 chunks.** The client draws a water surface only
+      where a chunk declares one, so the new world had no sea at all — 42 % of it an invisible
+      hole — and no fishing node could ever be authored, because "submerged" is defined against a
+      chunk's water. Two whole phases passed without it because nothing had asked for water until
+      this one did.
+      Panel side (A1-e/A2): publish now warns when one node id's placements are split across
+      zones, which is the editor-side guard the script fix cannot give — the owner drags nodes by
+      hand too. Warning, not blocker, on `questHintCoverage`'s precedent: two regions can be a
+      design choice, 5 of 19 across a line is not.
 - [ ] **P12-F** POIs, interactables, NPCs and the remaining quests
 - [ ] **P12-G** the DoD run (content report, 1→30 route, per-zone perf)
 

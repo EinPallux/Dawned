@@ -85,6 +85,35 @@ Two things the shipped rows say that this document did not:
   grows. Found by a test asserting that every node yields something from its own tier band, not
   by reading the rows.
 
+### 1.6b As built (P12-E) — the ladder is planted
+
+§1.6's "T1–T2 only, 65 nodes" is closed: **362 placements across all six zones**, every one of
+the 21 definitions with a home and none without. 120 trees, 95 ore seams, 107 herb patches and
+40 fishing spots — the counts §1.4 asks for, give or take the herbs, which came out 107 rather
+than 95 because the herb clusters are the smallest and the world gained a sixth zone.
+
+Per zone: Dawnshore, the Verdant Weald, the Emberwood, Sungraze and Ashcrag hold **70 each**
+(24 trees, 19 ore, 19 herbs, 8 fishing) and the Elder Grove holds **12** — its Dawnpetal and
+nothing else, because §4 makes the Grove a place you walk to for one thing.
+
+**All five fishing bands have water.** §5.3 measured every bar the placed waters could show and
+reported that epic and legendary had definitions and nowhere to play them; the ember run, the
+dune water and the deep sea exist now, so the reel ladder is complete content rather than a
+gap the run had to name.
+
+Two things this cost, both worth keeping:
+
+- **A cluster is a wish, not a coordinate.** Zone, bearing from the isle's heart, distance —
+  resolved against the real height field, with a per-member ground check and a retry that
+  shrinks toward the centre. A fishing cluster next to a shoreline loses half its spots without
+  that retry (measured: 3 of 8 → 8 of 8).
+- **A zone constraint has to reach the members, not just the centre.** 39 of 322 land nodes
+  stood in a region they were never authored for, because only the cluster centre was ever
+  asked. Tier bands are the whole point of §4's zone assignment — a T5 vein in the T4 savanna
+  is reachable by someone the ladder is supposed to gate — and 4 of the 12 Dawnpetal were
+  growing outside the Grove, which is §1.6's re-tiering undone by geometry rather than by data.
+  The publish rail now warns when one node id's placements split across zones.
+
 ### 1.7 As built (P10-G) — what 1→10 actually costs
 
 §1.3 says "level 30 in one profession ≈ focused casual week" and never says what the first ten

@@ -255,3 +255,14 @@ USER_QUESTIONS Q30 carries the decision and the alternative (giving props real c
 
 Rivers, per-chunk water overrides and the waterfall grotto (§6) are **not** in the base pass — they
 are hand-dressing on top of it, and the map editor's per-chunk water tool is what places them.
+
+**The sea is a per-chunk declaration, and the base pass forgot to make it** (found in P12-E). A
+chunk carries its own `waterLevel`, and the client draws a water surface only where that value is
+not null — which is what makes the per-chunk override above possible at all. The whole-world
+generation plan shipped `waterLevel: null`, so all 1024 chunks declared no water: every channel,
+every bay and 42 % of the map was an invisible hole with the ocean floor visible at the bottom of
+it, and nothing could be a fishing spot, because "submerged" is defined as ground below its own
+chunk's water. Two phases passed without anyone noticing, because nothing had needed water to
+exist until the gathering nodes did. Sea level is written into every chunk now; a chunk standing
+entirely above it simply renders its plane underground, which costs nothing and means a later
+sculpt that digs a bay gets water in it for free.

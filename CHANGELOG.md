@@ -5,6 +5,30 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — there is something to gather everywhere (2026-08-06, P12-E)
+
+- **362 resource nodes stand across the Dawnlands**, up from 65 on the old island: 120 trees,
+  95 ore seams, 107 herb patches and 40 fishing spots, in clusters you walk between rather than
+  an even sprinkle. Every zone carries its own band — birch and copper on the Dawnshore, wealdoak
+  and iron in the Weald, emberbark and silverline in the Emberwood, acacia and gold in the
+  savanna, ashwood and dawnstone in the canyons — and the Elder Grove's twelve Dawnpetal, which
+  grow nowhere else.
+- **All five fishing waters are real now.** Every tier of fish the game knows about has water to
+  catch it in — the shore's shoals, the Weald's pools, an ember run, the savanna's dune water,
+  and the deep sea off the canyons. The epic and legendary bars had definitions and nowhere to
+  play them until this.
+- **The sea is visible.** The new world was generated with no water surface at all, so 42 % of
+  the map was an invisible hole you walked into — and nothing could be a fishing spot, because
+  "underwater" had nothing to be under.
+
+### Fixed — nodes that had wandered out of their zone (2026-08-06, P12-E)
+
+- **39 of 322 land nodes stood in the wrong region.** Cluster centres were checked against the
+  zone they were authored for; the individual trees and veins scattered around them were not, so
+  handfuls crossed a border — including canyon T5 veins standing in the savanna, where nothing
+  gates you from them, and 4 of the 12 Dawnpetal growing outside the Grove that exists for them.
+  Every zone now holds exactly the nodes it was given.
+
 ### Added — the deep catalogue (2026-08-06, P12-D)
 
 - **223 items in the world**, up from 103: the Emberwood's cinder-forged steel and ashweave, the

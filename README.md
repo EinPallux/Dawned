@@ -40,7 +40,10 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > glubs to Ashwing in the Ashcrag caldera, each camp resolved against the real terrain rather than
 > typed as a coordinate. **223 items** with their own icons — nine armour sets, sixty weapons
 > and shields, and six Legendaries that finally do what their names promise — with every
-> settlement trading. Still to place: the resource nodes, and the villagers, POIs and quests.
+> settlement trading. **362 resource nodes** in clusters you walk between — 120 trees, 95 ore
+> seams, 107 herb patches and 40 fishing spots, every zone carrying its own tier band, and all
+> five fishing waters real for the first time (the epic and legendary bars had definitions and
+> nowhere to play them). Still to place: the villagers, POIs and the remaining quests.
 > Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
 > end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an

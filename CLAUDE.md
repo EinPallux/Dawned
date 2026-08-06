@@ -654,6 +654,43 @@ find out rather than fifty-nine.
 **`pnpm check` green at 659 unit tests**, 144 baked assets. The map draft's `node` layer was
 cleared: its 43 placements still carried dev-island coordinates, and P12-E re-places them.
 
+**P12-E — the gathering ladder is planted (2026-08-06).** **362 resource nodes across the
+Dawnlands** (from 65 on the dev island): 120 trees, 95 ore seams, 107 herb patches, 40 fishing
+spots — **all 21 published definitions placed, 0 without a home** — with the five mainland zones
+holding 70 each (24 trees / 19 ore / 19 herbs / 8 fishing) and the Elder Grove holding its 12
+Dawnpetal and nothing else. **All five fishing bands have water for the first time**: P10-G
+measured every bar the placed waters could show and REPORTED that epic and legendary had
+definitions and nowhere to play them rather than implying three rarities; the ember run, the dune
+water and the deep sea exist now. Proven from the GAME rather than the publish button —
+`/ops/respawnnodes` reports **362 total, 0 orphans** on the hot-swapped bake (`map-1786008720`).
+A cluster is a WISH resolved by the panel's `placeAll` — the same machinery the camps use — plus a
+per-member ground check that reads the DRAFT CHUNKS and a 6-attempt retry shrinking toward the
+centre. That retry is not polish: a fishing cluster beside a shoreline comes out **3 of 8 without
+it and 8 of 8 with it**.
+**The bug that mattered was invisible to every check that existed: 39 of 322 land nodes stood in a
+zone they were never authored for.** `placeAll` validates the cluster CENTRE's zone; the members
+scatter up to `spread` metres off it and were only ever asked about the GROUND. So 7 ashwood, 5
+dawnstone and 5 duskthorn — Ashcrag's T5 band — stood in the T4 savanna, where nothing gates a
+player from reaching them, and **4 of the 12 Dawnpetal grew in Emberwood**, which is P12-D's
+content-ownership bug re-made out of geometry one day after the data version of it was fixed. The
+member loop asks the DRAFT's zone layer now, ordered exactly as `bakeDraft` orders it (smallest
+ring first — the Dawnsea's ring covers the whole map), and the retry that was already there
+absorbed every stray at no cost: **362 placed, 0 dropped**. Found by comparing wished-zone against
+resolved-zone AFTER the run — the same shape of evidence as `/ops/camps` finding `ashen_reach` in
+P12-C. A count says the catalogue is complete and says nothing about where it stands.
+**A second finding is two phases old: `waterLevel` was `null` for all 1024 chunks.** A chunk
+declares its own water and the client draws a surface only where that value is not null, so the
+generated world had no sea at all — 42 % of the map an invisible hole with the ocean floor at the
+bottom of it — and **no fishing node could ever be authored**, because "submerged" is defined as
+ground below its own chunk's water. Nothing had needed water to EXIST until this phase did, which
+is why P12-A and P12-B both passed over it. WORLD.md §7.1 carries it; PROFESSIONS §1.6b is the
+as-built for the ladder.
+Panel side: publish now WARNS when one node id's placements are split across zones — the guard the
+script fix cannot give, because the owner drags nodes by hand too. Warning rather than blocker, on
+`questHintCoverage`'s precedent: two regions can be a design choice, 5 of 19 across a line is not.
+**`pnpm check` green at 659 unit tests** here and **261** in the panel (+2 for the cross-check);
+**400 baked assets / 24.72 MB** (144 models + 256 icons).
+
 ### Running it locally
 
 ```bash
