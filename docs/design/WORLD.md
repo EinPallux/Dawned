@@ -241,5 +241,16 @@ Three deviations from the text above, each reported rather than quietly absorbed
 | a sandbar **halfway across** the Dawnshore↔Weald channel | the wreck bar sits in open sea off Dawnshore's north-east cape                    | carves apply after every land mask, so a bar in the deepest part of a 76 m strait would have to be a 76 m mountain to break the surface. The rest-stop beat costs the channel; the bar keeps its shore.      |
 | **The Dawnsea** is "n/a" in §2's zone table              | it is a real zone row, listed LAST so the six land zones win the first-match test | publish blocks on land in no zone, and the sandbars stand in water no isle's ring reaches. Its ambience is the open-ocean profile the zones file would otherwise carry as `defaultAmbience`.                 |
 
+**Bridges are causeways** (P12-B). §6 wants them to be landmark art pieces, and they are dressed
+that way — but the crossing itself is GROUND, not a prop. Walkability is computed from the terrain
+heightfield; a prop is something you see, so a bridge model laid over a channel is scenery you swim
+underneath and §1's "joined by bridges" would be false. Each of the four crossings is therefore a
+22 m-wide neck of terrain raised back over its own strait, standing ~5 m above the waterline, with
+plank and dock props on top. The consequence is honest and worth naming: the five main isles are
+one landmass connected through four necks rather than five islands in a row. Every strait is open
+water everywhere else, so the neck is a real chokepoint and swimming remains the shortcut. The
+Elder Grove has no causeway — §3.6's long swim and one-way portal are still the only ways in.
+USER_QUESTIONS Q30 carries the decision and the alternative (giving props real collision).
+
 Rivers, per-chunk water overrides and the waterfall grotto (§6) are **not** in the base pass — they
 are hand-dressing on top of it, and the map editor's per-chunk water tool is what places them.

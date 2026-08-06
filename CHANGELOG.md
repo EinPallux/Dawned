@@ -18,6 +18,11 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 - Deviations from the design doc — the north-west islet with nowhere to stand, the sandbar that
   could not sit mid-channel, and the Dawnsea becoming a real zone — are written down in WORLD.md
   §7.1 rather than quietly absorbed.
+- **The four bridges are real ground, not scenery.** You walk on the terrain, not on props, so a
+  bridge model over a channel would be something you swim underneath. Each crossing is a 22 m neck
+  of land raised back over its own strait — a single visible chokepoint per channel, with open
+  water everywhere else, so swimming stays the shortcut for the impatient. The Elder Grove still
+  has no bridge: it is a long swim or the one-way portal, as designed.
 
 ### Fixed — a chest you emptied still said "open me" (2026-08-06, P11-E)
 
