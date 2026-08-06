@@ -872,6 +872,31 @@ against its palette/mood spec; owner walkthrough signoff zone by zone.
       Dawnshore's climax is an elite, which is the right shape for a level 1–6 starter zone.
       Two DoD clauses are the OWNER's and cannot be self-certified: every zone screenshot-reviewed
       against its palette/mood spec, and the zone-by-zone walkthrough signoff.
+- [x] **P12-H** the world can be DEPLOYED. Found by the owner, who ran `UPDATE.sh` on a merged P12
+      build and was still standing on the dev island: "there is visually absolutely nothing new
+      besides having the World Map." Nothing had failed. **Code travels in git and the world does
+      not** — a published bake is git-ignored machine state (A2's own decision, so that a `git
+pull` can never repoint the live world at a bake from a dev checkout) and P12's content rows
+      were never frozen into a seed migration the way P8–P11's were. A phase whose output cannot
+      reach production is not vertically complete, which makes this P12's work and not P13's.
+      **`deploy/WORLD.sh`** runs the panel's own authoring chain against the panel on the box, in
+      dependency order (terrain → settlements → bestiary → items → nodes → places → folk →
+      quests), then verifies from the GAME's ops levers. Nothing in it reimplements placement or
+      validation: every step rides the normal publish rail, so a bad step is refused rather than
+      published. Safe to re-run (the scripts prune on match), `--from N` resumes, confirm-gated,
+      backup first. `UPDATE.sh` now NAMES the gap when it sees `mapVersion: dev-2` instead of
+      leaving it to be found by walking around. DEPLOYMENT.md §5.1.
+      **Freezing P12's `content_*` into a migration was considered and rejected**: it would carry
+      50 enemy types and leave the terrain and ~900 placements behind, so the box would have a
+      bestiary and nowhere for it to stand. The world is one thing and it moves in one piece.
+      **The blocker was a security hole the deploy path would have shipped.** Every `author-*`
+      script minted an admin account with a password that is a literal in a public repository —
+      harmless in a throwaway dev container, a permanent back door on the VPS, and "run these on
+      the VPS" is exactly what deploying a world means. `admin-session.mjs` (panel repo) reads
+      `DAWNED_ADMIN_USER`/`DAWNED_ADMIN_PASS` and touches the `accounts` table only when neither
+      is set; the dev fallback mints a per-run random password on its own account and bans it at
+      the end. Both paths verified against the running panel: supplied credentials publish with
+      no account created, the fallback ends `banned`.
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel
 

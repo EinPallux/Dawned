@@ -189,10 +189,25 @@ sed "s/{{DOMAIN}}/${DAWNED_DOMAIN:-play.pathlands.cc}/g" "$APP_DIR/game/deploy/C
 systemctl reload caddy || true
 
 log "Health check"
-if curl -fsS --max-time 5 http://127.0.0.1:8081/api/health; then
+if HEALTH="$(curl -fsS --max-time 5 http://127.0.0.1:8081/api/health)"; then
+  echo "$HEALTH"
   echo
   log "Update complete."
 else
   warn "game server did not answer after update"
   exit 1
+fi
+
+# UPDATE.sh deploys CODE. The WORLD does not travel with it: a published map
+# bake is git-ignored machine state (A2 — so a `git pull` here can never
+# repoint the live world at somebody's dev checkout) and the content rows behind
+# it live in Postgres. A box still serving the committed `dev-2` dev island has
+# every feature the new code ships and none of the world it was built for, which
+# looks exactly like "the update did nothing" — say so rather than let it be
+# discovered by walking around.
+if [[ "$HEALTH" == *'"mapVersion":"dev-2"'* ]] && [[ -f "$APP_DIR/game/deploy/WORLD.sh" ]]; then
+  printf '\n\033[1;33m▶ This box is still on the dev island (map dev-2).\033[0m\n'
+  echo "  The world is deployed separately — code travels in git, a published map does not:"
+  echo "     sudo bash $APP_DIR/game/deploy/WORLD.sh"
+  echo "  See docs/tech/DEPLOYMENT.md §5.1."
 fi

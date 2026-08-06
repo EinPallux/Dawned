@@ -548,3 +548,38 @@ nothing beyond it.
     against its palette/mood spec, and the zone-by-zone walkthrough signoff. P12 is marked ✅ on its
     MEASURED DoD per the 2026-08-05 decision; the walkthrough is outstanding.
     **`pnpm check` green at 674 unit tests**; two-client sync passes on the same build.
+
+    **P12-H — the world can be DEPLOYED (2026-08-06).** Found by the owner, who merged P12 and ran
+    `deploy/UPDATE.sh` and was still standing on the dev island: "there is visually absolutely nothing
+    new besides having the World Map." Nothing had failed. **Code travels in git and the world does
+    not.** A published bake is git-ignored machine state — A2's own decision, so that a `git pull` can
+    never repoint the live world at a bake from somebody's dev checkout — and P12's `content_*` rows
+    were never frozen into a seed migration the way P8–P11's were. So an updated box has every feature
+    P12 built and the old test island to use it on, which is indistinguishable from an update that did
+    nothing. A phase whose output cannot reach production is not vertically complete (rule 1), which
+    makes this P12's work rather than P13's.
+    **`deploy/WORLD.sh`** runs the panel's own authoring chain against the panel on the box, in
+    dependency order (terrain → settlements → bestiary → items → nodes → places → folk → quests), then
+    verifies from the GAME's ops levers rather than from the publish button — the same argument every
+    phase since P9 closes on. Nothing in it reimplements placement or validation: every step rides the
+    normal publish rail, so what lands is what the panel would land and a bad step is refused rather
+    than published. Safe to re-run (the scripts prune on match, so a second run says "nothing to
+    publish"), `--from N` resumes a chain that failed halfway, confirm-gated, backup first.
+    **`UPDATE.sh` now NAMES the gap** when the health check reports `mapVersion: dev-2`, instead of
+    leaving it to be discovered by walking around. DEPLOYMENT.md §5.1 carries the contract, including
+    the table of what travels by which road.
+    **Freezing P12's content into a seed migration was considered and rejected**: it would carry 50
+    enemy types and leave the terrain and ~900 placements behind, so the box would end up with a
+    bestiary and nowhere for it to stand. The world is one thing and it moves in one piece.
+    **The blocker was a security hole the deploy path would otherwise have shipped.** Every `author-*`
+    script minted an admin account with a password that is a literal in a public repository. Harmless
+    in a throwaway dev container; a permanent back door on the VPS — and "run these on the VPS" is
+    exactly what deploying a world means. The panel's new `tools/content/admin-session.mjs` reads
+    `DAWNED_ADMIN_USER`/`DAWNED_ADMIN_PASS` and touches the `accounts` table only when neither is set,
+    so a deploy creates nothing and every published row is attributed to a person in `audit_log`; the
+    dev fallback mints a per-run RANDOM password on its own account (`zz_admin_content`, not the
+    smokes' `zz_admin_smoke`) and bans it at the end. The random password is the part that holds — a
+    crash can skip the ban, and what survives is then an account nobody can log into. Both paths were
+    verified against the running panel: supplied credentials published with no account created, the
+    fallback ended `banned`, and `world:author` (the TypeScript entry point) regenerated all 1024
+    chunks through it. `pnpm check` green at **674** here and **264** in the panel.
