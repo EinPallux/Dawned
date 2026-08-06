@@ -157,6 +157,24 @@ const onScreen = (page) => page.evaluate(() => window.__dawned?.worldObjectList?
 const goTo = async (page, x, z, label, { expectPrompt = null, settle = 1200 } = {}) => {
   await ops('/ops/tp', { player: CHARACTER, x, z });
   if (expectPrompt) {
+    /**
+     * One retry through a fresh `/ops/forget`, and only for a SPENT object.
+     *
+     * The setup reset reports how many records it cleared, and it is truthful
+     * about the server — but the client has been observed still holding
+     * "emptied" for a chest the server had already un-spent, so the reset is
+     * not reliably OBSERVABLE by the time the run needs it. Re-issuing it while
+     * standing at the object closes that window; the run says it did so, and
+     * still fails if the second attempt also finds the thing spent.
+     */
+    const spentNow = async () =>
+      (await page.evaluate(() => window.__dawned.interactProbe()).catch(() => null))?.object
+        ?.spent === true;
+    if (await spentNow()) {
+      note(`${label} reads as spent — re-issuing the object reset and looking again`);
+      await ops('/ops/forget', { player: CHARACTER, pois: false, objects: true });
+      await sleep(1500);
+    }
     await page
       .waitForFunction(
         (pattern) => {
@@ -601,6 +619,13 @@ const main = async () => {
       });
       const mark = { x: here.x + 30, z: here.z + 30 };
       await ops('/ops/tp', { player: CHARACTER, ...mark });
+      const online = (await (await fetch(`${BASE_URL}/api/health`)).json()).players;
+      if (online !== 1) {
+        note(
+          `${online} players online — a killed run inside its reconnect grace answers to the ` +
+            `same name, and every ops lever takes the FIRST match`,
+        );
+      }
       const moved = await until(
         page,
         (target) => {
