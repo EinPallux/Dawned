@@ -1074,8 +1074,30 @@ const main = async () => {
           await goTo(page, target.x + 1.3, target.z + 1.3, target.name, {
             expectPrompt: `Talk to ${target.name}`,
           });
-          const handover = await talk(page);
-          note(`${handover.speaker}: "${handover.text.slice(0, 56)}…"`);
+          /**
+           * Press `F` and watch the STEP, not the screen.
+           *
+           * Bran is a villager, not a quest giver: he has nothing quest-shaped
+           * to say, so he answers with a bark and no dialogue panel opens. The
+           * server sets `talkedTo` before it decides what the conversation is —
+           * "walking up to someone IS the talk" — so the delivery credits all
+           * the same. Waiting for a `.dlg` here failed a delivery that had
+           * already worked.
+           */
+          await page.keyboard.press('KeyF');
+          await sleep(1800);
+          const spoke = await page.evaluate(() => ({
+            dialogue: window.__dawned.connection.dialogueState?.open?.text ?? '',
+            toasts: [...document.querySelectorAll('.hud-toast')].map((el) =>
+              (el.textContent ?? '').trim(),
+            ),
+          }));
+          note(
+            spoke.dialogue
+              ? `${target.name} opened a conversation: "${spoke.dialogue.slice(0, 50)}…"`
+              : `${target.name} answered with a bark — no panel, and the step still counts`,
+          );
+          if (spoke.toasts.length > 0) note(`toast: ${spoke.toasts[0]}`);
           await closeDialogue(page);
           const after = await questEntry(page, questId);
           if (after.step === state.step && !after.ready) {
