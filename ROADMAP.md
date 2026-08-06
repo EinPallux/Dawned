@@ -920,6 +920,21 @@ pull` can never repoint the live world at a bake from a dev checkout) and P12's 
       DERIVED from the enemies now. Fixed panel-side, then the WHOLE CHAIN was run against a virgin
       database (migrations only, a second panel on its own MAP_DIR) rather than reasoned about,
       because reasoning about it is what produced the bug.
+      **The third and worst fresh-box fault was the client's, and it invalidated an A2 claim.** The
+      client fetches `/assets/map/<version>/…`, and `assets:sync` satisfied that by COPYING
+      `assets_baked/map/` into the client's public dir at BUILD time. A map is published at RUNTIME,
+      so on the VPS the server hot-loaded the Dawnlands, reported them on `/api/health`, and the
+      browser 404'd every artifact — `map failed to load — refresh` over a perfectly healthy world.
+      "The game hot-loads a new map without a deploy" was true server-side and false in the browser
+      from A2 onward; it never showed in dev, where a rebuild follows a publish out of habit. Both
+      sides serve the bake directory itself now — Caddy in production, a Vite middleware in dev and
+      preview — which also stops every published version being duplicated into the bundle at ~23 MB
+      each. Pinned by `deploy-contract.test.ts`, including that the rule is declared BEFORE the
+      client handler, and proven by fetching meta/zones/walkgrid through the dev server with the
+      copy deleted.
+      Also fixed with it: `author-items.mjs` treated an empty diff as a failed publish, so step 4
+      of a RESUMED world build died on `"nothing to publish"` with everything already correct.
+      `tools/content/publish.mjs` is now the one place that rule lives.
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel
 

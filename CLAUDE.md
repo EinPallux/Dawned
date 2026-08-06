@@ -861,6 +861,25 @@ in PREFLIGHT — proving it by creating a directory there from inside a copy of 
 after several minutes of terrain generation, which is exactly what happened.
 `pnpm check` green at **674** here and **265** in the panel.
 
+**The first world deploy found two more, and the worse one invalidated an A2 claim (P12-H).**
+(1) **A published world never reached the browser.** The client fetches `/assets/map/<version>/…`
+and `assets:sync` satisfied that by COPYING `assets_baked/map/` into the client's public dir at
+BUILD time. A map is published at RUNTIME — so on the VPS the server hot-loaded the Dawnlands,
+reported them on `/api/health`, and the browser 404'd every artifact: `map failed to load —
+refresh` over a perfectly healthy world. **"The game hot-loads a new map without a deploy" was
+true server-side and false in the browser from A2 onward**, and never showed in dev because a
+rebuild follows a publish there out of habit. Both sides serve the bake DIRECTORY now — Caddy in
+production (`deploy/Caddyfile`), a Vite middleware in dev and preview (client `vite.config.ts`) —
+which also stops every published version being duplicated into the bundle at ~23 MB each.
+`deploy-contract.test.ts` pins the rule AND that it is declared before the client handler; proven
+by fetching meta/zones/walkgrid through the dev server with the copy deleted, and by a traversal
+attempt falling through.
+(2) `author-items.mjs` treated an EMPTY diff as a failed publish, so step 4 of a resumed world
+build died on `"nothing to publish"` with every row already correct. A draft identical to what is
+live prunes itself, which makes an empty diff the normal case for a re-run — the rule CLAUDE.md
+already wrote down after P10-E, applied in one place now
+(the panel's `tools/content/publish.mjs`). **675 unit tests green here, 265 in the panel.**
+
 ### Running it locally
 
 ```bash

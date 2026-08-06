@@ -8,12 +8,11 @@
  * baked manifest with `file` fields rewritten to web paths under /assets/.
  */
 
-import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { MANIFEST_PATH, REPO_ROOT } from './build.mjs';
 
 const CLIENT_ASSETS_DIR = path.join(REPO_ROOT, 'packages/client/public/assets');
-const MAP_DIR = path.join(REPO_ROOT, 'assets_baked/map');
 
 export const sync = async () => {
   let manifest;
@@ -45,19 +44,25 @@ export const sync = async () => {
     `${JSON.stringify(served, null, 2)}\n`,
   );
 
-  // Map artifacts (chunks/walkgrid/zones/renders — docs/tech/ASSET_PIPELINE.md §6)
-  // ship verbatim under /assets/map/<version>/.
-  const hasMap = await stat(MAP_DIR)
-    .then((info) => info.isDirectory())
-    .catch(() => false);
-  if (hasMap) {
-    await cp(MAP_DIR, path.join(CLIENT_ASSETS_DIR, 'map'), { recursive: true });
-  }
+  // Map artifacts are deliberately NOT copied (P12-H).
+  //
+  // They used to be: `assets_baked/map/` was cloned into the client's public dir
+  // so `/assets/map/<version>/…` resolved out of the bundle. That made the served
+  // map a BUILD-TIME snapshot, and a map is published at RUNTIME — so on the VPS
+  // a freshly published world reached the server (which reported it on
+  // /api/health) and 404'd in the browser, which is "map failed to load —
+  // refresh" with a perfectly healthy world sitting on disk. It never showed in
+  // dev because a rebuild follows a publish there as a matter of habit.
+  //
+  // Both sides serve the bake directory itself now — Caddy in production
+  // (deploy/Caddyfile), a middleware in dev and preview (client vite.config.ts) —
+  // which also stops every published version being duplicated into the bundle at
+  // ~23 MB a piece.
 
   const count = Object.keys(served.assets).length;
   console.log(
     `assets: synced ${count} files (${(bytes / 1024 / 1024).toFixed(2)} MB)` +
-      `${hasMap ? ' + map artifacts' : ''} → packages/client/public/assets`,
+      ` → packages/client/public/assets (maps are served from assets_baked/map)`,
   );
   return { count, bytes };
 };

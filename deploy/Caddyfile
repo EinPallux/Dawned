@@ -42,6 +42,29 @@
 		header Cache-Control "public, max-age=31536000, immutable"
 	}
 
+	# --- baked maps, served from where the publish pipeline writes them -------
+	# The client fetches `/assets/map/<version>/{meta,zones,walkgrid,chunks…}`
+	# (packages/client/src/world/map-source.ts) and `assets:sync` used to satisfy
+	# that by COPYING assets_baked/map into the client bundle at BUILD time. On a
+	# dev box that is invisible, because a rebuild follows every publish anyway.
+	# On the VPS it meant a published world never reached a player: the server
+	# hot-loaded the new bake and reported it on /api/health, the client asked for
+	# its artifacts, and every one of them 404'd against a bundle built before the
+	# publish. A2's whole "the game hot-loads a new map without a deploy" claim was
+	# true server-side and false in the browser — found by the first world deploy
+	# (P12-H), which put the Dawnlands on the box and left the client with
+	# "map failed to load — refresh".
+	#
+	# Serving the bake directory itself removes the copy, the 23 MB-per-version
+	# duplication into dist, and the rebuild. Declared BEFORE the client handler
+	# because Caddy takes the first matching `handle`. Versioned paths, so the
+	# blanket /assets/* immutable header below is correct for these too.
+	handle_path /assets/map/* {
+		root * /opt/dawned/game/assets_baked/map
+		file_server
+		header Cache-Control "public, max-age=31536000, immutable"
+	}
+
 	# --- game client (static bundle) -----------------------------------------
 	handle {
 		root * /opt/dawned/game/packages/client/dist

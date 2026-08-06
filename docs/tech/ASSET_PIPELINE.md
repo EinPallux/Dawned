@@ -177,6 +177,21 @@ SFX −12 dBTP), loop-point metadata (JSON sidecar), OGG Vorbis (music 128k, SFX
 - `content/<version>/bundle.json` — published content snapshot for the client (items, abilities…
   display-relevant fields only — server-only numbers like loot odds stay server-side).
 
+**How they reach the browser (as built, corrected 2026-08-06 / P12-H).** The client fetches
+`/assets/map/<version>/…` and that URL resolves to **`assets_baked/map/` itself** — Caddy serves it
+in production (`deploy/Caddyfile`), a Vite middleware in dev and preview (client `vite.config.ts`).
+
+It used to resolve to a COPY: `assets:sync` cloned `assets_baked/map/` into the client's public
+directory, and `vite build` folded that into `dist`. That makes the served map a **build-time**
+snapshot of something published at **runtime** — so the first world deployed to the VPS loaded on
+the server, was reported live on `/api/health`, and 404'd on every artifact in the browser
+("map failed to load — refresh") because the bundle answering had been built before the publish.
+A2's "the game hot-loads a new map without a deploy" was true server-side and false in the browser
+for as long as it took someone to publish a map anywhere but a dev box, where a rebuild follows a
+publish out of habit and hides it. `assets:sync` no longer copies the map — which also stops every
+published version being duplicated into the bundle at ~23 MB each. `deploy-contract.test.ts` pins
+the Caddy rule, including that it is declared BEFORE the client handler.
+
 ## 7. Client Loading Strategy
 
 - Boot: manifest + login-screen bundle (≤8 MB budget: UI atlas, fonts, login vignette scene subset).
