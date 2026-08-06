@@ -248,10 +248,17 @@ const directionFrom = (texts) => {
   const blob = texts.join(' ').toLowerCase();
   const found = Object.keys(COMPASS).filter((word) => blob.includes(word));
   if (found.length === 0) return null;
-  return found.reduce(
+  const sum = found.reduce(
     (acc, word) => ({ dx: acc.dx + COMPASS[word].dx, dz: acc.dz + COMPASS[word].dz }),
     { dx: 0, dz: 0 },
   );
+  // NORMALISE. "north-west" sums to (-1, -1), whose length is √2 — and the
+  // sweep below lays its lattice along this vector, so an un-normalised
+  // diagonal silently stretches the grid by 41 % and can step clean over a
+  // small explore ring. The guarantee has to hold for every compass word the
+  // prose might use, not just the four cardinal ones.
+  const length = Math.hypot(sum.dx, sum.dz);
+  return length === 0 ? null : { dx: sum.dx / length, dz: sum.dz / length };
 };
 
 /**
@@ -468,9 +475,26 @@ const fightStep = async (page, questId, hint, focusName, budgetMs) => {
         }
       }
       if (Date.now() - started > budgetMs) {
+        // Say WHY nothing happened. An empty circle and a circle full of the
+        // wrong monsters are different problems, and a zone boss on a ten-minute
+        // respawn ticket is a third — one that fixes itself if you wait.
+        const around = await page.evaluate(() =>
+          window.__dawned
+            .enemies()
+            .filter((enemy) => !enemy.dead)
+            .map((enemy) => enemy.name),
+        );
+        const tally = [...new Set(around)].map(
+          (name) => `${name} ×${around.filter((n) => n === name).length}`,
+        );
         fail(
           `${questId}: ${((Date.now() - started) / 1000).toFixed(0)} s inside the hint circle and ` +
-            `the step is ${entry.counter}/${entry.target} — nothing the step is about is here`,
+            `the step is ${entry.counter}/${entry.target}. Alive nearby: ` +
+            `${
+              tally.join(', ') ||
+              'NOTHING — if this step names a zone boss, his 10-minute ' +
+                'respawn ticket has probably not come round yet'
+            }`,
         );
       }
       await sleep(1000);
