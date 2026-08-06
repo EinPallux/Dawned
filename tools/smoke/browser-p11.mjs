@@ -1070,7 +1070,9 @@ const main = async () => {
           if (after.step === state.step && after.counter === step.have) {
             fail(`${questId}: pressed F on everything in the circle and the counter never moved`);
           }
-          chainReport.push({ questId, step: step.text, counted: after.counter });
+          // `after.counter` belongs to whatever step we have MOVED ON to, so
+          // reporting it printed "0 counted" for a step that had just filled.
+          chainReport.push({ questId, step: step.text, counted: step.need });
           continue;
         }
 
@@ -1208,7 +1210,7 @@ const main = async () => {
     );
     console.log(
       `   discovery: ${report.discovery.length} kind(s) — ` +
-        report.discovery.map((d) => `${d.kind} +${d.xp}xp`).join(', '),
+        report.discovery.map((d) => `${d.kind} ${d.xp}`).join(', '),
     );
     for (const row of report.chain) {
       const detail =
