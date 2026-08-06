@@ -515,6 +515,27 @@ const stopFighter = (page) =>
   });
 
 /**
+ * Be standing up before doing anything that needs a body.
+ *
+ * A kill step ends the moment its counter fills, which in a MIXED camp leaves
+ * the bot in the middle of everything else that lives there — and the heal that
+ * kept it upright stops with the fight. It then walked back to hand the quest
+ * in as a corpse, and the failure read "nothing is in reach at Hesta", which is
+ * true and completely unhelpful.
+ */
+const ensureAlive = async (page, where) => {
+  const dead = await page.evaluate(() => window.__dawned.combatState().dead);
+  if (!dead) return;
+  note(`died before ${where} — respawning`);
+  await page.evaluate(() => window.__dawned.connection.requestRespawn());
+  await until(page, () => !window.__dawned.combatState().dead, {
+    label: 'the respawn',
+    timeout: 30000,
+  });
+  await sleep(1500);
+};
+
+/**
  * Fight until the step's counter reaches its target, standing inside the hint
  * circle the MAP drew. Nothing here knows which spawner it is walking to.
  */
@@ -559,7 +580,12 @@ const fightStep = async (page, questId, hint, focusName, budgetMs) => {
     }
   } finally {
     await stopFighter(page);
+    // Keep healing for a moment after the counter fills: the fight is over for
+    // the QUEST, not for the camp, and everything else in the circle is still
+    // swinging while the bot walks out.
+    await sleep(2000);
     stopHealing();
+    await ensureAlive(page, 'leaving the fight');
   }
 };
 
@@ -1120,6 +1146,7 @@ const main = async () => {
       }
 
       // Hand it in, and take the reward the class picker offers if there is one.
+      await ensureAlive(page, `handing in ${questId}`);
       await goTo(page, hesta.x + 1.4, hesta.z + 1.4, 'Hesta', { expectPrompt: 'Talk to Hesta' });
       const xpBefore = await xpMark(page);
       conversation = await talk(page);
