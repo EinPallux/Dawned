@@ -5,6 +5,23 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the world can be deployed (2026-08-06)
+
+- **`deploy/WORLD.sh`** — one command that puts the Dawnlands on the server. Updating the code
+  never carried the world with it: the map is a published artifact that is deliberately kept out
+  of git (so nobody's development copy can overwrite the live one by accident), and the content
+  behind it lives in the database. A server that had only been updated therefore had every new
+  feature and the old test island to use it on, which looks exactly like an update that did
+  nothing. It does not any more.
+- **`UPDATE.sh` now says so** when it finds the server still on the dev island, instead of leaving
+  it to be discovered by walking around.
+- The world rebuild goes through the editor's own publish pipeline, step by step, and then asks
+  the **game** what it ended up with — not the panel, which would only be repeating itself.
+- **Security fix**: the content-authoring scripts used to create an admin account whose password is
+  written down in a public repository. Harmless on a throwaway development machine, a permanent
+  back door on a real one — and running them on a real one is exactly what deploying a world means.
+  They take a real login now and create nothing.
+
 ### Added — the Dawnlands are finished, and measured (2026-08-06, P12-G)
 
 - **The world is complete on every countable target**: 46 places to find, 62 things to use, 51

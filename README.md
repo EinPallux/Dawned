@@ -55,6 +55,11 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > (`tools/smoke/p12-dod.mjs`, run against the live world): every CONTENT_0.1 target met with zero
 > dangling references, a real 1→30 route — each region pays its own level band in 0.8 to 4.0 camp
 > clears, a smooth ramp with no grind wall — and 400 enemies awake for 2.4 ms of a 25 ms tick.
+> **Deploying it is its own command.** `UPDATE.sh` carries code; the world does not travel with it —
+> a published map is a build artifact kept out of git on purpose, and the content behind it lives in
+> the database — so a freshly-updated server had all of P12's features and the old test island to
+> use them on. `deploy/WORLD.sh` builds the world on the box through the panel's own publish
+> pipeline and then asks the game what it got (DEPLOYMENT.md §5.1).
 > Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
 > end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an

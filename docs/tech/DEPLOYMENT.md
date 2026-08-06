@@ -254,6 +254,65 @@ grace window); UPDATE.sh announces in-game 60 s prior via ops API when the serve
 (`curl -H \"X-Ops: $OPS_SECRET\" localhost:8081/ops/announce?text=...&in=60`) — wired in the real
 script at Phase 0.
 
+## 5.1 `deploy/WORLD.sh` — the world does not travel with the code
+
+**Added 2026-08-06, after the owner ran `UPDATE.sh` on a P12 build and found themselves still
+standing on the dev island.** That was not a failed update. It is the shape of the system, and it
+had never been written down:
+
+| What                                                         | Lives in                                                | Travels by     |
+| ------------------------------------------------------------ | ------------------------------------------------------- | -------------- |
+| Server, client, panel, shared formulas, migrations           | git                                                     | `UPDATE.sh`    |
+| Abilities, XP curve, skill nodes (P5–P7)                     | Postgres, frozen into seed migrations 0006–0010         | `UPDATE.sh`    |
+| P8–P11 items, bestiary, gathering, pilot quests              | Postgres, frozen into seed migrations 0012–0020         | `UPDATE.sh`    |
+| **The Dawnlands: terrain, zones and every P12 placement**    | `assets_baked/map/map-<epoch>/` — **git-ignored**       | **`WORLD.sh`** |
+| **P12's content rows** (50 enemies, 223 items, 28 quests, …) | Postgres `content_*`, published — **no seed migration** | **`WORLD.sh`** |
+
+The bake is git-ignored on purpose (A2, 2026-08-05): the live pointer `current.json` must never be
+overwritten by a `git pull` carrying a bake from somebody's dev checkout. The consequence is that a
+freshly-updated box has every feature P12 built and none of the world P12 authored — it keeps
+serving the committed `dev-2` dev island, which looks exactly like an update that did nothing.
+`UPDATE.sh` now says so when it sees `mapVersion: dev-2`.
+
+P12's content was deliberately **not** frozen into a seed migration the way P8–P11's was. Freezing
+`content_*` would carry the definitions and still leave the terrain and all 900-odd placements
+behind, so the box would end up with 50 enemy types and nowhere for them to stand. The world is one
+thing and it moves in one piece.
+
+```bash
+sudo bash /opt/dawned/game/deploy/WORLD.sh              # asks before it starts
+sudo bash /opt/dawned/game/deploy/WORLD.sh --from 5     # resume a chain that failed at step 5
+```
+
+It runs the panel's own authoring scripts against the panel on this box, in dependency order —
+terrain → settlements → bestiary → items → gathering nodes → POIs/interactables → NPCs → quests —
+and every one of them goes through the normal publish rail (validate → diff → bake → version →
+notify). Nothing in the deploy path reimplements placement or validation, so what lands is what the
+panel itself would land, and a bad step is refused rather than published. Quests come last because
+every hint circle is derived from the camps, nodes, NPCs and chests the earlier steps placed.
+
+Then it verifies **from the game** — `/ops/camps`, `/ops/worldobjects`, `/ops/respawnnodes` — for
+the reason every phase since P9 has closed that way: a publish saying "ok" is the panel's account of
+its own work, and the only line that proves content crossed the repo boundary is the server counting
+what it seeded. `tools/smoke/p12-dod.mjs` is the full audit.
+
+Operational notes:
+
+- **Safe to re-run.** Every authoring script prunes drafts that already match, so a second run
+  reports "nothing to publish" rather than churning the world.
+- **Not safe to run with players on.** The terrain is regenerated under them and the world is
+  republished several times on the way through. Characters, inventories, levels and quest progress
+  are untouched — those are their own tables — but the ground moves.
+- **Credentials.** The authoring scripts take `DAWNED_ADMIN_USER` / `DAWNED_ADMIN_PASS` and only
+  touch the `accounts` table when neither is set. `WORLD.sh` prompts for the owner's own panel login
+  and passes it through a 0600 file rather than `env VAR=…`, which would put the password in the
+  box's process list. Using a real account also means every row the run publishes is attributed to a
+  person in `audit_log`. Before this existed the scripts minted an admin account whose password is a
+  literal in a public repository — fine in a throwaway dev container, a permanent backdoor anywhere
+  else, and the whole reason it had to be fixed before this path could be recommended.
+- **Disk.** Each bake is ~23 MB and a full run publishes several; a publish sweeps all but the
+  newest five (`pruneOldBakes`), and `BACKUP.sh` archives the live one nightly (§6).
+
 ## 6. `deploy/BACKUP.sh` + maintenance (draft behavior)
 
 - Nightly (timer 04:30 UTC): `pg_dump -Fc` → `/var/lib/dawned/backups/db-YYYYMMDD.dump` + tar of
