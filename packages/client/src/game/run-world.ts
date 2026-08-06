@@ -74,6 +74,7 @@ import {
   type ObjectInReach,
   type QuestGlyph,
 } from '../world/world-objects.js';
+import { MapPropsManager } from '../world/map-props.js';
 import { loadNpcDefs } from '../content/npc-defs.js';
 import { loadResourceNodeDefs } from '../content/resource-node-defs.js';
 import { loadIconUrls } from '../content/icon-urls.js';
@@ -426,6 +427,8 @@ export const runWorld = (
       // stand in ITS bake, and a client that built them against the fallback
       // version would put Marla on ground the server is not simulating.
       await buildWorldObjects();
+      // Independent of the two above on purpose — see buildMapProps.
+      await buildMapProps();
     })
     .catch((error: unknown) => {
       console.error('[terrain] map artifacts failed to load:', error);
@@ -1198,6 +1201,32 @@ export const runWorld = (
   // published content, models from the manifest — and built once when all three
   // are in hand.
   let worldObjects: WorldObjectManager | null = null;
+  let mapProps: MapPropsManager | null = null;
+
+  /**
+   * The static layers — buildings, town dressing, bridge planks, painted
+   * forests — built from the bake and the asset manifest ALONE.
+   *
+   * Deliberately not folded into `buildWorldObjects`: that one also awaits
+   * published NPC definitions, and a town has no business disappearing because
+   * the content API is slow or empty. They were coupled for one commit and the
+   * props probe caught it immediately — every building missing on a box whose
+   * npc rows had not been published yet.
+   */
+  const buildMapProps = async (): Promise<void> => {
+    const [placements, models] = await Promise.all([mapSource.loadPlacements(), loadPropModels()]);
+    const manager = new MapPropsManager(scene.scene, models);
+    manager.build(
+      placements?.props ?? [],
+      placements?.scatter ?? [],
+      placements?.scatterSets ?? [],
+    );
+    if (disposed) {
+      manager.dispose();
+      return;
+    }
+    mapProps = manager;
+  };
   const buildWorldObjects = async (): Promise<void> => {
     const [placements, npcDefs, models] = await Promise.all([
       mapSource.loadPlacements(),
@@ -1211,6 +1240,7 @@ export const runWorld = (
       placements?.interactables ?? [],
       placements?.pois ?? [],
     );
+
     if (disposed) {
       manager.dispose();
       return;
@@ -1548,6 +1578,15 @@ export const runWorld = (
     /** What the world actually seeded from the bake (P11 probe reads this). */
     worldObjects: (): { npcs: number; objects: number; pois: number; seated: number } =>
       worldObjects?.stats ?? { npcs: 0, objects: 0, pois: 0, seated: 0 },
+    /**
+     * The STATIC layers — buildings, dressing, painted forests. The counterpart
+     * to `/ops/worldobjects`: a count of what this client actually put in the
+     * scene, which is the only thing that answers "why can I not see the town".
+     */
+    mapProps: {
+      stats: () =>
+        mapProps?.stats() ?? { props: 0, scatter: 0, pendingProps: 0, missingModels: [] },
+    },
     /**
      * The villagers and things this client has SPAWNED, with their positions —
      * what is on screen, not what the bake says. The P11-E DoD run walks the
@@ -2124,6 +2163,12 @@ export const runWorld = (
         heightAt: (x, z) => terrain.sampler.heightAt(x, z),
       });
     }
+    // Buildings and painted forests seat as their chunks stream in; each one is
+    // placed exactly once and costs nothing afterwards.
+    mapProps?.update({
+      hasDataAt: (x, z) => terrain.sampler.hasDataAt(x, z),
+      heightAt: (x, z) => terrain.sampler.heightAt(x, z),
+    });
     // The reel bar runs per FRAME, not per tick: it is the one thing on screen
     // the player steers directly, and a marker that moves twenty times a second
     // reads as input lag. The server steps the same shared function on its own

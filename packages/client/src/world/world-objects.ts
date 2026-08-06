@@ -85,9 +85,17 @@ export const loadPropModels = (): Promise<Map<string, GLTF>> => {
       Object.entries(manifest.assets)
         // `world/nature` too: a quest prop is legitimately a felled log, and the
         // node manager has already paid for those loads.
+        //
+        // `world/buildings` was MISSING until 2026-08-06, and it is half of why
+        // the towns were invisible: P12-B baked 22 building models into their own
+        // category and this filter never named it, so even a client that asked
+        // for a house would have had no mesh to give it.
         .filter(
           ([, entry]) =>
-            (entry.category === 'world/props' || entry.category === 'world/nature') && entry.file,
+            (entry.category === 'world/props' ||
+              entry.category === 'world/nature' ||
+              entry.category === 'world/buildings') &&
+            entry.file,
         )
         .map(async ([id, entry]) => {
           try {
