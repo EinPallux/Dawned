@@ -284,5 +284,53 @@ export const questProgress = (quest: QuestDef, state: QuestState): QuestProgress
     done: index < state.step,
   }));
 
+/** What a hint circle actually covers. `null` targets mean "nothing placed". */
+export interface QuestHintCoverage {
+  /** Metres from the circle's centre to the nearest target. */
+  nearestM: number;
+  /** True when at least one target stands inside the circle. */
+  covered: boolean;
+  /** How much larger the radius would have to be to reach the nearest one. */
+  shortfallM: number;
+  /** How many of the targets the circle contains. */
+  inside: number;
+}
+
+/**
+ * Does a step's hint circle contain the thing the step is about?
+ *
+ * A hint is the ONLY pointer the world map gives for a kill, collect, interact
+ * or deliver step, and it is authored by hand in the quest editor while the
+ * thing it points at is placed in a different editor — spawners in the enemies
+ * page, props and nodes on the map. Nothing ever compared the two, and the P11
+ * pilot set shipped with FOUR kill circles 85–170 m from their only spawner:
+ * you could open the map, walk to the ring, and find empty ground.
+ *
+ * It lives in shared rather than in the panel for the usual reason — the panel
+ * warns with it at publish time, and anything in the game that ever wants to
+ * ask the same question (a "your hint is stale" GM check, a map-bake gate) has
+ * to get the same answer. Pure geometry: the CALLER resolves what the targets
+ * are, because that resolution needs published content the formula cannot see.
+ */
+export const questHintCoverage = (
+  hint: { readonly x: number; readonly z: number; readonly radius: number },
+  targets: readonly { readonly x: number; readonly z: number }[],
+): QuestHintCoverage | null => {
+  if (targets.length === 0) return null;
+  let nearestM = Number.POSITIVE_INFINITY;
+  let inside = 0;
+  for (const target of targets) {
+    const distance = Math.hypot(target.x - hint.x, target.z - hint.z);
+    if (distance < nearestM) nearestM = distance;
+    if (distance <= hint.radius) inside++;
+  }
+  return {
+    nearestM,
+    covered: inside > 0,
+    shortfallM: Math.max(0, nearestM - hint.radius),
+    inside,
+  };
+};
+
 /** Every step type — re-exported so consumers need one import. */
 export { QUEST_STEP_TYPES };

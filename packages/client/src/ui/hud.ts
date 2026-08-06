@@ -11,6 +11,9 @@ import type { SlotView } from '../net/connection.js';
 import { BUILD_ID } from '../build-info.js';
 
 /** Class resource palette (UI_UX.md §1 — vibrant, no pastel mush). */
+/** How long one discovery banner holds the screen before the next one runs. */
+const DISCOVERY_BANNER_MS = 3800;
+
 const RESOURCE_COLORS: Record<string, { fill: string; deep: string }> = {
   rage: { fill: '#e0563f', deep: '#7c221a' },
   energy: { fill: '#d9c94a', deep: '#6e6218' },
@@ -200,7 +203,9 @@ export class Hud {
   private readonly discoveryEl: HTMLElement;
   private readonly discoveryKindEl: HTMLElement;
   private readonly discoveryNameEl: HTMLElement;
-  private discoveryUntil = 0;
+  /** Places found but not yet announced — see `showDiscovery`. */
+  private readonly discoveryQueue: { kind: string; name: string }[] = [];
+  private discoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly microTiles = new Map<string, HTMLElement>();
   private readonly interactEl: HTMLElement;
   private readonly purseEl: HTMLElement;
@@ -836,14 +841,49 @@ export class Hud {
    * ("+3 Birchwood"), and finding a place is not a receipt. It sits centre-top,
    * fades on its own, and never needs dismissing.
    */
+  /**
+   * Announce a place — QUEUED, one at a time.
+   *
+   * Rings overlap: Dawnhaven's landmark ring is 22 m and the shrine inside it
+   * is 14 m from the centre, so walking to the shrine finds BOTH in the same
+   * tick. Overwriting the banner meant one of the two was announced and the
+   * other was silently added to the map — the XP arrived, the fog lifted, and
+   * the player was never told what they had found.
+   */
   showDiscovery(kind: string, name: string): void {
-    this.discoveryKindEl.textContent = kind.toUpperCase();
-    this.discoveryNameEl.textContent = name;
+    this.discoveryQueue.push({ kind, name });
+    if (this.discoveryTimer === null) this.nextDiscovery();
+  }
+
+  /**
+   * Advance the queue on its OWN timer rather than on the render loop.
+   *
+   * The first version hung the hand-off off `update()`, which is fine until the
+   * loop hitches — and a headless container at 4 fps hitches constantly. A
+   * banner whose expiry is never noticed leaves the queue permanently blocked,
+   * so the second place found in a session is announced to nobody. A timeout
+   * cannot stall on a slow frame.
+   */
+  private nextDiscovery(): void {
+    if (this.discoveryTimer !== null) {
+      clearTimeout(this.discoveryTimer);
+      this.discoveryTimer = null;
+    }
+    const next = this.discoveryQueue.shift();
+    if (!next) {
+      this.discoveryEl.hidden = true;
+      return;
+    }
+    this.discoveryKindEl.textContent = next.kind.toUpperCase();
+    this.discoveryNameEl.textContent = next.name;
     this.discoveryEl.hidden = false;
     this.discoveryEl.classList.remove('is-in');
     void this.discoveryEl.offsetWidth;
     this.discoveryEl.classList.add('is-in');
-    this.discoveryUntil = performance.now() + 3800;
+    this.discoveryTimer = setTimeout(() => {
+      this.discoveryTimer = null;
+      this.nextDiscovery();
+    }, DISCOVERY_BANNER_MS);
   }
 
   /** Quick highlight on the XP bar when an award lands (§7: bar always ticks). */
@@ -966,10 +1006,6 @@ export class Hud {
       const span = Math.max(1, this.gatherBar.endsAtMs - this.gatherBar.startedAtMs);
       const done = (stats.serverNowMs - this.gatherBar.startedAtMs) / span;
       this.gatherFill.style.width = `${Math.round(Math.min(1, Math.max(0, done)) * 100)}%`;
-    }
-    if (this.discoveryUntil > 0 && now > this.discoveryUntil) {
-      this.discoveryEl.hidden = true;
-      this.discoveryUntil = 0;
     }
     if (this.lastBytes.at === 0) {
       this.lastBytes = { in: stats.bytesIn, out: stats.bytesOut, at: now };

@@ -434,6 +434,54 @@ export class WorldObjectManager {
       .map((prop) => ({ id: prop.row.id, name: prop.row.name, x: prop.row.x, z: prop.row.z }));
   }
 
+  /**
+   * Everything this client has actually SPAWNED, with where it stands.
+   *
+   * The P11-E DoD run navigates off this rather than off the map bake, and the
+   * distinction is the whole point of the run: the bake is the docs, this is
+   * what is on the player's screen. A stump the bake carries and the client
+   * never seated is exactly the bug the DoD sentence — "using only in-game
+   * affordances" — is written to catch.
+   */
+  get roster(): {
+    kind: 'npc' | 'object';
+    id: string;
+    name: string;
+    x: number;
+    z: number;
+    seated: boolean;
+  }[] {
+    const rows: {
+      kind: 'npc' | 'object';
+      id: string;
+      name: string;
+      x: number;
+      z: number;
+      seated: boolean;
+    }[] = [];
+    for (const [id, npc] of this.npcs) {
+      rows.push({
+        kind: 'npc',
+        id,
+        name: npc.def.name,
+        x: npc.placement.x,
+        z: npc.placement.z,
+        seated: npc.seated,
+      });
+    }
+    for (const [id, prop] of this.props) {
+      rows.push({
+        kind: 'object',
+        id,
+        name: prop.row.name,
+        x: prop.row.x,
+        z: prop.row.z,
+        seated: prop.seated,
+      });
+    }
+    return rows;
+  }
+
   /** Counts for the debug overlay and the smoke run. */
   get stats(): { npcs: number; objects: number; pois: number; seated: number } {
     let seated = 0;

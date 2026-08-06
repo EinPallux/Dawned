@@ -473,6 +473,48 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
   });
 
   /**
+   * Un-find POIs / zones / shrines / used objects, so the discovery loop can
+   * be MEASURED again (P11-E; ARCHITECTURE.md §3).
+   *
+   * First-entry-only is the whole point of discovery, which means a character
+   * that has walked the island can never show the banner, the XP or the map
+   * reveal a second time. Same argument as `/ops/hurt` keeping the P9 boss bot
+   * alive and `/ops/fish` putting a rare on the line: the lever undoes the
+   * SETUP, never the thing being measured.
+   */
+  app.post('/ops/forget', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as
+      | {
+          player?: unknown;
+          pois?: unknown;
+          zones?: unknown;
+          shrines?: unknown;
+          objects?: unknown;
+        }
+      | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    if (!player) return reply.code(400).send({ error: 'player required' });
+    // POIs alone by default: zone XP is a far bigger award, and a run that
+    // wants a vista back should not be handed four levels with it.
+    const what = {
+      pois: body?.pois !== false,
+      zones: body?.zones === true,
+      shrines: body?.shrines === true,
+      objects: body?.objects === true,
+    };
+    const cleared = world.forgetDiscoveries(player, what);
+    if (!cleared) return reply.code(404).send({ error: 'player not online' });
+    return reply.send({ ok: true, player, ...cleared });
+  });
+
+  /**
    * What the live world actually seeded from the map bake (P11).
    *
    * The counterpart to `/ops/respawnnodes` reporting "65 nodes, 0 orphans": a

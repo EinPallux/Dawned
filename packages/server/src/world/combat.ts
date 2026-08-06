@@ -223,6 +223,8 @@ export type CombatEvent =
   | { type: 'quest-buff'; playerId: number; effectId: string; durationMs: number }
   /** Quest state changed enough to need a full QuestSync + a save. */
   | { type: 'quest-dirty'; playerId: number }
+  /** The fog changed without anything being FOUND (`/ops/forget`) — resync only. */
+  | { type: 'discovery-dirty'; playerId: number }
   /** Per-character interactable state changed (chest opened, shrine attuned). */
   | { type: 'interact-dirty'; playerId: number; objectId: string }
   /** A HUD line for the last interaction: a refusal, a signpost, an attune. */

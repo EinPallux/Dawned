@@ -1535,6 +1535,37 @@ export const runWorld = (
     /** What the world actually seeded from the bake (P11 probe reads this). */
     worldObjects: (): { npcs: number; objects: number; pois: number; seated: number } =>
       worldObjects?.stats ?? { npcs: 0, objects: 0, pois: 0, seated: 0 },
+    /**
+     * The villagers and things this client has SPAWNED, with their positions —
+     * what is on screen, not what the bake says. The P11-E DoD run walks the
+     * world off this, because "using only in-game affordances" means the run
+     * may not read the content files a player cannot see.
+     */
+    worldObjectList: (): {
+      kind: string;
+      id: string;
+      name: string;
+      x: number;
+      z: number;
+      seated: boolean;
+    }[] => worldObjects?.roster ?? [],
+    /** Every POI the bake carries — what the world map draws against the fog. */
+    poiList: (): {
+      id: string;
+      name: string;
+      kind: string;
+      x: number;
+      z: number;
+      radius: number;
+    }[] =>
+      (worldObjects?.poiList ?? []).map((poi) => ({
+        id: poi.id,
+        name: poi.name,
+        kind: poi.kind,
+        x: poi.x,
+        z: poi.z,
+        radius: poi.radius,
+      })),
     rendererInfo: (): { calls: number; triangles: number } => ({
       calls: scene.renderer.info.render.calls,
       triangles: scene.renderer.info.render.triangles,
@@ -2182,7 +2213,13 @@ export const runWorld = (
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
       swimming: connection.predicted.swimming,
-      players: connection.remotes.size + 1,
+      // Remotes hold every non-self ENTITY, enemies included, so counting them
+      // whole made the debug HUD read "players 25" while one person was online
+      // and 24 mushnubs were on screen — a number a developer reads to answer
+      // "is anyone else on?" has to mean that.
+      players:
+        [...connection.remotes.values()].filter((remote) => remote.kind === EntityKind.Player)
+          .length + 1,
       resource: {
         type: connection.resource.type,
         value: connection.resource.value,

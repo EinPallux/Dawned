@@ -979,6 +979,19 @@ export class Gateway {
             });
           break;
         }
+        case 'discovery-dirty': {
+          const target = this.findSessionByPlayer(event.playerId);
+          if (!target?.player) break;
+          // No banner and no chat line: nothing was FOUND, the fog just moved.
+          this.sendDiscoverySync(target);
+          this.sendInteractState(target, null);
+          this.characters
+            .clearDiscoveries(target.player.characterId, ['poi', 'zone', 'shrine'])
+            .catch((error: unknown) => {
+              this.log.error({ err: error }, 'discovery clear failed');
+            });
+          break;
+        }
         // --- gathering (P10) -------------------------------------------------
         case 'gather-state': {
           const target = this.findSessionByPlayer(event.playerId);

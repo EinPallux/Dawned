@@ -5,6 +5,24 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — four quest hints pointed at empty ground (2026-08-05, P11-E)
+
+- **Every kill step in the pilot set sent you to the wrong place.** Open the map, walk to the
+  circle, find nothing: the glubs were 85 m outside their ring, the bog blobs 94 m, the Weald
+  stalkers 122 m, and the Mushroom King — the end of the chain — **170 m**. The circles were typed
+  by hand in the quest editor while the things they point at are placed on a different page
+  entirely, so nothing had ever compared the two. All four now sit on the spawners that actually
+  roll the enemy.
+- **The two "gather N of these" steps had no circle at all**, which for a player with no profession
+  levels is the same as no instruction. Birchwood and mossbloom now point at the nearest real patch
+  — and Hesta stopped saying mossbloom grows in the Weald, because the placed mossbloom is 360 m
+  north of it.
+- **A quest chest you opened before taking the quest could never be opened again**, so "The Lost
+  Crate" and "What Took Them" were unfinishable for anyone who explored first. The crate and the
+  four marked stumps come back on a five-minute timer now; nothing a quest step needs is one-shot.
+- Publish warns about all of this from now on: the panel resolves every hint circle against the
+  spawners, props, nodes and villagers that are really placed, and says how many metres out it is.
+
 ### Added — you can talk to them now (2026-08-05, P11-D)
 
 - **Villagers stand in Dawnhaven and speak.** They are built the same way your own character is —

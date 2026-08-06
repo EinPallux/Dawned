@@ -129,6 +129,28 @@ specs above, each because the built world could not carry the spec version yet:
 P12/P14 work. The `item` giver kind it would use is implemented and schema-gated, so the quest is
 authoring away rather than code away.
 
+### 6.2 What the DoD run changed (P11-E, 2026-08-05)
+
+Two rules came out of measuring §1's promises rather than reading them, and both are now enforced
+by the panel at publish time rather than by care:
+
+1. **A hint circle has to contain the thing it points at.** §1 rule 4 says the map hints _roughly
+   where_ — "roughly" means a circle instead of an X, not a circle somewhere else. All four kill
+   hints in the pilot set were 85–170 m outside their only spawner, because a circle is typed in the
+   quest editor while the spawner it describes is placed on a different page and nothing compared
+   them. Publish now resolves each step's real targets and warns with the distance
+   (`questHintCoverage` in shared).
+2. **Nothing a quest step needs may be one-shot.** The crate and the marked stumps were authored
+   with `respawnMs: 0`, so a player who opened the crate before Torv mentioned it could never finish
+   "The Lost Crate" — the quest was lost to an act of ordinary curiosity, which is the exact
+   opposite of rule 2 ("quests are found, not funneled"). Spent state is per-character, so a
+   respawn costs nothing in shared loot; both now return after five minutes.
+
+A third finding is content, not rule: a **gather step wants a hint circle too**. "Six lengths of
+birch" tells a player with no woodcutting nothing at all, and mossbloom grows 360 m from the Weald
+that Hesta's prose sent you to. Prose is an affordance and it can be wrong in the same way a circle
+can.
+
 ## 7. Quest Boards
 
 Settlement boards hold 2–3 posted one-offs (fixed in 0.1.0; the _system_ supports adding rotating

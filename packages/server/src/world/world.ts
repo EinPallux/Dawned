@@ -948,8 +948,66 @@ export class World {
     return false;
   }
 
+  /**
+   * Un-find things, so the DISCOVERY LOOP can be measured more than once
+   * (P11-E; ARCHITECTURE.md §3 lists every ops lever).
+   *
+   * Discovery is first-entry-only by design — that is what makes finding a
+   * place worth anything — which means a fixture character that has already
+   * walked the island can never prove the banner, the XP or the map reveal
+   * again. Every earlier phase hit the same wall and answered it the same way:
+   * `/ops/hurt` keeps the P9 boss bot alive because it cannot dodge, `/ops/fish`
+   * puts a rare on the line because waiting for one measures the yield roll
+   * instead of the reel. This forgets; the finding itself is the untouched real
+   * path.
+   *
+   * Zones are separate from POIs on purpose — zone XP is a much bigger award
+   * and a run that only wants a vista back should not be handed four levels.
+   * `objects` un-opens chests and un-inspects props, which is the other half of
+   * the same problem: a quest step that says "open the crate" cannot be measured
+   * twice against a crate this character has already emptied.
+   */
+  forgetDiscoveries(
+    name: string,
+    what: { pois: boolean; zones: boolean; shrines: boolean; objects: boolean },
+  ): { pois: number; zones: number; shrines: number; objects: number } | null {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      const cleared = { pois: 0, zones: 0, shrines: 0, objects: 0 };
+      if (what.pois) {
+        cleared.pois = player.poisSeen.size;
+        player.poisSeen.clear();
+      }
+      if (what.zones) {
+        cleared.zones = player.progress.zonesSeen.size;
+        player.progress.zonesSeen.clear();
+      }
+      if (what.shrines) {
+        for (const record of player.interactions.values()) {
+          if (!record.attuned) continue;
+          record.attuned = false;
+          cleared.shrines++;
+        }
+      }
+      if (what.objects) {
+        for (const record of player.interactions.values()) {
+          if (record.openedUntilMs === 0 && record.uses === 0) continue;
+          record.openedUntilMs = 0;
+          record.uses = 0;
+          cleared.objects++;
+        }
+      }
+      this.pendingDiscoverySync.push(player.id);
+      return cleared;
+    }
+    return null;
+  }
+
   /** Quest syncs raised outside the tick (ops levers) — flushed in step. */
   private readonly pendingQuestSync: number[] = [];
+
+  /** Discovery syncs raised outside the tick (`/ops/forget`) — flushed in step. */
+  private readonly pendingDiscoverySync: number[] = [];
 
   /** Which fish is forced for a player, and for how many more casts. */
   private readonly forcedFish = new Map<number, { itemId: string; casts: number }>();
@@ -1678,6 +1736,9 @@ export class World {
     this.stepInteractions(nowMs, events);
     for (const playerId of this.pendingQuestSync.splice(0)) {
       events.push({ type: 'quest-dirty', playerId });
+    }
+    for (const playerId of this.pendingDiscoverySync.splice(0)) {
+      events.push({ type: 'discovery-dirty', playerId });
     }
 
     // Bags rot after 60 s (§3); whoever could see one re-syncs.

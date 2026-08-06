@@ -6,7 +6,7 @@
  *    hooks, not through this service.
  */
 
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   characterDiscoveries,
   characterProfessions,
@@ -188,6 +188,28 @@ export class CharacterService {
       .insert(characterDiscoveries)
       .values({ characterId, kind, refId })
       .onConflictDoNothing();
+  }
+
+  /**
+   * Un-find every discovery of the given kinds (`/ops/forget`, P11-E).
+   *
+   * Paired with the in-memory clear so the lever survives a relog. A "forget"
+   * that the next login undoes is worse than no lever: the run would pass once
+   * and then quietly measure nothing.
+   */
+  async clearDiscoveries(
+    characterId: number,
+    kinds: readonly ('zone' | 'codex' | 'poi' | 'shrine')[],
+  ): Promise<void> {
+    if (kinds.length === 0) return;
+    await this.db
+      .delete(characterDiscoveries)
+      .where(
+        and(
+          eq(characterDiscoveries.characterId, characterId),
+          inArray(characterDiscoveries.kind, [...kinds]),
+        ),
+      );
   }
 
   /** Quest rows for one character (P11). */

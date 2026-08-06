@@ -13,6 +13,7 @@ import {
   eventCredit,
   questAvailability,
   questComplete,
+  questHintCoverage,
   questProgress,
   startQuest,
   suggestedQuestGold,
@@ -389,5 +390,41 @@ describe('reward ƒ-suggests', () => {
   it('clamps nonsense input instead of returning nonsense', () => {
     expect(suggestedQuestXp(-4, 99, curve)).toBe(suggestedQuestXp(1, 6, curve));
     expect(suggestedQuestGold(0, 0)).toBe(suggestedQuestGold(1, 1));
+  });
+});
+
+describe('hint circles', () => {
+  it('says nothing when there is nothing placed to point at', () => {
+    expect(questHintCoverage({ x: 0, z: 0, radius: 40 }, [])).toBeNull();
+  });
+
+  it('counts how many targets the circle actually contains', () => {
+    const coverage = questHintCoverage({ x: 0, z: 0, radius: 40 }, [
+      { x: 10, z: 0 },
+      { x: 30, z: 20 },
+      { x: 200, z: 0 },
+    ]);
+    expect(coverage).toMatchObject({ covered: true, inside: 2, shortfallM: 0 });
+    expect(coverage?.nearestM).toBeCloseTo(10);
+  });
+
+  /**
+   * The pilot set's real numbers. `quest_weald_silence_4` pointed a 60 m circle
+   * at (-150, 60) while the only Mushroom King spawner stands at (0, 140): you
+   * could follow the map exactly and be 110 m short of the boss.
+   */
+  it('reports the shortfall for a circle that points at nothing', () => {
+    const coverage = questHintCoverage({ x: -150, z: 60, radius: 60 }, [{ x: 0, z: 140 }]);
+    expect(coverage?.covered).toBe(false);
+    expect(coverage?.inside).toBe(0);
+    expect(coverage?.nearestM).toBeCloseTo(170, 0);
+    expect(coverage?.shortfallM).toBeCloseTo(110, 0);
+  });
+
+  it('treats a target exactly on the rim as covered', () => {
+    expect(questHintCoverage({ x: 0, z: 0, radius: 25 }, [{ x: 25, z: 0 }])).toMatchObject({
+      covered: true,
+      shortfallM: 0,
+    });
   });
 });
