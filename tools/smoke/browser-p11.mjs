@@ -24,14 +24,17 @@
  * ten-minute run into an hour nobody executes. The DECISION of where to go is
  * what this run is about; the walking is not.
  *
- * Two other levers, both setup-only:
- *   · `/ops/setlevel` + a built spec + T2 gear — the chain gates at level 6 and
+ * Three other levers. Two are setup — they undo state a previous run left, and
+ * touch nothing the run then measures — and one keeps the bot upright:
+ *   · `/ops/setlevel` + a built spec + T2 gear. The chain gates at level 6 and
  *     ends on the Mushroom King, and P9-E measured that an UNSPENT level 12
  *     fights at 38 % of a built one's damage. A naked bot would fail this run
  *     for a reason that has nothing to do with quests.
- *   · `/ops/forget` — discovery is first-entry-only by design, so a fixture
- *     that has already walked the island can never show the banner again.
- *   · `/ops/hurt fraction 1` during the boss, because the bot cannot dodge.
+ *   · `/ops/forget`. Discovery is first-entry-only by design and a quest chest
+ *     stays opened, so a fixture that has already run this can never show the
+ *     banner or the crate again. It forgets; the finding is the untouched path.
+ *   · `/ops/hurt fraction 1` while fighting, because the bot cannot dodge — the
+ *     same argument the P9 boss run ships under.
  *
  * Needs: game server on :8081 (fresh dist), client dev server on :5173, the
  * migrated dev Postgres with the P11 pilot set published. Idempotent.
