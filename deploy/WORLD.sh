@@ -91,6 +91,72 @@ sudo -u dawned -H bash -c "cd '$ADMIN_DIR' && pnpm exec tsx --version" >/dev/nul
 }
 ok "authoring toolchain present"
 
+# ------------------------------------------------------- can it write a bake?
+# Checked HERE rather than discovered at the publish, because step 1 spends
+# minutes regenerating 1024 chunks before it tries to write anything — and the
+# failure it produces from inside a systemd sandbox is a bare ENOENT naming a
+# path that plainly exists, which is about as unhelpful as an error gets.
+#
+# `dawned-admin.service` runs under ProtectSystem=strict: everything outside
+# ReadWritePaths is read-only. The panel bakes into the GAME checkout's
+# assets_baked/map (DEPLOYMENT.md §6), which is NOT under /var/lib/dawned. The
+# unit was written at P0, months before A2 gave the panel a map to publish, so
+# this had been broken since the map editor shipped and nothing had ever tried
+# it in production.
+MAP_BAKE_DIR="$GAME_DIR/assets_baked/map"
+ln -sfn "$GAME_DIR" "$APP_DIR/Dawned"
+chown -h dawned:dawned "$APP_DIR/Dawned" 2>/dev/null || true
+install -d -o dawned -g dawned "$MAP_BAKE_DIR"
+
+if ! systemctl show dawned-admin -p ReadWritePaths 2>/dev/null | grep -q 'assets_baked'; then
+  log "Granting the panel write access to the map bake directory"
+  install -d /etc/systemd/system/dawned-admin.service.d
+  cat > /etc/systemd/system/dawned-admin.service.d/10-map-writes.conf <<'EOF'
+# Added by deploy/WORLD.sh — see deploy/systemd/dawned-admin.service for why.
+# The publish pipeline writes baked maps into the game checkout; ProtectSystem=
+# strict would otherwise make that directory read-only to the panel.
+[Service]
+ReadWritePaths=-/opt/dawned/game/assets_baked
+EOF
+  systemctl daemon-reload
+  systemctl restart dawned-admin
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    systemctl is-active --quiet dawned-admin && break
+    sleep 1
+  done
+  systemctl is-active --quiet dawned-admin || { warn "dawned-admin did not come back after the restart"; exit 1; }
+  ok "drop-in installed, panel restarted"
+fi
+
+# The gate: what the RUNNING unit is configured with, not what the repo ships.
+if ! systemctl show dawned-admin -p ReadWritePaths 2>/dev/null | grep -q 'assets_baked'; then
+  warn "dawned-admin still has no write access to $MAP_BAKE_DIR — the map publish will fail."
+  warn "Inspect with:  systemctl show dawned-admin -p ReadWritePaths -p ProtectSystem"
+  exit 1
+fi
+
+# And the proof on top of it: a probe under the SAME sandbox the live unit has —
+# its own ReadWritePaths, read back from systemd — creating a directory where the
+# bake will. Advisory only: a systemd too old for `--wait`/`--collect` must not
+# block a deploy whose configuration has already been verified above.
+PROBE=0
+probe_write() {
+  command -v systemd-run >/dev/null 2>&1 || return 1
+  local rw
+  rw="$(systemctl show dawned-admin -p ReadWritePaths --value 2>/dev/null || true)"
+  systemd-run --quiet --wait --collect \
+    --property=User=dawned --property=ProtectSystem=strict --property=ProtectHome=true \
+    --property="ReadWritePaths=$rw" \
+    /bin/mkdir -p "$MAP_BAKE_DIR/.world-sh-probe" >/dev/null 2>&1
+}
+probe_write || PROBE=$?
+rmdir "$MAP_BAKE_DIR/.world-sh-probe" 2>/dev/null || true
+if [[ $PROBE -eq 0 ]]; then
+  ok "the panel can write $MAP_BAKE_DIR (proven under its own sandbox)"
+else
+  ok "map bake directory configured (sandbox probe skipped)"
+fi
+
 # ------------------------------------------------------------- credentials
 # The scripts used to mint an admin account with a password that is a literal in
 # a public repository. They take real credentials now (DAWNED_ADMIN_USER /

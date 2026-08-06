@@ -897,6 +897,20 @@ pull` can never repoint the live world at a bake from a dev checkout) and P12's 
       is set; the dev fallback mints a per-run random password on its own account and bans it at
       the end. Both paths verified against the running panel: supplied credentials publish with
       no account created, the fallback ends `banned`.
+      **The owner's first real run found what this path had been hiding: the panel could never
+      publish a map on the VPS.** `dawned-admin.service` runs under `ProtectSystem=strict` with
+      `ReadWritePaths=/var/lib/dawned`, and a bake goes into the GAME checkout's `assets_baked/map`
+      — outside it, therefore read-only. The unit was written at P0, months before A2 gave the
+      panel a map to publish, so map publish had been broken on a real box since the map editor
+      shipped and nothing had ever tried it there (a dev container has no sandbox, which is why
+      every smoke passed). The unit grants it now; since `UPDATE.sh` does not re-install units,
+      both it and `WORLD.sh` drop a `10-map-writes.conf` on a box that lacks one.
+      **The errno is what made it expensive**: a recursive `mkdir` into a read-only tree reports
+      ENOENT, naming a path whose parents plainly exist, so it reads as a missing directory rather
+      than a permission wall. `bakeDraft` names the cause now, and `WORLD.sh` checks writability in
+      PREFLIGHT — proving it by creating a directory there from inside a copy of the live sandbox
+      — because the alternative is finding out after several minutes of terrain generation, which
+      is exactly what happened.
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel
 

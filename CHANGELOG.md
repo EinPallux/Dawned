@@ -21,6 +21,12 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   written down in a public repository. Harmless on a throwaway development machine, a permanent
   back door on a real one — and running them on a real one is exactly what deploying a world means.
   They take a real login now and create nothing.
+- **Fixed: the panel could never publish a map on the server.** Its service is locked down so it
+  can only write one directory, and maps are baked into a different one — a mismatch that had been
+  there since the map editor shipped, and that nothing had tried until the first world deploy. The
+  update script repairs it on any existing server; `WORLD.sh` checks it before it starts work
+  rather than after several minutes of terrain generation; and the error it used to produce (which
+  pointed at a directory that was plainly there) now says what it actually means.
 
 ### Added — the Dawnlands are finished, and measured (2026-08-06, P12-G)
 
