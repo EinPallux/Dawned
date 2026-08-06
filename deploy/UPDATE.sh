@@ -284,5 +284,5 @@ if [[ "$HEALTH" == *'"mapVersion":"dev-2"'* ]] && [[ -f "$APP_DIR/game/deploy/WO
   printf '\n\033[1;33m▶ This box is still on the dev island (map dev-2).\033[0m\n'
   echo "  The world is deployed separately — code travels in git, a published map does not:"
   echo "     sudo bash $APP_DIR/game/deploy/WORLD.sh"
-  echo "  See docs/tech/DEPLOYMENT.md §5.1."
+  echo "  See docs/tech/DEPLOYMENT.md §5.3."
 fi

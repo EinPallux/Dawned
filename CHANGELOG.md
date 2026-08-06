@@ -5,6 +5,21 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — one command updates everything, and your edits survive it (2026-08-06)
+
+- **`UPDATE.sh` now updates everything on every run**: code, dependencies, assets, database
+  migrations, services and the web server config — and the **world**, but only when the authored
+  content actually changed. A run that carried only code no longer spends ten minutes rebuilding
+  terrain that is already correct.
+- **Nothing you changed in the Admin Suite is ever overwritten.** The content scripts now remember
+  what they last wrote for each row; anything that no longer matches was changed by a person, so
+  they leave it alone and say which rows they skipped. A deploy can add new content without
+  reverting your tuning.
+- **World Settings finally reach the game.** That page had no publish path at all — the game reads
+  published rows and the panel only ever wrote drafts, so every setting on it, `xpRate` included,
+  had been sitting at its built-in default since the page was made. Publishing now hot-reloads the
+  running game.
+
 ### Added — the world can be deployed (2026-08-06)
 
 - **`deploy/WORLD.sh`** — one command that puts the Dawnlands on the server. Updating the code

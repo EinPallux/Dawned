@@ -880,6 +880,37 @@ live prunes itself, which makes an empty diff the normal case for a re-run — t
 already wrote down after P10-E, applied in one place now
 (the panel's `tools/content/publish.mjs`). **675 unit tests green here, 265 in the panel.**
 
+**QA sweep + the live-edit deploy rules (2026-08-06, owner-requested before P13).** A targeted
+sweep of deploy/ops, security boundaries, publish rails, server authority and data safety.
+**The critical find: World Settings edits could never reach the game.** The server reads
+`content_world_settings WHERE status = 'published'` (`content/loader.ts`); the panel wrote DRAFT
+rows only and no publish route existed — A0's DoD was the draft round-trip and A1 never wired the
+surface in, though this file's own header claimed it had. There were **zero published rows in
+existence**, so the world has run on `defaultWorldSettings()` for eleven phases, `xpRate` included.
+Fixed with a transactional rail + `/ops/reload-content` + a Publish button (+1 panel test).
+Also found, ranked: content scripts silently revert panel edits (**fixed**, below); backup
+retention keeps up to 70 dumps at 65 MB with **no disk guard anywhere** — the disk fills, Postgres
+stops writing, the game dies; `ROLLBACK.sh` restores the database but not the map bake, so a
+rollback after a bad publish pairs yesterday's data with today's broken world; the ops-secret check
+is copy-pasted into all 19 `/ops` routes with nothing structural enforcing it; the 10/min per-IP
+login limit is shared by everyone behind one address (the panel's own suite trips it, which is how
+three unrelated suites failed with a bare "expected undefined to be defined"). Healthy: no
+unguarded panel routes, `/ops` unreachable through Caddy, `ItemOp` zod-gated, a malformed packet
+cannot touch the tick, migration journal consistent.
+**Two deploy rules, both owner decisions.** (1) `UPDATE.sh` updates EVERYTHING — code, deps,
+assets, migrations, services, Caddy — and the world too, but only when the panel's `tools/content`
+TREE HASH changed (`/var/lib/dawned/world.fingerprint`), so a code-only run does not spend ten
+minutes rebuilding correct terrain. A failed rebuild does not advance the fingerprint. A
+non-interactive run refuses the world step rather than half-doing it, because `WORLD.sh` needs the
+owner's login and that must never live in a file on the box. (2) **Nothing the owner changed in the
+panel is ever overwritten**: migration 0021 + `owner-edits.mjs` record the hash of each row as
+STORED after a script publishes it, and a row that no longer matches is kept and named.
+The bug worth keeping: the first version hashed what the script SENT, and the panel `.parse()`s
+every def on save — the first clean re-run called **200 rows owner-edited** on an untouched
+database. Both sides of the comparison have to be the stored row. Proven over four runs against a
+real database: adopt 218 → silent re-run → a hand-edited row survives → `--force-authored` puts the
+authored value back. DEPLOYMENT.md §5.1–5.3.
+
 ### Running it locally
 
 ```bash
