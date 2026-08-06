@@ -406,6 +406,16 @@ const keepAlive = () => {
   return () => clearInterval(timer);
 };
 
+/**
+ * Arm the in-page fighter, preferring whatever the TRACKER told us to kill.
+ *
+ * `wanted` is the step's own line — "Stalkers driven off", "The Mushroom King" —
+ * and the bot picks the enemy whose nameplate shares a word with it. That is
+ * exactly the read a player makes: the tracker says what, the nameplate says
+ * which one. Without it the bot hits whatever is nearest, and the first run of
+ * the chain's second link spent four minutes killing hexers in a mixed camp
+ * while the third stalker stood off at range. 2/3, forever.
+ */
 const armFighter = (page, wantedName) =>
   page.evaluate((wanted) => {
     const d = window.__dawned;
@@ -435,9 +445,16 @@ const armFighter = (page, wantedName) =>
         .enemies()
         .filter((e) => !e.dead && e.hpFraction > 0)
         .map((e) => ({ ...e, dist: Math.hypot(e.x - self.x, e.z - self.z) }));
+      const asked = wanted.toLowerCase();
+      const named = living.filter((e) =>
+        e.name
+          .toLowerCase()
+          .split(/\W+/)
+          .filter((word) => word.length > 3)
+          .some((word) => asked.includes(word)),
+      );
       const focus =
-        living.filter((e) => e.name === wanted).sort((a, b) => a.dist - b.dist)[0] ??
-        living.sort((a, b) => a.dist - b.dist)[0];
+        named.sort((a, b) => a.dist - b.dist)[0] ?? living.sort((a, b) => a.dist - b.dist)[0];
       if (!focus) {
         walk(false);
         return;
@@ -984,7 +1001,9 @@ const main = async () => {
         }
 
         if (step.type === 'kill') {
-          const fought = await fightStep(page, questId, hint, 'x', 4 * 60 * 1000);
+          // The tracker line is the only thing the game tells the player about
+          // WHAT to kill, so it is the only thing this run gets to use.
+          const fought = await fightStep(page, questId, hint, step.text, 6 * 60 * 1000);
           note(`fought ${fought.seconds.toFixed(1)} s inside the circle`);
           chainReport.push({
             questId,
