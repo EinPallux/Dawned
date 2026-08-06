@@ -114,10 +114,10 @@ cannot carry music or sfx (recommended default — add both with the audio phase
 **P0–P8 are ✅ complete and owner-verified** (P6 closed 2026-08-04 — "classes are fine";
 P7 + P8 closed 2026-08-04 after two playtest fix rounds — "I tested everything so far and
 all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tree editors,
-then items + loot + vendors). **P0–P10 are ✅ complete and owner-accepted (P9 + P10 closed
-2026-08-05 on their measured DoDs). P11 — Quests, POIs & Interactables is 🟨 in progress:
-A/B/C/D are built (protocol v14, client included); E (the DoD run) remains**, paired with the
-panel's A4 quest editor, which is live.
+then items + loot + vendors). **P0–P11 are ✅ complete on their measured DoDs — P9 + P10 closed
+2026-08-05 and are owner-accepted; P11 — Quests, POIs & Interactables closed 2026-08-06**
+(A/B/C/D built on protocol v14, E measured), paired with the panel's A4 quest editor, which is
+live. **P12 — World Building: the Dawnlands is the next phase.**
 **A phase closes on its MEASURED DoD, not on a playtest** (owner decision, 2026-08-05): the
 priority is reaching P15 with every phase built. Record what was measured — including any
 deviation, like P10's one-profession grind — and move on. The owner has explicitly deferred
@@ -393,7 +393,7 @@ profession level is too low" without hearing it. It listens to `GatherState` now
 band on a refusal instead of burning the budget. **`pnpm check` green at 587 unit tests**;
 browser-p10 and fishing-probe both pass on the same build.
 
-**P11 — Quests, POIs & Interactables (🟨 in progress, 2026-08-05). A/B/C built; D and E remain.**
+**P11 — Quests, POIs & Interactables is ✅ complete (closed 2026-08-06 on its measured DoD).**
 P11-A put the vocabulary in shared: `content/quests.ts` (the 7-member step union, the four giver
 kinds, dialogue nodes, `validateQuestFlow`), `content/npcs.ts`, `formulas/quests.ts` (the state
 machine — `questAvailability` where a DISCOVERY gate hides a quest and a LEVEL gate locks it,
@@ -463,8 +463,51 @@ posting is a synthetic dialogue node now, built from constants the resolver shar
 quest's own journal prose as the parchment.
 Also moved to shared: `QUEST_REFUSALS`/`questRefusalText`, which lived in the server — the one
 place those strings have to be readable is the HUD, and it could not reach them.
-**`pnpm check` green at 638 unit tests**; `p11-probe.mjs` passes end to end. P11-E (the DoD run)
-is what remains.
+**`pnpm check` green at 638 unit tests**; `p11-probe.mjs` passes end to end.
+
+**P11-E measured the DoD and closed the phase (2026-08-06).**
+`tools/smoke/browser-p11.mjs` never reads the quest content or the map bake to decide what to do
+next — every destination comes from the tracker line, the hint circle the MAP draws, the clue
+prose, the roster of things this client has actually SPAWNED (`worldObjectList()`), or the `F`
+prompt. That distinction is the whole difference between the DoD's sentence and a script that
+already knows the answers. **Measured:** the found-object quest solved from prose alone (its clue
+names no direction, so the run reads "east" out of the journal line and crosses the ring on probe
+12 of 175, 70 m out) → `F — Open Torv's Lost Crate` → turn-in; the discovery loop firing for **all
+6 POI kinds** with banner + XP + map reveal, each measured from a forgotten state at a staging
+point 61 m clear of every ring (vista 835, landmark 557, cache 696, curiosity 278, camp 696,
+shrine 1183 xp); and the whole four-link chain — the logging site found on probe 81 at 179 m, four
+stumps by tag, stalkers in 89 s, five mossbloom in real `GatherOp`s, the delivery credited on
+Bran's BARK, and the Mushroom King in **137 s** — ending on the per-class picker with all four
+options on screen and the warrior's Wealdcleaver in the pack. Every link was confirmed LOCKED
+until the previous one was handed in.
+**The bug that mattered is a shipped client one: `setInteractState` had exactly ONE call site,
+the build path.** The client learned which chests were spent when its world objects first seated
+and never again — so a chest you emptied kept offering `F — Open` all session, a respawned one
+never came back, and an attuned shrine kept saying "Attune". Nothing survived a relog, which is
+why every earlier probe missed it: they touched a thing once and walked away. `onInteractState`
+announces every message now (these carry no notice, which is why the existing hook could not see
+them) and the world objects apply it live. Also found: quest **titles** are announced and never
+stored (QUESTS_POI §6.2), and the debug HUD read "players 25" with one player online because
+remotes hold every non-self ENTITY and 24 of them were mushnubs.
+**Four content bugs came out of it, all authored-data mistakes no test could see:** four of five
+kill hints pointed 85–170 m from their only spawner (the circles are typed in the quest editor
+while the spawners live on another page, so nothing had ever compared them); both gather steps had
+no circle at all; Hesta said mossbloom grows in the Weald when the placed mossbloom is 360 m north;
+and the crate and stumps were one-shot, so opening the crate before Torv mentioned it ended "The
+Lost Crate" before it started. `questHintCoverage` in shared + a panel publish cross-check now
+catch the first class of these with the distance quoted.
+**The harness's own lessons, all of the same shape — assuming an affordance the design does not
+promise:** the world samples "have you entered somewhere?" once a second, so a sweep that
+teleports faster finds nothing and blames the content; dialogue read off the typewriter loses the
+last word of the sentence, which is where the compass direction lives; a fighter with no target
+preference clears a MIXED camp's hexers while the quest's stalker stands off; a delivery is a TALK
+and a villager answers with a bark, not a panel; a kill step ends the instant its counter fills,
+which leaves the bot mid-camp with the heal off. Two content notes recorded rather than retuned:
+"kill 3 Weald Stalkers" is the world's entire stalker population and "gather 5 mossbloom" comes
+from a circle holding four nodes — both complete, neither leaves room for a second player. P12's
+population pass. New lever `/ops/forget` (un-find POIs, zones, shrines or used objects), because
+discovery is first-entry-only and without it the loop can be measured exactly once per character.
+**`pnpm check` green at 642 unit tests**, 92 baked assets / 15.27 MB.
 
 ### Running it locally
 

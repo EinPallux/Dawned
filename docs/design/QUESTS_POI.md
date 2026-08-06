@@ -146,7 +146,15 @@ by the panel at publish time rather than by care:
    opposite of rule 2 ("quests are found, not funneled"). Spent state is per-character, so a
    respawn costs nothing in shared loot; both now return after five minutes.
 
-A third finding is content, not rule: a **gather step wants a hint circle too**. "Six lengths of
+3. **A quest may grant a title, and nothing keeps it.** `rewards.title` is authored, validated,
+   paid and announced in the reward toast — and then gone: there is no column for it and no
+   surface that shows one. "Friend of the Weald" lasts four seconds. UI_UX §Character already
+   says titles arrive with the system that produces them, and P11 is that system now, so this is
+   the gap becoming real rather than a surprise. Deliberately NOT built here (it is a schema
+   column, a sync field and a line on the `C` sheet — a small slice of its own, and the phase
+   closes on its measured DoD).
+
+A fourth finding is content, not rule: a **gather step wants a hint circle too**. "Six lengths of
 birch" tells a player with no woodcutting nothing at all, and mossbloom grows 360 m from the Weald
 that Hesta's prose sent you to. Prose is an affordance and it can be wrong in the same way a circle
 can.

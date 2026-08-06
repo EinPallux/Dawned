@@ -30,7 +30,8 @@ nothing beyond it.
   everything so far and all seems fine"); their A1 sync points landed in the panel
   (XP-curve + skill-tree editors, then items + loot + vendors). **P9 and P10 are both built
   and measured (2026-08-05) and owner-accepted; P11 — Quests, POIs & Interactables is
-  🟨 in progress — A/B/C/D built (protocol v14, client included); E (the DoD run) remains.** ALL fine-tuning is deferred to the end of the project by the
+  ✅ complete — A/B/C/D built (protocol v14, client included) and E measured its DoD on
+  2026-08-06.** ALL fine-tuning is deferred to the end of the project by the
   owner's decision — never pause a phase to polish balance. P7 on top of the P5/P6 caster platform: the XP pipeline
   (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
   level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
@@ -196,7 +197,7 @@ nothing beyond it.
     third-party conversion, unattributable — recorded in CREDITS.md rather than quietly shipped.
     571 unit tests green.
 
-    **P11 — Quests, POIs & Interactables (🟨 in progress, 2026-08-05). A/B/C built.**
+    **P11 — Quests, POIs & Interactables ✅ complete (closed 2026-08-06). A/B/C:**
     P11-A put it in shared: `content/quests.ts` (7-member step union, four giver kinds,
     dialogue, `validateQuestFlow`), `content/npcs.ts`, `formulas/quests.ts` (the state
     machine — a DISCOVERY gate HIDES a quest, a LEVEL gate LOCKS it; `advanceQuest`
@@ -242,3 +243,44 @@ nothing beyond it.
     spawn, so the fog never lifted and the discovery banner could not fire at all. And a board
     quest with no authored `offer` dialogue opened NOTHING — a posting is a synthetic dialogue
     node now, built from constants the resolver shares. **638 unit tests green.**
+
+    **P11-E measured the DoD and closed the phase (2026-08-06).**
+    `tools/smoke/browser-p11.mjs` never reads the quest content or the map bake to decide what
+    to do next — every destination comes from the tracker line, the hint circle the MAP draws,
+    the clue prose, the roster of things this client actually SPAWNED (`worldObjectList()`), or
+    the `F` prompt. That is the whole difference between the DoD's sentence and a script that
+    already knows the answers. **Measured:** the found-object quest solved from prose alone
+    (crossing the ring on probe 12 of 175, 70 m out) → `F — Open Torv's Lost Crate` → turn-in;
+    the discovery loop firing for **all 6 POI kinds** with banner + XP + map reveal, each from a
+    forgotten state at a staging point 61 m clear of every ring; and the four-link chain — the
+    logging site on probe 81 at 179 m, four stumps by tag, stalkers in 89 s, five mossbloom in
+    real `GatherOp`s, the delivery credited on Bran's BARK, the Mushroom King in **137 s** —
+    ending on the per-class picker. Every link was confirmed LOCKED until the previous turn-in.
+    **The bug that mattered is a shipped client one: `setInteractState` had exactly ONE call
+    site, the build path.** The client learned which chests were spent when its world objects
+    first seated and never again — an emptied chest kept offering `F — Open` all session, a
+    respawned one never came back, an attuned shrine kept saying "Attune", and nothing survived
+    a relog, which is why every earlier probe missed it (they touched a thing once and walked
+    away). `onInteractState` announces every message now — these carry no notice, which is why
+    the existing hook could not see them. Also found: quest **titles** are announced and never
+    stored (QUESTS_POI §6.2), and the debug HUD read "players 25" because remotes hold every
+    non-self ENTITY.
+    **Four content bugs, all authored-data mistakes no test could see:** four of five kill hints
+    pointed 85–170 m from their only spawner (circles are typed in the quest editor while
+    spawners live on another page, and nothing had ever compared them); both gather steps had no
+    circle at all; Hesta named the wrong region; and the crate and stumps were one-shot, so
+    opening the crate before Torv mentioned it ended "The Lost Crate" before it started.
+    `questHintCoverage` in shared + a panel publish cross-check now catch the first class with
+    the distance quoted.
+    **The harness's own lessons all have one shape — assuming an affordance the design does not
+    promise:** the world samples "have you entered somewhere?" once a second, so a sweep that
+    teleports faster finds nothing and blames the content; dialogue read off the typewriter loses
+    the last word, which is where the compass direction lives; a fighter with no target preference
+    clears a MIXED camp's hexers while the quest's stalker stands off; a delivery is a TALK and a
+    villager answers with a bark, not a panel; a kill step ends the instant its counter fills,
+    which leaves the bot mid-camp with the heal off. Two content notes recorded rather than
+    retuned: "kill 3 Weald Stalkers" is the world's entire stalker population and "gather 5
+    mossbloom" comes from a circle holding four nodes — both complete, neither leaves room for a
+    second player (P12's population pass). New lever `/ops/forget` (un-find POIs, zones, shrines
+    or used objects), because discovery is first-entry-only and without it the loop can be
+    measured exactly once per character. **642 unit tests green**, 92 baked assets / 15.27 MB.

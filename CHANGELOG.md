@@ -5,6 +5,26 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — a chest you emptied still said "open me" (2026-08-06, P11-E)
+
+- **The client learned which chests were spent exactly once — when the world objects first
+  seated — and never again.** Open a chest and it kept offering `F — Open` for the rest of the
+  session; a chest whose respawn timer ran out never came back to life; a shrine you attuned kept
+  saying "Attune at" instead of "Travel from". Nothing survived a relog, which is why it hid for
+  so long: every check until now touched a thing once and walked away.
+- **Two discoveries at once showed only the last one.** Walk into a place whose ring overlaps
+  another and the first banner was overwritten mid-rise; they queue now and each gets its full
+  moment.
+- The debug overlay said **"players 25"** with one player online — it was counting every entity
+  that is not you, and twenty-four of them were mushnubs.
+- Quest **titles** are announced in the reward toast and then forgotten — "Friend of the Weald"
+  exists for four seconds and lives nowhere. UI_UX §Character already says titles arrive with the
+  system that produces them, and quests are now that system, so this is a real gap rather than a
+  surprise. Not built here; recorded in QUESTS_POI §6.2.
+- New GM lever `/ops/forget` un-finds POIs, zones, shrines or used objects for one character —
+  discovery fires on FIRST entry only, so without it the loop can be measured exactly once per
+  character and never again.
+
 ### Fixed — four quest hints pointed at empty ground (2026-08-05, P11-E)
 
 - **Every kill step in the pilot set sent you to the wrong place.** Open the map, walk to the

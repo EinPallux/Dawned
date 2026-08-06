@@ -21,7 +21,7 @@
 | P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
 | P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)      |
 | P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)      |
-| P11   | Quests, POIs & Interactables             | L    | 🟨 A–D built (2026-08-05) |
+| P11   | Quests, POIs & Interactables             | L    | ✅ done (2026-08-06)      |
 | P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
 | P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
@@ -657,7 +657,7 @@ end-to-end via the Quest Editor.
 only in-game affordances; discovery loop (banner/XP/map) fires correctly for every POI type;
 found-object quest works.
 
-**Progress (2026-08-05):**
+**Status: ✅ done (2026-08-06) — measured, not played.**
 
 - [x] **P11-A** shared core — quest/NPC/dialogue schemas, the state machine (`questAvailability`,
       `advanceQuest`, `eventCredit`), protocol v14, migration 0018.
@@ -676,7 +676,21 @@ found-object quest works.
       network, discovery banners and quest toasts. Verified by LOOKING:
       `tools/smoke/p11-probe.mjs` drives all of it in a browser and its screenshots found four
       bugs no test would have — see the P11-D notes in CLAUDE.md.
-- [ ] **P11-E** verification — the DoD run (`tools/smoke/browser-p11.mjs`).
+- [x] **P11-E** verification — the DoD run (`tools/smoke/browser-p11.mjs`) MEASURED the DoD and
+      closed the phase. It never reads the quest content or the map bake to decide what to do
+      next: every destination comes from the tracker line, the map's hint circle, the clue prose,
+      the roster of things this client has actually spawned, or the `F` prompt. **Measured:** the
+      found-object quest solved from prose alone (the clue names no direction, so the run reads
+      "east" out of the journal and crosses the ring on probe 12 of 175, 70 m out) → `F` → turn-in;
+      the discovery loop firing for **all 6 POI kinds** with banner + XP + map reveal, each
+      measured from a forgotten state at a staging point 61 m clear of every ring (vista 835,
+      landmark 557, cache 696, curiosity 278, camp 696, shrine 1183 xp); and the whole
+      four-link chain — logging site found on probe 81 at 179 m, four stumps by tag, stalkers in
+      89 s, five mossbloom in real `GatherOp`s, the delivery credited on Bran's BARK, and the
+      Mushroom King in **137 s**, ending on the per-class picker (all four options on screen) with
+      the warrior's Wealdcleaver in the pack. Each link was confirmed LOCKED until the previous
+      one was handed in. `pnpm check` green at 642 unit tests.
+      **It found one shipped client bug and four content ones — see the P11-E notes in CLAUDE.md.**
 
 ## P12 — World Building: the Dawnlands (XL) ⚙A2+A3 fully required (dogfood!)
 

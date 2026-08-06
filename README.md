@@ -4,7 +4,8 @@
 community of friends (5–20 players), inspired by the feel of _Farever_, _Guild Wars 2_ and
 _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 
-> **Status (2026-08-05): phases P0–P10 are complete and owner-accepted.** Live at
+> **Status (2026-08-06): phases P0–P11 are complete** (P0–P10 owner-accepted; P11 measured
+> its DoD on 2026-08-06). Live at
 > [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
 > a streamed island, action combat, all four classes with their ability kits, levels 1–30 with
 > attributes and 96-node skill trees, and the full item loop (pack, paper-doll, loot bags,
@@ -21,15 +22,17 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > brought home. Measured end to end: woodcutting goes **1 → 10 in 458 real gathers** (the T2 gate
 > at 248, both matching the XP curve's own arithmetic to the gather), two players cannot chop the
 > same tree, and every fishing bar the placed waters can show is landable within two casts.
-> **P11 — Quests, POIs & Interactables is under way**, paired with the panel's A4 quest editor
-> (both live). Protocol v14: four villagers stand in Dawnhaven, eight quests are published —
-> four Dawnshore jobs plus the four-part chain _The Loggers' Silence_ — and the world carries a
-> notice board, a washed-up crate, four marked stumps, an attunable travel shrine and six
-> discoverable places. Everything is authored through the panel and hot-swapped onto the running
-> server. **P11-D put it on screen**: villagers you walk up to and talk to, `F` prompts that name
-> what they will do, a lower-third conversation with a typewriter and per-class reward picks, a
-> HUD tracker, the journal (`L`), a world map (`M`) with fog, pins, hint circles and the shrine
-> network, and a discovery banner for each new place. The DoD run (P11-E) is what remains.
+> **P11 — Quests, POIs & Interactables is ✅ complete** (2026-08-06), paired with the panel's A4
+> quest editor. Protocol v14: four villagers stand in Dawnhaven, eight quests are published — four
+> Dawnshore jobs plus the four-part chain _The Loggers' Silence_ — and the world carries a notice
+> board, a washed-up crate, four marked stumps, an attunable travel shrine and six discoverable
+> places, all authored through the panel and hot-swapped onto the running server. You walk up and
+> talk to people, `F` names what it will do, conversations run a typewriter with per-class reward
+> picks, and there is a HUD tracker, a journal (`L`), a world map (`M`) with fog and pins, and a
+> banner for each new place. **Measured end to end** by a run that navigates only by what the game
+> shows: the found-object quest solved from prose alone, the discovery loop firing for **all six
+> POI kinds**, and the whole chain — stumps, stalkers, five gathered mossbloom, a delivery that
+> credits on a villager's mutter, and the Mushroom King in **137 s** — ending on the per-class Rare.
 > Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
 > end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an
