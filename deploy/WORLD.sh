@@ -45,6 +45,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ASSUME_YES=0
 FROM=1
 ADMIN_USER=""
+BACKUP=1
 
 log() { printf '\n\033[1;33m▶ %s\033[0m\n' "$*"; }
 ok() { printf '\033[1;32m  ✔ %s\033[0m\n' "$*"; }
@@ -53,6 +54,9 @@ warn() { printf '\033[1;31m! %s\033[0m\n' "$*"; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --yes|-y) ASSUME_YES=1; shift ;;
+    # UPDATE.sh has just taken one; a second 65 MB dump a minute later is only
+    # disk (BACKUP.sh keeps 5 of these).
+    --no-backup) BACKUP=0; shift ;;
     --from) FROM="${2:-1}"; shift 2 ;;
     --admin-user) ADMIN_USER="${2:-}"; shift 2 ;;
     -h|--help) sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
@@ -220,8 +224,10 @@ BANNER
   [[ "$CONFIRM" == "dawnlands" ]] || { warn "aborted"; exit 1; }
 fi
 
-log "Pre-run backup"
-bash "$SCRIPT_DIR/BACKUP.sh" --quick || warn "backup failed — continuing (see BACKUP.sh output)"
+if [[ $BACKUP -eq 1 ]]; then
+  log "Pre-run backup"
+  bash "$SCRIPT_DIR/BACKUP.sh" --quick || warn "backup failed — continuing (see BACKUP.sh output)"
+fi
 
 if [[ -n "$OPS_SECRET" ]] && systemctl is-active --quiet dawned-game; then
   curl -fsS --max-time 3 -X POST "$GAME_URL/ops/announce" \
