@@ -722,7 +722,19 @@ against its palette/mood spec; owner walkthrough signoff zone by zone.
       **Deliberately not published**: the new archipelago puts open water where the dev island
       was, so every P8–P11 placement is on a disabled chunk. Placing them on the new ground is
       P12-B onward; the live game keeps serving the old bake until then.
-- [ ] **P12-B** zones, settlements, bridges, shrines
+- [x] **P12-B** zones, settlements, bridges, shrines. 7 zones (the six of §2 plus the Dawnsea),
+      5 settlements as 40 buildings on levelled plateaus, 9 Ancient Shrines on the travel graph,
+      4 bridges as causeways with 35 plank sections dressing them. **Bridges are ground, not
+      props** — the walkgrid only runs one way (a prop can make terrain unwalkable, nothing can
+      make it walkable), so a bridge model over a channel is scenery you swim under; recorded as
+      Q30 with its alternative. 22 building models baked (Quaternius Buildings Kit; the Medieval
+      Village Pack was refused for the same licence reason as P10's Gems & Ores). **The draft
+      validates.** Three bugs came out of it, two of them latent since before P12: the prune
+      parsed `validateDraft`'s prose and missed props because they use a different sentence;
+      `listObjects` had no ORDER BY, so with the Dawnsea overlapping every land zone an unchanged
+      draft could publish Dawnshore as ocean one time and not the next; and `findSpawn` took the
+      first zone with a settlement, which with five settlements meant a new character could wake
+      up in the level 24–30 mining camp.
 - [ ] **P12-C** the full bestiary and ~140 spawners
 - [ ] **P12-D** items T3–T5, legendaries, loot and vendors
 - [ ] **P12-E** ~370 resource node placements

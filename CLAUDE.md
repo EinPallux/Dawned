@@ -541,6 +541,42 @@ deviations (the north-west islet with no water to stand in, the mid-channel sand
 to be a 76 m mountain, and the Dawnsea becoming a real zone row because publish blocks on land in
 no zone) are tabled in WORLD.md's new §7.1.
 
+**P12-B — the world has towns (2026-08-06).** Seven zones (§2's six plus the Dawnsea), five
+settlements as 40 buildings, nine Ancient Shrines on the travel graph, four bridges dressed with
+35 plank sections. **The draft validates.**
+**Bridges are GROUND.** The walkgrid runs one way: a prop can subtract from it (`solid` stamps a
+footprint unwalkable, which is what stops you walking through a house) and nothing can add to it.
+So a bridge model over a channel is scenery you swim under, and §1's "joined by bridges" would be
+false. Each crossing is a 22 m neck of terrain raised back over its own strait by a `causeway`
+mask, with open water everywhere else so the neck is a real chokepoint. Settlements get `plateau`
+masks — levelled ground with smoothstepped edges, because a house on noise-generated terrain
+stands on a slope. Both are recorded: Q30 asks whether to keep causeways or spend a phase giving
+props walkable surfaces (which would also fix rooftops, jetties and fallen trunks).
+**Three bugs, and only one was mine.** (1) The drowned-placement prune parsed `validateDraft`'s
+prose for "sits on a disabled chunk" and reported success while 37 rows sat on drowned chunks —
+props use a DIFFERENT sentence. It asks the chunks whether they are enabled now. (2)
+`listObjects` had **no ORDER BY**, so it returned Postgres's physical row order, which changes
+whenever a row is updated. Harmless while zones never overlapped; the Dawnsea's ring covers the
+whole map, `zoneAt` takes the FIRST match, and an unchanged draft could have published Dawnshore
+as ocean one time and not the next. Objects are ordered by id and the bake sorts zones by area
+ascending — the smaller, more specific zone wins. (3) Ordering the zones broke a reachability
+test, which turned out to be the real find: `findSpawn` took `zones.find(z => z.settlement)`,
+fine with one settlement and a coin flip with five. **A new character could have woken up in
+Rustpick Camp, level 24–30.** The starter settlement is the lowest level band now, tested through
+the bake's own `meta.json`.
+**Measured before anything was written**: the preview reads the ground under every building and
+found Dawnhaven's harbour on a 37° slope and Sunwatch's farms on 44° (both plateaus were sized to
+where the buildings are, not to the fact that only 55 % of the radius is flat), plus a shrine
+standing in 8 m of ocean that took two moves to get onto land. All five settlements now read
+**0.0 m spread on 0°**; all nine shrines are dry.
+**22 building models baked** (114 assets / 17.99 MB of 64). The **Medieval Village Pack was
+refused** despite ASSET_INVENTORY earmarking it for Sungraze — no licence file, FBX/OBJ only,
+unattributable, the same call P10 made on Gems & Ores; the farmsteads come from the Buildings
+Kit instead. The Buildings Kit's own licence judgement (no in-folder text, shipped as its
+Quaternius siblings' CC0) is written into CREDITS rather than assumed, along with Ultimate Nature
+Kit 2, which was already being shipped on that reasoning with nothing recorded.
+**Still not published**: the world has towns and no inhabitants. P12-C onward.
+
 ### Running it locally
 
 ```bash

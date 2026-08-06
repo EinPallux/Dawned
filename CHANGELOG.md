@@ -18,6 +18,11 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 - Deviations from the design doc — the north-west islet with nowhere to stand, the sandbar that
   could not sit mid-channel, and the Dawnsea becoming a real zone — are written down in WORLD.md
   §7.1 rather than quietly absorbed.
+- **Five towns stand.** Dawnhaven on its shoulder above the spawn beach with a hall, a street of
+  houses, a market, a temple and a harbour; Mosshollow's tower house over the Weald canopy;
+  Cinderfall's broken stone in the red forest; Sunwatch's palisade and its farms out on the
+  plains; Rustpick clinging to the Ashcrag cliffs. Nine Ancient Shrines — one in each town and
+  four out where a death is likely and the walk back would be long.
 - **The four bridges are real ground, not scenery.** You walk on the terrain, not on props, so a
   bridge model over a channel would be something you swim underneath. Each crossing is a 22 m neck
   of land raised back over its own strait — a single visible chokepoint per channel, with open

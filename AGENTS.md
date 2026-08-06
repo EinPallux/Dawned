@@ -298,3 +298,20 @@ nothing beyond it.
     all of them. Straits derive their geometry from the two isles they separate now.
     **Nothing is published**: the new sea sits where the dev island was, so every P8–P11 placement
     is on a disabled chunk. That is P12-B onward. Deviations in WORLD.md §7.1.
+
+    **P12-B — the world has towns (2026-08-06).** Seven zones, five settlements (40 buildings on
+    levelled `plateau` masks), nine shrines, four bridges + 35 plank sections. **The draft
+    validates.** Bridges are GROUND: the walkgrid runs one way — a prop can make terrain
+    unwalkable, nothing can make it walkable — so a bridge model over water is scenery you swim
+    under. Each crossing is a 22 m `causeway` neck with open water everywhere else. Q30 records
+    it and its alternative.
+    **Three bugs, two latent since before P12.** The drowned-row prune parsed validateDraft's
+    prose and missed props, which use a different sentence. `listObjects` had **no ORDER BY** —
+    harmless until the Dawnsea's ring overlapped every land zone, after which an unchanged draft
+    could publish Dawnshore as ocean one time and not the next (objects order by id; the bake
+    sorts zones by area, smallest wins). And `findSpawn` took the first zone with a settlement,
+    so with five settlements **a new character could have woken up in Rustpick Camp, level
+    24–30**; the starter is the lowest level band now.
+    Measuring the ground under every building found Dawnhaven's harbour on a 37° slope and a
+    shrine in 8 m of ocean. All five towns read 0.0 m spread on 0° now. 114 baked assets /
+    17.99 MB. Not published — the world has towns and no inhabitants.
