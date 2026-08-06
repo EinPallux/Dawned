@@ -5,6 +5,17 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the Dawnlands are finished, and measured (2026-08-06, P12-G)
+
+- **The world is complete on every countable target**: 46 places to find, 62 things to use, 51
+  kinds of enemy across 124 camps, 41 people, 223 items, 28 quests in five chains, 362 gathering
+  nodes — with nothing referring to something that is not there.
+- **There is a real 1→30 route.** Each region pays enough — through its quests, its discoveries and
+  its camps — to carry you across its own level band without grinding: roughly one clear of the
+  Dawnshore, up to four in the Ashcrag canyons, a smooth ramp with no wall in it.
+- **It runs comfortably.** With all 400 enemies awake the server spends 2.4 ms of its 25 ms tick
+  and 193 MB of 700.
+
 ### Added — twenty-eight quests, and a map that points at the right place (2026-08-06, P12-F)
 
 - **20 more quests**, bringing the world to **28 across five chains** — one per region. Lissa's

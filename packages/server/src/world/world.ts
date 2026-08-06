@@ -55,6 +55,7 @@ import {
   type ItemStack,
   GatherRefusal,
   gatherXp,
+  killXp,
   type GatherOp,
   type Profession,
   type NodePlacement,
@@ -288,7 +289,27 @@ export class World {
     orphanEnemyRefs: readonly string[];
     /** Camps that produced no live enemy at all. */
     drySpawners: readonly string[];
-    perZone: Record<string, { camps: number; enemies: number }>;
+    perZone: Record<
+      string,
+      {
+        camps: number;
+        enemies: number;
+        /**
+         * What one full clear of the zone pays a same-level player, and the
+         * band of enemy levels standing in it.
+         *
+         * Here rather than in a script because the server is the only thing
+         * that knows what actually SPAWNED — the level each enemy rolled, its
+         * rank, its `xpMult` — and P12's DoD asks whether a 1→30 route exists.
+         * Reconstructing that from published rows would be a second copy of the
+         * spawn roll, which is the drift `killXp` living in shared exists to
+         * prevent.
+         */
+        xpPerClear: number;
+        levelMin: number;
+        levelMax: number;
+      }
+    >;
   } {
     const spawners = this.content?.spawners ?? [];
     const orphans = new Set<string>();
@@ -296,7 +317,16 @@ export class World {
     for (const enemy of this.enemies.values()) {
       produced.set(enemy.spawnerId, (produced.get(enemy.spawnerId) ?? 0) + 1);
     }
-    const perZone: Record<string, { camps: number; enemies: number }> = {};
+    type ZoneBucket = {
+      camps: number;
+      enemies: number;
+      xpPerClear: number;
+      levelMin: number;
+      levelMax: number;
+    };
+    const perZone: Record<string, ZoneBucket> = {};
+    // Which zone each spawner sits in, resolved once and reused for its enemies.
+    const zoneOfSpawner = new Map<string, string>();
     let wanted = 0;
     for (const spawner of spawners) {
       for (const entry of spawner.entries) {
@@ -308,9 +338,30 @@ export class World {
       const zone =
         this.zonePolys.find((poly) => pointInPolygon(spawner.x, spawner.z, poly.polygon))?.id ??
         'none';
-      const bucket = (perZone[zone] ??= { camps: 0, enemies: 0 });
+      zoneOfSpawner.set(spawner.id, zone);
+      const bucket = (perZone[zone] ??= {
+        camps: 0,
+        enemies: 0,
+        xpPerClear: 0,
+        levelMin: Number.POSITIVE_INFINITY,
+        levelMax: 0,
+      });
       bucket.camps++;
       bucket.enemies += produced.get(spawner.id) ?? 0;
+    }
+    // XP is summed over what SPAWNED, not over what the spawners ask for: a
+    // camp that rolled nothing pays nothing, which is the honest number.
+    for (const enemy of this.enemies.values()) {
+      const bucket = perZone[zoneOfSpawner.get(enemy.spawnerId) ?? 'none'];
+      if (!bucket) continue;
+      // Killer level = mob level: the falloff band is what a player questing
+      // through the zone at its own level actually earns.
+      bucket.xpPerClear += killXp(enemy.level, enemy.def.rank, enemy.level, enemy.def.xpMult);
+      bucket.levelMin = Math.min(bucket.levelMin, enemy.level);
+      bucket.levelMax = Math.max(bucket.levelMax, enemy.level);
+    }
+    for (const bucket of Object.values(perZone)) {
+      if (bucket.levelMin === Number.POSITIVE_INFINITY) bucket.levelMin = 0;
     }
     return {
       spawners: spawners.length,

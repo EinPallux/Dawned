@@ -8,24 +8,24 @@
 >
 > **Status legend:** 🔲 not started · 🟨 in progress · ✅ done — update this file as phases move.
 
-| Phase | Name                                     | Size | Status                    |
-| ----- | ---------------------------------------- | ---- | ------------------------- |
-| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
-| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
-| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
-| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)      |
-| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
-| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)      |
-| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
-| P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
-| P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
-| P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)      |
-| P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)      |
-| P11   | Quests, POIs & Interactables             | L    | ✅ done (2026-08-06)      |
-| P12   | World Building (the Dawnlands)           | XL   | 🟨 in progress            |
-| P13   | GM Suite & Live Ops                      | M    | 🔲                        |
-| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
-| P15   | Release 0.1.0                            | M    | 🔲                        |
+| Phase | Name                                     | Size | Status                                      |
+| ----- | ---------------------------------------- | ---- | ------------------------------------------- |
+| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02)                   |
+| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02)                   |
+| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)                        |
+| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)                        |
+| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)                        |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)                        |
+| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)                        |
+| P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)                        |
+| P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)                        |
+| P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)                        |
+| P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)                        |
+| P11   | Quests, POIs & Interactables             | L    | ✅ done (2026-08-06)                        |
+| P12   | World Building (the Dawnlands)           | XL   | ✅ measured DoD (owner walkthrough pending) |
+| P13   | GM Suite & Live Ops                      | M    | 🔲                                          |
+| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                                          |
+| P15   | Release 0.1.0                            | M    | 🔲                                          |
 
 ---
 
@@ -841,7 +841,37 @@ against its palette/mood spec; owner walkthrough signoff zone by zone.
       void a player cannot enter; three chunks of it separate the Grove from the mainland.
       **Still to author: the ~20 remaining quests** (8 of §5's 28 are live from P11). Eleven of
       the new quest givers are named by no quest yet, which the publish rail already warns about.
-- [ ] **P12-G** the DoD run (content report, 1→30 route, per-zone perf)
+- [x] **P12-G** the DoD run (content report, 1→30 route, per-zone perf). `tools/smoke/p12-dod.mjs`
+      answers all three from the RUNNING WORLD rather than from the content published into it —
+      `/api/content/*` plus `/ops/camps`, `/ops/worldobjects`, `/ops/respawnnodes`, `/ops/metrics`.
+      **PASS on every row.**
+      **CONTENT_0.1 at 100 %:** 46 POIs, 62 interactables, 51 enemy types, 4 zone bosses + 1 world
+      boss + 6 elites, 124 spawners, 41 NPC definitions and 41 placed, 223 items, 6 Legendaries,
+      16 vendors, 28 quests in 5 chains, 362 node placements of 21 types — and 0 orphan enemy
+      refs, 0 dry camps, 0 orphan nodes, 0 orphan NPCs.
+      **The 1→30 route exists, measured rather than walked.** For each band, XP demand from the
+      published curve against supply from that zone's quests, discoveries and camps:
+      | zone | band | need | quests | POIs | one clear | clears to cross |
+      | --- | --- | --- | --- | --- | --- | --- |
+      | Dawnshore | 1–6 | 3 530 | 1 490 | 63 | 2 630 | **0.8** |
+      | Verdant Weald | 6–12 | 23 450 | 3 100 | 1 494 | 8 675 | **2.2** |
+      | Emberwood | 12–18 | 58 710 | 6 800 | 5 013 | 14 803 | **3.2** |
+      | Sungraze | 18–24 | 107 130 | 9 650 | 10 197 | 21 302 | **4.1** |
+      | Ashcrag | 24–30 | 167 590 | 10 400 | 16 866 | 35 118 | **4.0** |
+      A "clear" is every enemy standing in the zone, killed once at level; camps respawn, so the
+      number to watch is whether it is MANY. 0.8 → 4.0 is a smooth ramp with no grind wall, and
+      every band has enemies inside its own level range. Walking it with a bot would take hours and
+      answer the same question with less precision, which is why the DoD's "route exists" is
+      arithmetic here — `xpPerClear` is computed by the SERVER from what actually spawned (level,
+      rank, `xpMult`), so it cannot drift from the `killXp` the game pays.
+      **Budgets, whole world seeded:** tick p95 **2.41 ms** of 25, max 10.18 ms, RSS **193 MB** of
+      700, 400 entities.
+      **One doc bug fell out of counting**: CONTENT_0.1 claimed five zone bosses by naming Mossback
+      among them, and NPCS_ENEMIES §4 authors Mossback as a "mini-boss, quest" at Elite Grunt rank
+      (WORLD.md §3: "quest target"). The content was right and the count was the drift — the
+      Dawnshore's climax is an elite, which is the right shape for a level 1–6 starter zone.
+      Two DoD clauses are the OWNER's and cannot be self-certified: every zone screenshot-reviewed
+      against its palette/mood spec, and the zone-by-zone walkthrough signoff.
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel
 

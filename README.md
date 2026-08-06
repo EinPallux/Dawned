@@ -4,8 +4,9 @@
 community of friends (5–20 players), inspired by the feel of _Farever_, _Guild Wars 2_ and
 _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 
-> **Status (2026-08-06): phases P0–P11 are complete** (P0–P10 owner-accepted; P11 measured
-> its DoD on 2026-08-06). Live at
+> **Status (2026-08-06): phases P0–P12 are complete on their measured DoDs** (P0–P10
+> owner-accepted; P11 and P12 measured on 2026-08-06 — P12's zone-by-zone walkthrough signoff is
+> the owner's and still pending). Live at
 > [play.pathlands.cc](https://play.pathlands.cc) — accounts and characters,
 > a streamed island, action combat, all four classes with their ability kits, levels 1–30 with
 > attributes and 96-node skill trees, and the full item loop (pack, paper-doll, loot bags,
@@ -33,7 +34,7 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > shows: the found-object quest solved from prose alone, the discovery loop firing for **all six
 > POI kinds**, and the whole chain — stumps, stalkers, five gathered mossbloom, a delivery that
 > credits on a villager's mutter, and the Mushroom King in **137 s** — ending on the per-class Rare.
-> **P12 — the real world — is under way** (2026-08-06): the Dawnlands are generated, five isles
+> **P12 — the real world — is ✅ measured** (2026-08-06): the Dawnlands are generated, five isles
 > and a hidden grove and four islets in 2048 m of sea, 57.9 % of it land, each isle its own
 > landmass with a channel between, joined by four bridges of raised ground. Five settlements,
 > nine shrines, and **a bestiary of 50 types across 124 camps — 400 enemies** from the Dawnshore's
@@ -50,7 +51,10 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > instead of standing as bare building shells. And there is **work to do: 28 quests in five
 > chains**, one per region, with every marker worked out from the real camps and herbs and chests
 > rather than typed by hand — which is how five of the original eight turned out to be pointing
-> 420–815 m into empty ground after the world moved under them.
+> 420–815 m into empty ground after the world moved under them. **Measured end to end**
+> (`tools/smoke/p12-dod.mjs`, run against the live world): every CONTENT_0.1 target met with zero
+> dangling references, a real 1→30 route — each region pays its own level band in 0.8 to 4.0 camp
+> clears, a smooth ramp with no grind wall — and 400 enemies awake for 2.4 ms of a 25 ms tick.
 > Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
 > end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an

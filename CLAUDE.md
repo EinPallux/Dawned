@@ -776,6 +776,40 @@ world's ambience at once, which is its own slice.
 **Verified from the GAME**: 41 NPCs, 62 interactables, 46 POIs, 0 orphans; 124 camps / 400 enemies;
 362 nodes / 0 orphans; 28 quests / 5 chains served by `/api/content/quests`.
 
+**P12-G measured the DoD and closed the phase (2026-08-06).** `tools/smoke/p12-dod.mjs` answers all
+three DoD questions from the RUNNING WORLD rather than from the content published into it —
+`/api/content/*` plus `/ops/camps`, `/ops/worldobjects`, `/ops/respawnnodes`, `/ops/metrics`.
+**PASS on every row.**
+**CONTENT_0.1 at 100 %**: 46 POIs, 62 interactables, 51 enemy types, 4 zone bosses + 1 world boss +
+6 elites, 124 spawners, 41 NPC definitions and 41 placed, 223 items, 6 Legendaries, 16 vendors, 28
+quests in 5 chains, 362 node placements of 21 types — and 0 orphan enemy refs, 0 dry camps, 0
+orphan nodes, 0 orphan NPCs.
+**The 1→30 route exists, measured rather than walked.** Per band, XP demand from the published
+curve against supply from that zone's quests, discoveries and camps — Dawnshore 3 530 needed /
+2 630 a clear / **0.8 clears**; Weald 23 450 / 8 675 / **2.2**; Emberwood 58 710 / 14 803 / **3.2**;
+Sungraze 107 130 / 21 302 / **4.1**; Ashcrag 167 590 / 35 118 / **4.0**. Camps respawn, so >1 is
+normal and the number to watch is whether it is MANY; 0.8 → 4.0 is a smooth ramp with no grind
+wall, and every band has enemies inside its own level range. **`xpPerClear` is computed by the
+SERVER** from what actually spawned (level, rank, `xpMult`) and added to `/ops/camps` for this —
+reconstructing it offline would be a second copy of the spawn roll, which is exactly the drift
+`killXp` living in shared exists to prevent. A bot walking 1→30 for real is many hours and would
+answer the same question with less precision.
+**Budgets with the whole world seeded**: tick p95 **2.41 ms** of 25, max 10.18 ms, RSS **193 MB**
+of 700, 400 entities.
+**One doc bug fell out of counting, and the check was wrong first.** The audit read `rank === 'boss'`
+and reported ZERO bosses; the enum is `normal | elite | zone_boss | world_boss`. Fixing the check
+surfaced the real thing: CONTENT_0.1 claimed FIVE zone bosses by naming Mossback among them, while
+NPCS_ENEMIES §4 authors Mossback as a "mini-boss, quest" at Elite Grunt rank and WORLD.md §3 calls
+it a quest target. The content was right and the COUNT was the drift — the Dawnshore's climax is an
+elite, which is the right shape for a level 1–6 starter zone. Also fixed: an approximate target
+("~370 nodes") was being tested with `>=`, which turned a 2 % shortfall into a red cross; the row
+helper now mirrors how each target is WRITTEN (floor / exact / ~5 %), because a report that cries
+wolf is one you learn to skip.
+**Two DoD clauses are the owner's and cannot be self-certified**: every zone screenshot-reviewed
+against its palette/mood spec, and the zone-by-zone walkthrough signoff. P12 is marked ✅ on its
+MEASURED DoD per the 2026-08-05 decision; the walkthrough is outstanding.
+**`pnpm check` green at 674 unit tests**; two-client sync passes on the same build.
+
 ### Running it locally
 
 ```bash
@@ -785,4 +819,5 @@ pnpm --filter @dawned/client dev       # client on :5173 (proxies /api and /game
 node tools/smoke/two-client-sync.mjs   # headless protocol check
 node tools/smoke/browser-sync.mjs      # two real browsers (needs the client dev server running)
 node tools/smoke/p11-probe.mjs        # quests/NPCs/map on screen (browser; --screenshots DIR)
+node tools/smoke/p12-dod.mjs          # P12's DoD: content report, 1→30 route, budgets
 ```
