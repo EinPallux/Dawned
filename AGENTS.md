@@ -315,3 +315,47 @@ nothing beyond it.
     Measuring the ground under every building found Dawnhaven's harbour on a 37° slope and a
     shrine in 8 m of ocean. All five towns read 0.0 m spread on 0° now. 114 baked assets /
     17.99 MB. Not published — the world has towns and no inhabitants.
+
+    **P12-C — the world has a bestiary (2026-08-06).** 50 enemy types, 124 camps, **400 enemies**:
+    Emberwood, Sungraze, Ashcrag and the Elder Grove authored, and every P4–P9 camp RE-PLACED,
+    because they stood on the dev island and that is open water now.
+    **A camp is a WISH, not a coordinate** — zone, bearing from that isle's heart, distance — resolved
+    by the panel's `placeAll` against the real height field: it spirals outward until it finds ground
+    above water, under 22° (14° for a boss arena), inside the right zone, clear of every town and of
+    the other camps, reporting WHY each candidate failed. The spiral is capped at 120 m on purpose:
+    an unbounded search always succeeds and quietly moves a camp a third of an isle away, which turns
+    an authored difficulty gradient into scatter and looks like it worked. Two wishes hit that cap and
+    were fixed rather than absorbed.
+    **Measured from the GAME, not the publish button.** New lever `/ops/camps` (the counterpart to
+    `/ops/respawnnodes` and `/ops/worldobjects`) reports **124 spawners, 400 wanted, 400 alive, 0
+    unresolved enemy refs, 0 camps that produced nothing**, per zone: Dawnshore 24/82, Weald 24/77,
+    Emberwood 24/80, Sungraze 24/85, Ashcrag 22/64, Elder Grove 6/12 — identical to the panel's
+    offline placement. Tick p95 **1.67 ms** of 25 with all 400 seeded, RSS 186 MB of 700.
+    **The blocker was the four KayKit skeletons: they baked with ZERO clips**, because the pack ships
+    meshes and animations in separate files, so the entire Emberwood band would have stood frozen and
+    slid. The pipeline gained `mergeClips` (ASSET_PIPELINE §2.1) — a NAME-based rebind of a shared
+    rig's channels onto the character's own skeleton, which THROWS on a joint it cannot match rather
+    than skipping it, and disposes the library explicitly because `prune()` cannot reclaim a merged-in
+    skin's joints. There is still no melee swing anywhere in the FREE pack, so rather than authoring
+    attacks that animate nothing (the P5 Spore Lobber bug on purpose) the undead are the archetypes
+    that rig CAN play — swarm, charger (the lunge IS the attack), caster — and the zone's melee grunt
+    is a hooded marauder on a Quaternius rig that owns a real strike. NPCS_ENEMIES §4.1/§4.2 carry the
+    as-built, including four things recorded rather than faked: no summon kind, no passive-flee state
+    (ambient fauna ship as `dummy`), root walls as a ring rather than geometry, and no directional
+    mitigation field.
+    **Enemies carry a content `tint` now** — §4 asks for a gold Sun Cactoro, an ember Skull Swarm and
+    a dark Bonelord Varkas, and Varkas wears the same mesh as four of the minions standing around him.
+    **Four bugs, and only one belonged to this phase.** (1) The clip generator **deleted a helper**
+    that lived in the file it rewrites whole: `missingClips` is the panel's publish cross-check, the
+    game repo never calls it, so `pnpm check` stayed green here and the break surfaced as a typecheck
+    failure in the OTHER repo. It lives in its own module now. (2) `clipForAbility` hardcoded
+    `CharacterArmature|`, which is a lie for every KayKit model — **no enemy on one could ever have
+    played an ability clip**; clip names are bare everywhere now and resolved in one place. (3) The
+    panel's Enemies page compared the RAW jsonb column when pruning drafts, so re-running a content
+    script republished the whole bestiary and showed 174 "changes" in a diff review whose only job is
+    to say what changed. (4) Found BY the new lever: the map draft still carried `ashen_reach` from
+    the dev island, and being a smaller ring it WON inside the savanna and the canyons — 9 camps
+    reported a zone WORLD.md does not have. `world:author` clears the zone layer now.
+    **`pnpm check` green at 656 unit tests, 138 assets / 24.09 MB.** The world is published in the dev
+    checkout (`map-1786002856`) so the camps could be counted; the quests, nodes and villagers come
+    back with P12-E/F.

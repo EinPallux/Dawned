@@ -735,7 +735,28 @@ against its palette/mood spec; owner walkthrough signoff zone by zone.
       draft could publish Dawnshore as ocean one time and not the next; and `findSpawn` took the
       first zone with a settlement, which with five settlements meant a new character could wake
       up in the level 24–30 mining camp.
-- [ ] **P12-C** the full bestiary and ~140 spawners
+- [x] **P12-C** the full bestiary and its camps. **50 enemy rows, 124 camps, 400 enemies** —
+      Emberwood, Sungraze, Ashcrag and the Elder Grove authored, and every P4–P9 camp RE-PLACED
+      (they stood on the dev island, which is open water now). Camps are authored as a wish —
+      zone, bearing, distance — and resolved against the real height field, with the search
+      capped at 120 m so a wish that cannot be met FAILS instead of quietly scattering the
+      difficulty gradient. Enemies gained a content `tint`, so a boss wearing its minions' mesh
+      reads as a boss. Measured from the game: `/ops/camps` reports 124 spawners, 400 wanted,
+      400 alive, **0 unresolved refs and 0 camps that produced nothing**, per-zone identical to
+      the panel's offline placement; tick p95 **1.67 ms** of 25 with all 400 seeded.
+      **The blocker was the four KayKit skeletons, which baked with no clips at all** — the pack
+      ships meshes and animations in separate files, so the whole Emberwood band would have stood
+      frozen and slid. The pipeline can merge a shared rig's clips into a character now
+      (`mergeClips`, ASSET_PIPELINE §2.1); there is still no melee swing in the FREE pack, so the
+      undead are swarm/charger/caster and the zone's grunt is a model that owns a strike.
+      **Three bugs, two of them from before this phase:** the clip generator DELETED a helper that
+      shared kept in the file it rewrites (silent here, a typecheck failure in the panel);
+      `clipForAbility` hardcoded `CharacterArmature|`, so no enemy on a KayKit rig could ever have
+      played an ability clip; and the Enemies page's prune-on-match compared the RAW jsonb column,
+      so re-running a content script republished the whole bestiary and showed 174 "changes" in a
+      diff review whose only job is to say what changed. A fourth was found BY the new lever: the
+      map draft still carried `ashen_reach` from the dev island, a smaller ring that therefore WON
+      inside the savanna and the canyons — 9 camps reported a zone WORLD.md does not have.
 - [ ] **P12-D** items T3–T5, legendaries, loot and vendors
 - [ ] **P12-E** ~370 resource node placements
 - [ ] **P12-F** POIs, interactables, NPCs and the remaining quests

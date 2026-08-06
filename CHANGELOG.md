@@ -5,6 +5,19 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the Dawnlands have a bestiary (2026-08-06, P12-C)
+
+- **The whole world is populated: 50 enemy types across 124 camps, 400 enemies.** The Emberwood's
+  undead and marauders, the savanna's herds and orc warbands, the canyons' golems, demons, yeti
+  and both dragons, and the Elder Grove's elite pocket — plus five zone bosses, the world boss
+  Ashwing, a rare roaming dragon, and rabbits, chickens and shore birds so a meadow is not empty.
+- **Every camp moved.** The old camps stood on the dev island, which is open water now, so the
+  world's whole layout was re-placed — each camp resolved against the real ground rather than
+  typed as a coordinate, and each zone's difficulty climbing outward from its town.
+- **A boss no longer wears its minions' face.** Enemies can carry a colour now, so the Bonelord is
+  dark against his skeletons, the savanna's cactoro is sun-bleached gold, and the canyon's skulls
+  burn ember where the Emberwood's wisps are pale.
+
 ### Added — the rest of the bestiary's models (2026-08-06, P12-C)
 
 - **24 more enemy models baked** — the alpakings and raptors of the savanna, the demons, golelings,

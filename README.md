@@ -34,10 +34,12 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > POI kinds**, and the whole chain — stumps, stalkers, five gathered mossbloom, a delivery that
 > credits on a villager's mutter, and the Mushroom King in **137 s** — ending on the per-class Rare.
 > **P12 — the real world — is under way** (2026-08-06): the Dawnlands are generated, five isles
-> and a hidden grove and four islets in 2048 m of sea, 57.6 % of it land, each isle its own
-> landmass with a channel between. It is not live yet — the new sea sits where the dev island
-> was, so the villagers, camps and nodes have to be placed on the new ground before the world
-> can turn over.
+> and a hidden grove and four islets in 2048 m of sea, 57.9 % of it land, each isle its own
+> landmass with a channel between, joined by four bridges of raised ground. Five settlements,
+> nine shrines, and **a bestiary of 50 types across 124 camps — 400 enemies** from the Dawnshore's
+> glubs to Ashwing in the Ashcrag caldera, each camp resolved against the real terrain rather than
+> typed as a coordinate. Still to place: the T3–T5 loot, the resource nodes, and the villagers,
+> POIs and quests.
 > Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
 > end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an

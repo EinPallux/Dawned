@@ -63,9 +63,12 @@ const HEADER = `/**
  * does not have is silent: the swing still lands, it just plays nothing. That
  * shipped once — the P5 Spore Lobber's panic swat asked a mushnub for \`Punch\`.
  *
- * GENERATED — do not edit. Run \`pnpm assets:clips\` after baking enemy models.
- * It reads the animation list out of each \`assets_baked/enemies/*.glb\`, which
- * is the only source that cannot be wrong about what a rig owns.
+ * GENERATED — do not edit, and do not add anything else to this file: it is
+ * written WHOLE by \`pnpm assets:clips\` after baking enemy models, which reads
+ * the animation list out of each \`assets_baked/enemies/*.glb\` (the only source
+ * that cannot be wrong about what a rig owns). Helpers that ASK questions of
+ * this data live in \`enemy-clip-check.ts\`, because the first run of the
+ * generator silently deleted one that had been written here.
  */
 export const ENEMY_MODEL_CLIPS: Record<string, readonly string[]> = {
 `;

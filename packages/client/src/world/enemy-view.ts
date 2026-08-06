@@ -296,6 +296,9 @@ export class EnemyView {
           const cloned = materials.map((m) => (m as THREE.MeshStandardMaterial).clone());
           child.material = Array.isArray(child.material) ? cloned : cloned[0]!;
           for (const material of cloned) {
+            // The content tint multiplies into the BASE colour, not over it —
+            // it has to survive the hit flash, which restores from baseColors.
+            if (def?.tint) material.color.multiply(new THREE.Color(def.tint));
             this.materials.push(material);
             this.baseColors.push(material.color.clone());
           }

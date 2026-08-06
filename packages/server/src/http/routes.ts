@@ -515,6 +515,23 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
   });
 
   /**
+   * What the bestiary became in this world (P12-C): camps seeded, enemies
+   * alive, per-zone population, and — the line that matters — camps that
+   * produced nothing. 124 camps published into open water look exactly like
+   * 124 camps published onto land from the publish button's side.
+   */
+  app.get('/ops/camps', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    return reply.send({ ok: true, ...world.campReport });
+  });
+
+  /**
    * What the live world actually seeded from the map bake (P11).
    *
    * The counterpart to `/ops/respawnnodes` reporting "65 nodes, 0 orphans": a

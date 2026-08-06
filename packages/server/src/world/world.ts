@@ -272,6 +272,56 @@ export class World {
     };
   }
 
+  /**
+   * What the bestiary actually became in this world (P12-C).
+   *
+   * The counterpart to `/ops/respawnnodes` reporting "65 nodes, 0 orphans" and
+   * `/ops/worldobjects` reporting the villagers: a publish saying "ok" is the
+   * PANEL's account of its own work, and 124 camps that all seeded into the sea
+   * would look identical from outside. `drySpawners` is the line that matters —
+   * a camp whose ground could not be found is a camp nobody will ever fight.
+   */
+  get campReport(): {
+    spawners: number;
+    enemies: number;
+    alive: number;
+    orphanEnemyRefs: readonly string[];
+    /** Camps that produced no live enemy at all. */
+    drySpawners: readonly string[];
+    perZone: Record<string, { camps: number; enemies: number }>;
+  } {
+    const spawners = this.content?.spawners ?? [];
+    const orphans = new Set<string>();
+    const produced = new Map<string, number>();
+    for (const enemy of this.enemies.values()) {
+      produced.set(enemy.spawnerId, (produced.get(enemy.spawnerId) ?? 0) + 1);
+    }
+    const perZone: Record<string, { camps: number; enemies: number }> = {};
+    let wanted = 0;
+    for (const spawner of spawners) {
+      for (const entry of spawner.entries) {
+        wanted += entry.count;
+        if (!this.content?.enemies.has(entry.enemyId)) orphans.add(entry.enemyId);
+      }
+      // The zones arrive sorted smallest-ring-first from the bake, so the first
+      // match is the specific zone rather than the world-covering Dawnsea.
+      const zone =
+        this.zonePolys.find((poly) => pointInPolygon(spawner.x, spawner.z, poly.polygon))?.id ??
+        'none';
+      const bucket = (perZone[zone] ??= { camps: 0, enemies: 0 });
+      bucket.camps++;
+      bucket.enemies += produced.get(spawner.id) ?? 0;
+    }
+    return {
+      spawners: spawners.length,
+      enemies: wanted,
+      alive: this.enemies.size,
+      orphanEnemyRefs: [...orphans],
+      drySpawners: spawners.filter((s) => !produced.has(s.id)).map((s) => s.id),
+      perZone,
+    };
+  }
+
   npcAt(id: string): ServerNpc | undefined {
     return this.npcs.get(id);
   }
