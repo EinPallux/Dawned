@@ -34,11 +34,37 @@ const currentPointerSchema = z.object({ version: z.string().min(1) });
  * `pnpm world:generate` has no pointer, and falls back to the compiled-in
  * `MAP_VERSION` — which is what that constant is still for.
  */
-export const resolveMapVersion = async (mapRoot: string): Promise<string> => {
+export const resolveMapVersion = async (
+  mapRoot: string,
+  /**
+   * Production NEVER falls back to the committed dev island.
+   *
+   * The fallback exists for a dev checkout that has only run
+   * `pnpm world:generate`. On a real box it is a trap: `dev-2` is COMMITTED, so
+   * it is sitting on the server's disk, and a `current.json` that is missing,
+   * truncated by a full disk, or lost in a restore would silently serve players
+   * the 8.7 MB test island instead of the world. That failure looks exactly
+   * like "the update did nothing" — which is how the owner found P12-H.
+   *
+   * Owner's instruction, 2026-08-06: "No Dev Server, No Dev Instance, No Dev
+   * Island, nothing." Refusing to boot is the honest answer: the world is
+   * missing, and a server that starts on the wrong one is worse than one that
+   * does not start.
+   */
+  { allowDevFallback = true }: { allowDevFallback?: boolean } = {},
+): Promise<string> => {
   try {
     const raw: unknown = JSON.parse(await readFile(path.join(mapRoot, 'current.json'), 'utf8'));
     return currentPointerSchema.parse(raw).version;
-  } catch {
+  } catch (error) {
+    if (!allowDevFallback) {
+      throw new Error(
+        `No published world: ${path.join(mapRoot, 'current.json')} is missing or unreadable ` +
+          `(${String(error)}). Refusing to fall back to the "${MAP_VERSION}" dev island in ` +
+          'production. Publish a world from the admin panel, or restore one with ' +
+          'deploy/ROLLBACK.sh --map <archive>.',
+      );
+    }
     return MAP_VERSION;
   }
 };

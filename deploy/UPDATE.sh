@@ -193,6 +193,30 @@ EOSU
   fi
 }
 
+# Every production guard in the code is gated on NODE_ENV — refusing the dev
+# island, refusing the public OPS_SECRET, refusing the dev DATABASE_URL, and
+# tightening the WebSocket origin check. DEPLOY.sh writes it at provision time
+# and nothing has verified it since, so a box provisioned by an older DEPLOY.sh
+# (or an env file edited by hand) runs every one of those guards switched OFF
+# while looking perfectly healthy. Check it on every update, and fix it.
+ensure_production_env() {
+  local file changed=0
+  for file in "$ETC_DIR/game.env" "$ETC_DIR/admin.env"; do
+    [[ -f "$file" ]] || continue
+    if ! grep -q '^NODE_ENV=production$' "$file"; then
+      warn "$(basename "$file") is not marked NODE_ENV=production — every production"
+      warn "guard (dev island, ops secret, dev database, origin check) was disabled."
+      sed -i '/^NODE_ENV=/d' "$file"
+      echo "NODE_ENV=production" >> "$file"
+      changed=1
+    fi
+  done
+  [[ $changed -eq 1 ]] && log "Marked the services as production"
+  return 0
+}
+
+ensure_production_env
+
 log "Pre-update backup"
 bash "$SCRIPT_DIR/BACKUP.sh" --quick || warn "backup failed — continuing (see BACKUP.sh output)"
 

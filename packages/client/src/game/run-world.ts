@@ -407,11 +407,20 @@ export const runWorld = (
   let mapReady = false;
   // Ask the server which bake it is running before streaming a single chunk
   // (A2): after a map publish the compiled-in MAP_VERSION is last week's world.
-  // If health is unreachable the constant still gets us onto the dev map.
+  //
+  // The health call is NOT caught into a fallback any more. It used to be, and
+  // the comment said so out loud — "if health is unreachable the constant still
+  // gets us onto the dev map" — which means a client that lost one request
+  // streamed the committed `dev-2` test island while the server simulated the
+  // Dawnlands. Two people would then be walking on different worlds, and the
+  // one on the dev island would look like the update had done nothing.
+  //
+  // There is no version of this that is better than saying so: without a
+  // server there is no game, and guessing the world is how the wrong one gets
+  // served. The `.catch` below turns it into "map failed to load — refresh".
   void api
     .health()
     .then((health) => health.mapVersion)
-    .catch(() => undefined)
     .then((serverVersion) => mapSource.open(serverVersion))
     .then(async ({ zones }) => {
       ambience = new AmbienceController(scene.ambienceTargets, zones);

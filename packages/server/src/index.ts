@@ -46,7 +46,8 @@ const characterService = new CharacterService(dbHandle.db);
 // ground height and walkability on every tick.
 // Which version is live is a FILE, not a constant: the admin panel publishes a
 // new bake and repoints `current.json`, and this reads whatever it says.
-const mapVersion = await resolveMapVersion(config.MAP_DIR);
+const allowDevFallback = config.NODE_ENV !== 'production';
+const mapVersion = await resolveMapVersion(config.MAP_DIR, { allowDevFallback });
 const map = await loadMapTerrain(path.join(config.MAP_DIR, mapVersion));
 log.info({ mapVersion: map.meta.mapVersion, chunks: map.terrain.chunkCount }, 'map terrain loaded');
 
@@ -117,7 +118,9 @@ registerRoutes(app, {
   // directory and repoints `current.json`, so "reload the map" means "read the
   // pointer again", not "re-read the directory I booted from".
   reloadMap: async () =>
-    loadMapTerrain(path.join(config.MAP_DIR, await resolveMapVersion(config.MAP_DIR))),
+    loadMapTerrain(
+      path.join(config.MAP_DIR, await resolveMapVersion(config.MAP_DIR, { allowDevFallback })),
+    ),
 });
 registerAuthRoutes(app, { auth, characters: characterService });
 
