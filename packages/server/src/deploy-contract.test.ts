@@ -12,6 +12,10 @@
  *    files; leaving fonts to default-src invites data:-URI regressions.
  *  - manifest.json and index.html must never be cache-immutable, or players
  *    keep resolving assets that no longer exist after a deploy.
+ *  - /assets/map/* must be served from assets_baked/map, BEFORE the client
+ *    handler — the bake is written at runtime by a map publish, and serving it
+ *    out of the client bundle meant a freshly published world 404'd in every
+ *    browser while the server reported it healthy (P12-H).
  */
 
 import { readFileSync } from 'node:fs';
@@ -53,6 +57,20 @@ describe('deploy/Caddyfile production contracts', () => {
     const adminBlock = /handle_path \/admin\* \{[^}]*reverse_proxy 127\.0\.0\.1:8082/s;
     expect(active).toMatch(adminBlock);
     expect(active).not.toMatch(/(^|\s)handle \/admin/m);
+  });
+
+  it('serves baked maps from the publish directory, ahead of the client bundle', () => {
+    // A map publish writes assets_baked/map/<version>/ at RUNTIME. The client
+    // asks for /assets/map/<version>/… — so if that path resolves inside the
+    // built client bundle, a published world is invisible until the next deploy,
+    // which is exactly how the Dawnlands reached the VPS and could not be walked
+    // on. handle_path (not handle) because the client's URL carries the prefix
+    // and the directory on disk does not.
+    expect(active).toContain('handle_path /assets/map/*');
+    expect(active).toMatch(/handle_path \/assets\/map\/\*\s*\{[^}]*assets_baked\/map/);
+    // Caddy takes the FIRST matching handle: the bare `handle {` that serves the
+    // client bundle must come after, or it swallows every map request.
+    expect(active.indexOf('handle_path /assets/map/*')).toBeLessThan(active.indexOf('\thandle {'));
   });
 
   it('asset manifest and every HTML route stay non-immutable across deploys', () => {

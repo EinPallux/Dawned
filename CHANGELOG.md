@@ -21,6 +21,15 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   written down in a public repository. Harmless on a throwaway development machine, a permanent
   back door on a real one — and running them on a real one is exactly what deploying a world means.
   They take a real login now and create nothing.
+- **Fixed: a published world never reached the browser.** The game client reads the map from a
+  copy that was made when the client was last built, not from where publishing writes it — so the
+  server loaded the new world, reported it healthy, and every player got "map failed to load".
+  Both the live site and local development now read the published map directly, which also stops
+  every version being duplicated into the client bundle.
+- **Fixed: re-running the world build failed on a step that had nothing left to do.** Publishing an
+  unchanged set is refused ("nothing to publish"), which is right for someone pressing the button
+  and wrong for a script whose whole point is being safe to run twice — and resuming a world build
+  makes that the normal case, not the exception.
 - **Fixed: the world build stopped at the bestiary on a fresh server.** Enemies point at loot
   tables, and the six boss tables are created a step later — fine on a machine that grew through
   every phase in order, wrong on a server that only has the shipped database. The bestiary step
