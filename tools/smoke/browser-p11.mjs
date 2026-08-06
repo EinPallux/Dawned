@@ -1167,12 +1167,18 @@ const gatherStep = async (page, questId, hint, needed) => {
   await goTo(page, hint.x, hint.z, 'the gathering hint circle', { settle: 3000 });
   await ops('/ops/respawnnodes', {});
   await sleep(700);
-  let gathers = 0;
-  const deadline = Date.now() + 4 * 60 * 1000;
+
+  let picked = 0;
+  let refused = 0;
+  let respawns = 1;
+  const deadline = Date.now() + 5 * 60 * 1000;
   while (Date.now() < deadline) {
     const entry = await questEntry(page, questId);
     if (!entry) fail(`${questId} left the log while gathering`);
-    if (entry.ready || entry.step > 0 || entry.counter >= entry.target) return gathers;
+    if (entry.ready || entry.step > 0 || entry.counter >= entry.target) {
+      note(`${picked} successful gather(s), ${refused} refusal(s), ${respawns} respawn sweep(s)`);
+      return picked;
+    }
 
     const node = await page.evaluate(() => window.__dawned.gatheringState().inReach);
     if (!node) {
@@ -1185,23 +1191,46 @@ const gatherStep = async (page, questId, hint, needed) => {
       await sleep(700);
       continue;
     }
+
+    const before = (await questEntry(page, questId))?.counter ?? 0;
     await page.evaluate(
       (id) => window.__dawned.sendGatherOp({ kind: 'start', placementId: id }),
       node.placementId,
     );
-    // The hold bar runs its channel; wait it out rather than guessing.
     await page
       .waitForFunction(() => window.__dawned.gatheringState().channel === null, null, {
         timeout: 20000,
       })
       .catch(() => undefined);
-    gathers++;
-    await sleep(400);
-    if (gathers > needed * 12) {
-      fail(`${questId}: ${gathers} gathers in the circle and the step never filled`);
+    await sleep(500);
+    const after = (await questEntry(page, questId))?.counter ?? 0;
+    if (after > before) picked++;
+    else refused++;
+
+    /**
+     * Bring the patch back when it stops giving.
+     *
+     * This circle holds FOUR mossbloom nodes and the step wants FIVE, so one
+     * respawn cycle is mandatory even for a perfect run — and a depleted node
+     * refuses instantly, which the first version of this loop counted as a
+     * gather. 61 "gathers", 4 mossbloom, no idea why. Nodes come back on a
+     * 90–180 s timer in play; `/ops/respawnnodes` is the same "do not make a
+     * test wait three minutes" lever P10 shipped it as.
+     */
+    if (refused >= 4) {
+      await ops('/ops/respawnnodes', {});
+      respawns++;
+      refused = 0;
+      await sleep(900);
+    }
+    if (picked > needed * 6) {
+      fail(`${questId}: ${picked} successful gathers and the step still is not full`);
     }
   }
-  fail(`${questId}: ran out of time gathering inside the hint circle`);
+  fail(
+    `${questId}: ran out of time in the gathering circle — ${picked} picked, ` +
+      `${refused} refused since the last of ${respawns} respawn sweep(s)`,
+  );
 };
 
 main().catch(async (error) => {
