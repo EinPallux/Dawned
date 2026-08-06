@@ -4,8 +4,11 @@
 #
 #   sudo bash /opt/dawned/game/deploy/UPDATE.sh [game|admin|all] [--ref <branch|tag>] [--no-announce]
 #
-# Pulls, installs, builds, migrates and restarts. Announces the restart in-game
-# first when the server is up, and takes a quick backup before touching anything.
+# Updates EVERYTHING, in this order: code, dependencies, assets (the client
+# build runs assets:sync), database migrations, services, Caddy — and then the
+# WORLD, but only when the authored content actually changed (see the world step
+# at the bottom). Announces the restart in-game when the server is up, and takes
+# a quick backup before touching anything.
 set -euo pipefail
 
 # Re-exec from a temp copy first: this script pulls the very repo it lives in,
@@ -214,6 +217,52 @@ esac
 sed "s/{{DOMAIN}}/${DAWNED_DOMAIN:-play.pathlands.cc}/g" "$APP_DIR/game/deploy/Caddyfile" > /etc/caddy/Caddyfile
 systemctl reload caddy || true
 
+# --------------------------------------------------------------- the world
+# "Everything updates on each run" (owner, 2026-08-06) — with the one condition
+# that makes it safe: the world is rebuilt only when the AUTHORED CONTENT
+# actually changed, never on a run that only carried code.
+#
+# The fingerprint is the git tree hash of the panel's `tools/content` directory:
+# it changes if and only if a file in there changes, so a merge, a rebase or a
+# docs-only commit does not trigger a ten-minute world rebuild on one core. The
+# last applied value lives next to the other machine state in /var/lib/dawned.
+#
+# Nothing here can revert a panel edit: the authoring scripts consult
+# `content_authored` (game migration 0021) and leave rows a person changed
+# alone, naming them on screen. That guard is what makes an automatic run
+# acceptable at all — without it every deploy would quietly undo the owner's
+# tuning, which is the opposite of what was asked for.
+world_fingerprint() {
+  git -C "$APP_DIR/admin" rev-parse "HEAD:tools/content" 2>/dev/null || echo unknown
+}
+
+if [[ "$TARGET" != "game" ]] && [[ -f "$APP_DIR/game/deploy/WORLD.sh" ]]; then
+  FP_FILE=/var/lib/dawned/world.fingerprint
+  FP_NOW="$(world_fingerprint)"
+  FP_WAS="$(cat "$FP_FILE" 2>/dev/null || true)"
+  if [[ "$FP_NOW" == "unknown" ]]; then
+    warn "could not read the content fingerprint — skipping the world step"
+  elif [[ "$FP_NOW" == "$FP_WAS" ]]; then
+    log "World content unchanged — nothing to rebuild"
+  elif [[ ! -t 0 ]]; then
+    # WORLD.sh needs the owner's panel login and must never be handed one from a
+    # file or an environment variable on disk. A non-interactive run says so
+    # instead of half-doing it.
+    warn "World content CHANGED, but this run is not interactive."
+    warn "Apply it with:  sudo bash $APP_DIR/game/deploy/WORLD.sh"
+  else
+    log "World content changed since the last run — rebuilding the world"
+    echo "  (your panel edits are protected; anything you changed is left alone and named)"
+    if bash "$APP_DIR/game/deploy/WORLD.sh" --yes --no-backup; then
+      echo "$FP_NOW" > "$FP_FILE"
+      log "World up to date"
+    else
+      warn "World rebuild failed — the fingerprint is NOT advanced, so the next"
+      warn "run will try again. Resume manually with: WORLD.sh --from <step>"
+    fi
+  fi
+fi
+
 log "Health check"
 if HEALTH="$(curl -fsS --max-time 5 http://127.0.0.1:8081/api/health)"; then
   echo "$HEALTH"
@@ -235,5 +284,5 @@ if [[ "$HEALTH" == *'"mapVersion":"dev-2"'* ]] && [[ -f "$APP_DIR/game/deploy/WO
   printf '\n\033[1;33m▶ This box is still on the dev island (map dev-2).\033[0m\n'
   echo "  The world is deployed separately — code travels in git, a published map does not:"
   echo "     sudo bash $APP_DIR/game/deploy/WORLD.sh"
-  echo "  See docs/tech/DEPLOYMENT.md §5.1."
+  echo "  See docs/tech/DEPLOYMENT.md §5.3."
 fi

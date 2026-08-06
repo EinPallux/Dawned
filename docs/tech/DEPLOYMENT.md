@@ -254,7 +254,48 @@ grace window); UPDATE.sh announces in-game 60 s prior via ops API when the serve
 (`curl -H \"X-Ops: $OPS_SECRET\" localhost:8081/ops/announce?text=...&in=60`) — wired in the real
 script at Phase 0.
 
-## 5.1 `deploy/WORLD.sh` — the world does not travel with the code
+## 5.1 What `UPDATE.sh` updates (owner decision, 2026-08-06)
+
+Every run: **code, dependencies, assets** (the client build runs `assets:sync`), **migrations,
+services, Caddy**. Then the **world** — but only when the authored content changed.
+
+The trigger is the git TREE hash of the panel's `tools/content`, compared against
+`/var/lib/dawned/world.fingerprint`. A tree hash changes if and only if a file in that directory
+changes, so a merge, a rebase or a docs-only commit does not cost a ten-minute world rebuild on one
+core. A failed rebuild deliberately does **not** advance the fingerprint: the next run retries
+rather than skipping silently.
+
+**Panel edits are never overwritten by this.** The authoring scripts consult `content_authored`
+(migration 0021) and leave any row a person changed alone, naming it on screen — see §5.2. That
+guard is what makes an automatic world step acceptable at all; without it every deploy would quietly
+undo the owner's tuning, which is the opposite of the instruction that asked for this.
+
+A **non-interactive** run (cron, CI, a piped shell) refuses the world step and prints the command to
+run instead. `WORLD.sh` needs the owner's panel login, and that must never come from a file or an
+environment variable sitting on the box.
+
+## 5.2 Your edits win: `content_authored`
+
+The content scripts rewrite every row they own on every run. Harmless on a throwaway dev box;
+destructive on the live server, where it means a number retuned in the panel is reverted on the next
+content deploy, for ever, with no message. Migration 0021 records the hash of each row **as stored**
+after a script publishes it:
+
+| Live row vs. recorded hash | What happens                                             |
+| -------------------------- | -------------------------------------------------------- |
+| equal                      | nobody touched it → the script rewrites it               |
+| different                  | a person edited it → **kept**, and named in the output** |
+| nothing recorded           | never script-managed → adopted once, protected after     |
+
+The adopt-once window is the honest cost of adding this after the fact — the first run has no record
+and cannot invent one. It is reported on screen, and every run after it protects. `--force-authored`
+overrides the guard when a phase deliberately re-authors something that was tuned.
+
+The hash is taken from the **stored** row, not from what the script sent: the panel `.parse()`s every
+def on save, filling defaults, so the stored row is not byte-equal to the posted one. Hashing the
+sent version reported 200 rows as owner-edited on a database nobody had touched.
+
+## 5.3 `deploy/WORLD.sh` — the world does not travel with the code
 
 **Added 2026-08-06, after the owner ran `UPDATE.sh` on a P12 build and found themselves still
 standing on the dev island.** That was not a failed update. It is the shape of the system, and it

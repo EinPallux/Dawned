@@ -148,6 +148,13 @@
       "when": 1785838089830,
       "tag": "0020_p11_npc_idle_clip",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1785838090830,
+      "tag": "0021_authored_content",
+      "breakpoints": true
     }
   ]
 }
