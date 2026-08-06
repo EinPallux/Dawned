@@ -61,6 +61,31 @@ announce() {
   fi
 }
 
+# The panel bakes published maps into the GAME checkout's assets_baked/map
+# (DEPLOYMENT.md §6), and dawned-admin.service runs under ProtectSystem=strict,
+# which makes everything outside ReadWritePaths read-only. The shipped unit
+# grants it — but UPDATE.sh does not re-install units, so a box provisioned
+# before P12-H would never pick that up and map publish would keep failing with
+# a bare ENOENT from inside the sandbox. A drop-in fixes the running box, and is
+# idempotent: written only when the effective config does not already allow it.
+allow_admin_map_writes() {
+  install -d -o dawned -g dawned "$APP_DIR/game/assets_baked/map"
+  local dropin_dir=/etc/systemd/system/dawned-admin.service.d
+  if systemctl show dawned-admin -p ReadWritePaths 2>/dev/null | grep -q 'assets_baked'; then
+    return 0
+  fi
+  log "admin: granting the panel write access to the map bake directory"
+  install -d "$dropin_dir"
+  cat > "$dropin_dir/10-map-writes.conf" <<'EOF'
+# Added by deploy/UPDATE.sh — see deploy/systemd/dawned-admin.service for why.
+# The publish pipeline writes baked maps into the game checkout; ProtectSystem=
+# strict would otherwise make that directory read-only to the panel.
+[Service]
+ReadWritePaths=-/opt/dawned/game/assets_baked
+EOF
+  systemctl daemon-reload
+}
+
 # The admin panel consumes @dawned/shared as `file:../Dawned/packages/shared` —
 # the SIBLING game checkout, no network fetch, no tokens. On the VPS the game
 # clone lives at $APP_DIR/game, so a `Dawned` symlink provides the expected
@@ -70,6 +95,7 @@ announce() {
 prepare_admin_shared_link() {
   ln -sfn "$APP_DIR/game" "$APP_DIR/Dawned"
   chown -h dawned:dawned "$APP_DIR/Dawned" 2>/dev/null || true
+  allow_admin_map_writes
   if [[ ! -d "$APP_DIR/game/packages/shared/dist" ]]; then
     log "admin: building @dawned/shared first (game repo)"
     sudo -u dawned -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -euo pipefail <<EOSU

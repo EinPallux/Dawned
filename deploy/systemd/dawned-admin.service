@@ -24,6 +24,14 @@ ProtectKernelTunables=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 ReadWritePaths=/var/lib/dawned
+# The publish pipeline bakes maps into the GAME checkout's assets_baked/map,
+# next to the committed dev-2 fallback (DEPLOYMENT.md §6) — and ProtectSystem=
+# strict makes everything outside ReadWritePaths read-only, so without this line
+# the panel cannot publish a map AT ALL. This unit was written at P0, months
+# before A2 gave the panel a map to publish, and nothing exercised the path in
+# production until P12-H tried to deploy a world with it. The leading `-`
+# tolerates the directory not existing yet on a fresh box.
+ReadWritePaths=-/opt/dawned/game/assets_baked
 
 # Bake/thumbnail work must never starve the game server's tick.
 Nice=10

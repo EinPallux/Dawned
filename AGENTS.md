@@ -582,4 +582,20 @@ nothing beyond it.
     crash can skip the ban, and what survives is then an account nobody can log into. Both paths were
     verified against the running panel: supplied credentials published with no account created, the
     fallback ended `banned`, and `world:author` (the TypeScript entry point) regenerated all 1024
-    chunks through it. `pnpm check` green at **674** here and **264** in the panel.
+    chunks through it.
+    **The owner's first real run then found the bug this whole path had been hiding: the panel could
+    never publish a map on the VPS.** `dawned-admin.service` runs under `ProtectSystem=strict` with
+    `ReadWritePaths=/var/lib/dawned`, and the bake goes into the GAME checkout's `assets_baked/map`
+    (DEPLOYMENT §6) — outside it, therefore read-only. The unit was written at P0, months before A2
+    gave the panel a map to publish, so **map publish had been broken on a real box since the map
+    editor shipped** and nothing had ever tried it there; the dev container has no sandbox, which is
+    why every smoke passed. The unit grants it now, and since `UPDATE.sh` does not re-install units,
+    both `UPDATE.sh` and `WORLD.sh` drop a `10-map-writes.conf` on a box that lacks it.
+    **The errno is the reason this cost an hour**: a recursive `mkdir` into a read-only tree reports
+    **ENOENT**, naming a path whose parents plainly exist, so it reads as a missing directory rather
+    than a permission wall. `bakeDraft` catches the staging failure and names the cause now (+1 panel
+    test, provoked with ENOTDIR so it behaves identically as root), and `WORLD.sh` checks writability
+    in PREFLIGHT — proving it by creating a directory there from inside a copy of the live sandbox
+    (`systemd-run` with the unit's own `ReadWritePaths`), because the alternative is discovering it
+    after several minutes of terrain generation, which is exactly what happened.
+    `pnpm check` green at **674** here and **265** in the panel.

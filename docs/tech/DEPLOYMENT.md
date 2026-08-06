@@ -312,6 +312,18 @@ Operational notes:
   else, and the whole reason it had to be fixed before this path could be recommended.
 - **Disk.** Each bake is ~23 MB and a full run publishes several; a publish sweeps all but the
   newest five (`pruneOldBakes`), and `BACKUP.sh` archives the live one nightly (§6).
+- **The panel must be allowed to write the bake directory.** `dawned-admin.service` runs under
+  `ProtectSystem=strict`, so everything outside `ReadWritePaths` is read-only — and the bake goes
+  into the GAME checkout, not `/var/lib/dawned`. The unit was written at P0, months before A2 gave
+  the panel a map to publish, so **map publishing had never worked on the VPS**; the first world
+  deploy is what found it. The shipped unit grants it now, and because `UPDATE.sh` does not
+  re-install units, both `UPDATE.sh` and `WORLD.sh` also drop
+  `/etc/systemd/system/dawned-admin.service.d/10-map-writes.conf` on a box that lacks it.
+  `WORLD.sh` checks this in **preflight** and proves it by creating a directory there from inside a
+  copy of the live sandbox, because the alternative is finding out after several minutes of terrain
+  generation. Worth knowing what the failure looks like: a recursive `mkdir` into a read-only tree
+  reports **`ENOENT`**, naming a path whose parents plainly exist — which sends you hunting for a
+  missing directory that is right there. `bakeDraft` now catches it and says what it means.
 
 ## 6. `deploy/BACKUP.sh` + maintenance (draft behavior)
 
