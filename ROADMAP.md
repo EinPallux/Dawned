@@ -805,7 +805,43 @@ against its palette/mood spec; owner walkthrough signoff zone by zone.
       zones, which is the editor-side guard the script fix cannot give — the owner drags nodes by
       hand too. Warning, not blocker, on `questHintCoverage`'s precedent: two regions can be a
       design choice, 5 of 19 across a line is not.
-- [ ] **P12-F** POIs, interactables, NPCs and the remaining quests
+- [ ] **P12-F** POIs, interactables, NPCs and the remaining quests. **Places and people are
+      done; the ~20 remaining quests are not.** Measured from the GAME
+      (`/ops/worldobjects`): **41 NPCs, 61 interactables, 46 POIs, 0 orphans** — against
+      CONTENT_0.1 §1/§2's ~40 / ≥60 / ≥45. POIs are exactly §1's mix (8 vista, 14 landmark,
+      8 cache, 10 camp, 5 curiosity); interactables are 26 chests, 12 signposts, 8 campfires,
+      the Elder Arch, plus P12-B's 9 shrines and P11's 4 stumps. Sixteen NPCs are the bodies for
+      P12-D's sixteen vendor rows, each standing ON its vendor's `anchor` — that radius is the
+      proximity lease the server checks, so a shopkeeper placed anywhere else offers a trade the
+      server then refuses. Five settlements gained 68 dressing props (well, market stalls, cart,
+      hay, benches, barrels, fencing): P12-B built them as forty building shells and nothing
+      else, which reads as a diorama of a town rather than a town.
+      **The asset pipeline had to grow two front doors first.** Three packs — the Medieval
+      Village Pack, the Low Poly Nature Models, the Desert Assets, ~200 models — ship no glTF at
+      all, and one of them owns the **only campfire in the whole library** while WORLD.md §5
+      makes campfires a real interactable. `.obj` converts in memory now; a `scale` rule
+      normalises a pack authored outside metres (this one is ~1/2.5, and an interactable
+      placement carries no scale on purpose); an `emissive` rule lights the bonfire's `Fire`
+      material and throws on a material name the file lacks. ASSET_PIPELINE §2.2.
+      **Two silent bugs came out of it.** Measuring a prop from its POSITION accessors is
+      confidently wrong — a glTF node carries a transform — and that reading called the bonfire
+      41 cm when it is 1.02 m and the shrine ONE CENTIMETRE when it is 2.4 m tall
+      (`model-size.mjs` + a test pinning nine props to metre bands). And `pnpm assets:build`
+      started from an empty asset map while `assets:icons` writes the same manifest, so a model
+      rebuild **deleted all 256 icon entries** — files on disk, report green, and every item,
+      ability and node in the game rendering a blank square.
+      **The find that mattered is the Elder Grove.** Publish refused all five of its rows as
+      "cannot be walked to from the spawn", and it was RIGHT: the Grove has no causeway (Q30) and
+      the open ocean around it is disabled chunks the walkgrid marks Blocked. The portal had been
+      authored backwards — §3.6 puts a "one-way ancient portal in Ashcrag" as a way IN, and it
+      had been placed in the Grove pointing out. And the reachability fill only walked the
+      walkgrid, so it was wrong about everything behind any portal. It consumes portals as
+      directed edges now, to a fixpoint, and only once the portal's own mouth is reachable.
+      **Recorded, not fixed:** §3.6's other route in — the long swim from the Weald's north cape
+      — does not exist. All 249 open-ocean chunks are disabled, so the sea between the isles is
+      void a player cannot enter; three chunks of it separate the Grove from the mainland.
+      **Still to author: the ~20 remaining quests** (8 of §5's 28 are live from P11). Eleven of
+      the new quest givers are named by no quest yet, which the publish rail already warns about.
 - [ ] **P12-G** the DoD run (content report, 1→30 route, per-zone perf)
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel

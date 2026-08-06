@@ -6,27 +6,27 @@
 
 ## 1. World
 
-| Item                                  | Target                                                                                                  |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Zones                                 | 6 (Dawnshore, Verdant Weald, Emberwood, Sungraze Savanna, Ashcrag Canyons, Elder Grove) + Dawnsea water |
-| Settlements                           | Dawnhaven (main, ~14 NPCs) + Mosshollow, Cinderfall, Sunwatch, Rustpick (~5–7 NPCs each)                |
-| Ancient Shrines (respawn/fast travel) | 9 (1 per settlement=5 + 1 extra per larger zone)                                                        |
-| POIs                                  | ≥45 total: 8 Vistas, 14 Landmarks, 8 Hidden Caches, 10 named Camps, 5 Curiosities                       |
-| Interactables (non-node)              | ≥60 placed: ~25 chests, 9 shrines, 8 campfires, ~12 signposts, quest props, Elder portal                |
-| Bridges (landmark builds)             | 4 + hidden swim route                                                                                   |
-| Baked world map + minimap tiles       | 1 set, regenerated on map publish                                                                       |
+| Item                                  | Target                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Zones                                 | 6 (Dawnshore, Verdant Weald, Emberwood, Sungraze Savanna, Ashcrag Canyons, Elder Grove) + Dawnsea water                   |
+| Settlements                           | Dawnhaven (main, ~14 NPCs) + Mosshollow, Cinderfall, Sunwatch, Rustpick (~5–7 NPCs each)                                  |
+| Ancient Shrines (respawn/fast travel) | 9 (1 per settlement=5 + 1 extra per larger zone)                                                                          |
+| POIs                                  | ≥45 total: 8 Vistas, 14 Landmarks, 8 Hidden Caches, 10 named Camps, 5 Curiosities — **46 live** (P12-F, exactly that mix) |
+| Interactables (non-node)              | ≥60 placed: ~25 chests, 9 shrines, 8 campfires, ~12 signposts, quest props, Elder portal — **61 live** (P12-F)            |
+| Bridges (landmark builds)             | 4 + hidden swim route                                                                                                     |
+| Baked world map + minimap tiles       | 1 set, regenerated on map publish                                                                                         |
 
 ## 2. Enemies & NPCs
 
-| Item             | Target                                                                     |
-| ---------------- | -------------------------------------------------------------------------- |
-| Enemy types      | 36 regular (list locked in design/NPCS_ENEMIES.md §4)                      |
-| Zone bosses      | 5 (Mossback, Mushroom King, Bonelord Varkas, Alpaking Prime, Elder Treant) |
-| World boss       | 1 — Ashwing (Dragon Evolved)                                               |
-| Rare roamers     | 3 (Ashcrag Dragon, Ghostfin-tier rares baked as spawner entries)           |
-| Spawners placed  | ~140 (camps, patrols, ambient) within population governor caps             |
-| Friendly NPCs    | ~40 (vendors 12, quest givers ~18, flavor/villagers ~10)                   |
-| Ambient critters | 8 types placed liberally                                                   |
+| Item             | Target                                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Enemy types      | 36 regular (list locked in design/NPCS_ENEMIES.md §4)                                                                              |
+| Zone bosses      | 5 (Mossback, Mushroom King, Bonelord Varkas, Alpaking Prime, Elder Treant)                                                         |
+| World boss       | 1 — Ashwing (Dragon Evolved)                                                                                                       |
+| Rare roamers     | 3 (Ashcrag Dragon, Ghostfin-tier rares baked as spawner entries)                                                                   |
+| Spawners placed  | ~140 (camps, patrols, ambient) within population governor caps                                                                     |
+| Friendly NPCs    | ~40 (vendors 12, quest givers ~18, flavor/villagers ~10) — **41 live** (P12-F: 16 vendors, 15 quest givers, 8 villagers, 2 guards) |
+| Ambient critters | 8 types placed liberally                                                                                                           |
 
 ## 3. Items (≈210 total)
 

@@ -691,6 +691,58 @@ script fix cannot give, because the owner drags nodes by hand too. Warning rathe
 **`pnpm check` green at 659 unit tests** here and **261** in the panel (+2 for the cross-check);
 **400 baked assets / 24.72 MB** (144 models + 256 icons).
 
+**P12-F — the world is inhabited (2026-08-06, quests still owed).** Measured from the GAME
+(`/ops/worldobjects`): **41 NPCs, 61 interactables, 46 POIs, 0 orphans** against CONTENT_0.1
+§1/§2's ~40 / ≥60 / ≥45. The POIs are exactly §1's mix (8 vista, 14 landmark, 8 cache, 10 camp,
+5 curiosity); the interactables are 26 chests, 12 signposts, 8 campfires and the Elder Arch on
+top of P12-B's 9 shrines and P11's 4 stumps. **Sixteen of the NPCs are bodies for P12-D's sixteen
+vendor rows** — a shop with no shopkeeper is a vendor panel that opens out of thin air — and each
+stands ON its vendor's `anchor`, because that radius is the proximity lease the server checks
+before it will trade. A shopkeeper placed anywhere else offers a trade the server then refuses,
+which is the worst kind of wrong: it looks like it works. Five settlements gained **68 dressing
+props**; P12-B built them as forty building shells and nothing else, which reads as a diorama of
+a town rather than a town.
+**The asset pipeline had to grow two front doors first.** Three packs — Medieval Village, Low
+Poly Nature, Desert, ~200 models — ship no glTF at all, and one of them owns the **only campfire
+in the whole library** while WORLD.md §5 makes campfires a real interactable (sit → +regen
+"Cozy"). A design object blocked by a container format is a worse reason than a licensing one.
+`.obj` converts in memory now (`obj2gltf`, the `.mtl` in the source hash; FBX deliberately
+skipped since every OBJ-only pack ships FBX of the same meshes); `scale` normalises a pack
+authored outside metres, at BAKE time because an interactable placement carries no scale on
+purpose; `emissive` lights the bonfire's `Fire` material and THROWS on a name the file lacks,
+like `mergeClips` throws on an unmatched joint. ASSET_PIPELINE §2.2.
+**Two silent bugs fell out of verifying that.** (1) Measuring a prop from its POSITION accessors
+is confidently wrong — a glTF node carries a transform — and that reading called the bonfire
+41 cm when it is 1.02 m, and the KayKit shrine **one centimetre** when it is 2.4 m tall.
+`model-size.mjs` walks the scene graph and transforms all eight corners; a test pins nine props
+to loose metre bands, because the failure it guards against is off by 2.5×. (2) `assets:build`
+started from an empty asset map while `assets:icons` writes the same manifest, so a model
+rebuild **deleted all 256 icon entries** — files on disk, report green, and every item, ability
+and node in the game rendering a blank square. It survived because the habitual order is
+build-then-icons, which is a trap rather than a workflow.
+**The find that mattered is the Elder Grove.** Publish refused all five of its rows as "cannot be
+walked to from the spawn", and it was RIGHT: the Grove has no causeway (Q30) and the open ocean
+around it is disabled chunks the walkgrid marks Blocked. Two things were wrong. The portal was
+authored backwards — §3.6 puts a "one-way ancient portal in Ashcrag" as a way IN, and it had been
+placed in the Grove pointing out. And the reachability fill only walked the walkgrid, so it was
+wrong about everything behind ANY portal, and would have refused exactly the design the world doc
+specifies. It consumes portals as directed edges now, to a fixpoint so they chain, and only once
+the portal's own mouth is reachable — otherwise a portal sealed inside the far side would declare
+itself the way in.
+**Recorded, not fixed:** §3.6's other route in — the long swim from the Weald's north cape — does
+not exist. All **249 open-ocean chunks are disabled**, so the sea between the isles is void a
+player cannot enter; three chunks of it separate the Grove from the mainland. Straits still swim
+(their chunks contain land, so they are enabled); open sea does not.
+**Owner decision folded (USER_QUESTIONS Q31):** every uploaded pack may be used, on the owner's
+assertion of rights. Recorded rather than disguised — such packs are `ownerAsserted: true` +
+`verified: false`, and the asset report names them once per run instead of per asset. That
+reverses P10's Gems & Ores refusal and P12-B's Medieval Village refusal, both made on provenance
+grounds that no longer apply.
+**Still owed: the ~20 remaining side quests** (8 of §5's 28 are live from P11). Eleven of the new
+quest givers are named by no quest yet, which the publish rail already warns about — the warning
+is the honest state, not noise. **`pnpm check` green at 674 unit tests** here and **264** in the
+panel; **416 baked assets / 25.42 MB** (160 models + 256 icons).
+
 ### Running it locally
 
 ```bash

@@ -43,7 +43,11 @@ _Black Desert Online_. Runs on a single 4 GB VPS at **play.pathlands.cc**.
 > settlement trading. **362 resource nodes** in clusters you walk between — 120 trees, 95 ore
 > seams, 107 herb patches and 40 fishing spots, every zone carrying its own tier band, and all
 > five fishing waters real for the first time (the epic and legendary bars had definitions and
-> nowhere to play them). Still to place: the villagers, POIs and the remaining quests.
+> nowhere to play them). And the world is **inhabited**: 41 people — sixteen shopkeepers behind
+> the sixteen shops, guards, villagers, the Grove's Warden — **46 places to discover** across all
+> six regions, and **61 things to press `F` on** (chests, signposts, campfires, shrines, the
+> Elder Arch). The five settlements are dressed with wells, market stalls, carts and benches
+> instead of standing as bare building shells. Still to author: the ~20 remaining side quests.
 > Fine-tuning of every shipped system (numbers, feel) is deliberately held to one pass at the
 > end of the project, by the owner's decision.
 > 0.1.0 will be a _complete_ Early Access MMORPG (4 animated classes, real action combat, an

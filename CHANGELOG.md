@@ -5,6 +5,21 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the Dawnlands are inhabited (2026-08-06, P12-F)
+
+- **41 people** stand in the world: sixteen shopkeepers behind the sixteen shops that had been
+  trading out of thin air, eleven more with work to offer, guards, and villagers who say something
+  when you walk past. Every settlement has faces now, and the Elder Grove has its Warden.
+- **46 places to find** — eight vistas, fourteen landmarks, eight hidden caches, ten named camps
+  and five curiosities, one of each kind in every region, all worth discovery XP.
+- **61 things to press `F` on**: twenty-six chests, twelve signposts that actually tell you where
+  you are going, eight campfires to rest at, nine travel shrines and the Elder Arch.
+- **The towns look like towns.** Sixty-eight props across the five settlements — a well, market
+  stalls, carts, hay, benches, barrels, crates and fencing — where before there were buildings on
+  bare ground and nothing between them.
+- **The Elder Grove can be reached.** Its arch stands in the Ashcrag canyons, one way, exactly
+  where the world was always meant to put it.
+
 ### Added — the world gets its village props, and a campfire that is lit (2026-08-06, P12-F)
 
 - **16 new props**: a real campfire whose flame glows, a well, market stalls, carts, hay, benches,
