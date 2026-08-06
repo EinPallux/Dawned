@@ -111,17 +111,17 @@ KayKit Adventurers (humanoid enemies use Adventurer rigs + weapon bits).
 
 ### Emberwood (12–18)
 
-| Enemy                           | Lvl   | Archetype                                            | Model                                      |
-| ------------------------------- | ----- | ---------------------------------------------------- | ------------------------------------------ |
-| Skeleton Minion                 | 12–14 | Swarm                                                | KS Skeleton_Minion                         |
-| Skeleton Rogue                  | 13–15 | Grunt (fast, backstab bonus)                         | KS Skeleton_Rogue                          |
-| Skeleton Mage                   | 14–16 | Caster (bone bolt, bone-wall self-shield)            | KS Skeleton_Mage                           |
-| Skeleton Warrior                | 15–17 | Grunt (shielded: frontal 50% mitigation — flank!)    | KS Skeleton_Warrior                        |
-| Ember Cactoro                   | 13–15 | Ranged (needle spray cone)                           | Q Cactoro                                  |
-| Feral Monkroose                 | 14–16 | Charger                                              | Q Monkroose                                |
-| Grave Wisp                      | 15–17 | Caster (haunt DoT)                                   | Q Ghost Skull                              |
-| Bandit Ranger                   | 16–18 | Ranged (bow)                                         | KA Ranger + bow_A                          |
-| **Bonelord Varkas** (zone boss) | 18    | Boss: blade waves, summon minions, safe-wedge scream | KS Skeleton_Warrior (scale 1.5, dark tint) |
+| Enemy                           | Lvl   | Archetype                                              | Model                                      |
+| ------------------------------- | ----- | ------------------------------------------------------ | ------------------------------------------ |
+| Skeleton Minion                 | 12–14 | Swarm                                                  | KS Skeleton_Minion                         |
+| Skeleton Rogue                  | 13–15 | Charger (lunge, backstab bonus) — was Grunt, see §4.1  | KS Skeleton_Rogue                          |
+| Skeleton Mage                   | 14–16 | Caster (bone bolt, bone-wall self-shield)              | KS Skeleton_Mage                           |
+| Skeleton Warrior                | 15–17 | Charger (shield bash; frontal 50% mitigation — flank!) | KS Skeleton_Warrior                        |
+| Ember Cactoro                   | 13–15 | Ranged (needle spray cone)                             | Q Cactoro                                  |
+| Feral Monkroose                 | 14–16 | Charger                                                | Q Monkroose                                |
+| Grave Wisp                      | 15–17 | Caster (haunt DoT)                                     | Q Ghost Skull                              |
+| Ashen Marauder                  | 16–18 | Grunt (melee) — the zone's swing, see §4.1             | Q Ninja (hooded bandit, ember tint)        |
+| **Bonelord Varkas** (zone boss) | 18    | Boss: blade waves, summon minions, safe-wedge scream   | KS Skeleton_Warrior (scale 1.5, dark tint) |
 
 ### Sungraze Savanna (18–24)
 
@@ -153,24 +153,38 @@ KayKit Adventurers (humanoid enemies use Adventurer rigs + weapon bits).
 
 ### 4.1 As built — what the models can actually do (P12-C, 2026-08-06)
 
-39 enemy models are baked, which covers every row above. One blocks a whole zone:
+40 enemy models are baked, covering every row above. Two findings changed the design.
 
-**The four KayKit skeletons animate nothing.** `Skeleton_Minion/Rogue/Mage/Warrior` bake with
-zero clips, because the pack ships meshes and animations in SEPARATE files — the clips live in
+**The four KayKit skeletons animated nothing, and now they do.** They baked with zero clips,
+because the pack ships meshes and animations in SEPARATE files — the clips live in
 `Animations/gltf/Rig_Medium/{General,MovementBasic}.glb`, the same split our own player rigs use.
 The enemy pipeline bakes one model per file and the enemy renderer expects the clips to be inside
-it, so a skeleton would stand frozen and slide. **No Emberwood enemy may be authored onto one
-until the pipeline can merge a shared rig's clips into a mesh**, which is a slice of its own.
+it, so a skeleton stood frozen and slid. The pipeline gained a `mergeClips` rule option
+(ASSET_PIPELINE.md §2.1) that stitches a shared rig's clips into a character by NAME — the two
+documents carry the same 23 joints, so every channel rebinds onto the mesh's own skeleton. Each
+skeleton now carries `Idle_A/B`, `Walking_A`, `Running_A`, `Hit_A`, `Death_A`, `Interact`, `Throw`.
 
 Found by `pnpm assets:clips`, which regenerates `ENEMY_MODEL_CLIPS` from the bakes — until P12-C
 that regeneration was a comment in the file rather than a command, and the empty list had been
 sitting in shared since P9-C baked `Skeleton_Minion` with nobody noticing.
 
-What the shared rig does offer, once merged: `Idle_A/B`, `Walking_A/B/C`, `Running_A/B`,
-`Hit_A/B`, `Death_A/B`, `Throw`, `Spawn_Ground`. **There is no melee swing** — KayKit keeps the
-combat set in a paid `Rig_Medium_Combat` file this FREE pack does not include. So the Emberwood
-skeletons as designed (Rogue's backstab, Warrior's shielded frontal) need either that pack, a
-retarget from the Quaternius humanoid set, or a re-design around `Throw` and charges.
+**There is still no melee swing, and that is a design constraint, not a gap to paper over.**
+KayKit keeps the combat set in a paid `Rig_Medium_Combat` file the FREE pack does not include, and
+the Quaternius rigs name their bones differently, hang them off a different hierarchy and rest them
+in a different pose — retargeting is a different job from rebinding, and the merge REFUSES a
+foreign rig rather than dropping the channels it cannot match. So the Emberwood skeletons are the
+three archetypes this rig can play honestly:
+
+- **Swarm** (Minion) — contact damage, no swing to miss.
+- **Charger** (Rogue, Warrior) — the lunge IS the attack; `Running_A` is the whole animation, which
+  is already how P9's chargers read. The Rogue keeps its backstab bonus and the Warrior its 50 %
+  frontal mitigation; flanking is still the answer to both.
+- **Caster** (Mage, and Varkas's blade waves / summon / scream) — casters gesture, and `Interact`
+  is a real forward reach. `Throw` covers a thrown bone shard.
+
+The zone's melee grunt is the **Ashen Marauder** on Q Ninja, which owns a real `Bite_Front` strike.
+That replaces the designed Bandit Ranger (KA Ranger + bow_A): the Adventurers pack has the same
+split AND the same missing combat set, so a bow-drawing bandit is not available either.
 
 ### Elder Grove (30 elite pocket)
 

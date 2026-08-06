@@ -17,6 +17,7 @@
 
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import prettier from 'prettier';
 
 const GLB_MAGIC = 0x46546c67; // 'glTF'
 const CHUNK_JSON = 0x4e4f534a; // 'JSON'
@@ -82,6 +83,13 @@ export const generateEnemyClips = async (bakedDir, outFile) => {
   const body = rows
     .map(([id, clips]) => `  ${id}: [${clips.map((clip) => `'${clip}'`).join(', ')}],`)
     .join('\n');
-  await writeFile(outFile, `${HEADER}${body}\n};\n`);
+  // Formatted here rather than left for whoever runs the generator: a row long
+  // enough to wrap would otherwise fail `pnpm check`'s format gate on a file
+  // nobody is allowed to hand-edit.
+  const source = await prettier.format(`${HEADER}${body}\n};\n`, {
+    ...(await prettier.resolveConfig(outFile)),
+    filepath: outFile,
+  });
+  await writeFile(outFile, source);
   return { models: rows.length, clips: rows.reduce((sum, [, list]) => sum + list.length, 0) };
 };

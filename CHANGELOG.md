@@ -7,15 +7,19 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ### Added — the rest of the bestiary's models (2026-08-06, P12-C)
 
-- **23 more enemy models baked** — the alpakings and raptors of the savanna, the demons, golelings,
+- **24 more enemy models baked** — the alpakings and raptors of the savanna, the demons, golelings,
   yeti and squidle of the canyons, both dragons, the cactoros, monkroose, hywirls and grave wisps,
-  and the rabbits, chickens and birds that make a place feel lived in. 39 enemy models in all,
-  137 baked assets / 23.27 MB of the 64 MB budget.
-- **The four skeletons cannot animate.** They bake with no clips at all, because the pack keeps
-  meshes and animations in separate files. Nothing has shipped onto them and nothing will until
-  the pipeline can merge a shared rig's clips into a mesh — Emberwood's undead are blocked on it,
-  and it is written down in NPCS_ENEMIES §4.1 rather than discovered by a player watching a
-  skeleton slide across a graveyard without moving its legs.
+  a hooded marauder for the Emberwood, and the rabbits, chickens and birds that make a place feel
+  lived in. 40 enemy models in all, 138 baked assets / 24.09 MB of the 64 MB budget.
+- **The four skeletons walk, run, flinch and die now.** They baked with no clips at all, because
+  the pack keeps meshes and animations in separate files — a skeleton stood frozen and slid along
+  the ground. The pipeline can stitch a shared rig's clips into a character, so the Emberwood's
+  undead are unblocked.
+- **The Emberwood's skeletons are chargers, casters and a swarm, not sword-swingers.** The free
+  pack ships no melee swing at all, so rather than shipping enemies whose attacks animate nothing,
+  the undead do what the rig can really play: the Rogue and the Warrior lunge (the charge IS the
+  attack, and flanking is still the answer to both), the Mage gestures, the Minions swarm. The
+  zone's melee grunt is a hooded Ashen Marauder that owns a real strike.
 
 ### Added — the Dawnlands exist (2026-08-06, P12-A)
 

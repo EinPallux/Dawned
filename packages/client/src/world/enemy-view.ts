@@ -20,8 +20,6 @@ interface ClipSet {
   alert: string;
 }
 
-const armature = (name: string): string => `CharacterArmature|${name}`;
-
 /**
  * The Quaternius monster bundle rigs its models in exactly three families, and
  * their clip names are NOT interchangeable — a walker has `Idle`/`Walk` where
@@ -30,35 +28,65 @@ const armature = (name: string): string => `CharacterArmature|${name}`;
  * Naming the families once beats fifteen near-identical literals and makes the
  * mismatch impossible to introduce by copy-paste.
  *
+ * Clips are named BARE here, the way `ENEMY_MODEL_CLIPS` records them and the
+ * way content authors type them into the panel. Quaternius exports every clip
+ * prefixed with its armature (`CharacterArmature|Idle`) and KayKit does not;
+ * `EnemyView.resolve` is the one place that knows a prefix can exist.
+ *
  * Verified by reading the baked glTF animation lists, not by assumption.
  */
 const WALKER: ClipSet = {
-  idle: armature('Idle'),
-  move: armature('Walk'),
-  hit: armature('HitRecieve'), // (sic — the pack misspells it in this family)
-  death: armature('Death'),
-  alert: armature('No'),
+  idle: 'Idle',
+  move: 'Walk',
+  hit: 'HitRecieve', // (sic — the pack misspells it in this family)
+  death: 'Death',
+  alert: 'No',
 };
 
-/** Floaters (glub, bees, ghosts): no Idle and no Walk exist on these rigs. */
+/**
+ * Named for the glub and the bees it was first written for, and the pack then
+ * gives the SAME clip set to legged models (alpaking, goleling, demon, dragon,
+ * squidle) — for those, `Fast_Flying` is simply what the export calls their run.
+ * The family is a fact about clip names, not about how a monster moves.
+ */
 const FLOATER: ClipSet = {
-  idle: armature('Flying_Idle'),
-  move: armature('Fast_Flying'),
-  hit: armature('HitReact'),
-  death: armature('Death'),
-  alert: armature('No'),
+  idle: 'Flying_Idle',
+  move: 'Fast_Flying',
+  hit: 'HitReact',
+  death: 'Death',
+  alert: 'No',
 };
 
 /** The richest family (frog, orc, mushroom king): real Run + Weapon clips. */
 const HUMANOID: ClipSet = {
-  idle: armature('Idle'),
-  move: armature('Run'),
-  hit: armature('HitReact'),
-  death: armature('Death'),
-  alert: armature('No'),
+  idle: 'Idle',
+  move: 'Run',
+  hit: 'HitReact',
+  death: 'Death',
+  alert: 'No',
 };
 
-/** Logical → actual clip names per baked model (verified against the bakes). */
+/**
+ * KayKit's `Rig_Medium`, stitched into the four skeletons by the pipeline's
+ * `mergeClips` (docs/design/NPCS_ENEMIES.md §4.1). `move` is the RUN and not
+ * `Walking_A`: without patrols, an enemy that is moving is chasing or leashing.
+ * `alert` is `Interact` — a forward reach — because this rig has no
+ * head-shake `No`, and the FREE pack ships no melee swing at all, which is why
+ * the Emberwood skeletons are ranged/charger/caster rather than grunts.
+ */
+const SKELETON: ClipSet = {
+  idle: 'Idle_A',
+  move: 'Running_A',
+  hit: 'Hit_A',
+  death: 'Death_A',
+  alert: 'Interact',
+};
+
+/**
+ * Logical → clip family per baked model, verified against the bakes: every row
+ * here is grouped by the EXACT animation-name set the manifest reports, so a
+ * model can only be in the family whose clips it owns.
+ */
 const MODEL_CLIPS: Record<string, ClipSet> = {
   // Dawnshore
   enemies_glub: FLOATER,
@@ -77,9 +105,35 @@ const MODEL_CLIPS: Record<string, ClipSet> = {
   enemies_cat: WALKER,
   enemies_wizard: WALKER,
   enemies_mushroom_king: HUMANOID,
-  // skeleton_minion is baked but unmapped until something places it — an
-  // unmapped model renders statically rather than guessing clip names
-  // unverified.
+  // Emberwood
+  enemies_skeleton_minion: SKELETON,
+  enemies_skeleton_rogue: SKELETON,
+  enemies_skeleton_mage: SKELETON,
+  enemies_skeleton_warrior: SKELETON,
+  enemies_cactoro: WALKER,
+  enemies_monkroose: HUMANOID,
+  enemies_ghost_skull: FLOATER,
+  enemies_ninja: WALKER,
+  // Sungraze Savanna
+  enemies_alpaking: FLOATER,
+  enemies_alpaking_evolved: FLOATER,
+  enemies_dino: HUMANOID,
+  enemies_orc_enemy: WALKER,
+  enemies_tribal: FLOATER,
+  enemies_hywirl: FLOATER,
+  // Ashcrag Canyons
+  enemies_goleling: FLOATER,
+  enemies_goleling_evolved: FLOATER,
+  enemies_demon: FLOATER,
+  enemies_blue_demon: HUMANOID,
+  enemies_yeti: WALKER,
+  enemies_squidle: FLOATER,
+  enemies_dragon: FLOATER,
+  enemies_dragon_evolved: FLOATER,
+  // Ambient (§4 non-combat)
+  enemies_bunny: HUMANOID,
+  enemies_chicken: WALKER,
+  enemies_birb: WALKER,
 };
 
 interface ManifestAsset {
@@ -198,6 +252,8 @@ export class EnemyView {
   readonly group = new THREE.Group();
   private mixer: THREE.AnimationMixer | null = null;
   private readonly actions = new Map<string, THREE.AnimationAction>();
+  /** `Idle` → `CharacterArmature|Idle`, for packs that prefix (see `resolve`). */
+  private readonly byBareName = new Map<string, string>();
   private current = '';
   private silhouette: THREE.Mesh | null = null;
   private readonly materials: THREE.MeshStandardMaterial[] = [];
@@ -249,6 +305,7 @@ export class EnemyView {
       this.mixer = new THREE.AnimationMixer(clone);
       for (const clip of source.animations) {
         this.actions.set(clip.name, this.mixer.clipAction(clip));
+        this.byBareName.set(clip.name.slice(clip.name.lastIndexOf('|') + 1), clip.name);
       }
       this.play(this.clipFor('idle'), { randomizePhase: true });
     } else {
@@ -263,8 +320,22 @@ export class EnemyView {
     this.buildPlates();
   }
 
+  /**
+   * A clip name as authored → the animation this model actually carries, or ''.
+   *
+   * Two packs, two conventions: Quaternius exports every clip prefixed with its
+   * armature (`CharacterArmature|Idle`), KayKit exports plain names (`Idle_A`).
+   * `ENEMY_MODEL_CLIPS`, the content rows and the clip sets above all use the
+   * bare name, so this is the single place that knows a prefix can exist —
+   * a hardcoded `CharacterArmature|` was a lie for half the models we ship.
+   */
+  private resolve(name: string): string {
+    if (!name) return '';
+    return this.actions.has(name) ? name : (this.byBareName.get(name) ?? '');
+  }
+
   private clipFor(kind: 'idle' | 'move' | 'hit' | 'death' | 'alert'): string {
-    return MODEL_CLIPS[this.meta.modelRef]?.[kind] ?? '';
+    return this.resolve(MODEL_CLIPS[this.meta.modelRef]?.[kind] ?? '');
   }
 
   /** Active clip + mixer truth (smoke tests catch silently-missing clips). */
@@ -280,8 +351,7 @@ export class EnemyView {
 
   /** Ability ordinal → content clip name (AbilityStart events carry ordinals). */
   clipForAbility(ordinal: number): string {
-    const ability = this.def?.abilities[ordinal];
-    return ability ? `CharacterArmature|${ability.clip}` : '';
+    return this.resolve(this.def?.abilities[ordinal]?.clip ?? '');
   }
 
   /**

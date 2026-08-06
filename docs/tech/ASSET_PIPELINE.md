@@ -45,6 +45,35 @@
   (authoritative) and admin editor (preview).
 - Output naming: `assets/models/<category>/<slug>.<contenthash>.glb`.
 
+### 2.1 `mergeClips` — the opposite of the composed rig (P12-C)
+
+Players are composed at load time because the combinations are combinatorial. **Enemies are not**:
+the renderer loads one file per model and expects its clips inside it. That is fine for Quaternius,
+which ships monsters with their animations embedded, and wrong for KayKit, which ships characters
+and a shared `Rig_Medium` library in separate files — the four skeletons baked with **zero clips**
+and stood frozen while sliding along the ground (NPCS_ENEMIES.md §4.1).
+
+`mergeClips: ["Animations/gltf/Rig_Medium/Rig_Medium_General.glb", …]` (paths relative to the pack
+root) merges those libraries into the character before any other transform, then rebinds every
+animation channel **by joint name** onto the mesh's own skeleton. Rules:
+
+- It is a **rebind, not a retarget**. Both documents must carry the same joints under the same
+  names; a channel whose joint has no counterpart **throws**, because silently skipping it is how a
+  limb ends up not moving with nobody noticing.
+- Everything except the clips is disposed explicitly — a library is a whole second character, and
+  `prune()` will NOT reclaim it (the merged-in skin keeps its own joints alive, so the model would
+  ship two skeletons and animate the invisible one).
+- Accessors move onto the character's buffer: a GLB may hold at most one, and each merged document
+  brings its own.
+- The rule implies `skinned: true` in practice — the prop path's `flatten()`/`join()` would rename
+  the very nodes the channels target.
+- The library files join the source hash, so editing one re-bakes the characters that use it.
+- Pair it with `animationKeep`: the KayKit library is 25 clips and the game plays 8.
+
+Tested in `tools/asset-pipeline/src/merge-clips.test.mjs` against the real pack (one skin left, every
+channel bound to it, geometry untouched, a walk cycle that actually moves joints, and a foreign rig
+refused) — `vitest` collects `tools/**/*.test.mjs` for this.
+
 ## 3. Texture/Image Pipeline
 
 - Palette + splat + particle textures → PNG optimized (sharp: strip metadata, correct sRGB), sizes

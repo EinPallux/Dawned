@@ -25,6 +25,7 @@ import {
   textureCompress,
 } from '@gltf-transform/functions';
 import sharp from 'sharp';
+import { mergeClipsInto } from './merge-clips.mjs';
 
 /**
  * Substitute for source images that a rule marks broken (`imageOverrides: null`).
@@ -44,7 +45,7 @@ export const MANIFEST_PATH = path.join(BAKED_DIR, 'manifest.json');
 const io = new NodeIO().registerExtensions(KHRONOS_EXTENSIONS);
 
 /** Bump when the behavior behind rule options (skinned/animationsOnly/…) changes. */
-const OPTION_TRANSFORM_VERSION = 3;
+const OPTION_TRANSFORM_VERSION = 4;
 
 /**
  * Bump when the DEFAULT transform changes — it joins every source hash, so a
@@ -417,12 +418,17 @@ export const build = async ({ force = false, verbose = true } = {}) => {
       for (const dependency of dependencies) {
         hasher.update(await readFile(dependency).catch(() => Buffer.alloc(0)));
       }
+      // A merged clip library is as much an input as the mesh: editing it has to
+      // re-bake the character, and hashing only the rule's path would not notice.
+      const clipPaths = (rule.mergeClips ?? []).map((relative) => path.join(packRoot, relative));
+      for (const clipPath of clipPaths) hasher.update(await readFile(clipPath));
       if (
         rule.imageOverrides ||
         rule.skinned ||
         rule.animationsOnly ||
         rule.animationKeep ||
-        rule.bodyCut
+        rule.bodyCut ||
+        rule.mergeClips
       ) {
         hasher.update(
           JSON.stringify({
@@ -432,6 +438,7 @@ export const build = async ({ force = false, verbose = true } = {}) => {
             animationsOnly: rule.animationsOnly ?? false,
             animationKeep: rule.animationKeep ?? null,
             bodyCut: rule.bodyCut ?? null,
+            mergeClips: rule.mergeClips ?? null,
           }),
         );
       }
@@ -453,7 +460,12 @@ export const build = async ({ force = false, verbose = true } = {}) => {
 
       let document;
       try {
-        document = await readDocument(sourcePath, rule.imageOverrides);
+        // A pack that ships mesh and clips separately (KayKit's `Rig_Medium`,
+        // the split our own player rigs use) is stitched back together here —
+        // the enemy renderer expects one file per model with its clips inside.
+        document = clipPaths.length
+          ? (await mergeClipsInto(sourcePath, clipPaths)).document
+          : await readDocument(sourcePath, rule.imageOverrides);
       } catch (error) {
         problems.push(`failed to read ${relativeSource}: ${error.message}`);
         continue;

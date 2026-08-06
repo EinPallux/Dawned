@@ -1089,9 +1089,9 @@
     "enemies_skeleton_minion": {
       "id": "enemies_skeleton_minion",
       "category": "enemies",
-      "file": "assets_baked/enemies/skeleton_minion.50204e21.glb",
-      "bytes": 302644,
-      "sourceHash": "97df5d1b9cb51801bac54173acc0bea44fe48b32580524e4233e6f7cc09f7aae",
+      "file": "assets_baked/enemies/skeleton_minion.b93b36c9.glb",
+      "bytes": 493560,
+      "sourceHash": "dd1ad9e3a5802322f2f41a15730be362daaf4bb313808e637852140815c117d0",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Minion.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -1112,7 +1112,16 @@
           0.4538
         ]
       },
-      "animations": []
+      "animations": [
+        "Death_A",
+        "Hit_A",
+        "Idle_A",
+        "Idle_B",
+        "Interact",
+        "Throw",
+        "Running_A",
+        "Walking_A"
+      ]
     },
     "enemies_green_blob": {
       "id": "enemies_green_blob",
@@ -1624,7 +1633,7 @@
       "category": "characters",
       "file": "assets_baked/characters/superhero_female_fullbody.4e9e115c.glb",
       "bytes": 292520,
-      "sourceHash": "155fc052f9c5cad723e19c3bf50cf3c606d06b80a5449977b2357fdfc80ba01e",
+      "sourceHash": "c544e91561aebc16708493519d67f47eb2b7eb52c6a72fd56f6b13003c0aa10a",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1652,7 +1661,7 @@
       "category": "characters",
       "file": "assets_baked/characters/superhero_male_fullbody.da8ac88d.glb",
       "bytes": 260480,
-      "sourceHash": "dc12f8f97c13b7a07e7c8d2815e67e8cdd927536d7d7678a33a898a85125c8fe",
+      "sourceHash": "39827febc1bcad0627c95ca81912888c42b66990f87ebfadf2b17be7cb697717",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1680,7 +1689,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_beard.a821a2a0.glb",
       "bytes": 91224,
-      "sourceHash": "e43ccab27811c01a8769389f78cdb620dfc0203e5cb898225c68d61c2b09b6b0",
+      "sourceHash": "4184ca6caa430c24d3550295c0629400445043498054a721e927ab0cefea7a73",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Beard.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1708,7 +1717,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buns.1fc68dd7.glb",
       "bytes": 264612,
-      "sourceHash": "253394caa8e4eabf4605c10afd586a9ceafdc86c60c4079f51e914d18cce52aa",
+      "sourceHash": "a6e57f56d69b1fc13cb05033df55e66b90ad65745addf9463aaecc6519a3b622",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buns.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1736,7 +1745,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buzzed.8dbf3857.glb",
       "bytes": 83244,
-      "sourceHash": "4d92c07ad49a795b4828045c44b2a2104f47d4f50206713a67015722764ce45a",
+      "sourceHash": "4013562527e04957b4384b4a9db25cfcf08028b299f5bc6edb0f2a0a50125e55",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buzzed.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1764,7 +1773,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buzzedfemale.5e8faee0.glb",
       "bytes": 83772,
-      "sourceHash": "bd09419be75352e5685797834bfb4bcfcff343847fb915e00d23fea0c17cd052",
+      "sourceHash": "d2c49600381059c095774e473141e9e394a395fcbb142bbc452ac697f1586246",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_BuzzedFemale.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1792,7 +1801,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_long.6eb203db.glb",
       "bytes": 240456,
-      "sourceHash": "fe0e9f3404e8502031080763629f8f0f0347cbf0e8333c29e05b2af4c80186d9",
+      "sourceHash": "593a6c1647d58c454270a107bc4307c6953a702c16561eb5ce0d2760b25ba47b",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Long.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1820,7 +1829,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_simpleparted.cd612f7c.glb",
       "bytes": 101204,
-      "sourceHash": "6601c0a83f2ad211b0890db51bd6caa6efadc2e9eda1575615d9d821bed79637",
+      "sourceHash": "c141cf3c96850b7018fdbf1c7e882b90b8563ebbfc2823d927e0da7c0d3cf7f1",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1848,7 +1857,7 @@
       "category": "characters",
       "file": "assets_baked/characters/female_peasant.1a3743a0.glb",
       "bytes": 686464,
-      "sourceHash": "4b3cb90c2d35353cb77b6784666e866ce1c7101cbce6602b83df7f744daa2720",
+      "sourceHash": "42a340f202cdf2d0694852029c956dcbba3aee584cb19c1373bb7160148a9f90",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Peasant.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -1876,7 +1885,7 @@
       "category": "characters",
       "file": "assets_baked/characters/female_ranger.f344256f.glb",
       "bytes": 1654600,
-      "sourceHash": "cf442fad7cc4b831bc200d2a50eda5bb065f441f54a3c3ba5a8d770e2f072058",
+      "sourceHash": "2d68fed53f6155ebb2eefe6a109054fc7801039b25cfce78c42d65807ddff6d2",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Ranger.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -1904,7 +1913,7 @@
       "category": "characters",
       "file": "assets_baked/characters/male_peasant.1ff17763.glb",
       "bytes": 654824,
-      "sourceHash": "c49d47cbdde801d425bfc06d1073a4d0be71d367bcfbe6d818ea8267c2157bff",
+      "sourceHash": "d6580f7eb095c53947a5b9943c49e71a243be9553b431182ef5a0b88985a1b71",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Peasant.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -1932,7 +1941,7 @@
       "category": "characters",
       "file": "assets_baked/characters/male_ranger.fa540f1a.glb",
       "bytes": 1644860,
-      "sourceHash": "44277a4880b70f7c081b37dbc6598df03d2e78f9493be38e3fa75ce08d12df4c",
+      "sourceHash": "14d5df0dbb421fe7e9b2ab9337609280100bdded964b3691209b4050350141b6",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Ranger.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -1960,7 +1969,7 @@
       "category": "characters",
       "file": "assets_baked/characters/ual1.f1959b9d.glb",
       "bytes": 2074608,
-      "sourceHash": "b33df808df7ee6817bae3b2b5b827bc1d306c41d9da15c9173bb67edfefd48d9",
+      "sourceHash": "0e1f14a78436c0d15806fbbabc4423a99c91efdea07cbd8e178dc1372ae44bfd",
       "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
       "pack": "quaternius-ual1",
       "packName": "Quaternius Universal Animation Library 1 (PRO)",
@@ -2017,7 +2026,7 @@
       "category": "characters",
       "file": "assets_baked/characters/ual2_standard.56b3b900.glb",
       "bytes": 718816,
-      "sourceHash": "bb597b67985f00351e481f45b9116021a68d368f9d52511107ec5f3ab6d88a05",
+      "sourceHash": "4a445958a54bfc4f2d29c7a04ded33ffa0bc0c6965f8dbaa60c6949966ad23a8",
       "source": "assets/player_characters/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
       "pack": "quaternius-ual2",
       "packName": "Quaternius Universal Animation Library 2 (Standard)",
@@ -2215,7 +2224,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_a_color1.61709477.glb",
       "bytes": 9004,
-      "sourceHash": "d996a037a97459124fb49e8751539bc35fee374070da83d2258b7f7ac95a7013",
+      "sourceHash": "8d821d42b8ef2a73f26859daf2f096364165d968ea91e45bd2dc2f13d0dc3c32",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_A_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2243,7 +2252,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_c_color1.fb0ebf69.glb",
       "bytes": 10624,
-      "sourceHash": "391a93ef42708858891fd6c9b97c9b264b2ca4e7b4203bb4c8f3608940e71bf8",
+      "sourceHash": "9c4d513f2d5e9689c5d21c8e91884b6b5536a21ca5e787bbdb813dd6bd378d42",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_C_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2271,7 +2280,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_3_d_color1.89c92bb5.glb",
       "bytes": 12428,
-      "sourceHash": "575dc63eec36ba23b92d8006dba5fd0cd3cab6487de8fb97418c730ec81cafc0",
+      "sourceHash": "72666c9f355cdef57956ae2ae00741d7b0566960537590e7b80731d800f1d536",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_3_D_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2299,7 +2308,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_e_color1.76a4623a.glb",
       "bytes": 23756,
-      "sourceHash": "9bb3f001cf8cf3dc8120d51b39d5e265d5ebfa247d6939c9b2698f28666b77e4",
+      "sourceHash": "d4274055b2e6eab58628abeacbe7fde72d4b9df508c5e0241c08e94ffaa79b2b",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_E_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2327,7 +2336,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_3_h_color1.28de8924.glb",
       "bytes": 15348,
-      "sourceHash": "e221982daa44dd2d226333c56cf6cc4190e6445556603695deefba553229f10b",
+      "sourceHash": "8b66493df7d9315aeaf7e8dbb864f2baded63ea22622d4e5315a29122321d7fa",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_3_H_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -4194,9 +4203,9 @@
     "enemies_skeleton_rogue": {
       "id": "enemies_skeleton_rogue",
       "category": "enemies",
-      "file": "assets_baked/enemies/skeleton_rogue.6aabe24b.glb",
-      "bytes": 315184,
-      "sourceHash": "0f71a33a53fdd530e7d13014d38bf5ff84da52eef013debacaeab375b376b564",
+      "file": "assets_baked/enemies/skeleton_rogue.d2733d0f.glb",
+      "bytes": 506132,
+      "sourceHash": "11ac98b8db3f4928a9dc025d163ee5cb09c4a66dde4568f634de6cf054043a84",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Rogue.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -4217,14 +4226,23 @@
           0.5712
         ]
       },
-      "animations": []
+      "animations": [
+        "Death_A",
+        "Hit_A",
+        "Idle_A",
+        "Idle_B",
+        "Interact",
+        "Throw",
+        "Running_A",
+        "Walking_A"
+      ]
     },
     "enemies_skeleton_mage": {
       "id": "enemies_skeleton_mage",
       "category": "enemies",
-      "file": "assets_baked/enemies/skeleton_mage.b4b29d50.glb",
-      "bytes": 249788,
-      "sourceHash": "7c2a809e297b4a07a4525b2ed8ff646b438e242c53311a2dcd0368115318277b",
+      "file": "assets_baked/enemies/skeleton_mage.42165d90.glb",
+      "bytes": 440732,
+      "sourceHash": "0fb1280b0570debfd6bc290b756e38300ee603a8bd76328669a3fd8d94b3375b",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Mage.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -4245,14 +4263,23 @@
           0.887
         ]
       },
-      "animations": []
+      "animations": [
+        "Death_A",
+        "Hit_A",
+        "Idle_A",
+        "Idle_B",
+        "Interact",
+        "Throw",
+        "Running_A",
+        "Walking_A"
+      ]
     },
     "enemies_skeleton_warrior": {
       "id": "enemies_skeleton_warrior",
       "category": "enemies",
-      "file": "assets_baked/enemies/skeleton_warrior.c776080c.glb",
-      "bytes": 351472,
-      "sourceHash": "c7fbb1b70704f11e13e3473a3b006285c9990a30b7da0f44d0b1c208fa1a81ca",
+      "file": "assets_baked/enemies/skeleton_warrior.19f8247d.glb",
+      "bytes": 542388,
+      "sourceHash": "644ac133410aef248d541caee842587ebb27fec26116d00f8568ff04001654e9",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Warrior.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -4273,7 +4300,54 @@
           0.7005
         ]
       },
-      "animations": []
+      "animations": [
+        "Death_A",
+        "Hit_A",
+        "Idle_A",
+        "Idle_B",
+        "Interact",
+        "Throw",
+        "Running_A",
+        "Walking_A"
+      ]
+    },
+    "enemies_ninja": {
+      "id": "enemies_ninja",
+      "category": "enemies",
+      "file": "assets_baked/enemies/ninja.57e6e476.glb",
+      "bytes": 99352,
+      "sourceHash": "ce5294c7635599a9723f9627c9177be1561946c9afdf7bfbed65bacd4370acb9",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Ninja.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2160,
+      "bounds": {
+        "min": [
+          -0.0116,
+          -0.0139,
+          -0.0023
+        ],
+        "max": [
+          0.0133,
+          0.0127,
+          0.0279
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "$comment": "License ledger \u2014 the source of truth for attribution. Every served asset must belong to a pack listed here, and every pack must carry license + source. The build fails on unattributed files (docs/tech/ASSET_PIPELINE.md \u00a71). Licenses marked \"verify\" are Phase 0 checklist items before those packs may ship.",
+  "$comment": "License ledger — the source of truth for attribution. Every served asset must belong to a pack listed here, and every pack must carry license + source. The build fails on unattributed files (docs/tech/ASSET_PIPELINE.md §1). Licenses marked \"verify\" are Phase 0 checklist items before those packs may ship.",
   "packs": {
     "kaykit-forest": {
       "name": "KayKit Forest Nature Pack 1.0 FREE",
@@ -50,7 +50,7 @@
       "root": "assets/player_characters/Universal Base Characters[Standard]"
     },
     "quaternius-outfits-fantasy": {
-      "name": "Quaternius Modular Character Outfits \u2014 Fantasy (Standard)",
+      "name": "Quaternius Modular Character Outfits — Fantasy (Standard)",
       "author": "Quaternius",
       "license": "CC0-1.0",
       "verified": true,
@@ -134,12 +134,12 @@
       "author": "Quaternius",
       "license": "CC0-1.0",
       "verified": true,
-      "$licenseNote": "The folder ships no License_Standard.txt of its own \u2014 its siblings in this repo (Fantasy Props MegaKit, Stylized Nature MegaKit) do, and they read CC0 1.0 Universal for the Standard build. Same publisher, same [Standard] packaging, same glTF export. Ultimate Nature Kit 2 was already shipped on exactly this reasoning; writing it down here so it is a judgement on the record rather than an assumption nobody re-checks.",
+      "$licenseNote": "The folder ships no License_Standard.txt of its own — its siblings in this repo (Fantasy Props MegaKit, Stylized Nature MegaKit) do, and they read CC0 1.0 Universal for the Standard build. Same publisher, same [Standard] packaging, same glTF export. Ultimate Nature Kit 2 was already shipped on exactly this reasoning; writing it down here so it is a judgement on the record rather than an assumption nobody re-checks.",
       "source": "https://quaternius.com/",
       "root": "assets/world/Ultimate Fatasy Buildings Kit[Standard]"
     }
   },
-  "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land \u2014 the pipeline itself does not change.",
+  "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land — the pipeline itself does not change.",
   "selection": [
     {
       "pack": "kaykit-forest",
@@ -154,7 +154,7 @@
       "limit": 3
     },
     {
-      "$comment": "P2 foliage set \u2014 instanced per terrain chunk (grass tufts, bushes, bare trees for the ashen zone).",
+      "$comment": "P2 foliage set — instanced per terrain chunk (grass tufts, bushes, bare trees for the ashen zone).",
       "pack": "kaykit-forest",
       "category": "world/nature",
       "glob": "Assets/gltf/Grass_*_Color1.gltf",
@@ -185,7 +185,7 @@
       "limit": 2
     },
     {
-      "$comment": "P8 visible weapons \u2014 one model per weapon family the four classes can hold, plus shields for the Warrior/Cleric offhand (ITEMS_LOOT.md \u00a71: held gear is visible, armour is not).",
+      "$comment": "P8 visible weapons — one model per weapon family the four classes can hold, plus shields for the Warrior/Cleric offhand (ITEMS_LOOT.md §1: held gear is visible, armour is not).",
       "pack": "kaykit-weapons",
       "category": "items/weapons",
       "glob": "Assets/gltf/dagger_*.gltf",
@@ -243,10 +243,25 @@
       "pack": "kaykit-skeletons",
       "category": "enemies",
       "glob": "characters/gltf/Skeleton_Minion.glb",
-      "limit": 1
+      "limit": 1,
+      "skinned": true,
+      "mergeClips": [
+        "Animations/gltf/Rig_Medium/Rig_Medium_General.glb",
+        "Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb"
+      ],
+      "animationKeep": [
+        "Idle_A",
+        "Idle_B",
+        "Walking_A",
+        "Running_A",
+        "Hit_A",
+        "Death_A",
+        "Interact",
+        "Throw"
+      ]
     },
     {
-      "$comment": "P9 bestiary \u2014 Dawnshore (NPCS_ENEMIES.md \u00a74). Shore Glub and Young Mushnub reuse the models baked at P4/P5.",
+      "$comment": "P9 bestiary — Dawnshore (NPCS_ENEMIES.md §4). Shore Glub and Young Mushnub reuse the models baked at P4/P5.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Green Blob.glb",
@@ -265,7 +280,7 @@
       "limit": 1
     },
     {
-      "$comment": "Bandit Forager: the doc names a KayKit Adventurers peasant, a pack not in assets/. Orc is the closest humanoid on disk that actually WALKS \u2014 Tribal looked right but is rigged in the pack's flyer family (no Idle/Walk clips). See USER_QUESTIONS Q22.",
+      "$comment": "Bandit Forager: the doc names a KayKit Adventurers peasant, a pack not in assets/. Orc is the closest humanoid on disk that actually WALKS — Tribal looked right but is rigged in the pack's flyer family (no Idle/Walk clips). See USER_QUESTIONS Q22.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Orc.glb",
@@ -279,7 +294,7 @@
       "limit": 1
     },
     {
-      "$comment": "P9 bestiary \u2014 Verdant Weald.",
+      "$comment": "P9 bestiary — Verdant Weald.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Frog.glb",
@@ -322,14 +337,14 @@
       "limit": 1
     },
     {
-      "$comment": "Mushroom King \u2014 the first real boss (P9 DoD).",
+      "$comment": "Mushroom King — the first real boss (P9 DoD).",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Mushroom King.glb",
       "limit": 1
     },
     {
-      "$comment": "P1 player heads: the modular outfits ship their own body geometry (bodyCut keeps head+neck of the fused base; the seam hides in every collar). The pack's Godot-UE export references two textures that do not exist (typo'd `_png.png` names) and defaults to the Dark basecolor variants \u2014 the runtime skin-tint model multiplies DOWN from the Light variants (packages/shared appearance.ts), so both are overridden. `null` drops the broken slot.",
+      "$comment": "P1 player heads: the modular outfits ship their own body geometry (bodyCut keeps head+neck of the fused base; the seam hides in every collar). The pack's Godot-UE export references two textures that do not exist (typo'd `_png.png` names) and defaults to the Dark basecolor variants — the runtime skin-tint model multiplies DOWN from the Light variants (packages/shared appearance.ts), so both are overridden. `null` drops the broken slot.",
       "pack": "quaternius-base-characters",
       "category": "characters",
       "glob": "Base Characters/Godot - UE/Superhero_*_FullBody.gltf",
@@ -355,7 +370,7 @@
       }
     },
     {
-      "$comment": "Hairstyles + beard, skinned to the shared 65-bone rig (head bone variant). Eyebrows_* are deliberately excluded \u2014 the base bodies ship eyebrows built in. Hair basecolors bake to a brightness-normalized luminance map (grayscale mean 0.56 \u00d7 1.47 \u2248 0.82) so runtime multiply tints land on the picked swatch with strand shading intact.",
+      "$comment": "Hairstyles + beard, skinned to the shared 65-bone rig (head bone variant). Eyebrows_* are deliberately excluded — the base bodies ship eyebrows built in. Hair basecolors bake to a brightness-normalized luminance map (grayscale mean 0.56 × 1.47 ≈ 0.82) so runtime multiply tints land on the picked swatch with strand shading intact.",
       "pack": "quaternius-base-characters",
       "category": "characters",
       "glob": "Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_*.gltf",
@@ -387,7 +402,7 @@
       }
     },
     {
-      "$comment": "Animation library \u2014 only the clips a shipped phase uses are kept (menus: class poses; world: locomotion; P4: dodge, hit reacts, deaths, spell bolt; P7: level-up Celebration).",
+      "$comment": "Animation library — only the clips a shipped phase uses are kept (menus: class poses; world: locomotion; P4: dodge, hit reacts, deaths, spell bolt; P7: level-up Celebration).",
       "pack": "quaternius-ual1",
       "category": "characters",
       "glob": "Unreal-Godot/UAL1.glb",
@@ -456,7 +471,7 @@
       ]
     },
     {
-      "$comment": "P10 woodcutting nodes (PROFESSIONS.md \u00a72) \u2014 one tree per tier so a forest reads as its tier from a distance, plus the felled log every chopped tree leaves behind.",
+      "$comment": "P10 woodcutting nodes (PROFESSIONS.md §2) — one tree per tier so a forest reads as its tier from a distance, plus the felled log every chopped tree leaves behind.",
       "pack": "quaternius-nature-kit2",
       "category": "world/nature",
       "glob": "glTF/BirchTree_2.gltf",
@@ -493,7 +508,7 @@
       "limit": 1
     },
     {
-      "$comment": "P10 mining nodes (PROFESSIONS.md \u00a73). The forest pack ships one grey rock; a different SHAPE per tier plus an atlas tint per ore is what makes copper readable as copper at thirty metres. The tint multiplies each baked copy's own embedded texture, so the plain scatter rocks are untouched.",
+      "$comment": "P10 mining nodes (PROFESSIONS.md §3). The forest pack ships one grey rock; a different SHAPE per tier plus an atlas tint per ore is what makes copper readable as copper at thirty metres. The tint multiplies each baked copy's own embedded texture, so the plain scatter rocks are untouched.",
       "pack": "kaykit-forest",
       "category": "world/nature",
       "glob": "Assets/gltf/Rock_2_A_Color1.gltf",
@@ -557,7 +572,7 @@
       "limit": 1
     },
     {
-      "$comment": "P10 herbalism nodes (PROFESSIONS.md \u00a74) \u2014 a distinct bloom per tier plus the Elder Grove's Dawnpetal. Picked herbs leave nothing behind, so these have no depleted model.",
+      "$comment": "P10 herbalism nodes (PROFESSIONS.md §4) — a distinct bloom per tier plus the Elder Grove's Dawnpetal. Picked herbs leave nothing behind, so these have no depleted model.",
       "pack": "quaternius-nature-kit2",
       "category": "world/nature",
       "glob": "glTF/Flower_1_Clump.gltf",
@@ -594,7 +609,7 @@
       "limit": 1
     },
     {
-      "$comment": "P10 fishing spots (PROFESSIONS.md \u00a75). The node IS the fish you can see under the surface \u2014 a marker buoy would be someone else's gear, and an empty patch of water is not a thing you can aim at. One species per tier; a fished-out spot shows nothing at all.",
+      "$comment": "P10 fishing spots (PROFESSIONS.md §5). The node IS the fish you can see under the surface — a marker buoy would be someone else's gear, and an empty patch of water is not a thing you can aim at. One species per tier; a fished-out spot shows nothing at all.",
       "pack": "quaternius-fish",
       "category": "world/nature",
       "glob": "Goldfish.glb",
@@ -625,7 +640,7 @@
       "limit": 1
     },
     {
-      "$comment": "P11 interactables (QUESTS_POI.md \u00a74). Every one of these is a thing a player walks up to and presses F on, so none of them may be a re-labelled rock \u2014 the modelRef is what makes an interactable readable from ten metres away.",
+      "$comment": "P11 interactables (QUESTS_POI.md §4). Every one of these is a thing a player walks up to and presses F on, so none of them may be a re-labelled rock — the modelRef is what makes an interactable readable from ten metres away.",
       "pack": "kaykit-dungeon",
       "category": "world/props",
       "glob": "Assets/gltf/chest.gltf",
@@ -653,7 +668,7 @@
       "limit": 1
     },
     {
-      "$comment": "Dawnhaven's hall \u2014 the silhouette a new player orients on from the beach.",
+      "$comment": "Dawnhaven's hall — the silhouette a new player orients on from the beach.",
       "pack": "quaternius-buildings",
       "category": "world/buildings",
       "glob": "glTF/TownCenter_FirstAge_Level2.gltf",
@@ -681,7 +696,7 @@
       "limit": 1
     },
     {
-      "$comment": "The market \u2014 where P8's vendor posts stand.",
+      "$comment": "The market — where P8's vendor posts stand.",
       "pack": "quaternius-buildings",
       "category": "world/buildings",
       "glob": "glTF/Market_FirstAge_Level2.gltf",
@@ -709,7 +724,7 @@
       "limit": 1
     },
     {
-      "$comment": "A granary/warehouse \u2014 settlement filler with its own shape.",
+      "$comment": "A granary/warehouse — settlement filler with its own shape.",
       "pack": "quaternius-buildings",
       "category": "world/buildings",
       "glob": "glTF/Storage_FirstAge_Level1.gltf",
@@ -723,7 +738,7 @@
       "limit": 1
     },
     {
-      "$comment": "SecondAge stone house \u2014 Emberwood's ruined-town camp reads as an older, grander build than Dawnhaven.",
+      "$comment": "SecondAge stone house — Emberwood's ruined-town camp reads as an older, grander build than Dawnhaven.",
       "pack": "quaternius-buildings",
       "category": "world/buildings",
       "glob": "glTF/Houses_SecondAge_1_Level1.gltf",
@@ -744,7 +759,7 @@
       "limit": 1
     },
     {
-      "$comment": "Sunwatch's watchtower \u2014 the landmark on a zone built for long sightlines.",
+      "$comment": "Sunwatch's watchtower — the landmark on a zone built for long sightlines.",
       "pack": "quaternius-buildings",
       "category": "world/buildings",
       "glob": "glTF/WatchTower_FirstAge_Level2.gltf",
@@ -772,7 +787,7 @@
       "limit": 1
     },
     {
-      "$comment": "The windmill of \u00a73.4's farm-ruin camps.",
+      "$comment": "The windmill of §3.4's farm-ruin camps.",
       "pack": "quaternius-buildings",
       "category": "world/buildings",
       "glob": "glTF/Windmill_FirstAge.gltf",
@@ -800,14 +815,14 @@
       "limit": 1
     },
     {
-      "$comment": "Stacked timber \u2014 logging site and mining camp dressing.",
+      "$comment": "Stacked timber — logging site and mining camp dressing.",
       "pack": "quaternius-buildings",
       "category": "world/buildings",
       "glob": "glTF/Logs.gltf",
       "limit": 1
     },
     {
-      "$comment": "Sungraze grazer herds \u2014 \u00a73.4's 'learn to pick your fights' zone is built around them.",
+      "$comment": "Sungraze grazer herds — §3.4's 'learn to pick your fights' zone is built around them.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Alpaking.glb",
@@ -828,7 +843,7 @@
       "limit": 1
     },
     {
-      "$comment": "Orc Headhunter \u2014 a second orc silhouette so a warband is not one model twice.",
+      "$comment": "Orc Headhunter — a second orc silhouette so a warband is not one model twice.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Orc Enemy.glb",
@@ -849,7 +864,7 @@
       "limit": 1
     },
     {
-      "$comment": "Ember and Sun Cactoro \u2014 needle-spray ranged, recoloured per zone.",
+      "$comment": "Ember and Sun Cactoro — needle-spray ranged, recoloured per zone.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Cactoro.glb",
@@ -870,7 +885,7 @@
       "limit": 1
     },
     {
-      "$comment": "Ash Goleling \u2014 the stagger-resistant wall of the canyons.",
+      "$comment": "Ash Goleling — the stagger-resistant wall of the canyons.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Goleling.glb",
@@ -898,7 +913,7 @@
       "limit": 1
     },
     {
-      "$comment": "Yeti \u2014 charger with a boulder toss, in the shaded north face.",
+      "$comment": "Yeti — charger with a boulder toss, in the shaded north face.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Yeti.glb",
@@ -926,7 +941,7 @@
       "limit": 1
     },
     {
-      "$comment": "Ambient. \u00a74.5's 'alive' pillar is mostly these.",
+      "$comment": "Ambient. §4.5's 'alive' pillar is mostly these.",
       "pack": "quaternius-monsters",
       "category": "enemies",
       "glob": "Bunny.glb",
@@ -947,24 +962,76 @@
       "limit": 1
     },
     {
-      "$comment": "Fast, backstab-bonus grunt \u2014 the skeleton that flanks.",
+      "$comment": "Fast, backstab-bonus grunt — the skeleton that flanks.",
       "pack": "kaykit-skeletons",
       "category": "enemies",
       "glob": "characters/gltf/Skeleton_Rogue.glb",
-      "limit": 1
+      "limit": 1,
+      "skinned": true,
+      "mergeClips": [
+        "Animations/gltf/Rig_Medium/Rig_Medium_General.glb",
+        "Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb"
+      ],
+      "animationKeep": [
+        "Idle_A",
+        "Idle_B",
+        "Walking_A",
+        "Running_A",
+        "Hit_A",
+        "Death_A",
+        "Interact",
+        "Throw"
+      ]
     },
     {
       "$comment": "Bone bolt and a bone-wall self-shield.",
       "pack": "kaykit-skeletons",
       "category": "enemies",
       "glob": "characters/gltf/Skeleton_Mage.glb",
-      "limit": 1
+      "limit": 1,
+      "skinned": true,
+      "mergeClips": [
+        "Animations/gltf/Rig_Medium/Rig_Medium_General.glb",
+        "Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb"
+      ],
+      "animationKeep": [
+        "Idle_A",
+        "Idle_B",
+        "Walking_A",
+        "Running_A",
+        "Hit_A",
+        "Death_A",
+        "Interact",
+        "Throw"
+      ]
     },
     {
       "$comment": "Shielded grunt: 50 % frontal mitigation, so you flank it. Dark-tinted and 1.5-scaled it is Bonelord Varkas.",
       "pack": "kaykit-skeletons",
       "category": "enemies",
       "glob": "characters/gltf/Skeleton_Warrior.glb",
+      "limit": 1,
+      "skinned": true,
+      "mergeClips": [
+        "Animations/gltf/Rig_Medium/Rig_Medium_General.glb",
+        "Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb"
+      ],
+      "animationKeep": [
+        "Idle_A",
+        "Idle_B",
+        "Walking_A",
+        "Running_A",
+        "Hit_A",
+        "Death_A",
+        "Interact",
+        "Throw"
+      ]
+    },
+    {
+      "$comment": "Emberwood's melee grunt (Ashen Marauder). A hooded humanoid in the Quaternius walker clip family, so it owns a real strike — the KayKit skeletons do not (NPCS_ENEMIES.md §4.1).",
+      "pack": "quaternius-monsters",
+      "category": "enemies",
+      "glob": "Ninja.glb",
       "limit": 1
     }
   ]

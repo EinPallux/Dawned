@@ -193,6 +193,7 @@ Pack id `quaternius-monsters` · author **Quaternius** · license **CC0-1.0** ·
 - `enemies_mushnub` — assets/enemy_models/Quaternius Monster Bundle/Mushnub.glb
 - `enemies_mushnub_evolved` — assets/enemy_models/Quaternius Monster Bundle/Mushnub Evolved.glb
 - `enemies_mushroom_king` — assets/enemy_models/Quaternius Monster Bundle/Mushroom King.glb
+- `enemies_ninja` — assets/enemy_models/Quaternius Monster Bundle/Ninja.glb
 - `enemies_orc` — assets/enemy_models/Quaternius Monster Bundle/Orc.glb
 - `enemies_orc_enemy` — assets/enemy_models/Quaternius Monster Bundle/Orc Enemy.glb
 - `enemies_pigeon` — assets/enemy_models/Quaternius Monster Bundle/Pigeon.glb
