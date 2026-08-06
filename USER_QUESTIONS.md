@@ -8,7 +8,12 @@
 
 ## Open questions
 
-> One open question: **Q26** (per-zone music/sfx). Q27 was answered on 2026-08-05 — the reel is
+> Five open questions: **Q26** (per-zone music/sfx), **Q28–Q29** from the P11-E DoD run — both
+> already implemented as their recommended default, say the word and either reverts in minutes —
+> **Q30**, which P12 had to answer to build a bridge at all, and **Q32**, which is the sharpest of
+> them: the starter town currently resolves to the wrong ZONE, measured, with three candidate
+> fixes and none applied.
+> Q27 was answered on 2026-08-05 — the reel is
 > left as shipped and judged in the playtest. Q25 was answered by P10 starting — its recommended default WAS "do it in the professions
 > phase", and that phase is now under way, so the node schema lands as a P10-A deliverable and the
 > map editor's node layer comes alive with it.
@@ -33,7 +38,127 @@ rather have the fields NOW so you can fill them in while building the world, say
 five-line schema change here plus two selects in the panel, and the game would ignore them until
 the audio phase lands.
 
+### Q28 — should a "gather N of these" step get a map circle? (P11-E, 2026-08-06)
+
+QUESTS_POI §1 rule 4 is explicit that an EXPLORE step never marks anything — clue text only. It
+says nothing about a COLLECT step, and the pilot set shipped both of its gather steps with no
+hint at all. In practice that reads as no instruction: "six good lengths of birch" tells a player
+who has never chopped anything nothing whatsoever, and the 13 birch placements are three clusters
+180 m apart. Mossbloom is worse — it grows 360 m from the Weald the prose sends you to.
+
+**Recommended default (implemented): give gather steps a circle**, pointed at the nearest real
+cluster. The explore rule stays untouched, because the point of an explore step is that finding
+the place IS the objective; for a gather step the objective is the picking, and hiding the herb
+just adds a scavenger hunt nobody asked for.
+
+If you would rather professions carried their own knowledge — a codex entry, "you have gathered
+this before, so the map shows it" — that is a nicer answer and a bigger one, and it belongs with
+the professions polish rather than here. Reverting is two `hint` fields.
+
+### Q29 — a quest interactable that never comes back (P11-E, 2026-08-06)
+
+The crate in "The Lost Crate" and the four marked stumps in "What Took Them" were authored
+one-shot (`respawnMs: 0`). That means opening the crate BEFORE Torv mentions it ends the quest
+before it starts, permanently, with no way back — a quest lost to ordinary curiosity, which is
+the exact opposite of §1 rule 2 ("quests are found, not funneled"). Spent state is per-character,
+so this is not a shared-loot question.
+
+**Recommended default (implemented): nothing a quest step needs is one-shot.** Both now return
+after five minutes. Publish does not enforce this yet — the panel would have to know that an
+interactable is named by a step, which it can see; worth adding if you agree it is a rule.
+
+The alternative is to keep one-shot props and make the QUEST tolerant instead (credit the step on
+approach if the object is already spent). That is more code in the quest runtime for a case a
+respawn timer solves in one field, which is why it is not the recommendation.
+
+### Q30 — a bridge cannot be a bridge, because the walkgrid only runs one way (P12-B, 2026-08-06)
+
+WORLD.md §1 has the isles "joined by bridges", §6 calls bridges landmark art pieces where
+"crossing one should feel like a chapter turn", and CONTENT_0.1 counts four of them. P12-A cut
+real channels between the isles, and the flood fill confirms each one is now its own landmass.
+
+Then two things met. **No pack we own contains a bridge model** — I searched all 24. And, more
+decisively: **the walkgrid is one-directional.** A prop can SUBTRACT from it — `solid` + `radius`
+stamps its footprint unwalkable, which is what stops you walking through a house — but nothing can
+ADD to it. Walkable ground comes from the terrain heightfield alone. So a bridge laid across a
+channel is scenery you swim underneath, and the isles stay swim-only.
+
+That is a contradiction with §1, not a missing asset. Two ways out:
+
+1. **Causeways.** Refill a narrow neck of terrain across each strait — 10–14 m wide, at the one
+   place the crossing belongs — and dress it with plank and dock props so it reads as a built
+   bridge. The link is genuinely walkable, it is a single visible chokepoint, and swimming stays
+   the shortcut for the impatient. Cost: the isles are technically one landmass through each
+   neck, so "five separate isles" becomes "five isles and four necks".
+2. **Let a prop add walkable ground, not just remove it.** The stamp already exists and runs one
+   way; making it two-way means a surface height per prop, which the bake would have to resolve
+   against the terrain and the server's movement step would have to sample. It would also fix
+   standing on a rooftop, a jetty or a fallen trunk, all of which are decoration today. Nothing
+   else in 0.1.0 needs it.
+
+**Recommended default: causeways (option 1), built now.** It is the only one that makes §1 true
+this phase, it costs one new mask kind in the terrain synthesis, and it does not spend a
+walkgrid rewrite on a feature four bridges use. If you would rather props carried walkable surfaces, say
+so and it becomes its own phase after P12 — the causeways would stay as the land under the
+bridges either way.
+
+### Q32 — Dawnhaven is in the Verdant Weald, because "smallest ring wins" is the wrong tie-break (P12-F, 2026-08-06)
+
+`zoneAt` returns the first zone whose polygon contains the point, and P12-B made
+that deterministic by sorting zones by **polygon area ascending** — "the smaller,
+more specific zone wins". That is exactly right when one zone CONTAINS another:
+the Dawnsea's ring covers the whole map and must always lose to an isle.
+
+It is arbitrary when two peer zones merely overlap at their edges, and the coin
+came down wrong. Measured:
+
+| Settlement    | resolves to                  | should be           |
+| ------------- | ---------------------------- | ------------------- |
+| **Dawnhaven** | **verdant_weald** (lvl 6–12) | dawnshore (lvl 1–6) |
+| Mosshollow    | verdant_weald                | ✔                   |
+| Cinderfall    | emberwood                    | ✔                   |
+| Sunwatch      | sungraze                     | ✔                   |
+| Rustpick      | ashcrag                      | ✔                   |
+
+Dawnshore's ring is 977 427 m², the Weald's is 912 487 — 6 % smaller, so the
+Weald wins where they overlap, and that overlap includes the starter town. A new
+level-1 character is told they are in the level 6–12 zone; the ambience, the
+discovery XP attribution and every journal heading follow the same wrong answer.
+Publish already warns that **8 893 sampled land points sit in more than one
+zone**, which is the same fact stated less alarmingly.
+
+Three ways out, roughly in order of how much they cost:
+
+1. **Trim the polygons so peer zones do not overlap.** The honest fix — the rings
+   were drawn generously and nothing needs them to intersect. Pure content, no
+   code, but publish BLOCKS on land in no zone, so every metre given up has to be
+   given to someone: it is a careful pass over six rings, not a quick edit.
+2. **Beat containment, then nearest centroid.** Drop any candidate zone that
+   contains another candidate (kills the Dawnsea), then pick the nearest centroid
+   among what is left. Measured: this puts all five settlements right. Nearest
+   centroid ALONE does not — it drags 572 of 3 100 land samples into the Dawnsea,
+   because the sea's centroid is the middle of the map. It changes `zoneAt` from
+   an ordering into a function, which the bake, the server and the client all
+   share.
+3. **Let a zone declare its own priority.** One integer on the zone row, authored.
+   Simplest to reason about and the easiest to get wrong later, because nothing
+   checks that the numbers still describe the geometry.
+
+**Recommended default: (1), trimmed polygons, as its own slice.** It removes the
+ambiguity rather than ruling on it, and it makes the existing publish warning go
+quiet for the right reason. (2) is the fallback if the rings turn out to need the
+overlap for coverage. Nothing is implemented yet — this was measured during
+P12-F and is recorded rather than patched, because changing zone resolution late
+in a content phase would re-point ambience, discovery and journal headings for
+the whole world at once.
+
 ## Decision log
+
+### 2026-08-06 — every uploaded pack may be used (owner: "ALL Packs uploaded, even if not creditable should be used. I hold ALL rights to ALL assets I uploaded (to use them.)")
+
+| #   | Topic                           | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Folded into                                                                           |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Q31 | Packs with no in-folder licence | **Usable.** The owner holds rights to every pack in `assets/` and has asked for all of them to be used. This reverses the refusals P10 made on the Gems & Ores pack and P12-B made on the Medieval Village Pack — both were declined for unattributable provenance, which is no longer the basis. It does **not** become a fabricated CC0 claim: such packs are marked `ownerAsserted: true` in the ledger, keep `verified: false`, and the asset report says so once per pack rather than being silenced. If the claim is ever wrong, `ownerAsserted` is exactly the list to pull | `config/packs.json`, `report.mjs` provenance line, CREDITS.md §1, ASSET_PIPELINE §2.2 |
 
 ### 2026-08-05 — P9 + P10 accepted (owner: "Mark P9 and P10 as done… We can always finetune after that")
 

@@ -25,6 +25,8 @@ import {
   textureCompress,
 } from '@gltf-transform/functions';
 import sharp from 'sharp';
+import objToGltf from 'obj2gltf';
+import { mergeClipsInto } from './merge-clips.mjs';
 
 /**
  * Substitute for source images that a rule marks broken (`imageOverrides: null`).
@@ -44,7 +46,7 @@ export const MANIFEST_PATH = path.join(BAKED_DIR, 'manifest.json');
 const io = new NodeIO().registerExtensions(KHRONOS_EXTENSIONS);
 
 /** Bump when the behavior behind rule options (skinned/animationsOnly/…) changes. */
-const OPTION_TRANSFORM_VERSION = 3;
+const OPTION_TRANSFORM_VERSION = 5;
 
 /**
  * Bump when the DEFAULT transform changes — it joins every source hash, so a
@@ -122,6 +124,17 @@ const matchGlob = async (root, pattern) => {
  * `imageOverrides` applied — so hashing tracks the files actually baked.
  */
 const gatherDependencies = async (filePath, imageOverrides = {}) => {
+  // An OBJ's companion .mtl is a real input — editing a material colour has to
+  // re-bake the model, and hashing only the .obj would not notice.
+  if (filePath.endsWith('.obj')) {
+    const mtl = filePath.replace(/\.obj$/, '.mtl');
+    return (await stat(mtl).then(
+      () => true,
+      () => false,
+    ))
+      ? [mtl]
+      : [];
+  }
   if (!filePath.endsWith('.gltf')) return [];
   const raw = JSON.parse(await readFile(filePath, 'utf8'));
   const dir = path.dirname(filePath);
@@ -150,6 +163,23 @@ const gatherDependencies = async (filePath, imageOverrides = {}) => {
  * baked output gets the intended pixels.
  */
 const readDocument = async (sourcePath, imageOverrides) => {
+  // Wavefront OBJ, converted in memory (ASSET_PIPELINE §2.2).
+  //
+  // Three packs ship no glTF at all — the Medieval Village Pack (which owns the
+  // only campfire in the whole library, and WORLD.md §5 makes campfires a real
+  // interactable), the Low Poly Nature Models and the Desert Assets. That is
+  // ~200 models the world could not reach for a FORMAT reason, which is a much
+  // worse reason than a licensing one. `obj2gltf` hands back glTF JSON with the
+  // .mtl folded into materials; from there the normal transform chain runs, so
+  // an OBJ asset is not a second pipeline, only a second front door.
+  //
+  // FBX is deliberately NOT handled: every OBJ-only pack here also ships FBX of
+  // the same meshes, so nothing is gained, and no maintained pure-JS FBX reader
+  // exists that is worth the dependency.
+  if (sourcePath.endsWith('.obj')) {
+    const json = await objToGltf(sourcePath, { separate: false, separateTextures: false });
+    return io.readJSON({ json, resources: {} });
+  }
   if (!imageOverrides || !sourcePath.endsWith('.gltf')) {
     return io.read(sourcePath);
   }
@@ -308,6 +338,63 @@ const stripDetailMaps = (document) => {
   }
 };
 
+/**
+ * Make named materials glow (`emissive: { "Fire": "#ff8a3c" }`).
+ *
+ * A campfire whose flame is lit by the scene's sun is a pile of orange
+ * triangles; the thing that makes it read as FIRE across a dark clearing is
+ * that it emits. The packs model this as a separate material — the Medieval
+ * Village bonfire has one literally called `Fire` — so the cheapest honest
+ * version is to raise that material's emissive factor at bake time rather than
+ * ask the runtime to know which triangles are flame.
+ *
+ * THROWS on a material name that is not in the file, for the same reason
+ * `mergeClips` throws on an unmatched joint: a silent miss here ships an unlit
+ * campfire and nobody notices until they walk past one at night.
+ */
+const applyEmissive = (document, emissive) => {
+  const materials = document.getRoot().listMaterials();
+  const byName = new Map(materials.map((material) => [material.getName(), material]));
+  const missing = [];
+  for (const [name, hex] of Object.entries(emissive)) {
+    const material = byName.get(name);
+    if (!material) {
+      missing.push(name);
+      continue;
+    }
+    const value = hex.replace('#', '');
+    material.setEmissiveFactor([
+      parseInt(value.slice(0, 2), 16) / 255,
+      parseInt(value.slice(2, 4), 16) / 255,
+      parseInt(value.slice(4, 6), 16) / 255,
+    ]);
+  }
+  return missing;
+};
+
+/**
+ * Normalise a pack authored in something other than metres (`scale: 2.5`).
+ *
+ * The world is metric and a placement says WHERE, not how big: an interactable
+ * row carries `modelRef`, `yOffset` and `rotation` and deliberately no scale,
+ * because a chest that is the right size in one spot is the right size in every
+ * spot. So a pack whose well is 1.25 units tall has to be corrected once, here,
+ * rather than by every row that ever places one.
+ *
+ * Applied to the scene's ROOT nodes before the transform chain, so `flatten()`
+ * bakes it into the vertices and nothing downstream has to know.
+ */
+const scaleDocument = (document, factor) => {
+  for (const scene of document.getRoot().listScenes()) {
+    for (const node of scene.listChildren()) {
+      const [x, y, z] = node.getScale();
+      node.setScale([x * factor, y * factor, z * factor]);
+      const [tx, ty, tz] = node.getTranslation();
+      node.setTranslation([tx * factor, ty * factor, tz * factor]);
+    }
+  }
+};
+
 const countTriangles = (document) => {
   let triangles = 0;
   for (const mesh of document.getRoot().listMeshes()) {
@@ -355,14 +442,44 @@ export const loadManifest = async () => {
   }
 };
 
+/** Manifest categories `assets:build` does not produce and must not delete. */
+export const FOREIGN_CATEGORIES = new Set(['icons']);
+
+/**
+ * Entries from a previous manifest that belong to another producer.
+ *
+ * Exported so the property is testable without baking 160 models: the bug this
+ * prevents is invisible at build time (files stay on disk, the report stays
+ * green) and only shows up as blank icons on every item in the game.
+ */
+export const carryForeignAssets = (assets = {}) =>
+  Object.fromEntries(
+    Object.entries(assets ?? {}).filter(([, entry]) => FOREIGN_CATEGORIES.has(entry?.category)),
+  );
+
 export const build = async ({ force = false, verbose = true } = {}) => {
   const config = await loadConfig();
   const previous = (await loadManifest()) ?? { assets: {} };
+  /**
+   * Carry over entries this command does not produce.
+   *
+   * TWO commands write one manifest: `assets:build` (models, from packs.json)
+   * and `assets:icons` (the game-icons.net set, fetched by slug). Starting from
+   * an empty `assets` map meant a plain `pnpm assets:build` DELETED all 256 icon
+   * entries — the files stayed on disk, so nothing failed and the asset report
+   * stayed green, but every item, ability and node in the game lost the icon its
+   * content row points at. It only ever survived because the habitual order
+   * happens to be build-then-icons.
+   *
+   * The manifest is a shared artifact, so each producer owns its own categories
+   * and leaves the rest alone.
+   */
+  const foreign = carryForeignAssets(previous.assets);
   const manifest = {
     generatedBy: 'tools/asset-pipeline',
     generatedFor: 'Dawned',
     pipelineVersion: PIPELINE_VERSION,
-    assets: {},
+    assets: { ...foreign },
   };
 
   const log = (message) => {
@@ -417,12 +534,19 @@ export const build = async ({ force = false, verbose = true } = {}) => {
       for (const dependency of dependencies) {
         hasher.update(await readFile(dependency).catch(() => Buffer.alloc(0)));
       }
+      // A merged clip library is as much an input as the mesh: editing it has to
+      // re-bake the character, and hashing only the rule's path would not notice.
+      const clipPaths = (rule.mergeClips ?? []).map((relative) => path.join(packRoot, relative));
+      for (const clipPath of clipPaths) hasher.update(await readFile(clipPath));
       if (
         rule.imageOverrides ||
         rule.skinned ||
         rule.animationsOnly ||
         rule.animationKeep ||
-        rule.bodyCut
+        rule.bodyCut ||
+        rule.mergeClips ||
+        rule.emissive ||
+        rule.scale
       ) {
         hasher.update(
           JSON.stringify({
@@ -432,6 +556,9 @@ export const build = async ({ force = false, verbose = true } = {}) => {
             animationsOnly: rule.animationsOnly ?? false,
             animationKeep: rule.animationKeep ?? null,
             bodyCut: rule.bodyCut ?? null,
+            mergeClips: rule.mergeClips ?? null,
+            emissive: rule.emissive ?? null,
+            scale: rule.scale ?? null,
           }),
         );
       }
@@ -453,7 +580,12 @@ export const build = async ({ force = false, verbose = true } = {}) => {
 
       let document;
       try {
-        document = await readDocument(sourcePath, rule.imageOverrides);
+        // A pack that ships mesh and clips separately (KayKit's `Rig_Medium`,
+        // the split our own player rigs use) is stitched back together here —
+        // the enemy renderer expects one file per model with its clips inside.
+        document = clipPaths.length
+          ? (await mergeClipsInto(sourcePath, clipPaths)).document
+          : await readDocument(sourcePath, rule.imageOverrides);
       } catch (error) {
         problems.push(`failed to read ${relativeSource}: ${error.message}`);
         continue;
@@ -468,6 +600,12 @@ export const build = async ({ force = false, verbose = true } = {}) => {
       if (rule.animationsOnly) stripToAnimations(document);
       if (rule.imageOverrides) stripPlaceholderTextures(document);
       if (rule.bodyCut) cutSkinnedMeshToBones(document, rule.bodyCut);
+      if (rule.emissive) {
+        for (const name of applyEmissive(document, rule.emissive)) {
+          problems.push(`${id}: emissive material "${name}" not found in ${relativeSource}`);
+        }
+      }
+      if (rule.scale && rule.scale !== 1) scaleDocument(document, rule.scale);
 
       // Structural optimization. Mesh compression (meshopt) lands with the streaming
       // work in P2 — it needs the runtime decoder wired into the client loader.

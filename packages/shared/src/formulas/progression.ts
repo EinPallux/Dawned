@@ -152,6 +152,34 @@ export const DISCOVERY_XP_BP = {
 } as const;
 export type DiscoveryKind = keyof typeof DISCOVERY_XP_BP;
 
+/**
+ * Per-POI-kind discovery value, basis points against the level's need
+ * (WORLD.md §4.1). These are the DEFAULTS the map editor stamps onto a new
+ * placement's `xpBasis`; the authored row then owns the number, so a
+ * particularly hard-won vista can be worth more than the table says.
+ *
+ * The ordering is the design's: a camp is a fight you found, a vista is a
+ * climb, a cache is a search, and a curiosity is a joke — paid for being
+ * charming rather than for being far.
+ */
+export const POI_XP_BASIS = {
+  curiosity: 400,
+  landmark: 800,
+  shrine: 900,
+  cache: 1000,
+  camp: 1000,
+  vista: 1200,
+} as const;
+export type PoiXpKind = keyof typeof POI_XP_BASIS;
+
+/**
+ * A POI's discovery XP. Takes the authored basis rather than the kind, because
+ * the row is what ships — reading the kind here would silently ignore an author
+ * who deliberately raised one.
+ */
+export const poiDiscoveryXp = (xpBasis: number, xpToNextAtLevel: number): number =>
+  xpToNextAtLevel <= 0 ? 0 : Math.max(1, Math.round((xpToNextAtLevel * xpBasis) / 10000));
+
 /** Basis-points XP against the level's need; capped characters get nothing. */
 export const discoveryXp = (kind: DiscoveryKind, xpToNextAtLevel: number): number =>
   xpToNextAtLevel <= 0

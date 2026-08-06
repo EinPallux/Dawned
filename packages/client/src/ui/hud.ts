@@ -11,6 +11,9 @@ import type { SlotView } from '../net/connection.js';
 import { BUILD_ID } from '../build-info.js';
 
 /** Class resource palette (UI_UX.md §1 — vibrant, no pastel mush). */
+/** How long one discovery banner holds the screen before the next one runs. */
+const DISCOVERY_BANNER_MS = 3800;
+
 const RESOURCE_COLORS: Record<string, { fill: string; deep: string }> = {
   rage: { fill: '#e0563f', deep: '#7c221a' },
   energy: { fill: '#d9c94a', deep: '#6e6218' },
@@ -103,7 +106,8 @@ export interface HudStats {
   unspentStatPoints: number;
   unspentSkillPoints: number;
   /** Which panel is open (micro-menu tiles light up). */
-  openPanel: 'character' | 'skills' | 'inventory' | 'vendor' | 'professions' | null;
+  openPanel:
+    'character' | 'skills' | 'inventory' | 'vendor' | 'professions' | 'journal' | 'map' | null;
 }
 
 export class Hud {
@@ -193,6 +197,15 @@ export class Hud {
   private readonly levelFlashEl: HTMLElement;
   private readonly microBadgeC: HTMLElement;
   private readonly microBadgeK: HTMLElement;
+  // --- quests (P11-D) -------------------------------------------------------
+  private readonly microBadgeL: HTMLElement;
+  private readonly trackerEl: HTMLElement;
+  private readonly discoveryEl: HTMLElement;
+  private readonly discoveryKindEl: HTMLElement;
+  private readonly discoveryNameEl: HTMLElement;
+  /** Places found but not yet announced — see `showDiscovery`. */
+  private readonly discoveryQueue: { kind: string; name: string }[] = [];
+  private discoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly microTiles = new Map<string, HTMLElement>();
   private readonly interactEl: HTMLElement;
   private readonly purseEl: HTMLElement;
@@ -211,7 +224,7 @@ export class Hud {
     private readonly onChatFocusChange: (focused: boolean) => void,
     private readonly onRespawn: () => void = () => undefined,
     private readonly onMenuAction: (
-      panel: 'character' | 'skills' | 'inventory' | 'professions',
+      panel: 'character' | 'skills' | 'inventory' | 'professions' | 'journal' | 'map',
     ) => void = () => undefined,
   ) {
     this.root = document.createElement('div');
@@ -289,6 +302,15 @@ export class Hud {
         <div class="hud-chat-log" data-chatlog></div>
         <input class="hud-chat-input" data-chatinput placeholder="Press Enter to chat…" maxlength="200" />
       </div>
+      <!-- Quest tracker (P11, QUESTS_POI §4): pinned quests down the right
+           edge, step lines with counters. Never a modal, never in the way of
+           the reticle — you read it with a glance while walking. -->
+      <div class="hud-tracker" data-tracker hidden></div>
+      <!-- Discovery banner (§5): the one beat that says the world noticed. -->
+      <div class="hud-discovery" data-discovery hidden>
+        <span class="hud-discovery-kind" data-discovery-kind></span>
+        <span class="hud-discovery-name" data-discovery-name></span>
+      </div>
       <div class="hud-toasts" data-toasts></div>
       <div class="hud-micromenu" data-micromenu>
         <button class="hud-micro" data-micro="character" type="button">
@@ -308,6 +330,15 @@ export class Hud {
         <button class="hud-micro" data-micro="professions" type="button">
           <span class="hud-micro-glyph">⛏</span>
           <span class="hud-micro-label">Professions · J</span>
+        </button>
+        <button class="hud-micro" data-micro="journal" type="button">
+          <span class="hud-micro-glyph">▤</span>
+          <span class="hud-micro-badge" data-badge-l hidden></span>
+          <span class="hud-micro-label">Journal · L</span>
+        </button>
+        <button class="hud-micro" data-micro="map" type="button">
+          <span class="hud-micro-glyph">◈</span>
+          <span class="hud-micro-label">Map · M</span>
         </button>
         <span class="hud-purse" data-purse hidden></span>
       </div>
@@ -376,8 +407,14 @@ export class Hud {
     this.levelFlashEl = this.query('[data-levelflash]');
     this.microBadgeC = this.query('[data-badge-c]');
     this.microBadgeK = this.query('[data-badge-k]');
+    this.microBadgeL = this.query('[data-badge-l]');
+    this.trackerEl = this.query('[data-tracker]');
+    this.discoveryEl = this.query('[data-discovery]');
+    this.discoveryKindEl = this.query('[data-discovery-kind]');
+    this.discoveryNameEl = this.query('[data-discovery-name]');
     for (const tile of this.root.querySelectorAll<HTMLElement>('[data-micro]')) {
-      const panel = tile.dataset.micro as 'character' | 'skills' | 'inventory' | 'professions';
+      const panel = tile.dataset.micro as
+        'character' | 'skills' | 'inventory' | 'professions' | 'journal' | 'map';
       this.microTiles.set(panel, tile);
       tile.addEventListener('click', () => {
         this.onMenuAction(panel);
@@ -436,7 +473,11 @@ export class Hud {
    */
   setInteractPrompt(text: string | null): void {
     this.interactEl.hidden = text === null;
-    if (text !== null) this.interactEl.textContent = text;
+    // CLEAR on null rather than only hiding. A hidden element that still holds
+    // last frame's line reads as current to anything that inspects the DOM —
+    // which cost a smoke run an hour of chasing a shrine that was working fine
+    // and a prompt that was merely stale.
+    this.interactEl.textContent = text ?? '';
   }
 
   /**
@@ -731,6 +772,118 @@ export class Hud {
       for (const row of rows) row.hidden = false;
       more?.remove();
     }
+  }
+
+  // --- quests, discovery (P11-D) --------------------------------------------
+
+  /**
+   * The tracker (QUESTS_POI §4): pinned quests down the right edge.
+   *
+   * Rebuilt wholesale on every `QuestSync` rather than diffed, because a quest
+   * log is a handful of rows and the server is the only author of it — a
+   * client that patched rows in place would eventually hold a counter the
+   * server never sent, which is the exact failure the no-prediction rule
+   * exists to prevent.
+   */
+  setTracker(
+    quests: readonly {
+      questId: string;
+      name: string;
+      ready: boolean;
+      lines: { text: string; have: number; need: number; done: boolean; counted: boolean }[];
+    }[],
+  ): void {
+    this.trackerEl.hidden = quests.length === 0;
+    this.trackerEl.replaceChildren();
+    for (const quest of quests) {
+      const box = document.createElement('div');
+      box.className = 'hud-track';
+      box.dataset.quest = quest.questId;
+      if (quest.ready) box.dataset.ready = 'true';
+
+      const title = document.createElement('div');
+      title.className = 'hud-track-name';
+      title.textContent = quest.name;
+      box.appendChild(title);
+
+      for (const line of quest.lines) {
+        const row = document.createElement('div');
+        row.className = 'hud-track-step';
+        if (line.done) row.dataset.done = 'true';
+        // A counter only reads as progress when it can move. An EXPLORE or a
+        // DELIVER is one act, so "0/1 Find the logging site" is noise —
+        // `counted` is the step's own answer to whether a number helps.
+        row.textContent = line.counted
+          ? `${line.have}/${line.need}  ${line.text}`
+          : `· ${line.text}`;
+        box.appendChild(row);
+      }
+      if (quest.ready) {
+        const ready = document.createElement('div');
+        ready.className = 'hud-track-ready';
+        ready.textContent = 'Ready to turn in';
+        box.appendChild(ready);
+      }
+      this.trackerEl.appendChild(box);
+    }
+  }
+
+  /** Journal badge: how many quests are ready to hand in. 0 hides it. */
+  setJournalBadge(ready: number): void {
+    this.microBadgeL.hidden = ready <= 0;
+    this.microBadgeL.textContent = String(ready);
+  }
+
+  /**
+   * The discovery beat (§5) — the one moment that says the world noticed you.
+   *
+   * Deliberately its own element rather than a toast: a toast is a receipt
+   * ("+3 Birchwood"), and finding a place is not a receipt. It sits centre-top,
+   * fades on its own, and never needs dismissing.
+   */
+  /**
+   * Announce a place — QUEUED, one at a time.
+   *
+   * Rings overlap: Dawnhaven's landmark ring is 22 m and the shrine inside it
+   * is 14 m from the centre, so walking to the shrine finds BOTH in the same
+   * tick. Overwriting the banner meant one of the two was announced and the
+   * other was silently added to the map — the XP arrived, the fog lifted, and
+   * the player was never told what they had found.
+   */
+  showDiscovery(kind: string, name: string): void {
+    this.discoveryQueue.push({ kind, name });
+    if (this.discoveryTimer === null) this.nextDiscovery();
+  }
+
+  /**
+   * Advance the queue on its OWN timer rather than on the render loop.
+   *
+   * The first version hung the hand-off off `update()`, which is fine until the
+   * loop hitches — and a headless container at 4 fps hitches constantly. A
+   * banner whose expiry is never noticed leaves the queue permanently blocked,
+   * so the second place found in a session is announced to nobody. A timeout
+   * cannot stall on a slow frame.
+   */
+  private nextDiscovery(): void {
+    if (this.discoveryTimer !== null) {
+      clearTimeout(this.discoveryTimer);
+      this.discoveryTimer = null;
+    }
+    const next = this.discoveryQueue.shift();
+    if (!next) {
+      this.discoveryEl.hidden = true;
+      return;
+    }
+    this.discoveryKindEl.textContent = next.kind.toUpperCase();
+    this.discoveryNameEl.textContent = next.name;
+    this.discoveryEl.hidden = false;
+    this.discoveryEl.classList.remove('is-in');
+    void this.discoveryEl.offsetWidth;
+    this.discoveryEl.classList.add('is-in');
+    this.discoveryTimer = setTimeout(() => {
+      this.discoveryTimer = null;
+      this.nextDiscovery();
+    }, DISCOVERY_BANNER_MS);
   }
 
   /** Quick highlight on the XP bar when an award lands (§7: bar always ticks). */

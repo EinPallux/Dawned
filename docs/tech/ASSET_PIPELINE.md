@@ -45,6 +45,72 @@
   (authoritative) and admin editor (preview).
 - Output naming: `assets/models/<category>/<slug>.<contenthash>.glb`.
 
+### 2.1 `mergeClips` — the opposite of the composed rig (P12-C)
+
+Players are composed at load time because the combinations are combinatorial. **Enemies are not**:
+the renderer loads one file per model and expects its clips inside it. That is fine for Quaternius,
+which ships monsters with their animations embedded, and wrong for KayKit, which ships characters
+and a shared `Rig_Medium` library in separate files — the four skeletons baked with **zero clips**
+and stood frozen while sliding along the ground (NPCS_ENEMIES.md §4.1).
+
+`mergeClips: ["Animations/gltf/Rig_Medium/Rig_Medium_General.glb", …]` (paths relative to the pack
+root) merges those libraries into the character before any other transform, then rebinds every
+animation channel **by joint name** onto the mesh's own skeleton. Rules:
+
+- It is a **rebind, not a retarget**. Both documents must carry the same joints under the same
+  names; a channel whose joint has no counterpart **throws**, because silently skipping it is how a
+  limb ends up not moving with nobody noticing.
+- Everything except the clips is disposed explicitly — a library is a whole second character, and
+  `prune()` will NOT reclaim it (the merged-in skin keeps its own joints alive, so the model would
+  ship two skeletons and animate the invisible one).
+- Accessors move onto the character's buffer: a GLB may hold at most one, and each merged document
+  brings its own.
+- The rule implies `skinned: true` in practice — the prop path's `flatten()`/`join()` would rename
+  the very nodes the channels target.
+- The library files join the source hash, so editing one re-bakes the characters that use it.
+- Pair it with `animationKeep`: the KayKit library is 25 clips and the game plays 8.
+
+Tested in `tools/asset-pipeline/src/merge-clips.test.mjs` against the real pack (one skin left, every
+channel bound to it, geometry untouched, a walk cycle that actually moves joints, and a foreign rig
+refused) — `vitest` collects `tools/**/*.test.mjs` for this.
+
+### 2.2 The other front doors — OBJ, `scale`, `emissive` (P12-F)
+
+The reader was glTF/GLB only, which left **three packs and ~200 models unreachable for a format
+reason**: the Medieval Village Pack, the Low Poly Nature Models and the Desert Assets all ship
+Blends/FBX/OBJ. That mattered once the world needed a **campfire** — WORLD.md §5 makes it a real
+interactable (sit → +regen "Cozy" 60 s) and the Medieval Village bonfire is the only one in the
+entire library. A design-required object blocked by a container format is a worse reason than a
+licensing one.
+
+- **`.obj` sources** are converted in memory with `obj2gltf` (the `.mtl` folds into materials) and
+  then run the ordinary transform chain — a second front door, not a second pipeline. The `.mtl`
+  joins the source hash, so editing a material colour re-bakes. **FBX is deliberately not handled**:
+  every OBJ-only pack here ships FBX of the same meshes, so nothing is gained.
+- **`scale: <n>`** normalises a pack authored in something other than metres, applied to the scene's
+  root nodes before `flatten()` bakes it into the vertices. The Medieval Village pack is ~1/2.5
+  scale — its well is 1.25 units tall. This belongs at bake time because a placement deliberately
+  carries **no** scale: an interactable row is id/model/position/rotation, and a chest that is the
+  right size in one spot is the right size in every spot.
+- **`emissive: { "<material>": "#rrggbb" }`** raises a named material's emissive factor. The bonfire
+  models its flame as a separate material called `Fire`; without this it is orange triangles lit by
+  the sun, and the thing that makes fire read as fire across a dark clearing is that it emits.
+  **Throws on a material name the file does not have**, like `mergeClips` throws on an unmatched
+  joint — a silent miss ships an unlit campfire nobody notices until they walk past one at night.
+
+**Measure a prop in WORLD space, never from its accessors.** `model-size.mjs` exists because the
+naive check (read POSITION min/max) is confidently wrong: it reported the bonfire at 41 cm when it
+is 1.02 m, and the KayKit shrine at **one centimetre** when it is 2.4 m tall — a glTF node carries a
+transform, and both packs put the scale there. `model-size.test.mjs` pins nine props to loose metre
+bands; the failure it guards against is off by 2.5×, not by 10 %.
+
+**One manifest, two producers.** `assets:build` writes models and `assets:icons` writes the
+game-icons.net set into the same `manifest.json`. `build()` started from an empty asset map, so a
+plain `pnpm assets:build` **deleted all 256 icon entries** — files stayed on disk, the report stayed
+green, and every item, ability and node in the game silently lost its icon. It only ever survived
+because the habitual order is build-then-icons. Each producer now owns its categories and carries
+the rest (`carryForeignAssets`, `FOREIGN_CATEGORIES`), pinned by `manifest-merge.test.mjs`.
+
 ## 3. Texture/Image Pipeline
 
 - Palette + splat + particle textures → PNG optimized (sharp: strip metadata, correct sRGB), sizes

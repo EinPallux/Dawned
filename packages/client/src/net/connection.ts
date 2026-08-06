@@ -9,12 +9,21 @@
 import {
   createReelState,
   encodeGatherOp,
+  encodeInteractOp,
+  encodeQuestOp,
   fishPosition,
   reelStep,
   type FishingStateMessage,
   type GatherOp,
   type GatherStateMessage,
+  type DialogueStateMessage,
+  type DiscoverySyncMessage,
+  type InteractOp,
+  type InteractStateMessage,
   type NodeStatesMessage,
+  type QuestNoticeMessage,
+  type QuestOp,
+  type QuestSyncMessage,
   type ProfessionSyncMessage,
   type ReelState,
 } from '@dawned/shared';
@@ -233,6 +242,34 @@ export interface ConnectionEvents {
   onFishingState?: (message: FishingStateMessage) => void;
   /** Profession levels and codex changed (level-up, first-ever material). */
   onProfessionSync?: (message: ProfessionSyncMessage) => void;
+  // --- quests, POIs & interactables (protocol v14) --------------------------
+  /** A quest beat worth saying out loud: accepted, step done, turned in. */
+  onQuestNotice?: (message: QuestNoticeMessage) => void;
+  /** The conversation opened, moved on, or closed (`open: null`). */
+  onDialogueState?: (message: DialogueStateMessage) => void;
+  /**
+   * Something was discovered — a POI ring entered for the first time. Fired
+   * with the NEW ids only, because the banner is about what just happened and
+   * `DiscoverySync` carries the whole set for the map's fog.
+   */
+  onDiscovered?: (kind: 'poi' | 'zone' | 'shrine', ids: readonly string[]) => void;
+  /** A read or a refusal from the last `F` — the HUD line. */
+  onInteractNotice?: (notice: { objectId: string; text: string; kind: string }) => void;
+  /**
+   * The whole spent/attuned set, EVERY time it changes.
+   *
+   * Separate from `onInteractNotice` because a notice is optional: the message
+   * that tells you a chest is now empty, or that a respawn has un-emptied it,
+   * usually carries no line at all.
+   */
+  onInteractState?: (message: InteractStateMessage) => void;
+  /**
+   * The quest log changed. Separate from the panel subscription because the
+   * HUD tracker and the NPC glyphs are not React — they need a callback, not a
+   * `useSyncExternalStore` snapshot, and re-deriving them per frame to avoid
+   * one callback would be paying 60 Hz for a message that lands twice a minute.
+   */
+  onQuestSyncChanged?: () => void;
 }
 
 interface PendingInput {
@@ -706,6 +743,23 @@ export class Connection {
   /** The depleted-node exception list, from the last NodeStates. */
   private nodeStates: NodeStatesMessage | null = null;
 
+  // --- quests (protocol v14) ------------------------------------------------
+  /**
+   * The whole quest log, the open conversation, what we have discovered and
+   * which objects are spent — all of it straight from the server.
+   *
+   * There is deliberately no derived state here and no optimistic anything: a
+   * quest log is the single thing a player would most like to author
+   * themselves, so every op is a request and the next sync is the answer. That
+   * is P8's item rule, for the same reason.
+   */
+  private quests: QuestSyncMessage | null = null;
+  private dialogue: DialogueStateMessage | null = null;
+  private discovery: DiscoverySyncMessage | null = null;
+  private interactState: InteractStateMessage | null = null;
+  private readonly questListeners = new Set<() => void>();
+  private questVersion = 0;
+
   serverNow(): number {
     return performance.now() + this.clockOffsetMs;
   }
@@ -1018,6 +1072,54 @@ export class Connection {
         this.events.onProfessionSync?.(message);
         return;
       }
+      case ServerOp.QuestSync: {
+        this.quests = decodeJsonEnvelope<QuestSyncMessage>(reader);
+        this.events.onQuestSyncChanged?.();
+        this.notifyQuests();
+        return;
+      }
+      case ServerOp.QuestNotice: {
+        this.events.onQuestNotice?.(decodeJsonEnvelope<QuestNoticeMessage>(reader));
+        return;
+      }
+      case ServerOp.DialogueState: {
+        const message = decodeJsonEnvelope<DialogueStateMessage>(reader);
+        this.dialogue = message.open ? message : null;
+        this.events.onDialogueState?.(message);
+        this.notifyQuests();
+        return;
+      }
+      case ServerOp.DiscoverySync: {
+        const message = decodeJsonEnvelope<DiscoverySyncMessage>(reader);
+        // Diff against what we already knew so the BANNER is about what just
+        // happened. The message itself is the whole set — it has to be, because
+        // it is also the map's fog — so a client that announced everything it
+        // received would replay every discovery on relog.
+        const previous = this.discovery;
+        this.discovery = message;
+        if (previous) {
+          const fresh = (before: readonly string[], after: readonly string[]): string[] => {
+            const seen = new Set(before);
+            return after.filter((id) => !seen.has(id));
+          };
+          const pois = fresh(previous.pois, message.pois);
+          const zones = fresh(previous.zones, message.zones);
+          const shrines = fresh(previous.shrines, message.shrines);
+          if (pois.length > 0) this.events.onDiscovered?.('poi', pois);
+          if (zones.length > 0) this.events.onDiscovered?.('zone', zones);
+          if (shrines.length > 0) this.events.onDiscovered?.('shrine', shrines);
+        }
+        this.notifyQuests();
+        return;
+      }
+      case ServerOp.InteractState: {
+        const message = decodeJsonEnvelope<InteractStateMessage>(reader);
+        this.interactState = message;
+        this.events.onInteractState?.(message);
+        if (message.notice) this.events.onInteractNotice?.(message.notice);
+        this.notifyQuests();
+        return;
+      }
       default:
         console.warn(`[net] ignoring unknown opcode 0x${opcode.toString(16)}`);
     }
@@ -1080,6 +1182,58 @@ export class Connection {
    */
   sendGatherOp(op: GatherOp): void {
     this.sendRaw(encodeGatherOp(op));
+  }
+
+  /**
+   * Send one interaction intent (v14) — press `F`, or take a shrine hop.
+   *
+   * A REQUEST, like every other op since P8. Note what the client does NOT
+   * send: the verb. "Use this object" is the whole message; whether that opens
+   * a chest, attunes a shrine or starts a conversation is the object's answer,
+   * because a client that named the verb would be choosing it.
+   */
+  sendInteractOp(op: InteractOp): void {
+    this.sendRaw(encodeInteractOp(op));
+  }
+
+  /** Send one quest intent (v14): accept, turn in, abandon, pin, or a choice. */
+  sendQuestOp(op: QuestOp): void {
+    this.sendRaw(encodeQuestOp(op));
+  }
+
+  /** Panels/HUD subscribe here for any quest, dialogue or discovery change. */
+  subscribeQuests(listener: () => void): () => void {
+    this.questListeners.add(listener);
+    return () => this.questListeners.delete(listener);
+  }
+
+  private notifyQuests(): void {
+    this.questVersion++;
+    for (const listener of this.questListeners) listener();
+  }
+
+  questsVersion(): number {
+    return this.questVersion;
+  }
+
+  /** The whole quest log, or null before the first sync. */
+  get questLog(): QuestSyncMessage | null {
+    return this.quests;
+  }
+
+  /** The open conversation, or null when nobody is talking. */
+  get dialogueState(): DialogueStateMessage | null {
+    return this.dialogue;
+  }
+
+  /** Zones, POIs and shrines this character has found — the map's fog. */
+  get discoveryState(): DiscoverySyncMessage | null {
+    return this.discovery;
+  }
+
+  /** Which objects are spent for us, and which shrines we are attuned to. */
+  get interactStateMessage(): InteractStateMessage | null {
+    return this.interactState;
   }
 
   /** Our open gather channel, or null. The HUD draws its bar from `endsAtMs`. */

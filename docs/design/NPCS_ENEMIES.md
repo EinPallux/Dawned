@@ -111,17 +111,17 @@ KayKit Adventurers (humanoid enemies use Adventurer rigs + weapon bits).
 
 ### Emberwood (12–18)
 
-| Enemy                           | Lvl   | Archetype                                            | Model                                      |
-| ------------------------------- | ----- | ---------------------------------------------------- | ------------------------------------------ |
-| Skeleton Minion                 | 12–14 | Swarm                                                | KS Skeleton_Minion                         |
-| Skeleton Rogue                  | 13–15 | Grunt (fast, backstab bonus)                         | KS Skeleton_Rogue                          |
-| Skeleton Mage                   | 14–16 | Caster (bone bolt, bone-wall self-shield)            | KS Skeleton_Mage                           |
-| Skeleton Warrior                | 15–17 | Grunt (shielded: frontal 50% mitigation — flank!)    | KS Skeleton_Warrior                        |
-| Ember Cactoro                   | 13–15 | Ranged (needle spray cone)                           | Q Cactoro                                  |
-| Feral Monkroose                 | 14–16 | Charger                                              | Q Monkroose                                |
-| Grave Wisp                      | 15–17 | Caster (haunt DoT)                                   | Q Ghost Skull                              |
-| Bandit Ranger                   | 16–18 | Ranged (bow)                                         | KA Ranger + bow_A                          |
-| **Bonelord Varkas** (zone boss) | 18    | Boss: blade waves, summon minions, safe-wedge scream | KS Skeleton_Warrior (scale 1.5, dark tint) |
+| Enemy                           | Lvl   | Archetype                                              | Model                                      |
+| ------------------------------- | ----- | ------------------------------------------------------ | ------------------------------------------ |
+| Skeleton Minion                 | 12–14 | Swarm                                                  | KS Skeleton_Minion                         |
+| Skeleton Rogue                  | 13–15 | Charger (lunge, backstab bonus) — was Grunt, see §4.1  | KS Skeleton_Rogue                          |
+| Skeleton Mage                   | 14–16 | Caster (bone bolt, bone-wall self-shield)              | KS Skeleton_Mage                           |
+| Skeleton Warrior                | 15–17 | Charger (shield bash; frontal 50% mitigation — flank!) | KS Skeleton_Warrior                        |
+| Ember Cactoro                   | 13–15 | Ranged (needle spray cone)                             | Q Cactoro                                  |
+| Feral Monkroose                 | 14–16 | Charger                                                | Q Monkroose                                |
+| Grave Wisp                      | 15–17 | Caster (haunt DoT)                                     | Q Ghost Skull                              |
+| Ashen Marauder                  | 16–18 | Grunt (melee) — the zone's swing, see §4.1             | Q Ninja (hooded bandit, ember tint)        |
+| **Bonelord Varkas** (zone boss) | 18    | Boss: blade waves, summon minions, safe-wedge scream   | KS Skeleton_Warrior (scale 1.5, dark tint) |
 
 ### Sungraze Savanna (18–24)
 
@@ -150,6 +150,93 @@ KayKit Adventurers (humanoid enemies use Adventurer rigs + weapon bits).
 | Orc Warlord Guard            | 28–30 | Elite                                                                                                    | Q Orc + KA gear bits         |
 | Ashcrag Dragon (rare roamer) | 28    | Elite Charger (dive strafe)                                                                              | Q Dragon                     |
 | **Ashwing** (world boss)     | 30    | Boss: fire breath cone, wing-gust ring, dive rect, ember rain w/ safe wedges, 50% phase: airborne volley | Q Dragon Evolved (scale 2.0) |
+
+### 4.1 As built — what the models can actually do (P12-C, 2026-08-06)
+
+40 enemy models are baked, covering every row above. Two findings changed the design.
+
+**The four KayKit skeletons animated nothing, and now they do.** They baked with zero clips,
+because the pack ships meshes and animations in SEPARATE files — the clips live in
+`Animations/gltf/Rig_Medium/{General,MovementBasic}.glb`, the same split our own player rigs use.
+The enemy pipeline bakes one model per file and the enemy renderer expects the clips to be inside
+it, so a skeleton stood frozen and slid. The pipeline gained a `mergeClips` rule option
+(ASSET_PIPELINE.md §2.1) that stitches a shared rig's clips into a character by NAME — the two
+documents carry the same 23 joints, so every channel rebinds onto the mesh's own skeleton. Each
+skeleton now carries `Idle_A/B`, `Walking_A`, `Running_A`, `Hit_A`, `Death_A`, `Interact`, `Throw`.
+
+Found by `pnpm assets:clips`, which regenerates `ENEMY_MODEL_CLIPS` from the bakes — until P12-C
+that regeneration was a comment in the file rather than a command, and the empty list had been
+sitting in shared since P9-C baked `Skeleton_Minion` with nobody noticing.
+
+**There is still no melee swing, and that is a design constraint, not a gap to paper over.**
+KayKit keeps the combat set in a paid `Rig_Medium_Combat` file the FREE pack does not include, and
+the Quaternius rigs name their bones differently, hang them off a different hierarchy and rest them
+in a different pose — retargeting is a different job from rebinding, and the merge REFUSES a
+foreign rig rather than dropping the channels it cannot match. So the Emberwood skeletons are the
+three archetypes this rig can play honestly:
+
+- **Swarm** (Minion) — contact damage, no swing to miss.
+- **Charger** (Rogue, Warrior) — the lunge IS the attack; `Running_A` is the whole animation, which
+  is already how P9's chargers read. The Rogue keeps its backstab bonus and the Warrior its 50 %
+  frontal mitigation; flanking is still the answer to both.
+- **Caster** (Mage, and Varkas's blade waves / summon / scream) — casters gesture, and `Interact`
+  is a real forward reach. `Throw` covers a thrown bone shard.
+
+The zone's melee grunt is the **Ashen Marauder** on Q Ninja, which owns a real `Bite_Front` strike.
+That replaces the designed Bandit Ranger (KA Ranger + bow_A): the Adventurers pack has the same
+split AND the same missing combat set, so a bow-drawing bandit is not available either.
+
+**Enemies carry a `tint` now** (`#rrggbb`, content, nullable). §4 asks for a gold Sun Cactoro, an
+ember Skull Swarm and a dark Bonelord Varkas, and scale alone does not carry that — Varkas wears
+the same mesh as four of the minions standing around him, and a boss nobody can pick out of its
+own guard is not a boss. It multiplies into the base colour on the client, so it survives the hit
+flash.
+
+**Four things the shipped systems cannot do, recorded rather than faked:**
+
+1. **No summon.** The ability schema has no summon kind, so the Mushroom King's "minion call" and
+   Varkas's "summon minions" are both a guard camp standing with the boss instead. It reads
+   correctly and it is not the same beat.
+2. **Ambient fauna do not flee.** §2 promises passive fauna that run; there is no passive-flee AI
+   state, so the bunnies, chickens and shore birds ship as the `dummy` archetype — never aggro, pay
+   no XP, drop nothing, killable. The alternative was a 2 m aggro radius, which makes a chicken
+   attack people.
+3. **The Elder Treant's "root walls" are a ring you leave**, not geometry. The walkgrid is baked
+   and nothing writes to it at runtime (Q30).
+4. **The Skeleton Warrior's 50 % frontal mitigation is not a stat**, because the schema has no
+   directional mitigation field. Its charger kit is what makes flanking the answer.
+
+### 4.2 As placed — the camps (P12-C, 2026-08-06)
+
+**124 camps, 400 enemies**, and every P4–P9 camp moved: they stood on the dev island, which the
+Dawnlands put under open water.
+
+A camp is authored as a WISH — zone, bearing from that isle's heart, distance — and resolved
+against the real height field by the panel's `placeAll`, which spirals outward until it finds
+ground above water, under 22° (14° for a boss arena), inside the right zone, clear of every town
+and clear of the other camps. **The spiral is capped at 120 m on purpose**: an unbounded search
+always succeeds and quietly moves a camp a third of an isle away, which turns an authored
+difficulty gradient into scatter and looks like it worked.
+
+| Zone          | Camps | Enemies | Band  |
+| ------------- | ----- | ------- | ----- |
+| Dawnshore     | 24    | 82      | 1–6   |
+| Verdant Weald | 24    | 77      | 6–12  |
+| Emberwood     | 24    | 80      | 12–18 |
+| Sungraze      | 24    | 85      | 18–24 |
+| Ashcrag       | 22    | 64      | 24–30 |
+| Elder Grove   | 6     | 12      | 30    |
+
+Measured from the GAME, not the publish button: `/ops/camps` reports **124 spawners, 400 enemies
+wanted, 400 alive, 0 unresolved refs, 0 camps that produced nothing**, with a per-zone breakdown
+identical to the panel's offline placement. Tick p95 **1.67 ms** of the 25 ms budget with all 400
+seeded and no players; RSS 186 MB of 700. §2's "≤150 active-combat enemies (spawn director caps)"
+is about enemies IN COMBAT, and no director is built — 400 idle is affordable and the number to
+watch is a loaded one, which is P12-G's job.
+
+The six Elder Grove camps validate with **"in an unreachable pocket"**, which is correct: WORLD.md
+§3.6 makes the grove a long swim or the one-way Ashcrag portal, so the walkgrid flood fill from
+the spawn point cannot reach it by design.
 
 ### Elder Grove (30 elite pocket)
 

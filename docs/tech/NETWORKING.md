@@ -229,6 +229,24 @@ ground, and re-seeds every enemy from the spawners — a camp authored on a hill
 has to move with it. Discovery progress (`zonesSeen`) is deliberately NOT cleared: re-awarding it
 would make republishing the map a currency.
 
+### 3.5 As-built: a whole-set sync must be SENT more than once (P11-D)
+
+`DiscoverySync` carries the entire set of zones, POIs and shrines a character has found. That
+shape is right — it is also what a relog restores, and a delta would need its own replay
+guarantees — but it was only ever sent **at spawn**. Nothing re-sent it when a POI ring fired or a
+shrine was attuned.
+
+The result is the trap worth writing down: the state was CORRECT on the server, PERSISTED
+correctly, and restored correctly on the next login. Every test passed. What the player saw was a
+world map whose fog never lifted for the whole session, and a discovery banner that could not fire
+at all — because the client raises it from the diff between two syncs, and there was never a
+second one.
+
+> A message the client diffs against its previous copy has exactly one failure mode, and it is
+> silent: send it once and every downstream effect is simply absent. Both `discovery` and
+> `interact-dirty` re-send it now (an attunement is both an object's state and a hop the map may
+> offer), and the P11 probe walks into an undiscovered POI and reads the banner off the DOM.
+
 ## 4. Combat Latency Model
 
 - **Ability start:** client plays wind-up/FX at press (prediction), server validates & broadcasts

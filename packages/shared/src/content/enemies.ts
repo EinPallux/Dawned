@@ -131,6 +131,20 @@ export const enemyDefSchema = z.object({
   /** Baked model id in the asset manifest (e.g. `enemies_glub`). */
   modelRef: z.string().min(1).max(64),
   scale: z.number().min(0.2).max(3).default(1),
+  /**
+   * Multiply-tint over the model's own colours, `#rrggbb`, or null for none.
+   *
+   * The bestiary deliberately reuses models across bands (§4 asks for a gold
+   * Sun Cactoro, an ember Skull Swarm, a dark Bonelord Varkas), and a boss that
+   * looks exactly like the minions around it is a boss nobody reads. Scale
+   * alone does not carry that — this is the other half, and it is a content
+   * field so re-colouring a row is an edit in the panel rather than a bake.
+   */
+  tint: z
+    .string()
+    .regex(/^#[0-9a-f]{6}$/, 'tint is a lowercase hex colour like #8a5a3c')
+    .nullable()
+    .default(null),
   /** Hit capsule. Defaults suit the small Quaternius critters. */
   hitRadius: z.number().min(0.2).max(3).default(0.5),
   hitHeight: z.number().min(0.4).max(6).default(1.2),

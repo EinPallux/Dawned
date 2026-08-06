@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import {
   gatherRefusalText,
   gateForTier,
+  questRefusalText,
   type GatherOp,
   nodeItemRefs,
   type ProfessionSyncMessage,
@@ -67,6 +68,13 @@ import {
   loadNodeModels,
   type NodeInReach,
 } from '../world/resource-nodes.js';
+import {
+  WorldObjectManager,
+  loadPropModels,
+  type ObjectInReach,
+  type QuestGlyph,
+} from '../world/world-objects.js';
+import { loadNpcDefs } from '../content/npc-defs.js';
 import { loadResourceNodeDefs } from '../content/resource-node-defs.js';
 import { loadIconUrls } from '../content/icon-urls.js';
 import { setAbilityNames } from '../app/panels/panel-format.js';
@@ -77,14 +85,19 @@ import type {
   EnemyDef,
   EnemyMetaEntry,
   InventorySyncMessage,
+  DialogueStateMessage,
+  DiscoverySyncMessage,
   ItemDef,
   ItemOp,
+  Poi,
+  QuestSyncMessage,
   VendorPanelMessage,
   WireLootBag,
 } from '@dawned/shared';
 
 /** The overlay panels P7 ships (UI_UX.md §4 grows this list per phase). */
-export type PanelId = 'character' | 'skills' | 'inventory' | 'vendor' | 'professions';
+export type PanelId =
+  'character' | 'skills' | 'inventory' | 'vendor' | 'professions' | 'journal' | 'map';
 
 /** What the HUD says when `V` cannot roll (COMBAT.md §7 gates the dodge). */
 const DODGE_REFUSAL_TEXT: Record<DodgeRefusal, string> = {
@@ -164,6 +177,39 @@ export interface ProfessionsBridge {
   iconUrl: (slug: string) => string | undefined;
 }
 
+/**
+ * What the quest panels read and drive (P11-D). Same external-store shape as
+ * the others, and the same contract: the connection owns the truth, React
+ * renders it and sends intents. There is no client-side quest state to
+ * disagree with — every op is a request and the next `QuestSync` is the answer.
+ */
+export interface QuestBridge {
+  subscribe: (listener: () => void) => () => void;
+  version: () => number;
+  /** The whole quest log, or null before the first sync. */
+  log: () => QuestSyncMessage | null;
+  /** The open conversation, or null. */
+  dialogue: () => DialogueStateMessage | null;
+  /** Zones/POIs/shrines found — the map's fog. */
+  discovery: () => DiscoverySyncMessage | null;
+  /** Every POI the bake carries (the map only DRAWS the discovered ones). */
+  pois: () => readonly Poi[];
+  /** Travel shrines the bake carries. */
+  shrines: () => { id: string; name: string; x: number; z: number }[];
+  /** Hint circles for tracked steps — never for an EXPLORE step. */
+  hints: () => { x: number; z: number; radius: number }[];
+  selfPosition: () => { x: number; z: number };
+  /** The published world-map image for this bake, or null if it has none. */
+  worldMapUrl: () => Promise<string | null>;
+  /** The world square the bake emitted — what the map frames on. */
+  mapBounds: () => { minX: number; minZ: number; maxX: number; maxZ: number } | null;
+  iconUrl: (slug: string) => string | undefined;
+  choose: (questId: string, nodeId: string, index: number, rewardItemId: string | null) => void;
+  pin: (questId: string, pinned: boolean) => void;
+  abandon: (questId: string) => void;
+  travel: (fromId: string, toId: string) => void;
+}
+
 export interface WorldHandle {
   dispose: () => void;
   /** Open/close an overlay panel (the React close buttons drive this). */
@@ -174,6 +220,8 @@ export interface WorldHandle {
   inventory: InventoryBridge;
   /** Data for the professions panel. */
   professions: ProfessionsBridge;
+  /** Data + actions for the dialogue, journal and world-map panels. */
+  quests: QuestBridge;
 }
 
 export interface WorldCallbacks {
@@ -239,6 +287,68 @@ export const runWorld = (
   };
   /** Last seen level per profession, so a sync can announce what CHANGED. */
   const professionLevels = new Map<string, number>();
+
+  // --- quests (P11-D) --------------------------------------------------------
+  /** What the journal, map and dialogue are drawn from; bumped on every sync. */
+  let questVersion = 0;
+  const questListeners = new Set<() => void>();
+  const notifyQuests = (): void => {
+    for (const listener of questListeners) listener();
+  };
+  /**
+   * Which glyph each NPC wears, derived ONCE per sync from what the server
+   * sent rather than per frame.
+   *
+   * The derivation is deliberately thin: a quest with `ready` and a turn-in NPC
+   * puts a gold `?` over them, a held quest puts a grey one, and anything the
+   * server has not told us about shows nothing. The client cannot know what is
+   * OFFERABLE — availability depends on gates it does not evaluate — so an
+   * offer glyph only appears once the server has said so through
+   * `DialogueState.more`, which is exactly the "the verb is not ours" rule
+   * pointing at the head of a villager.
+   */
+  const applyQuestGlyphs = (): void => {
+    if (!worldObjects) return;
+    const glyphs = new Map<string, QuestGlyph>();
+    for (const quest of connection.questLog?.quests ?? []) {
+      if (quest.status !== 'active' || !quest.turnInNpcId) continue;
+      const wanted: QuestGlyph = quest.ready ? 'turnin' : 'progress';
+      // Turn-in beats in-progress on the same head: a villager holding one of
+      // each has something for you NOW, and that is the useful signal.
+      if (glyphs.get(quest.turnInNpcId) === 'turnin') continue;
+      glyphs.set(quest.turnInNpcId, wanted);
+    }
+    for (const entry of connection.dialogueState?.more ?? []) {
+      const npcId = connection.dialogueState?.open?.npcId;
+      if (npcId && entry.kind === 'offer') glyphs.set(npcId, 'offer');
+    }
+    worldObjects.setQuestGlyphs(glyphs);
+  };
+  /** Rebuild the HUD tracker from the log. Pinned first, then the rest. */
+  const refreshTracker = (): void => {
+    const log = connection.questLog;
+    const active = (log?.quests ?? []).filter((quest) => quest.status === 'active');
+    const counted = new Set(['kill', 'collect', 'interact', 'use_at']);
+    const tracked = active
+      .filter((quest) => quest.trackable)
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned))
+      .slice(0, 3);
+    hud.setTracker(
+      tracked.map((quest) => ({
+        questId: quest.questId,
+        name: quest.name,
+        ready: quest.ready,
+        lines: quest.steps.map((step) => ({
+          text: step.text,
+          have: step.have,
+          need: step.need,
+          done: step.done,
+          counted: counted.has(step.type),
+        })),
+      })),
+    );
+    hud.setJournalBadge(active.filter((quest) => quest.ready).length);
+  };
   /** The word the gather bar uses while you are holding (§1.1's verbs). */
   const GATHER_GERUND: Record<string, string> = {
     woodcutting: 'Chopping',
@@ -312,6 +422,10 @@ export const runWorld = (
       // client that built them against the fallback version would plant a
       // forest on ground the server is not simulating.
       await buildNodes();
+      // Villagers and interactables wait for the map for the same reason: they
+      // stand in ITS bake, and a client that built them against the fallback
+      // version would put Marla on ground the server is not simulating.
+      await buildWorldObjects();
     })
     .catch((error: unknown) => {
       console.error('[terrain] map artifacts failed to load:', error);
@@ -710,6 +824,96 @@ export const runWorld = (
         professionsVersion++;
         notifyProfessions();
       },
+      // --- quests, POIs & interactables (P11-D) ------------------------------
+      onQuestSyncChanged: () => {
+        refreshTracker();
+        applyQuestGlyphs();
+      },
+      onQuestNotice: (message) => {
+        switch (message.kind) {
+          case 'accepted':
+            hud.toast(`Quest accepted — ${message.text}`, {
+              tone: 'gold',
+              onClick: () => {
+                setPanel('journal');
+              },
+            });
+            break;
+          case 'step':
+            hud.toast(message.text, { tone: 'plain' });
+            break;
+          case 'completed':
+            hud.toast(`Complete — ${message.text}`, {
+              tone: 'gold',
+              onClick: () => {
+                setPanel('journal');
+              },
+            });
+            break;
+          case 'rewarded': {
+            const parts: string[] = [];
+            if (message.xp) parts.push(`${message.xp} XP`);
+            if (message.gold) parts.push(`${message.gold} gold`);
+            for (const item of message.items ?? []) {
+              parts.push(
+                `${item.qty}× ${connection.itemDefs.get(item.itemId)?.name ?? item.itemId}`,
+              );
+            }
+            if (message.title) parts.push(`title “${message.title}”`);
+            if (parts.length > 0) hud.toast(parts.join(' · '), { tone: 'gold' });
+            break;
+          }
+          case 'refused':
+            // The refusal reasons are shared strings, not prose — they belong
+            // on the refusal line the dodge and the gather already use, so
+            // "you are missing something" always appears in the same place.
+            hud.showRefusal(questRefusalText(message.text));
+            break;
+          case 'abandoned':
+            hud.toast(`Abandoned — ${message.text}`, { tone: 'plain' });
+            break;
+          case 'toast':
+            hud.toast(message.text, { tone: 'plain' });
+            break;
+        }
+      },
+      onDialogueState: (message) => {
+        // The SERVER opens and closes the conversation, so the panel follows
+        // it — the same contract the vendor panel ships under.
+        setPanel(message.open ? null : openPanel === null ? null : openPanel);
+        applyQuestGlyphs();
+        questVersion++;
+        notifyQuests();
+      },
+      onDiscovered: (kind, ids) => {
+        for (const id of ids) {
+          if (kind === 'poi') {
+            const poi = worldObjects?.poiList.find((entry) => entry.id === id);
+            hud.showDiscovery(poi?.kind ?? 'place', poi?.name ?? id);
+          } else if (kind === 'shrine') {
+            hud.toast('Shrine attuned — you can travel back here.', { tone: 'gold' });
+          }
+        }
+        questVersion++;
+        notifyQuests();
+      },
+      /**
+       * Apply the spent/attuned set LIVE.
+       *
+       * It used to be applied exactly once, when the world objects were built,
+       * and never again — so a chest you had just emptied still offered
+       * "F — Open" until a relog, a respawned one never un-emptied, and an
+       * attuned shrine kept saying "Attune" instead of "Travel". Which state
+       * you saw depended on whether the objects happened to seat before or
+       * after the message arrived, which is why it looked intermittent.
+       */
+      onInteractState: (message) => {
+        worldObjects?.setInteractState(message.spent, message.attuned, connection.serverNow());
+      },
+      onInteractNotice: (notice) => {
+        if (notice.kind === 'refused') hud.showRefusal(notice.text);
+        else hud.toast(notice.text, { tone: 'plain' });
+      },
       onVendorPanel: (panel) => {
         // The server opens and closes the conversation (walking away breaks
         // the lease), so the panel follows it rather than the other way round.
@@ -808,6 +1012,30 @@ export const runWorld = (
     return `F — ${GATHER_VERB[node.def.profession] ?? 'Gather'} ${node.def.name}  ·  T${node.def.tier}`;
   };
 
+  /**
+   * What `F` says in front of a person or a thing.
+   *
+   * The wording comes from the object's KIND, which is the client's one
+   * legitimate reading of it: the prompt is a guess about what will happen and
+   * the server is still the thing that decides. A spent chest says so rather
+   * than offering a key that answers "Already emptied."
+   */
+  const objectPromptText = (object: ObjectInReach): string => {
+    if (object.kind === 'npc') return `F — Talk to ${object.name}`;
+    switch (object.flavour) {
+      case 'chest':
+        return object.spent ? `${object.name} — emptied` : `F — Open ${object.name}`;
+      case 'shrine':
+        return object.attuned ? `F — Travel from ${object.name}` : `F — Attune at ${object.name}`;
+      case 'campfire':
+        return `F — Rest at ${object.name}`;
+      case 'portal':
+        return `F — Enter ${object.name}`;
+      default:
+        return `F — ${object.name}`;
+    }
+  };
+
   /** The bag we could reach right now (ITEMS_LOOT §3: 4 m), nearest first. */
   const nearestBag = (): { id: number; distance: number } | null => {
     const self = connection.renderPosition();
@@ -865,6 +1093,19 @@ export const runWorld = (
       return;
     }
     const self = connection.renderPosition();
+    // Talk to the person / use the thing. Note what is NOT decided here: the
+    // client says "use this object", never what using it MEANS — a chest, a
+    // shrine and a notice board all send the same message and the server
+    // answers with the verb (QUESTS_POI §4).
+    const object = worldObjects?.inReach(self.x, self.z) ?? null;
+    if (object) {
+      connection.sendInteractOp({ kind: 'use', objectId: object.id });
+      const at = object.kind === 'npc' ? worldObjects?.npcPosition(object.id) : null;
+      // Face who you are talking to. The camera framing is the panel's job;
+      // this is just not having a conversation with someone's back.
+      if (at) input.yaw = Math.atan2(at.x - self.x, at.z - self.z);
+      return;
+    }
     const vendor = vendorPosts.inReach(self.x, self.z);
     if (vendor) {
       connection.sendItemOp({ kind: 'vendorOpen', vendorId: vendor.id });
@@ -951,6 +1192,40 @@ export const runWorld = (
     professionsVersion++;
     notifyProfessions();
   };
+
+  // World objects (P11): NPCs, interactables and POIs. Same three-part load as
+  // the nodes — placements from the bake the SERVER named, definitions from the
+  // published content, models from the manifest — and built once when all three
+  // are in hand.
+  let worldObjects: WorldObjectManager | null = null;
+  const buildWorldObjects = async (): Promise<void> => {
+    const [placements, npcDefs, models] = await Promise.all([
+      mapSource.loadPlacements(),
+      loadNpcDefs(),
+      loadPropModels(),
+    ]);
+    const manager = new WorldObjectManager(scene.scene, models);
+    await manager.build(
+      placements?.npcs ?? [],
+      npcDefs,
+      placements?.interactables ?? [],
+      placements?.pois ?? [],
+    );
+    if (disposed) {
+      manager.dispose();
+      return;
+    }
+    worldObjects = manager;
+    // An InteractState may have landed while we were loading; adopt it now
+    // rather than waiting for the next one, or a chest emptied before you
+    // arrived would sit there offering itself.
+    const pending = connection.interactStateMessage;
+    if (pending) manager.setInteractState(pending.spent, pending.attuned, connection.serverNow());
+    applyQuestGlyphs();
+    questVersion++;
+    notifyQuests();
+  };
+
   // Published ability + skill-node defs → the prediction layer (hotbar,
   // chains, costs, node folds), plus the icon wiring: baked game-icons urls
   // and the effectId → icon map (buff chips wear their ability's icon).
@@ -1270,6 +1545,57 @@ export const runWorld = (
       pending: terrain.pendingCount,
       zone: ambience?.zone?.id ?? null,
     }),
+    /** What the world actually seeded from the bake (P11 probe reads this). */
+    worldObjects: (): { npcs: number; objects: number; pois: number; seated: number } =>
+      worldObjects?.stats ?? { npcs: 0, objects: 0, pois: 0, seated: 0 },
+    /**
+     * The villagers and things this client has SPAWNED, with their positions —
+     * what is on screen, not what the bake says. The P11-E DoD run walks the
+     * world off this, because "using only in-game affordances" means the run
+     * may not read the content files a player cannot see.
+     */
+    worldObjectList: (): {
+      kind: string;
+      id: string;
+      name: string;
+      x: number;
+      z: number;
+      seated: boolean;
+    }[] => worldObjects?.roster ?? [],
+    /**
+     * What the client believes about the thing it could interact with right
+     * now — including whether it thinks the thing is spent, which is the
+     * difference between "F — Open the crate" and "the crate — emptied" and
+     * therefore between a quest that continues and one that does not.
+     */
+    interactProbe: (): {
+      prompt: string;
+      object: ObjectInReach | null;
+    } => {
+      const self = connection.renderPosition();
+      const object = worldObjects?.inReach(self.x, self.z) ?? null;
+      return {
+        prompt: object ? objectPromptText(object) : '',
+        object,
+      };
+    },
+    /** Every POI the bake carries — what the world map draws against the fog. */
+    poiList: (): {
+      id: string;
+      name: string;
+      kind: string;
+      x: number;
+      z: number;
+      radius: number;
+    }[] =>
+      (worldObjects?.poiList ?? []).map((poi) => ({
+        id: poi.id,
+        name: poi.name,
+        kind: poi.kind,
+        x: poi.x,
+        z: poi.z,
+        radius: poi.radius,
+      })),
     rendererInfo: (): { calls: number; triangles: number } => ({
       calls: scene.renderer.info.render.calls,
       triangles: scene.renderer.info.render.triangles,
@@ -1791,6 +2117,13 @@ export const runWorld = (
     lootBags.update(dtSeconds, now / 1000);
     vendorPosts.update(terrain.sampler);
     resourceNodes?.update(terrain.sampler, now);
+    if (worldObjects) {
+      const selfNow = connection.renderPosition();
+      worldObjects.update(deltaMs / 1000, selfNow, {
+        hasDataAt: (x, z) => terrain.sampler.hasDataAt(x, z),
+        heightAt: (x, z) => terrain.sampler.heightAt(x, z),
+      });
+    }
     // The reel bar runs per FRAME, not per tick: it is the one thing on screen
     // the player steers directly, and a marker that moves twenty times a second
     // reads as input lag. The server steps the same shared function on its own
@@ -1843,6 +2176,7 @@ export const runWorld = (
     const interactBag = nearestBag();
     const interactVendor = vendorPosts.inReach(position.x, position.z);
     const interactNode = resourceNodes?.inReach(position.x, position.z) ?? null;
+    const interactObject = worldObjects?.inReach(position.x, position.z) ?? null;
     // Nothing to advertise while an interaction is already running: `F` means
     // "let go" then, not "start this", and the prompt shares the lower middle
     // of the screen with the gather and fishing bars — on a short window it
@@ -1855,9 +2189,11 @@ export const runWorld = (
           ? 'F — Loot  ·  Shift+F — Loot all'
           : interactNode
             ? nodePromptText(interactNode)
-            : interactVendor
-              ? `F — Trade with ${interactVendor.name}`
-              : null,
+            : interactObject
+              ? objectPromptText(interactObject)
+              : interactVendor
+                ? `F — Trade with ${interactVendor.name}`
+                : null,
     );
 
     // The gathering surfaces: the hold bar closes itself when the channel does
@@ -1907,7 +2243,13 @@ export const runWorld = (
       grounded: connection.predicted.grounded,
       sprinting: connection.predicted.sprinting,
       swimming: connection.predicted.swimming,
-      players: connection.remotes.size + 1,
+      // Remotes hold every non-self ENTITY, enemies included, so counting them
+      // whole made the debug HUD read "players 25" while one person was online
+      // and 24 mushnubs were on screen — a number a developer reads to answer
+      // "is anyone else on?" has to mean that.
+      players:
+        [...connection.remotes.values()].filter((remote) => remote.kind === EntityKind.Player)
+          .length + 1,
       resource: {
         type: connection.resource.type,
         value: connection.resource.value,
@@ -2148,6 +2490,57 @@ export const runWorld = (
     },
   };
 
+  const questBridge: QuestBridge = {
+    subscribe: (listener) => {
+      questListeners.add(listener);
+      return () => questListeners.delete(listener);
+    },
+    version: () => questVersion,
+    log: () => connection.questLog,
+    dialogue: () => connection.dialogueState,
+    discovery: () => connection.discoveryState,
+    pois: () => worldObjects?.poiList ?? [],
+    shrines: () => worldObjects?.shrines ?? [],
+    /**
+     * Hint circles for the steps that have one.
+     *
+     * An EXPLORE step deliberately has none — clue text only, §1 rule 4 — so
+     * this filter is not a UI choice: the server does not send a hint for
+     * those, and there is nothing here to draw even if the map wanted it.
+     */
+    hints: () =>
+      (connection.questLog?.quests ?? [])
+        .filter((quest) => quest.status === 'active' && quest.hint !== null && quest.trackable)
+        .map((quest) => quest.hint!),
+    selfPosition: () => {
+      const self = connection.renderPosition();
+      return { x: self.x, z: self.z };
+    },
+    worldMapUrl: () => mapSource.worldMapUrl(),
+    mapBounds: () => mapSource.emittedBounds(),
+    iconUrl: (slug) => (slug ? iconUrlMap.get(slug) : undefined),
+    choose: (questId, nodeId, index, rewardItemId) => {
+      // The reward pick goes FIRST and is remembered server-side until the
+      // turn-in lands, so there is never a window where the quest is closed
+      // and the reward is still owed. Two ops rather than one field because
+      // the pick is legal on its own — a player may change their mind twice
+      // before pressing the button.
+      if (rewardItemId) {
+        connection.sendQuestOp({ kind: 'choose_reward', questId, itemId: rewardItemId });
+      }
+      connection.sendQuestOp({ kind: 'dialogue', nodeId, choice: index });
+    },
+    pin: (questId, pinned) => {
+      connection.sendQuestOp({ kind: pinned ? 'pin' : 'unpin', questId });
+    },
+    abandon: (questId) => {
+      connection.sendQuestOp({ kind: 'abandon', questId });
+    },
+    travel: (fromId, toId) => {
+      connection.sendInteractOp({ kind: 'travel', fromId, toId });
+    },
+  };
+
   return {
     dispose: () => {
       disposed = true;
@@ -2156,6 +2549,7 @@ export const runWorld = (
       lootBags.dispose();
       vendorPosts.dispose();
       resourceNodes?.dispose();
+      worldObjects?.dispose();
       terrain.dispose();
       container.replaceChildren();
     },
@@ -2163,5 +2557,6 @@ export const runWorld = (
     progression,
     inventory,
     professions: professionsBridge,
+    quests: questBridge,
   };
 };

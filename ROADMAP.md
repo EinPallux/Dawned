@@ -8,24 +8,24 @@
 >
 > **Status legend:** 🔲 not started · 🟨 in progress · ✅ done — update this file as phases move.
 
-| Phase | Name                                     | Size | Status                    |
-| ----- | ---------------------------------------- | ---- | ------------------------- |
-| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02) |
-| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02) |
-| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)      |
-| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)      |
-| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)      |
-| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)      |
-| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)      |
-| P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)      |
-| P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)      |
-| P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)      |
-| P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)      |
-| P11   | Quests, POIs & Interactables             | L    | 🔲                        |
-| P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
-| P13   | GM Suite & Live Ops                      | M    | 🔲                        |
-| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
-| P15   | Release 0.1.0                            | M    | 🔲                        |
+| Phase | Name                                     | Size | Status                                      |
+| ----- | ---------------------------------------- | ---- | ------------------------------------------- |
+| P0    | Foundations & Walking Skeleton           | M    | ✅ done (live 2026-08-02)                   |
+| P1    | Accounts, Characters & Menus             | M    | ✅ done (live 2026-08-02)                   |
+| P2    | Terrain & World Streaming                | L    | ✅ done (2026-08-02)                        |
+| P3    | Movement, Netcode Core & Chat v1         | L    | ✅ done (2026-08-03)                        |
+| P4    | Combat Foundation                        | XL   | ✅ done (2026-08-03)                        |
+| P5    | Classes I — Framework, Warrior, Rogue    | L    | ✅ done (2026-08-03)                        |
+| P6    | Classes II — Mage, Cleric, Status System | L    | ✅ done (2026-08-04)                        |
+| P7    | Progression — XP, Stats, Skill Trees     | M    | ✅ done (2026-08-04)                        |
+| P8    | Items, Inventory, Loot & Vendors         | L    | ✅ done (2026-08-04)                        |
+| P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)                        |
+| P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)                        |
+| P11   | Quests, POIs & Interactables             | L    | ✅ done (2026-08-06)                        |
+| P12   | World Building (the Dawnlands)           | XL   | ✅ measured DoD (owner walkthrough pending) |
+| P13   | GM Suite & Live Ops                      | M    | 🔲                                          |
+| P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                                          |
+| P15   | Release 0.1.0                            | M    | 🔲                                          |
 
 ---
 
@@ -657,6 +657,41 @@ end-to-end via the Quest Editor.
 only in-game affordances; discovery loop (banner/XP/map) fires correctly for every POI type;
 found-object quest works.
 
+**Status: ✅ done (2026-08-06) — measured, not played.**
+
+- [x] **P11-A** shared core — quest/NPC/dialogue schemas, the state machine (`questAvailability`,
+      `advanceQuest`, `eventCredit`), protocol v14, migration 0018.
+- [x] **P11-B** server runtime — quest log, interactables, shrine attunement + travel, POI
+      discovery, dialogue, `/ops/quest`, `/api/content/quests|npcs`.
+- [x] **A4** (panel) quest & dialogue editor on one publish rail with the game's own
+      `validateQuestFlow`, the chain graph and the journal preview.
+- [x] **P11-C** pilot content — 4 NPCs, 8 quests, 7 interactables and 6 POIs authored through the
+      panel and published; 4 interactable props baked; frozen into seed migration 0019.
+      Proven from the game side: `/ops/worldobjects` reports 4 NPCs, 7 interactables, 6 POIs,
+      0 orphans on the live bake.
+- [x] **P11-D** client — villagers as composed rigs with nameplates and server-decided quest
+      glyphs, the `F` prompt for people and things, the lower-third dialogue panel with a
+      typewriter and per-class reward picks, the HUD tracker, the journal (`L`), the world map
+      (`M`) framed on the bake's own emitted chunks with fog, pins, hint circles and the shrine
+      network, discovery banners and quest toasts. Verified by LOOKING:
+      `tools/smoke/p11-probe.mjs` drives all of it in a browser and its screenshots found four
+      bugs no test would have — see the P11-D notes in CLAUDE.md.
+- [x] **P11-E** verification — the DoD run (`tools/smoke/browser-p11.mjs`) MEASURED the DoD and
+      closed the phase. It never reads the quest content or the map bake to decide what to do
+      next: every destination comes from the tracker line, the map's hint circle, the clue prose,
+      the roster of things this client has actually spawned, or the `F` prompt. **Measured:** the
+      found-object quest solved from prose alone (the clue names no direction, so the run reads
+      "east" out of the journal and crosses the ring on probe 12 of 175, 70 m out) → `F` → turn-in;
+      the discovery loop firing for **all 6 POI kinds** with banner + XP + map reveal, each
+      measured from a forgotten state at a staging point 61 m clear of every ring (vista 835,
+      landmark 557, cache 696, curiosity 278, camp 696, shrine 1183 xp); and the whole
+      four-link chain — logging site found on probe 81 at 179 m, four stumps by tag, stalkers in
+      89 s, five mossbloom in real `GatherOp`s, the delivery credited on Bran's BARK, and the
+      Mushroom King in **137 s**, ending on the per-class picker (all four options on screen) with
+      the warrior's Wealdcleaver in the pack. Each link was confirmed LOCKED until the previous
+      one was handed in. `pnpm check` green at 642 unit tests.
+      **It found one shipped client bug and four content ones — see the P11-E notes in CLAUDE.md.**
+
 ## P12 — World Building: the Dawnlands (XL) ⚙A2+A3 fully required (dogfood!)
 
 **Goal:** the real world, authored with our own tools — the sandbox's heart.
@@ -670,6 +705,173 @@ authored (~210 total); world map bake + minimap tiles; walkability bake + perf p
 **DoD:** CONTENT_0.1.md tables hit 100% (script-verified counts); full 1→30 leveling route exists
 and was walked by at least one dev character per class archetype pair; every zone screenshot-reviewed
 against its palette/mood spec; owner walkthrough signoff zone by zone.
+
+**Progress (2026-08-06):**
+
+- [x] **P12-A** the archipelago terrain. The panel gained the tool first: the editor's island
+      button generates into the RESIDENT region (13×13 chunks max) and the world is 32×32, so a
+      whole-world pass runs server-side (`/api/map/generate-stream`, admin-only, checkpointed).
+      Masks COMBINE rather than overwrite so overlapping isles make an isthmus, `carve` masks
+      subtract so a strait can sever one, and erosion runs over the world as ONE height field
+      because the per-chunk version must skip the border rows adjacent chunks share.
+      **Measured, and identical to what `pnpm world:preview` computes offline** (which is the
+      proof both run the same maths): 1024 chunks written, 766 carrying land, **57.6 % coverage**
+      inside WORLD.md §1's 55–60 %, 0 unclaimed splat texels, and all six isles confirmed
+      SEPARATE landmasses by flood fill. Every land vertex stands in a zone, so publish's
+      land-in-no-zone gate is answered. Three deviations are recorded in WORLD.md §7.1.
+      **Deliberately not published**: the new archipelago puts open water where the dev island
+      was, so every P8–P11 placement is on a disabled chunk. Placing them on the new ground is
+      P12-B onward; the live game keeps serving the old bake until then.
+- [x] **P12-B** zones, settlements, bridges, shrines. 7 zones (the six of §2 plus the Dawnsea),
+      5 settlements as 40 buildings on levelled plateaus, 9 Ancient Shrines on the travel graph,
+      4 bridges as causeways with 35 plank sections dressing them. **Bridges are ground, not
+      props** — the walkgrid only runs one way (a prop can make terrain unwalkable, nothing can
+      make it walkable), so a bridge model over a channel is scenery you swim under; recorded as
+      Q30 with its alternative. 22 building models baked (Quaternius Buildings Kit; the Medieval
+      Village Pack was refused for the same licence reason as P10's Gems & Ores). **The draft
+      validates.** Three bugs came out of it, two of them latent since before P12: the prune
+      parsed `validateDraft`'s prose and missed props because they use a different sentence;
+      `listObjects` had no ORDER BY, so with the Dawnsea overlapping every land zone an unchanged
+      draft could publish Dawnshore as ocean one time and not the next; and `findSpawn` took the
+      first zone with a settlement, which with five settlements meant a new character could wake
+      up in the level 24–30 mining camp.
+- [x] **P12-C** the full bestiary and its camps. **50 enemy rows, 124 camps, 400 enemies** —
+      Emberwood, Sungraze, Ashcrag and the Elder Grove authored, and every P4–P9 camp RE-PLACED
+      (they stood on the dev island, which is open water now). Camps are authored as a wish —
+      zone, bearing, distance — and resolved against the real height field, with the search
+      capped at 120 m so a wish that cannot be met FAILS instead of quietly scattering the
+      difficulty gradient. Enemies gained a content `tint`, so a boss wearing its minions' mesh
+      reads as a boss. Measured from the game: `/ops/camps` reports 124 spawners, 400 wanted,
+      400 alive, **0 unresolved refs and 0 camps that produced nothing**, per-zone identical to
+      the panel's offline placement; tick p95 **1.67 ms** of 25 with all 400 seeded.
+      **The blocker was the four KayKit skeletons, which baked with no clips at all** — the pack
+      ships meshes and animations in separate files, so the whole Emberwood band would have stood
+      frozen and slid. The pipeline can merge a shared rig's clips into a character now
+      (`mergeClips`, ASSET_PIPELINE §2.1); there is still no melee swing in the FREE pack, so the
+      undead are swarm/charger/caster and the zone's grunt is a model that owns a strike.
+      **Three bugs, two of them from before this phase:** the clip generator DELETED a helper that
+      shared kept in the file it rewrites (silent here, a typecheck failure in the panel);
+      `clipForAbility` hardcoded `CharacterArmature|`, so no enemy on a KayKit rig could ever have
+      played an ability clip; and the Enemies page's prune-on-match compared the RAW jsonb column,
+      so re-running a content script republished the whole bestiary and showed 174 "changes" in a
+      diff review whose only job is to say what changed. A fourth was found BY the new lever: the
+      map draft still carried `ashen_reach` from the dev island, a smaller ring that therefore WON
+      inside the savanna and the canyons — 9 camps reported a zone WORLD.md does not have.
+- [x] **P12-D** items T3–T5, legendaries, loot and vendors. **223 items live** — 60 weapons and
+      offhands, 57 armour, 25 jewellery, 22 consumables, 12 junk, 47 materials, and the **6
+      Legendaries**, one per zone. 21 loot tables (the seven the bestiary stubbed, now filled and
+      nesting through per-tier pools, plus a dedicated table per boss with no `nothing` entry, so
+      "guaranteed Rare+" is a property of the data). 16 vendors: every P8 shop re-anchored onto a
+      building the map publish actually placed, and Mosshollow, Cinderfall, Sunwatch and Rustpick
+      given their own. Every item carries a unique icon — 256 baked, 0 duplicates.
+      **Item effects are real now.** P8 shipped the schema and a server helper NOTHING called, so
+      every Epic and every Legendary effect in the game was decoration; `equipmentBonus` folds
+      `stat_pct`/`on_kill_gold` in shared (the sheet cannot lie about it) and the server applies
+      them to max HP, armour, move speed, damage dealt, healing done and kill gold. Two design
+      promises are recorded as owed rather than faked: `on_hit_effect` has no consumer (Emberbrand's
+      burn), and §4's pity counter is a per-character server counter that does not exist.
+      **The bug that mattered is content ownership**: `item_material_dawnpetal` was authored in the
+      item catalogue AND the profession node catalogue at different ilvls, so whichever script ran
+      last won — republishing the items silently reverted P10-E's re-tiering of it from a Dawnshore
+      common to the Elder Grove's T5 rare. Caught by `gathering-content.test.ts`, which asserts the
+      ladder holds. The icon fetcher also reports EVERY missing slug now instead of dying on the
+      first: 59 of 120 new icons needed a different author or name, and that is one run to find out.
+- [x] **P12-E** ~370 resource node placements. **362 nodes across the Dawnlands** (from 65 on the
+      dev island): 120 trees, 95 ore, 107 herbs, 40 fishing spots — **all 21 published definitions
+      placed, 0 without a home**, and every tier of every profession standing in the zone
+      PROFESSIONS §4 gives it. The T3–T5 fishing waters are the gap P10-G explicitly reported and
+      declined to fake ("epic and legendary have definitions and no water until P12"); all five
+      bands have water now. Proven from the GAME: `/ops/respawnnodes` reports **362 total, 0
+      orphans** on the hot-swapped bake.
+      **The clusters are wishes, not coordinates** — the same `placeAll` the camps use, plus a
+      per-member ground check that reads the DRAFT CHUNKS and a 6-attempt retry that shrinks
+      toward a centre already known to be good. That retry is what makes a shoal land 8 of 8
+      instead of 3 of 8.
+      **The bug that mattered was invisible to every check that existed: 39 of 322 land nodes
+      stood in a zone they were never authored for.** `placeAll` validates the cluster CENTRE's
+      zone; the members scatter up to `spread` metres off it and were only ever asked about the
+      GROUND. So T5 dawnstone, duskthorn and ashwood sat in the T4 savanna — where no gate stops
+      a player reaching them — and 4 of the 12 Dawnpetal grew in Emberwood, which is P12-D's
+      ownership bug re-made out of geometry a day after the data version was fixed. The member
+      loop asks the draft's zone layer now, ordered exactly as `bakeDraft` orders it, and the
+      existing retry absorbed every stray: **362 placed, 0 dropped**, per zone 70/70/70/70/70 and
+      12 in the Grove. It cost nothing because the remedy was already there.
+      Also: **`waterLevel` was `null` for all 1024 chunks.** The client draws a water surface only
+      where a chunk declares one, so the new world had no sea at all — 42 % of it an invisible
+      hole — and no fishing node could ever be authored, because "submerged" is defined against a
+      chunk's water. Two whole phases passed without it because nothing had asked for water until
+      this one did.
+      Panel side (A1-e/A2): publish now warns when one node id's placements are split across
+      zones, which is the editor-side guard the script fix cannot give — the owner drags nodes by
+      hand too. Warning, not blocker, on `questHintCoverage`'s precedent: two regions can be a
+      design choice, 5 of 19 across a line is not.
+- [x] **P12-F** POIs, interactables, NPCs and the remaining quests. Measured from the GAME
+      (`/ops/worldobjects`): **41 NPCs, 61 interactables, 46 POIs, 0 orphans** — against
+      CONTENT_0.1 §1/§2's ~40 / ≥60 / ≥45. POIs are exactly §1's mix (8 vista, 14 landmark,
+      8 cache, 10 camp, 5 curiosity); interactables are 26 chests, 12 signposts, 8 campfires,
+      the Elder Arch, plus P12-B's 9 shrines and P11's 4 stumps. Sixteen NPCs are the bodies for
+      P12-D's sixteen vendor rows, each standing ON its vendor's `anchor` — that radius is the
+      proximity lease the server checks, so a shopkeeper placed anywhere else offers a trade the
+      server then refuses. Five settlements gained 68 dressing props (well, market stalls, cart,
+      hay, benches, barrels, fencing): P12-B built them as forty building shells and nothing
+      else, which reads as a diorama of a town rather than a town.
+      **The asset pipeline had to grow two front doors first.** Three packs — the Medieval
+      Village Pack, the Low Poly Nature Models, the Desert Assets, ~200 models — ship no glTF at
+      all, and one of them owns the **only campfire in the whole library** while WORLD.md §5
+      makes campfires a real interactable. `.obj` converts in memory now; a `scale` rule
+      normalises a pack authored outside metres (this one is ~1/2.5, and an interactable
+      placement carries no scale on purpose); an `emissive` rule lights the bonfire's `Fire`
+      material and throws on a material name the file lacks. ASSET_PIPELINE §2.2.
+      **Two silent bugs came out of it.** Measuring a prop from its POSITION accessors is
+      confidently wrong — a glTF node carries a transform — and that reading called the bonfire
+      41 cm when it is 1.02 m and the shrine ONE CENTIMETRE when it is 2.4 m tall
+      (`model-size.mjs` + a test pinning nine props to metre bands). And `pnpm assets:build`
+      started from an empty asset map while `assets:icons` writes the same manifest, so a model
+      rebuild **deleted all 256 icon entries** — files on disk, report green, and every item,
+      ability and node in the game rendering a blank square.
+      **The find that mattered is the Elder Grove.** Publish refused all five of its rows as
+      "cannot be walked to from the spawn", and it was RIGHT: the Grove has no causeway (Q30) and
+      the open ocean around it is disabled chunks the walkgrid marks Blocked. The portal had been
+      authored backwards — §3.6 puts a "one-way ancient portal in Ashcrag" as a way IN, and it
+      had been placed in the Grove pointing out. And the reachability fill only walked the
+      walkgrid, so it was wrong about everything behind any portal. It consumes portals as
+      directed edges now, to a fixpoint, and only once the portal's own mouth is reachable.
+      **Recorded, not fixed:** §3.6's other route in — the long swim from the Weald's north cape
+      — does not exist. All 249 open-ocean chunks are disabled, so the sea between the isles is
+      void a player cannot enter; three chunks of it separate the Grove from the mainland.
+      **Still to author: the ~20 remaining quests** (8 of §5's 28 are live from P11). Eleven of
+      the new quest givers are named by no quest yet, which the publish rail already warns about.
+- [x] **P12-G** the DoD run (content report, 1→30 route, per-zone perf). `tools/smoke/p12-dod.mjs`
+      answers all three from the RUNNING WORLD rather than from the content published into it —
+      `/api/content/*` plus `/ops/camps`, `/ops/worldobjects`, `/ops/respawnnodes`, `/ops/metrics`.
+      **PASS on every row.**
+      **CONTENT_0.1 at 100 %:** 46 POIs, 62 interactables, 51 enemy types, 4 zone bosses + 1 world
+      boss + 6 elites, 124 spawners, 41 NPC definitions and 41 placed, 223 items, 6 Legendaries,
+      16 vendors, 28 quests in 5 chains, 362 node placements of 21 types — and 0 orphan enemy
+      refs, 0 dry camps, 0 orphan nodes, 0 orphan NPCs.
+      **The 1→30 route exists, measured rather than walked.** For each band, XP demand from the
+      published curve against supply from that zone's quests, discoveries and camps:
+      | zone | band | need | quests | POIs | one clear | clears to cross |
+      | --- | --- | --- | --- | --- | --- | --- |
+      | Dawnshore | 1–6 | 3 530 | 1 490 | 63 | 2 630 | **0.8** |
+      | Verdant Weald | 6–12 | 23 450 | 3 100 | 1 494 | 8 675 | **2.2** |
+      | Emberwood | 12–18 | 58 710 | 6 800 | 5 013 | 14 803 | **3.2** |
+      | Sungraze | 18–24 | 107 130 | 9 650 | 10 197 | 21 302 | **4.1** |
+      | Ashcrag | 24–30 | 167 590 | 10 400 | 16 866 | 35 118 | **4.0** |
+      A "clear" is every enemy standing in the zone, killed once at level; camps respawn, so the
+      number to watch is whether it is MANY. 0.8 → 4.0 is a smooth ramp with no grind wall, and
+      every band has enemies inside its own level range. Walking it with a bot would take hours and
+      answer the same question with less precision, which is why the DoD's "route exists" is
+      arithmetic here — `xpPerClear` is computed by the SERVER from what actually spawned (level,
+      rank, `xpMult`), so it cannot drift from the `killXp` the game pays.
+      **Budgets, whole world seeded:** tick p95 **2.41 ms** of 25, max 10.18 ms, RSS **193 MB** of
+      700, 400 entities.
+      **One doc bug fell out of counting**: CONTENT_0.1 claimed five zone bosses by naming Mossback
+      among them, and NPCS_ENEMIES §4 authors Mossback as a "mini-boss, quest" at Elite Grunt rank
+      (WORLD.md §3: "quest target"). The content was right and the count was the drift — the
+      Dawnshore's climax is an elite, which is the right shape for a level 1–6 starter zone.
+      Two DoD clauses are the OWNER's and cannot be self-certified: every zone screenshot-reviewed
+      against its palette/mood spec, and the zone-by-zone walkthrough signoff.
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel
 

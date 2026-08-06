@@ -27,6 +27,19 @@ import { isUntargetable, type ActiveEffect } from './effects.js';
 import type { PlayerProgress } from './progression.js';
 import type { PlayerItems } from './items.js';
 import { createProfessions, type ProfessionState } from './professions.js';
+import type { QuestLog } from './quests.js';
+import type { InteractionLog } from './interactables.js';
+
+/** A conversation in progress — the server drives it, the client renders it. */
+export interface OpenDialogue {
+  questId: string;
+  /** Which of the quest's three conversations we are in. */
+  phase: 'offer' | 'inProgress' | 'complete';
+  nodeId: string;
+  /** The NPC being talked to, for the range re-check on every choice. */
+  npcPlacementId: string;
+  npcId: string;
+}
 
 /** A committed instant ability waiting for its contact frame. */
 export interface PendingAbility {
@@ -100,6 +113,35 @@ export class ServerPlayer {
   items: PlayerItems;
   /** Gathering-profession levels (P10) — loaded at spawn, written through. */
   professions: Map<Profession, ProfessionState> = createProfessions();
+
+  /**
+   * Quest log (P11). Loaded at spawn from `character_quests`; the server is the
+   * only thing that mutates it, and the client's copy is whatever the last
+   * `QuestSync` said.
+   */
+  quests: QuestLog = new Map();
+
+  /** Tracker pins, in the order pinned (max 3 — QUESTS_POI §4). */
+  pinnedQuests: string[] = [];
+
+  /**
+   * What this character has done to world objects (P11): chests opened, shrines
+   * attuned, props touched. Loaded at spawn from `character_interactions`.
+   */
+  interactions: InteractionLog = new Map();
+
+  /** POI ids already discovered — the map's fog and the discovery gate. */
+  poisSeen: Set<string> = new Set();
+
+  /** The dialogue node currently on this player's screen, if any. */
+  dialogue: OpenDialogue | null = null;
+
+  /**
+   * A per-class reward the player picked but has not been paid yet. Held until
+   * the turn-in lands so there is never a window where the quest is closed and
+   * the reward is still owed.
+   */
+  pendingRewardChoice: { questId: string; itemId: string } | null = null;
   /**
    * The button bitfield from the most recently consumed input (P10-C).
    *

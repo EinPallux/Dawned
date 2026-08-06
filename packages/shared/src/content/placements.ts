@@ -15,6 +15,7 @@
 
 import { z } from 'zod';
 import { WORLD_SIZE_M } from '../world/map.js';
+import { npcPlacementSchema } from './npcs.js';
 import { nodePlacementSchema } from './resource-nodes.js';
 
 /** Slugs for editor-authored rows — same shape the content editors use. */
@@ -93,12 +94,25 @@ export const scatterSetSchema = z
   .strict();
 export type ScatterSet = z.infer<typeof scatterSetSchema>;
 
+/**
+ * The six POI kinds of WORLD.md §4.1. This list is the design's, not a
+ * convenience set: each one is a different PROMISE to the player — a vista pays
+ * a camera flourish, a cache hides a chest behind a search, a camp is a fight,
+ * a curiosity is a one-off gag. The client picks its banner, glyph and flourish
+ * off this field, so adding a seventh means designing what it feels like first.
+ *
+ * (A3 shipped `ruin`/`cave`/`settlement` here, which were never in §4.1 and
+ * never placed. Corrected in P11, the phase that gives discovery meaning.)
+ */
+export const POI_KINDS = ['vista', 'landmark', 'cache', 'camp', 'shrine', 'curiosity'] as const;
+export type PoiKind = (typeof POI_KINDS)[number];
+
 /** Discovery point (PROGRESSION.md §4): walk into the ring, earn the XP once. */
 export const poiSchema = z
   .object({
     id: placementSlug,
     name: z.string().min(1).max(64),
-    kind: z.enum(['vista', 'landmark', 'ruin', 'cave', 'settlement', 'shrine']),
+    kind: z.enum(POI_KINDS),
     x: worldX,
     z: worldX,
     /** Discovery radius, metres. */
@@ -193,6 +207,13 @@ export const placementsFileSchema = z
      * server treats a missing array as "this world has no gathering yet".
      */
     nodes: z.array(nodePlacementSchema).default([]),
+    /**
+     * Friendly NPCs (P11). Thin placements pointing at `content_npcs`, the same
+     * split resource nodes use. Defaulted for the same reason `nodes` is: a
+     * bake published before P11 must still parse, and an absent array simply
+     * means nobody lives here yet.
+     */
+    npcs: z.array(npcPlacementSchema).default([]),
   })
   .strict();
 export type PlacementsFile = z.infer<typeof placementsFileSchema>;

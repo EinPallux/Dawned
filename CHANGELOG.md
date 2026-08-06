@@ -5,6 +5,258 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the Dawnlands are finished, and measured (2026-08-06, P12-G)
+
+- **The world is complete on every countable target**: 46 places to find, 62 things to use, 51
+  kinds of enemy across 124 camps, 41 people, 223 items, 28 quests in five chains, 362 gathering
+  nodes — with nothing referring to something that is not there.
+- **There is a real 1→30 route.** Each region pays enough — through its quests, its discoveries and
+  its camps — to carry you across its own level band without grinding: roughly one clear of the
+  Dawnshore, up to four in the Ashcrag canyons, a smooth ramp with no wall in it.
+- **It runs comfortably.** With all 400 enemies awake the server spends 2.4 ms of its 25 ms tick
+  and 193 MB of 700.
+
+### Added — twenty-eight quests, and a map that points at the right place (2026-08-06, P12-F)
+
+- **20 more quests**, bringing the world to **28 across five chains** — one per region. Lissa's
+  road, Odo's timber, Niamh's humming stone circle, Brann's dead that will not stay down, Kesh's
+  herds moving the wrong way, Holt's collapsed adit, and the Warden's two in the Elder Grove.
+- **Every quest marker now points at something that is actually there.** Markers are worked out
+  from the real camps, herbs and chests rather than typed in by hand, and they point at the nearest
+  concentration instead of drawing a ring around half an island.
+- **Five of the original eight quests were pointing 420–815 m off** — they were written when the
+  world was one small island, and everything moved. Fixed. One of them named a crate that no
+  longer existed at all, so it could never be finished; the crate is back.
+- The Weald chain says **Verdant Weald** in the journal now, because there is one.
+
+### Added — the Dawnlands are inhabited (2026-08-06, P12-F)
+
+- **41 people** stand in the world: sixteen shopkeepers behind the sixteen shops that had been
+  trading out of thin air, eleven more with work to offer, guards, and villagers who say something
+  when you walk past. Every settlement has faces now, and the Elder Grove has its Warden.
+- **46 places to find** — eight vistas, fourteen landmarks, eight hidden caches, ten named camps
+  and five curiosities, one of each kind in every region, all worth discovery XP.
+- **61 things to press `F` on**: twenty-six chests, twelve signposts that actually tell you where
+  you are going, eight campfires to rest at, nine travel shrines and the Elder Arch.
+- **The towns look like towns.** Sixty-eight props across the five settlements — a well, market
+  stalls, carts, hay, benches, barrels, crates and fencing — where before there were buildings on
+  bare ground and nothing between them.
+- **The Elder Grove can be reached.** Its arch stands in the Ashcrag canyons, one way, exactly
+  where the world was always meant to put it.
+
+### Added — the world gets its village props, and a campfire that is lit (2026-08-06, P12-F)
+
+- **16 new props**: a real campfire whose flame glows, a well, market stalls, carts, hay, benches,
+  barrels, crates, a gazebo, fencing and a cauldron — plus a standing **shrine** stone (the Ancient
+  Shrines had been decorated dungeon pillars), a **portal arch** for the Elder Grove, **gravemarkers**,
+  and a **signpost** so the world's twelve signposts have something to be.
+- Two thirds of the asset library had been unreachable because of the file format it shipped in.
+  That is fixed, which is what finally made a campfire possible — there is exactly one in every pack
+  the project owns.
+
+### Fixed — every item icon could vanish without a word (2026-08-06, P12-F)
+
+- Rebuilding the 3D models wiped all 256 icon references out of the asset manifest. The icon files
+  were untouched and every check stayed green, so the only symptom would have been every item,
+  ability and resource node in the game rendering a blank square.
+
+### Added — there is something to gather everywhere (2026-08-06, P12-E)
+
+- **362 resource nodes stand across the Dawnlands**, up from 65 on the old island: 120 trees,
+  95 ore seams, 107 herb patches and 40 fishing spots, in clusters you walk between rather than
+  an even sprinkle. Every zone carries its own band — birch and copper on the Dawnshore, wealdoak
+  and iron in the Weald, emberbark and silverline in the Emberwood, acacia and gold in the
+  savanna, ashwood and dawnstone in the canyons — and the Elder Grove's twelve Dawnpetal, which
+  grow nowhere else.
+- **All five fishing waters are real now.** Every tier of fish the game knows about has water to
+  catch it in — the shore's shoals, the Weald's pools, an ember run, the savanna's dune water,
+  and the deep sea off the canyons. The epic and legendary bars had definitions and nowhere to
+  play them until this.
+- **The sea is visible.** The new world was generated with no water surface at all, so 42 % of
+  the map was an invisible hole you walked into — and nothing could be a fishing spot, because
+  "underwater" had nothing to be under.
+
+### Fixed — nodes that had wandered out of their zone (2026-08-06, P12-E)
+
+- **39 of 322 land nodes stood in the wrong region.** Cluster centres were checked against the
+  zone they were authored for; the individual trees and veins scattered around them were not, so
+  handfuls crossed a border — including canyon T5 veins standing in the savanna, where nothing
+  gates you from them, and 4 of the 12 Dawnpetal growing outside the Grove that exists for them.
+  Every zone now holds exactly the nodes it was given.
+
+### Added — the deep catalogue (2026-08-06, P12-D)
+
+- **223 items in the world**, up from 103: the Emberwood's cinder-forged steel and ashweave, the
+  savanna's sunplate and duststride leathers, the canyons' obsidian and riftsilk, and the Elder
+  Grove's living grovemail — 60 weapons, 57 armour pieces, 25 rings and amulets, 22 things to
+  drink, and every one of them with its own icon.
+- **Six Legendaries, one per zone**, and they finally DO something: Tideturner off Mossback,
+  the Sporecrown off the Mushroom King, Emberbrand out of Cinderfall's last great fire,
+  Herdbreaker off Alpaking Prime, Ashwing's Talon, and the Elder Treant's Heartwood Stave.
+  Every Epic and Legendary effect in the game used to be a line of text that changed nothing.
+- **Each boss drops from its own table** with no empty result at all — a zone boss is a
+  guaranteed piece of gear and roughly a one-in-twenty-five shot at its Legendary.
+- **Every settlement trades now.** The old shops were anchored where the sea is, so all five
+  Dawnhaven merchants moved onto real buildings, and Mosshollow, Cinderfall, Sunwatch and
+  Rustpick have their own — potions tiered to the zone, a forge in Cinderfall, an apothecary
+  in Rustpick that sells you grit and calls it a tonic.
+
+### Added — the Dawnlands have a bestiary (2026-08-06, P12-C)
+
+- **The whole world is populated: 50 enemy types across 124 camps, 400 enemies.** The Emberwood's
+  undead and marauders, the savanna's herds and orc warbands, the canyons' golems, demons, yeti
+  and both dragons, and the Elder Grove's elite pocket — plus five zone bosses, the world boss
+  Ashwing, a rare roaming dragon, and rabbits, chickens and shore birds so a meadow is not empty.
+- **Every camp moved.** The old camps stood on the dev island, which is open water now, so the
+  world's whole layout was re-placed — each camp resolved against the real ground rather than
+  typed as a coordinate, and each zone's difficulty climbing outward from its town.
+- **A boss no longer wears its minions' face.** Enemies can carry a colour now, so the Bonelord is
+  dark against his skeletons, the savanna's cactoro is sun-bleached gold, and the canyon's skulls
+  burn ember where the Emberwood's wisps are pale.
+
+### Added — the rest of the bestiary's models (2026-08-06, P12-C)
+
+- **24 more enemy models baked** — the alpakings and raptors of the savanna, the demons, golelings,
+  yeti and squidle of the canyons, both dragons, the cactoros, monkroose, hywirls and grave wisps,
+  a hooded marauder for the Emberwood, and the rabbits, chickens and birds that make a place feel
+  lived in. 40 enemy models in all, 138 baked assets / 24.09 MB of the 64 MB budget.
+- **The four skeletons walk, run, flinch and die now.** They baked with no clips at all, because
+  the pack keeps meshes and animations in separate files — a skeleton stood frozen and slid along
+  the ground. The pipeline can stitch a shared rig's clips into a character, so the Emberwood's
+  undead are unblocked.
+- **The Emberwood's skeletons are chargers, casters and a swarm, not sword-swingers.** The free
+  pack ships no melee swing at all, so rather than shipping enemies whose attacks animate nothing,
+  the undead do what the rig can really play: the Rogue and the Warrior lunge (the charge IS the
+  attack, and flanking is still the answer to both), the Mage gestures, the Minions swarm. The
+  zone's melee grunt is a hooded Ashen Marauder that owns a real strike.
+
+### Added — the Dawnlands exist (2026-08-06, P12-A)
+
+- **The real world is generated**: five isles and the hidden Elder Grove, four islets, and the
+  channels between them, raised from island masks through the panel rather than by a script in this
+  repo. 57.6 % of the 2048 m world is land, over 766 chunks, with each isle confirmed a separate
+  landmass — so the bridges to come will gate the path the way WORLD.md §1 promises.
+- It is **not live yet**, deliberately. The new archipelago puts open water where the dev island
+  was, so every villager, camp, chest and resource node from P8–P11 is standing on nothing. Placing
+  them on the new ground is the rest of P12; the game keeps serving the world you can play today
+  until then.
+- Deviations from the design doc — the north-west islet with nowhere to stand, the sandbar that
+  could not sit mid-channel, and the Dawnsea becoming a real zone — are written down in WORLD.md
+  §7.1 rather than quietly absorbed.
+- **Five towns stand.** Dawnhaven on its shoulder above the spawn beach with a hall, a street of
+  houses, a market, a temple and a harbour; Mosshollow's tower house over the Weald canopy;
+  Cinderfall's broken stone in the red forest; Sunwatch's palisade and its farms out on the
+  plains; Rustpick clinging to the Ashcrag cliffs. Nine Ancient Shrines — one in each town and
+  four out where a death is likely and the walk back would be long.
+- **The four bridges are real ground, not scenery.** You walk on the terrain, not on props, so a
+  bridge model over a channel would be something you swim underneath. Each crossing is a 22 m neck
+  of land raised back over its own strait — a single visible chokepoint per channel, with open
+  water everywhere else, so swimming stays the shortcut for the impatient. The Elder Grove still
+  has no bridge: it is a long swim or the one-way portal, as designed.
+
+### Fixed — a chest you emptied still said "open me" (2026-08-06, P11-E)
+
+- **The client learned which chests were spent exactly once — when the world objects first
+  seated — and never again.** Open a chest and it kept offering `F — Open` for the rest of the
+  session; a chest whose respawn timer ran out never came back to life; a shrine you attuned kept
+  saying "Attune at" instead of "Travel from". Nothing survived a relog, which is why it hid for
+  so long: every check until now touched a thing once and walked away.
+- **Two discoveries at once showed only the last one.** Walk into a place whose ring overlaps
+  another and the first banner was overwritten mid-rise; they queue now and each gets its full
+  moment.
+- The debug overlay said **"players 25"** with one player online — it was counting every entity
+  that is not you, and twenty-four of them were mushnubs.
+- Quest **titles** are announced in the reward toast and then forgotten — "Friend of the Weald"
+  exists for four seconds and lives nowhere. UI_UX §Character already says titles arrive with the
+  system that produces them, and quests are now that system, so this is a real gap rather than a
+  surprise. Not built here; recorded in QUESTS_POI §6.2.
+- New GM lever `/ops/forget` un-finds POIs, zones, shrines or used objects for one character —
+  discovery fires on FIRST entry only, so without it the loop can be measured exactly once per
+  character and never again.
+
+### Fixed — four quest hints pointed at empty ground (2026-08-05, P11-E)
+
+- **Every kill step in the pilot set sent you to the wrong place.** Open the map, walk to the
+  circle, find nothing: the glubs were 85 m outside their ring, the bog blobs 94 m, the Weald
+  stalkers 122 m, and the Mushroom King — the end of the chain — **170 m**. The circles were typed
+  by hand in the quest editor while the things they point at are placed on a different page
+  entirely, so nothing had ever compared the two. All four now sit on the spawners that actually
+  roll the enemy.
+- **The two "gather N of these" steps had no circle at all**, which for a player with no profession
+  levels is the same as no instruction. Birchwood and mossbloom now point at the nearest real patch
+  — and Hesta stopped saying mossbloom grows in the Weald, because the placed mossbloom is 360 m
+  north of it.
+- **A quest chest you opened before taking the quest could never be opened again**, so "The Lost
+  Crate" and "What Took Them" were unfinishable for anyone who explored first. The crate and the
+  four marked stumps come back on a five-minute timer now; nothing a quest step needs is one-shot.
+- Publish warns about all of this from now on: the panel resolves every hint circle against the
+  spawners, props, nodes and villagers that are really placed, and says how many metres out it is.
+
+### Added — you can talk to them now (2026-08-05, P11-D)
+
+- **Villagers stand in Dawnhaven and speak.** They are built the same way your own character is —
+  body, outfit, hair on one skeleton — so they breathe, and they say something as you walk past.
+  A glyph over their head tells you at a glance whether they have work for you (`!`), whether
+  you are carrying theirs (`?` grey) or whether you can hand it in (`?` gold).
+- **`F` talks, opens, reads and attunes.** The prompt names what it will do — "Talk to Torv",
+  "Open Torv's Lost Crate", "Attune at Dawnhaven Shrine" — and an emptied chest says so rather
+  than offering a key that does nothing.
+- **Conversations** are a lower third: the NPC is the portrait, the text types itself in (click
+  to finish it), and the choices are what the SERVER offers. A chain's last turn-in lets you
+  pick your class's weapon before you hand it over. Walking away ends the conversation.
+- **The Dawnhaven notice board hands out work with nobody standing there** — the posting reads
+  in the same panel, and you take it off the parchment.
+- **A tracker** down the right edge with up to three quests and their counters, **a journal
+  (`L`)** grouped by zone with the found-voice prose and each step's progress, and **a world map
+  (`M`)** with the island, pins for every place you have found, a dashed circle where a step
+  roughly wants you, and the shrine network with the gold each hop costs.
+- **Finding a place is its own moment**: the name rises centre-screen with what kind of place it
+  is, once, the first time — not a toast queued behind three loot lines.
+
+### Fixed — four things only a screenshot would catch (2026-08-05, P11-D)
+
+- **The four pilot villagers stood in a T-pose.** They were authored with `idleClip: 'Idle'` and
+  the animation library's name for standing still is `Idle_Loop` — a rig plays nothing at all
+  for a clip it does not have. Fixed in the content, in the schema default, and in the client,
+  which now falls back to a clip that exists and says so in the log.
+- **The world map drew the whole ocean** with the island as a smudge and four pin labels piled
+  on top of each other. It frames on the chunks the map bake actually emitted now, which is the
+  bake's own answer to "where is there a world" and keeps working when the world grows.
+- **A conversation followed you across the island.** Opening a dialogue and walking away left it
+  on screen and pressable — a dialogue is not a remote control for an NPC.
+- **Discovery never updated inside a session.** The whole discovered set was sent once, when you
+  logged in, so the map's fog never lifted and the discovery banner could not fire at all.
+
+### Added — the world has people in it (2026-08-05, P11-A/B/C)
+
+- **Four villagers now stand in and around Dawnhaven**: Marla at the gate, Torv on the jetty,
+  Hesta on the north road and Bran, out at the logging cut. They wear the same composed look a
+  player character does — body, outfit, hair — so they move and gesture like people rather than
+  like props with a name over them.
+- **Eight quests are live**: four Dawnshore jobs that each teach one thing (thin out the glubs,
+  clear the bog, cut and carry six lengths of birch, find what the sea gave back), and the
+  four-part chain **The Loggers' Silence**, which ends underground with the Mushroom King and
+  pays a Rare weapon chosen for your class plus the title _Friend of the Weald_.
+- **Things to walk up to and press `F` on**: a notice board in Dawnhaven that hands out work with
+  nobody standing next to it, a crate washed up east of the last mooring post, four marked stumps
+  at the cut, and a shrine you attune to and can travel back to for the price WORLD.md §4.2 sets.
+- **Six places worth finding** — a vista, a landmark, a cache, a camp, a shrine and a curiosity —
+  each paying discovery XP the first time you walk into it, once, forever.
+- Quest progress, discoveries and everything you have opened survive a relog.
+- The **UI for all of this arrives with P11-D**: the journal, the tracker, the dialogue panel and
+  the world map. Until then the content is live and the server drives it, but there is nothing on
+  screen to read it with.
+
+### Fixed — two ways a delivery could go wrong (2026-08-05, P11-C)
+
+- **Handing over goods you do not have.** Walking up to the NPC with an empty bag correctly said
+  so — and then credited the step anyway. The refusal and the credit came from the same moment;
+  now a refused delivery does not advance.
+- **A delivery that could never be finished.** "Take 5 mossbloom to Bran" wanted five separate
+  conversations, and the second one found a step it had already counted, so the quest stuck one
+  short forever. A delivery is one act: you hand over the stack, it leaves your bag, the step is
+  done.
+
 ### Verified — P10 closed: a profession taken 1→10 for real (2026-08-05, P10-G)
 
 - **Woodcutting goes 1 → 10 in 458 gathers**, chopped one at a time on the live world by a real

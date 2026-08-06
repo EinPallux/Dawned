@@ -6,42 +6,42 @@
 
 ## 1. World
 
-| Item                                  | Target                                                                                                  |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Zones                                 | 6 (Dawnshore, Verdant Weald, Emberwood, Sungraze Savanna, Ashcrag Canyons, Elder Grove) + Dawnsea water |
-| Settlements                           | Dawnhaven (main, ~14 NPCs) + Mosshollow, Cinderfall, Sunwatch, Rustpick (~5–7 NPCs each)                |
-| Ancient Shrines (respawn/fast travel) | 9 (1 per settlement=5 + 1 extra per larger zone)                                                        |
-| POIs                                  | ≥45 total: 8 Vistas, 14 Landmarks, 8 Hidden Caches, 10 named Camps, 5 Curiosities                       |
-| Interactables (non-node)              | ≥60 placed: ~25 chests, 9 shrines, 8 campfires, ~12 signposts, quest props, Elder portal                |
-| Bridges (landmark builds)             | 4 + hidden swim route                                                                                   |
-| Baked world map + minimap tiles       | 1 set, regenerated on map publish                                                                       |
+| Item                                  | Target                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Zones                                 | 6 (Dawnshore, Verdant Weald, Emberwood, Sungraze Savanna, Ashcrag Canyons, Elder Grove) + Dawnsea water                   |
+| Settlements                           | Dawnhaven (main, ~14 NPCs) + Mosshollow, Cinderfall, Sunwatch, Rustpick (~5–7 NPCs each)                                  |
+| Ancient Shrines (respawn/fast travel) | 9 (1 per settlement=5 + 1 extra per larger zone)                                                                          |
+| POIs                                  | ≥45 total: 8 Vistas, 14 Landmarks, 8 Hidden Caches, 10 named Camps, 5 Curiosities — **46 live** (P12-F, exactly that mix) |
+| Interactables (non-node)              | ≥60 placed: ~25 chests, 9 shrines, 8 campfires, ~12 signposts, quest props, Elder portal — **61 live** (P12-F)            |
+| Bridges (landmark builds)             | 4 + hidden swim route                                                                                                     |
+| Baked world map + minimap tiles       | 1 set, regenerated on map publish                                                                                         |
 
 ## 2. Enemies & NPCs
 
-| Item             | Target                                                                     |
-| ---------------- | -------------------------------------------------------------------------- |
-| Enemy types      | 36 regular (list locked in design/NPCS_ENEMIES.md §4)                      |
-| Zone bosses      | 5 (Mossback, Mushroom King, Bonelord Varkas, Alpaking Prime, Elder Treant) |
-| World boss       | 1 — Ashwing (Dragon Evolved)                                               |
-| Rare roamers     | 3 (Ashcrag Dragon, Ghostfin-tier rares baked as spawner entries)           |
-| Spawners placed  | ~140 (camps, patrols, ambient) within population governor caps             |
-| Friendly NPCs    | ~40 (vendors 12, quest givers ~18, flavor/villagers ~10)                   |
-| Ambient critters | 8 types placed liberally                                                   |
+| Item             | Target                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enemy types      | 36 regular (list locked in design/NPCS_ENEMIES.md §4)                                                                                                                                                                                                                                                                                                                                                           |
+| Zone bosses      | **4 live** — Mushroom King, Bonelord Varkas, Alpaking Prime, Elder Treant. This row used to say 5 by counting **Mossback**, which NPCS_ENEMIES §4 authors as a "mini-boss, quest" at Elite Grunt rank and WORLD.md §3 calls a quest target. The content is right and the count was the drift: the Dawnshore's climax is an elite, which is the right shape for a level 1–6 starter zone. Found by P12-G's audit |
+| World boss       | 1 — Ashwing (Dragon Evolved)                                                                                                                                                                                                                                                                                                                                                                                    |
+| Rare roamers     | 3 (Ashcrag Dragon, Ghostfin-tier rares baked as spawner entries)                                                                                                                                                                                                                                                                                                                                                |
+| Spawners placed  | ~140 (camps, patrols, ambient) within population governor caps                                                                                                                                                                                                                                                                                                                                                  |
+| Friendly NPCs    | ~40 (vendors 12, quest givers ~18, flavor/villagers ~10) — **41 live** (P12-F: 16 vendors, 15 quest givers, 8 villagers, 2 guards)                                                                                                                                                                                                                                                                              |
+| Ambient critters | 8 types placed liberally                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ## 3. Items (≈210 total)
 
-| Category                    | Count        | Notes                                                                                                                                           |
-| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Weapons                     | 60           | 4 classes × 5 zone tiers × ~2 variants + rarity uprolls + 6 named Rare/Epics                                                                    |
-| Armor (5 slots)             | 55           | tiered sets per zone band × armor classes, stat templates                                                                                       |
-| Jewelry                     | 24           | rings/amulets/trinkets across tiers                                                                                                             |
-| Legendaries                 | 6            | handcrafted, one per zone + Elder Grove (Emberbrand etc.)                                                                                       |
-| Consumables                 | 22           | potion/tonic tiers, foods, 5 zone elixirs, antidote                                                                                             |
-| Materials                   | 30           | 5 tiers × (log, ore, herb) + gems ×6 + procs (resin, heartwood, geode…) — **27 live** (P10-E; copper + dawnpetal came from P8)                  |
-| Fish                        | 15           | 2 signature per tier + the tier rare, + the Old One — **15 live** (P10-E). Was 12 here; PROFESSIONS.md §5 names fifteen and the design doc wins |
-| Quest items                 | ~20          | per quest needs                                                                                                                                 |
-| Junk/treasure               | 12           | flavor vendor trash incl. 3 "treasure" high-value                                                                                               |
-| **Every item: unique icon** | 210 mappings | game-icons pipeline, zero reuse                                                                                                                 |
+| Category                    | Count            | Notes                                                                                                                                           |
+| --------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Weapons                     | 60 ✅ live       | 4 classes × 5 zone tiers × ~2 variants + rarity uprolls + 6 named Rare/Epics                                                                    |
+| Armor (5 slots)             | 55 → **57 live** | tiered sets per zone band × armor classes, stat templates                                                                                       |
+| Jewelry                     | 24 → **25 live** | rings/amulets/trinkets across tiers                                                                                                             |
+| Legendaries                 | 6 ✅ live        | handcrafted, one per zone + Elder Grove (Emberbrand etc.)                                                                                       |
+| Consumables                 | 22 ✅ live       | potion/tonic tiers, foods, 5 zone elixirs, antidote                                                                                             |
+| Materials                   | 30               | 5 tiers × (log, ore, herb) + gems ×6 + procs (resin, heartwood, geode…) — **27 live** (P10-E; copper + dawnpetal came from P8)                  |
+| Fish                        | 15               | 2 signature per tier + the tier rare, + the Old One — **15 live** (P10-E). Was 12 here; PROFESSIONS.md §5 names fifteen and the design doc wins |
+| Quest items                 | ~20              | per quest needs                                                                                                                                 |
+| Junk/treasure               | 12 ✅ live       | flavor vendor trash incl. 3 "treasure" high-value                                                                                               |
+| **Every item: unique icon** | 210 mappings     | **223 live** (P12-D) — 256 icons baked, zero duplicates, enforced by publish                                                                    |
 
 ## 4. Abilities & Progression
 
@@ -56,21 +56,21 @@
 
 ## 5. Quests & Dialogue
 
-| Item                      | Target                                                                                                                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Side quests               | 28: Dawnshore 6 (incl. 4-part starter-ish chain "Getting Started" flavored), Weald 5 (chain 4 + 1), Emberwood 5, Sungraze 5, Ashcrag 4, Elder Grove 2, found-object 1 (bottle) |
-| Quest chains (mini-sagas) | 5 (one per main zone)                                                                                                                                                          |
-| Dialogue sets             | ~45 NPCs × 2–6 nodes + ~30 ambient bark lines                                                                                                                                  |
-| Codex collections         | Castaway Logs ×6, per-profession codices                                                                                                                                       |
-| Quest boards              | 5 (one per settlement, 2–3 posts each)                                                                                                                                         |
+| Item                      | Target                                                                                                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Side quests               | **28 live** (P12-F). 28: Dawnshore 6 (incl. 4-part starter-ish chain "Getting Started" flavored), Weald 5 (chain 4 + 1), Emberwood 5, Sungraze 5, Ashcrag 4, Elder Grove 2, found-object 1 (bottle) |
+| Quest chains (mini-sagas) | 5 (one per main zone) — **5 live** (P12-F)                                                                                                                                                          |
+| Dialogue sets             | ~45 NPCs × 2–6 nodes + ~30 ambient bark lines                                                                                                                                                       |
+| Codex collections         | Castaway Logs ×6, per-profession codices                                                                                                                                                            |
+| Quest boards              | 5 (one per settlement, 2–3 posts each)                                                                                                                                                              |
 
 ## 6. Gathering
 
-| Item                     | Target                                                                                                                                             |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Resource node placements | ~370: trees ~120, ore ~95, herbs ~95, fish spots ~40 + 8 deep-sea — **65 live** on the dev island (P10-E planted T1–T2; the rest need P12's zones) |
-| Node types               | 5 tiers × 4 professions + Dawnpetal — **21 live** (P10-E, all five tiers defined)                                                                  |
-| Fishing minigame         | 1 tuned (parameters per fish rarity)                                                                                                               |
+| Item                     | Target                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resource node placements | ~370: trees ~120, ore ~95, herbs ~95, fish spots ~40 + 8 deep-sea — **362 live** across all six zones (P12-E): 120 trees, 95 ore, 107 herbs, 40 fishing |
+| Node types               | 5 tiers × 4 professions + Dawnpetal — **21 live** (P10-E defined them; P12-E gave all 21 a place to stand, 0 without one)                               |
+| Fishing minigame         | 1 tuned (parameters per fish rarity)                                                                                                                    |
 
 ## 7. Audio (per design/AUDIO.md)
 

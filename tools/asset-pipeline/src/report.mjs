@@ -32,6 +32,8 @@ export const report = async () => {
   const assets = Object.values(manifest.assets ?? {});
   let totalBytes = 0;
   const byCategory = new Map();
+  /** Packs shipping on the owner's assertion of rights rather than a licence file. */
+  const ownerAssertedPacks = new Set();
 
   for (const asset of assets) {
     // 1. Provenance: no asset ships without a ledger-backed license.
@@ -40,6 +42,15 @@ export const report = async () => {
     }
     if (!config.packs[asset.pack]) {
       failures.push(`${asset.id}: pack "${asset.pack}" is not in the license ledger`);
+    } else if (config.packs[asset.pack].ownerAsserted === true) {
+      // The owner holds rights to every pack they uploaded and asked for all of
+      // them to be usable (USER_QUESTIONS Q31, 2026-08-06). That is a legitimate
+      // basis to ship, and it is NOT the same claim as "this folder carries a
+      // CC0 file" — so it is recorded as its own state rather than by flipping
+      // `verified` and losing the distinction. Counted per PACK, not per asset:
+      // thirteen identical lines about one pack is noise that trains you to
+      // ignore the section where a real provenance failure would appear.
+      ownerAssertedPacks.add(asset.pack);
     } else if (asset.licenseVerified !== true) {
       warnings.push(`${asset.id}: license for pack "${asset.pack}" is not marked verified`);
     }
@@ -89,6 +100,13 @@ export const report = async () => {
     );
   }
 
+  if (ownerAssertedPacks.size > 0) {
+    const named = [...ownerAssertedPacks].sort().join(', ');
+    console.log(
+      `  ℹ️  ${ownerAssertedPacks.size} pack(s) ship on the owner's assertion of rights, ` +
+        `not an in-folder licence: ${named} (CREDITS.md §1)`,
+    );
+  }
   for (const warning of warnings) console.warn(`  ⚠️  ${warning}`);
   for (const failure of failures) console.error(`  ✖ ${failure}`);
 

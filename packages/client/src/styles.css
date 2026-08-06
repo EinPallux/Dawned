@@ -3304,3 +3304,374 @@ canvas.game {
   color: var(--muted);
   letter-spacing: 0.08em;
 }
+
+/* ------------------------------------------- quests, discovery (P11-D) --- */
+
+/* The tracker sits under the toasts on the right edge — same column, so a
+   pickup receipt and a quest counter never fight for the same pixels. */
+.hud-tracker {
+  position: absolute;
+  top: 372px;
+  right: 10px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  pointer-events: none;
+  z-index: 18;
+}
+.hud-track {
+  padding: 6px 10px 7px;
+  background: rgba(21, 26, 38, 0.72);
+  border-left: 2px solid var(--muted);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+}
+.hud-track[data-ready='true'] {
+  border-left-color: var(--gold-bright);
+}
+.hud-track-name {
+  font: 700 12.5px/1.4 var(--font-display);
+  letter-spacing: 0.03em;
+  color: var(--parchment);
+}
+.hud-track-step {
+  font: 600 11.5px/1.5 var(--font-body);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.hud-track-step[data-done='true'] {
+  color: var(--ok);
+  text-decoration: line-through;
+  text-decoration-color: rgba(87, 199, 123, 0.5);
+}
+.hud-track-ready {
+  margin-top: 2px;
+  font: 700 11px/1.4 var(--font-body);
+  letter-spacing: 0.06em;
+  color: var(--gold-bright);
+  text-transform: uppercase;
+}
+
+/* Discovery: centre-top, its own beat. Not a toast — finding a place is not a
+   receipt, and it must not queue behind three loot lines. */
+.hud-discovery {
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 26px;
+  background: linear-gradient(
+    180deg,
+    rgba(21, 26, 38, 0) 0%,
+    rgba(21, 26, 38, 0.62) 50%,
+    rgba(21, 26, 38, 0) 100%
+  );
+  pointer-events: none;
+  z-index: 22;
+}
+.hud-discovery.is-in {
+  animation: discovery-in 520ms var(--ease);
+}
+.hud-discovery-kind {
+  font: 700 10.5px/1 var(--font-body);
+  letter-spacing: 0.34em;
+  color: var(--gold);
+}
+.hud-discovery-name {
+  font: 400 27px/1.25 var(--font-display);
+  letter-spacing: 0.02em;
+  color: var(--parchment);
+  text-shadow: 0 2px 10px #000a;
+}
+@keyframes discovery-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    letter-spacing: 0.16em;
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* --- dialogue (lower third, QUESTS_POI §3) ------------------------------- */
+
+.dlg {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  width: min(760px, 74vw);
+  background: rgba(21, 26, 38, 0.95);
+  border: 1px solid var(--hairline);
+  border-top: 2px solid var(--gold);
+  clip-path: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+  box-shadow: var(--shadow);
+  padding: 14px 20px 16px;
+  z-index: 40;
+  pointer-events: auto;
+}
+.dlg-speaker {
+  font: 400 21px/1.2 var(--font-display);
+  color: var(--gold-bright);
+}
+.dlg-title {
+  font: 600 11.5px/1.4 var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.dlg-text {
+  min-height: 3.2em;
+  font: 400 15px/1.6 var(--font-body);
+  color: var(--parchment);
+  white-space: pre-wrap;
+}
+.dlg-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline);
+  font: 600 12px/1.4 var(--font-body);
+  color: var(--muted);
+}
+.dlg-reward-gold {
+  color: var(--gold-bright);
+}
+.dlg-reward-xp {
+  color: #b49bec;
+}
+.dlg-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 12px;
+}
+.dlg-choice {
+  text-align: left;
+  padding: 7px 12px;
+  background: rgba(40, 50, 74, 0.6);
+  border: 1px solid var(--hairline);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  color: var(--parchment);
+  font: 600 13px/1.35 var(--font-body);
+  cursor: pointer;
+  transition:
+    border-color 120ms var(--ease),
+    background 120ms var(--ease);
+}
+.dlg-choice:hover {
+  border-color: var(--gold);
+  background: rgba(52, 64, 92, 0.72);
+}
+.dlg-choice[data-action='accept'] {
+  border-left: 2px solid var(--gold);
+}
+.dlg-choice[data-action='turn_in'] {
+  border-left: 2px solid var(--ok);
+}
+.dlg-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dlg-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  background: rgba(40, 50, 74, 0.6);
+  border: 1px solid var(--hairline);
+  color: var(--parchment);
+  font: 600 12px/1.3 var(--font-body);
+  cursor: pointer;
+}
+.dlg-pick-item[data-picked='true'] {
+  border-color: var(--gold-bright);
+}
+.dlg-pick-item img {
+  width: 26px;
+  height: 26px;
+}
+.dlg-more {
+  margin-top: 10px;
+  font: 600 11.5px/1.5 var(--font-body);
+  color: var(--muted);
+}
+
+/* --- journal (L) --------------------------------------------------------- */
+
+.jr-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 14px;
+  align-items: start;
+  min-height: 220px;
+}
+.jr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  max-height: 62vh;
+  padding-right: 4px;
+}
+.jr-zone {
+  margin: 8px 0 3px;
+  font: 700 10.5px/1 var(--font-body);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.jr-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 6px 9px;
+  background: rgba(40, 50, 74, 0.4);
+  border-left: 2px solid transparent;
+  color: var(--parchment);
+  font: 600 12.5px/1.35 var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+.jr-row[data-selected='true'] {
+  background: rgba(52, 64, 92, 0.8);
+  border-left-color: var(--gold);
+}
+.jr-row[data-ready='true'] .jr-row-name {
+  color: var(--gold-bright);
+}
+.jr-row-level {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.jr-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.jr-prose {
+  font: 400 14px/1.65 var(--font-body);
+  color: var(--parchment);
+  font-style: italic;
+  border-left: 2px solid var(--hairline);
+  padding-left: 12px;
+}
+.jr-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.jr-step {
+  font: 600 12.5px/1.45 var(--font-body);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.jr-step[data-done='true'] {
+  color: var(--ok);
+}
+.jr-step[data-current='true'] {
+  color: var(--parchment);
+}
+.jr-clue {
+  padding: 8px 12px;
+  background: rgba(40, 50, 74, 0.45);
+  border-left: 2px solid var(--gold);
+  font: 400 13px/1.55 var(--font-body);
+  font-style: italic;
+  color: var(--parchment);
+}
+.jr-actions {
+  display: flex;
+  gap: 8px;
+  /* NOT `margin-top: auto`: with one short quest that pushed the buttons to the
+     floor of a 400 px panel and left a hole where the entry should be, which
+     reads as a layout that failed rather than as a quest with few steps. */
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* --- world map (M) ------------------------------------------------------- */
+
+.wm-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+.wm-canvas {
+  display: block;
+  background: #10151f;
+  border: 1px solid var(--hairline);
+  cursor: crosshair;
+}
+.wm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font: 600 11.5px/1.4 var(--font-body);
+  color: var(--muted);
+}
+.wm-legend span::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  transform: rotate(45deg);
+  background: currentColor;
+  vertical-align: middle;
+}
+.wm-travel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+.wm-hop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(40, 50, 74, 0.45);
+  border: 1px solid var(--hairline);
+  color: var(--parchment);
+  font: 600 12.5px/1.3 var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+.wm-hop:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+.wm-hop:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+}
+.wm-hop-cost {
+  margin-left: auto;
+  color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+}

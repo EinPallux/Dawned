@@ -199,7 +199,56 @@ export type CombatEvent =
   /** Progression state changed: gateway sends ProgressSync + persists. */
   | { type: 'progress-dirty'; playerId: number }
   /** First-time discovery: gateway persists the row + toasts the finder. */
-  | { type: 'discovery'; playerId: number; kind: 'zone' | 'codex'; refId: string; label: string }
+  | {
+      type: 'discovery';
+      playerId: number;
+      kind: 'zone' | 'codex' | 'poi' | 'shrine';
+      refId: string;
+      label: string;
+      /** POI kind, for the banner's glyph and flourish (P11). */
+      poiKind?: string;
+    }
+  // --- quests (P11) --------------------------------------------------------
+  /** Counters moved on these quests — resend the log, bump the tracker. */
+  | { type: 'quest-progress'; playerId: number; questIds: string[] }
+  /** A step finished: toast its tracker line. */
+  | { type: 'quest-step'; playerId: number; questId: string; text: string }
+  /** Every step is behind you — "Return to Marla". */
+  | { type: 'quest-complete'; playerId: number; questId: string }
+  /** A quest hook asked for a line of text. */
+  | { type: 'quest-toast'; playerId: number; text: string }
+  /** A quest hook asked an NPC to emote. */
+  | { type: 'npc-emote'; playerId: number; npcId: string; clip: string }
+  /** A quest hook granted a buff; the gateway resolves the effect id. */
+  | { type: 'quest-buff'; playerId: number; effectId: string; durationMs: number }
+  /** Quest state changed enough to need a full QuestSync + a save. */
+  | { type: 'quest-dirty'; playerId: number }
+  /** The fog changed without anything being FOUND (`/ops/forget`) — resync only. */
+  | { type: 'discovery-dirty'; playerId: number }
+  /** Per-character interactable state changed (chest opened, shrine attuned). */
+  | { type: 'interact-dirty'; playerId: number; objectId: string }
+  /** A HUD line for the last interaction: a refusal, a signpost, an attune. */
+  | {
+      type: 'interact-notice';
+      playerId: number;
+      objectId: string;
+      text: string;
+      kind: string;
+    }
+  /** A quest beat worth a toast, resolved by the gateway into a QuestNotice. */
+  | { type: 'quest-notice'; playerId: number; kind: string; questId: string; text: string }
+  /** A quest paid out — the toast shows what landed. */
+  | {
+      type: 'quest-rewarded';
+      playerId: number;
+      questId: string;
+      xp: number;
+      gold: number;
+      items: { itemId: string; qty: number }[];
+      title: string;
+    }
+  /** The dialogue panel changed — resend DialogueState. */
+  | { type: 'dialogue-dirty'; playerId: number }
   // --- items (P8) ----------------------------------------------------------
   /** Bag/paper-doll/purse changed — resend the authoritative sheet + persist. */
   | { type: 'inventory-dirty'; playerId: number }
@@ -474,7 +523,11 @@ export const advancePlayerContact = (
   const schoolPct =
     combo.school === 'magic' ? nodeAgg.stats.magicDamagePct : nodeAgg.stats.physicalDamagePct;
   const dealtMult =
-    (nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1) * damageDealtMultOf(player);
+    (nowMs < player.dawnedUntilMs ? 1 - DAWNED_DAMAGE_PENALTY : 1) *
+    damageDealtMultOf(player) *
+    // Epic+ item `stat_pct` riders (P12-D). P8 shipped the schema and a helper
+    // nobody called, so every item effect in the game was decoration.
+    (1 + (player.items.bonus.pct.damageDealt ?? 0) / 100);
   const rewind = rewindTicksFor(player.rttMs);
   // Flurry (P7 capstone): empowered basics grant a CP each and count down;
   // the visible speed buff drops with the last empowered swing.

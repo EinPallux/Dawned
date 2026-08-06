@@ -16,6 +16,8 @@ import {
   type MapChunk,
   type PlacementsFile,
   type ZonesFile,
+  CHUNK_SIZE_M,
+  WORLD_ORIGIN_M,
 } from '@dawned/shared';
 
 export interface MapMeta {
@@ -151,6 +153,58 @@ export class MapSource {
    * the server reads, and a client that silently accepted a malformed one
    * would render a world the server does not simulate.
    */
+  /**
+   * The world square the bake actually EMITTED, in metres.
+   *
+   * `meta.chunks.ids` is the bake's own answer to "where is there a world" —
+   * it lists exactly the chunks that were written, so it tracks whatever the
+   * owner publishes rather than a constant that rots the first time the map
+   * grows. The world map frames on this: a map of 2048 m of ocean with the
+   * island as a smudge in the middle is not a map of anywhere.
+   */
+  emittedBounds(): { minX: number; minZ: number; maxX: number; maxZ: number } | null {
+    const ids = this.meta?.chunks.ids ?? [];
+    if (ids.length === 0) return null;
+    let minCx = Infinity;
+    let minCy = Infinity;
+    let maxCx = -Infinity;
+    let maxCy = -Infinity;
+    for (const id of ids) {
+      const [cx, cy] = id.split('_').map(Number);
+      if (cx === undefined || cy === undefined || Number.isNaN(cx) || Number.isNaN(cy)) continue;
+      minCx = Math.min(minCx, cx);
+      minCy = Math.min(minCy, cy);
+      maxCx = Math.max(maxCx, cx);
+      maxCy = Math.max(maxCy, cy);
+    }
+    if (!Number.isFinite(minCx)) return null;
+    return {
+      minX: WORLD_ORIGIN_M + minCx * CHUNK_SIZE_M,
+      minZ: WORLD_ORIGIN_M + minCy * CHUNK_SIZE_M,
+      maxX: WORLD_ORIGIN_M + (maxCx + 1) * CHUNK_SIZE_M,
+      maxZ: WORLD_ORIGIN_M + (maxCy + 1) * CHUNK_SIZE_M,
+    };
+  }
+
+  /**
+   * The published world-map image for this bake, or null when it has none.
+   *
+   * A URL rather than the decoded image: the map panel draws it into a canvas
+   * and only opens occasionally, so there is no reason to hold a megapixel
+   * texture for a screen nobody has looked at yet. HEAD, because a bake made
+   * before the renderer existed answers the SPA's index.html with a 200.
+   */
+  async worldMapUrl(): Promise<string | null> {
+    const url = this.url('worldmap.png');
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      if (!response.ok || response.headers.get('content-type')?.includes('text/html')) return null;
+      return url;
+    } catch {
+      return null;
+    }
+  }
+
   async loadPlacements(): Promise<PlacementsFile | null> {
     try {
       const response = await fetch(this.url('placements.json'));

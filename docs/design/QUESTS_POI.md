@@ -55,6 +55,33 @@ renders progress.
 - Toasts: accept / step complete / done (with reward icons). Turn-in moment gets a small fanfare +
   NPC emote (`Yes`/`Celebration`).
 
+### 4.1 As built (P11-D, 2026-08-05)
+
+Shipped: the tracker (three quests, counters only on steps that COUNT — a deliver or an explore
+is one act, and "0/1 Find the logging site" is noise), the journal `L` grouped by zone with the
+found-voice prose and each step's progress, the lower-third dialogue with a typewriter reveal and
+the per-class reward pick sent WITH the turn-in, discovery banners, quest toasts, and the world
+map `M` with fog, pins per kind, dashed hint circles and the shrine network priced by
+`fastTravelCost`.
+
+Three things are worth naming because they are decisions rather than implementations:
+
+- **The world map frames on the chunks the BAKE emitted**, not on the 2048 m world and not on the
+  pins. The whole world is mostly ocean (the island was a smudge with four labels overprinting);
+  the pins alone zoom past the coastline into a flat green field. The bake's own chunk list is the
+  only source that answers "where is there a world" and keeps answering it when P12 raises four
+  more isles.
+- **Undiscovered POIs are ABSENT from the map, not greyed.** A grey pin where a secret is turns
+  exploration into walking to the grey pins, which is the opposite of §1 rule 1.
+- **The quest glyph over an NPC's head is server-decided.** Availability depends on gates the
+  client does not evaluate, so an offer mark only appears once the server has said so — the same
+  rule that keeps the client from deciding what `F` means.
+
+Deferred, deliberately: the over-shoulder camera framing during dialogue (§3) — the panel is a
+lower third and the NPC is already in frame at interact range; the `Yes`/`Celebration` turn-in
+emote (§4) — the hook exists and rides the entity-event lane; and the minimap, which is P12's
+work alongside the real world it would show.
+
 ## 5. POI ↔ Quest Interlock
 
 - Each zone: 1 chain (3–4 quests) telling the zone story + 3–5 one-offs + 1 "found object" quest +
@@ -82,6 +109,55 @@ Chain reward: Rare weapon choice (one per class), title "Friend of the Weald".
 **"Message in a Bottle" — found-object, any level.** Fishing proc item starts quest → EXPLORE:
 identify the sandbar from the note's sketch (drawn art asset) → INTERACT: dig at the right spot
 (shovel prop appears) → Hidden Cache loot + 1 of 6 collectible "Castaway Log" lore pages (codex).
+
+### 6.1 As built (P11-C, 2026-08-05)
+
+The eight pilot quests are live content — authored in the panel's A4 editor, published, and frozen
+into seed migration 0019. Between them they run every one of the seven step types, all four giver
+kinds, both gate kinds, a `toast` hook and a per-class reward choice. Four deviations from the
+specs above, each because the built world could not carry the spec version yet:
+
+| Spec                                                             | As built                                                                                 | Why                                                                                                                                                                              |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Boil Trouble" step 2 COLLECT Unpopped Boil ×3                   | dropped; the quest is the KILL step alone                                                | there is no `item_material_unpopped_boil` in the published catalogue and inventing a drop for one quest is P12's content pass, not this slice's                                  |
+| Q2 "…& a shattered cart → spawns ambush"                         | four marked stumps sharing the tag `Marked Stump`, then a KILL step for 3 Weald Stalkers | the ambush IS the second step rather than a `spawnGroup` hook: the stalker camp already stands at the cut, so a scripted spawn would have added a second population on top of it |
+| Q3 "DELIVER poultice"                                            | delivers the Mossbloom itself to Bran                                                    | a poultice item does not exist; the herb the player just gathered is the thing they carry                                                                                        |
+| Rewards name flavour items (`Marla's Preserves`)                 | the published equivalents — Traveler's Rations, Lesser Healing Potion                    | same shape, real rows; bespoke reward items are P12's catalogue work                                                                                                             |
+| Every quest's `zoneId` is `dawnshore`, including the Weald chain | —                                                                                        | the journal groups by this id and only one landmass is built; the `verdant_weald` polygon is open water until P12. Four fields to re-point when it is not.                       |
+
+"Message in a Bottle" is **not** built: it needs a drawn sketch asset and a dig interaction, both
+P12/P14 work. The `item` giver kind it would use is implemented and schema-gated, so the quest is
+authoring away rather than code away.
+
+### 6.2 What the DoD run changed (P11-E, 2026-08-05)
+
+Two rules came out of measuring §1's promises rather than reading them, and both are now enforced
+by the panel at publish time rather than by care:
+
+1. **A hint circle has to contain the thing it points at.** §1 rule 4 says the map hints _roughly
+   where_ — "roughly" means a circle instead of an X, not a circle somewhere else. All four kill
+   hints in the pilot set were 85–170 m outside their only spawner, because a circle is typed in the
+   quest editor while the spawner it describes is placed on a different page and nothing compared
+   them. Publish now resolves each step's real targets and warns with the distance
+   (`questHintCoverage` in shared).
+2. **Nothing a quest step needs may be one-shot.** The crate and the marked stumps were authored
+   with `respawnMs: 0`, so a player who opened the crate before Torv mentioned it could never finish
+   "The Lost Crate" — the quest was lost to an act of ordinary curiosity, which is the exact
+   opposite of rule 2 ("quests are found, not funneled"). Spent state is per-character, so a
+   respawn costs nothing in shared loot; both now return after five minutes.
+
+3. **A quest may grant a title, and nothing keeps it.** `rewards.title` is authored, validated,
+   paid and announced in the reward toast — and then gone: there is no column for it and no
+   surface that shows one. "Friend of the Weald" lasts four seconds. UI_UX §Character already
+   says titles arrive with the system that produces them, and P11 is that system now, so this is
+   the gap becoming real rather than a surprise. Deliberately NOT built here (it is a schema
+   column, a sync field and a line on the `C` sheet — a small slice of its own, and the phase
+   closes on its measured DoD).
+
+A fourth finding is content, not rule: a **gather step wants a hint circle too**. "Six lengths of
+birch" tells a player with no woodcutting nothing at all, and mossbloom grows 360 m from the Weald
+that Hesta's prose sent you to. Prose is an affordance and it can be wrong in the same way a circle
+can.
 
 ## 7. Quest Boards
 

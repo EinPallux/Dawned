@@ -181,10 +181,27 @@ export const totalItemStats = (
  * it fights with, and the character sheet shows the player what they are. A
  * second implementation would be a sheet that lies.
  */
+/** The derived stats an Epic+ `stat_pct` effect can move (ITEMS_LOOT §2). */
+export type StatPctKey =
+  'moveSpeed' | 'sprintSpeed' | 'healingDone' | 'maxHp' | 'armor' | 'damageDealt';
+
 export interface EquipmentBonus {
   stats: ItemStats;
   /** Main-hand damage band; null = unarmed (the P4 baseline applies). */
   weapon: { min: number; max: number } | null;
+  /**
+   * Percent riders from Epic+ item effects, summed across the worn set.
+   *
+   * Folded HERE and not in the server, for the same reason attributes are: the
+   * character sheet has to show what the player is actually fighting with. P8
+   * shipped the schema and a server helper for this and nothing ever called
+   * it, so every Epic and every Legendary effect was decoration — which is the
+   * one thing a Legendary cannot be (§2: "handcrafted uniques with a named
+   * effect").
+   */
+  pct: Partial<Record<StatPctKey, number>>;
+  /** Bonus gold per kill, from `on_kill_gold` trinkets. */
+  killGold: number;
 }
 
 export const equipmentBonus = (
@@ -192,6 +209,8 @@ export const equipmentBonus = (
   defs: ReadonlyMap<string, ItemDef>,
 ): EquipmentBonus => {
   const stats: ItemStats = {};
+  const pct: Partial<Record<StatPctKey, number>> = {};
+  let killGold = 0;
   let weapon: { min: number; max: number } | null = null;
   for (const slot of EQUIP_SLOTS) {
     const stack = equipment.get(slot);
@@ -205,6 +224,12 @@ export const equipmentBonus = (
     if (slot === 'mainhand' && def.weapon) {
       weapon = { min: def.weapon.dmgMin, max: def.weapon.dmgMax };
     }
+    // Effects stack additively across slots; two +4 % rings are +8 %, which is
+    // what a player counting their gear expects.
+    if (def.effect?.kind === 'stat_pct') {
+      pct[def.effect.stat] = (pct[def.effect.stat] ?? 0) + def.effect.pct;
+    }
+    if (def.effect?.kind === 'on_kill_gold') killGold += def.effect.gold;
   }
-  return { stats, weapon };
+  return { stats, weapon, pct, killGold };
 };

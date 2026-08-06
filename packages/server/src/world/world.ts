@@ -23,6 +23,7 @@ import {
   XpSource,
   devTerrain,
   discoveryXp,
+  poiDiscoveryXp,
   pointInPolygon,
   stepMovement,
   xpToNext,
@@ -54,12 +55,51 @@ import {
   type ItemStack,
   GatherRefusal,
   gatherXp,
+  killXp,
   type GatherOp,
   type Profession,
   type NodePlacement,
   type ResourceNodeDef,
+  type Interactable,
+  type NpcPlacement,
+  type Poi,
+  type QuestDef,
+  type QuestEvent,
+  type QuestHook,
+  type InteractOp,
+  type QuestOp,
+  rollLootTable,
+  questTurnInNpc,
+  countItem,
 } from '@dawned/shared';
 import { ServerPlayer } from './player.js';
+import {
+  INTERACT_RANGE_M,
+  buildInteractables,
+  buildNpcs,
+  type PlacedInteractable,
+  type ServerNpc,
+} from './interactables.js';
+import { applyQuestEvent } from './quests.js';
+import {
+  applyInteract,
+  applyQuestOp,
+  emptyEffects,
+  type InteractEffects,
+  type InteractWorld,
+} from './interact-step.js';
+import { poisEntered } from './interactables.js';
+
+/**
+ * The parts of a bake that are neither terrain nor resource nodes (P11).
+ * Optional throughout so a test world — and a bake published before P11 — is
+ * simply a world where nobody lives yet.
+ */
+export interface WorldPlacements {
+  npcs?: readonly NpcPlacement[];
+  interactables?: readonly Interactable[];
+  pois?: readonly Poi[];
+}
 import {
   buildNodes,
   channelBreak,
@@ -126,6 +166,7 @@ import {
   refreshEquipmentBonus,
   rollEnemyLoot,
   sweepVendorLeases,
+  takeItem,
   type ItemContent,
   type LootBag,
 } from './items.js';
@@ -181,9 +222,174 @@ export class World {
     private zonePolys: readonly Zone[] = [],
     /** Resource-node placements from the bake (P10; empty in tests). */
     nodePlacements: readonly NodePlacement[] = [],
+    /** NPC placements, interactables and POIs from the bake (P11). */
+    worldPlacements: WorldPlacements = {},
   ) {
     if (content) this.populateFromSpawners();
     this.seedNodes(nodePlacements);
+    this.seedWorldObjects(worldPlacements);
+  }
+
+  /**
+   * (Re)build the NPCs, interactables and POIs a bake carries.
+   *
+   * Same orphan policy as nodes: a placement whose NPC definition is gone is
+   * dropped with a count rather than taking the world down, because publish
+   * already cross-checks the refs and reaching here means two publishes drifted.
+   */
+  private seedWorldObjects(placements: WorldPlacements): void {
+    const built = buildNpcs(placements.npcs ?? [], this.content?.npcs ?? new Map(), (x, z) =>
+      this.terrain.heightAt(x, z),
+    );
+    this.npcs.clear();
+    for (const [id, npc] of built.npcs) this.npcs.set(id, npc);
+    this.orphanNpcRefs = built.orphans;
+    this.interactables = buildInteractables(placements.interactables ?? [], (x, z) =>
+      this.terrain.heightAt(x, z),
+    );
+    this.pois = placements.pois ?? [];
+  }
+
+  private readonly npcs = new Map<string, ServerNpc>();
+  private interactables: Map<string, PlacedInteractable> = new Map();
+  private pois: readonly Poi[] = [];
+  private orphanNpcRefs: string[] = [];
+
+  /** Live world objects, for the gateway and `/ops/worldobjects`. */
+  get worldObjects(): {
+    npcs: number;
+    interactables: number;
+    pois: number;
+    orphanNpcs: number;
+    /** WHICH placements lost their definition — a count alone is unfixable. */
+    orphanNpcRefs: readonly string[];
+  } {
+    return {
+      npcs: this.npcs.size,
+      interactables: this.interactables.size,
+      pois: this.pois.length,
+      orphanNpcs: this.orphanNpcRefs.length,
+      orphanNpcRefs: this.orphanNpcRefs,
+    };
+  }
+
+  /**
+   * What the bestiary actually became in this world (P12-C).
+   *
+   * The counterpart to `/ops/respawnnodes` reporting "65 nodes, 0 orphans" and
+   * `/ops/worldobjects` reporting the villagers: a publish saying "ok" is the
+   * PANEL's account of its own work, and 124 camps that all seeded into the sea
+   * would look identical from outside. `drySpawners` is the line that matters —
+   * a camp whose ground could not be found is a camp nobody will ever fight.
+   */
+  get campReport(): {
+    spawners: number;
+    enemies: number;
+    alive: number;
+    orphanEnemyRefs: readonly string[];
+    /** Camps that produced no live enemy at all. */
+    drySpawners: readonly string[];
+    perZone: Record<
+      string,
+      {
+        camps: number;
+        enemies: number;
+        /**
+         * What one full clear of the zone pays a same-level player, and the
+         * band of enemy levels standing in it.
+         *
+         * Here rather than in a script because the server is the only thing
+         * that knows what actually SPAWNED — the level each enemy rolled, its
+         * rank, its `xpMult` — and P12's DoD asks whether a 1→30 route exists.
+         * Reconstructing that from published rows would be a second copy of the
+         * spawn roll, which is the drift `killXp` living in shared exists to
+         * prevent.
+         */
+        xpPerClear: number;
+        levelMin: number;
+        levelMax: number;
+      }
+    >;
+  } {
+    const spawners = this.content?.spawners ?? [];
+    const orphans = new Set<string>();
+    const produced = new Map<string, number>();
+    for (const enemy of this.enemies.values()) {
+      produced.set(enemy.spawnerId, (produced.get(enemy.spawnerId) ?? 0) + 1);
+    }
+    type ZoneBucket = {
+      camps: number;
+      enemies: number;
+      xpPerClear: number;
+      levelMin: number;
+      levelMax: number;
+    };
+    const perZone: Record<string, ZoneBucket> = {};
+    // Which zone each spawner sits in, resolved once and reused for its enemies.
+    const zoneOfSpawner = new Map<string, string>();
+    let wanted = 0;
+    for (const spawner of spawners) {
+      for (const entry of spawner.entries) {
+        wanted += entry.count;
+        if (!this.content?.enemies.has(entry.enemyId)) orphans.add(entry.enemyId);
+      }
+      // The zones arrive sorted smallest-ring-first from the bake, so the first
+      // match is the specific zone rather than the world-covering Dawnsea.
+      const zone =
+        this.zonePolys.find((poly) => pointInPolygon(spawner.x, spawner.z, poly.polygon))?.id ??
+        'none';
+      zoneOfSpawner.set(spawner.id, zone);
+      const bucket = (perZone[zone] ??= {
+        camps: 0,
+        enemies: 0,
+        xpPerClear: 0,
+        levelMin: Number.POSITIVE_INFINITY,
+        levelMax: 0,
+      });
+      bucket.camps++;
+      bucket.enemies += produced.get(spawner.id) ?? 0;
+    }
+    // XP is summed over what SPAWNED, not over what the spawners ask for: a
+    // camp that rolled nothing pays nothing, which is the honest number.
+    for (const enemy of this.enemies.values()) {
+      const bucket = perZone[zoneOfSpawner.get(enemy.spawnerId) ?? 'none'];
+      if (!bucket) continue;
+      // Killer level = mob level: the falloff band is what a player questing
+      // through the zone at its own level actually earns.
+      bucket.xpPerClear += killXp(enemy.level, enemy.def.rank, enemy.level, enemy.def.xpMult);
+      bucket.levelMin = Math.min(bucket.levelMin, enemy.level);
+      bucket.levelMax = Math.max(bucket.levelMax, enemy.level);
+    }
+    for (const bucket of Object.values(perZone)) {
+      if (bucket.levelMin === Number.POSITIVE_INFINITY) bucket.levelMin = 0;
+    }
+    return {
+      spawners: spawners.length,
+      enemies: wanted,
+      alive: this.enemies.size,
+      orphanEnemyRefs: [...orphans],
+      drySpawners: spawners.filter((s) => !produced.has(s.id)).map((s) => s.id),
+      perZone,
+    };
+  }
+
+  npcAt(id: string): ServerNpc | undefined {
+    return this.npcs.get(id);
+  }
+  interactableAt(id: string): PlacedInteractable | undefined {
+    return this.interactables.get(id);
+  }
+  get allNpcs(): ReadonlyMap<string, ServerNpc> {
+    return this.npcs;
+  }
+  get allInteractables(): ReadonlyMap<string, PlacedInteractable> {
+    return this.interactables;
+  }
+  get allPois(): readonly Poi[] {
+    return this.pois;
+  }
+  questDefs(): ReadonlyMap<string, QuestDef> {
+    return this.content?.quests ?? new Map();
   }
 
   /**
@@ -232,6 +438,7 @@ export class World {
     spawn: SpawnPoint;
     zones: readonly Zone[];
     nodes?: readonly NodePlacement[];
+    world?: WorldPlacements;
   }): {
     enemies: number;
   } {
@@ -248,6 +455,11 @@ export class World {
     // preserving "this tree is stumped" across a bake that may not contain that
     // tree is more surprising than a forest that comes back standing.
     this.seedNodes(next.nodes ?? []);
+    // NPCs, chests and discovery points re-seat on the new ground for the same
+    // reason camps and trees do. Per-character interaction records are NOT
+    // touched: an attuned shrine is something the player did, and a republish
+    // must not un-attune it any more than it re-awards zone-discovery XP.
+    this.seedWorldObjects(next.world ?? {});
     for (const player of this.players.values()) {
       const m = player.movement;
       m.y = this.terrain.heightAt(m.x, m.z);
@@ -513,6 +725,17 @@ export class World {
       // The CHARACTER trickle comes from PROGRESSION.md's own formula, applied
       // through the same award path kills use so the xpRate lever covers it.
       awardXp(player, gatherXp(def.tier), XpSource.Gather, this.progressionContent(), events);
+
+      // Quest credit for what the node gave. `source: 'gather'` is what lets a
+      // COLLECT step insist the herb came out of the ground rather than off a
+      // vendor's shelf.
+      for (const stack of [...gained, ...(proc ? [proc] : [])]) {
+        this.questEvent(
+          player,
+          { kind: 'item', refId: stack.itemId, qty: stack.qty, source: 'gather' },
+          events,
+        );
+      }
 
       // Codex: first time this material has ever been gathered by this
       // character. The dedupe lives in the DB's primary key; this only decides
@@ -797,6 +1020,96 @@ export class World {
     return false;
   }
 
+  /**
+   * Ops lever: set a character's state on one quest (`/ops/quest`).
+   *
+   * The quest editor's test button and the verification run's shortcut past
+   * three chain links. It writes STATE only — the counters, the turn-in and
+   * the payout stay the real path, the same argument `/ops/fish` makes.
+   */
+  setQuestByName(name: string, questId: string, step: number, drop: boolean): boolean {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      const def = this.questDefs().get(questId);
+      if (!def) return false;
+      if (drop) {
+        player.quests.delete(questId);
+        player.pinnedQuests = player.pinnedQuests.filter((id) => id !== questId);
+      } else {
+        player.quests.set(questId, {
+          questId,
+          step: Math.min(step, def.steps.length),
+          counter: 0,
+          status: 'active',
+        });
+      }
+      this.pendingQuestSync.push(player.id);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Un-find things, so the DISCOVERY LOOP can be measured more than once
+   * (P11-E; ARCHITECTURE.md §3 lists every ops lever).
+   *
+   * Discovery is first-entry-only by design — that is what makes finding a
+   * place worth anything — which means a fixture character that has already
+   * walked the island can never prove the banner, the XP or the map reveal
+   * again. Every earlier phase hit the same wall and answered it the same way:
+   * `/ops/hurt` keeps the P9 boss bot alive because it cannot dodge, `/ops/fish`
+   * puts a rare on the line because waiting for one measures the yield roll
+   * instead of the reel. This forgets; the finding itself is the untouched real
+   * path.
+   *
+   * Zones are separate from POIs on purpose — zone XP is a much bigger award
+   * and a run that only wants a vista back should not be handed four levels.
+   * `objects` un-opens chests and un-inspects props, which is the other half of
+   * the same problem: a quest step that says "open the crate" cannot be measured
+   * twice against a crate this character has already emptied.
+   */
+  forgetDiscoveries(
+    name: string,
+    what: { pois: boolean; zones: boolean; shrines: boolean; objects: boolean },
+  ): { pois: number; zones: number; shrines: number; objects: number } | null {
+    for (const player of this.players.values()) {
+      if (player.name.toLowerCase() !== name.toLowerCase()) continue;
+      const cleared = { pois: 0, zones: 0, shrines: 0, objects: 0 };
+      if (what.pois) {
+        cleared.pois = player.poisSeen.size;
+        player.poisSeen.clear();
+      }
+      if (what.zones) {
+        cleared.zones = player.progress.zonesSeen.size;
+        player.progress.zonesSeen.clear();
+      }
+      if (what.shrines) {
+        for (const record of player.interactions.values()) {
+          if (!record.attuned) continue;
+          record.attuned = false;
+          cleared.shrines++;
+        }
+      }
+      if (what.objects) {
+        for (const record of player.interactions.values()) {
+          if (record.openedUntilMs === 0 && record.uses === 0) continue;
+          record.openedUntilMs = 0;
+          record.uses = 0;
+          cleared.objects++;
+        }
+      }
+      this.pendingDiscoverySync.push(player.id);
+      return cleared;
+    }
+    return null;
+  }
+
+  /** Quest syncs raised outside the tick (ops levers) — flushed in step. */
+  private readonly pendingQuestSync: number[] = [];
+
+  /** Discovery syncs raised outside the tick (`/ops/forget`) — flushed in step. */
+  private readonly pendingDiscoverySync: number[] = [];
+
   /** Which fish is forced for a player, and for how many more casts. */
   private readonly forcedFish = new Map<number, { itemId: string; casts: number }>();
 
@@ -1079,6 +1392,208 @@ export class World {
     this.pendingGatherOps.push({ playerId, op });
   }
 
+  /** Interact/quest intents (P11). Applied at the top of the next tick, so
+   * their effects and events ride the normal flush rather than landing
+   * mid-tick — the same shape item and progression ops use. */
+  queueInteractOp(playerId: number, op: InteractOp): void {
+    if (this.pendingInteractOps.length > 256) return;
+    this.pendingInteractOps.push({ playerId, op });
+  }
+
+  queueQuestOp(playerId: number, op: QuestOp): void {
+    if (this.pendingQuestOps.length > 256) return;
+    this.pendingQuestOps.push({ playerId, op });
+  }
+
+  private readonly pendingInteractOps: { playerId: number; op: InteractOp }[] = [];
+  private readonly pendingQuestOps: { playerId: number; op: QuestOp }[] = [];
+
+  /**
+   * Step 0e: resolve the interaction and quest intents.
+   *
+   * Runs AFTER gathering so a player who pressed F on a node and F on a chest
+   * in the same frame gets the node (the hold is the more specific verb), and
+   * before the sim so a shrine hop moves them this tick rather than next.
+   */
+  private stepInteractions(nowMs: number, events: CombatEvent[]): void {
+    // Walking away ends the conversation.
+    //
+    // `applyDialogueChoice` already refuses a choice pressed from out of range,
+    // but nothing was closing a dialogue that was simply LEFT — so a panel
+    // opened in Dawnhaven followed you to the far side of the island and stayed
+    // pressable, which is exactly the "a dialogue is a remote control for an
+    // NPC" failure the range check exists to prevent. Checked every tick for
+    // the handful of players who have one open, not per op.
+    for (const player of this.players.values()) {
+      const open = player.dialogue;
+      if (!open) continue;
+      const npc = this.npcs.get(open.npcPlacementId);
+      const object = this.interactables.get(open.npcPlacementId);
+      const anchor = npc ?? object?.row;
+      if (!anchor) continue;
+      const m = player.movement;
+      if (Math.hypot(anchor.x - m.x, anchor.z - m.z) <= INTERACT_RANGE_M + 1.5) continue;
+      player.dialogue = null;
+      events.push({ type: 'dialogue-dirty', playerId: player.id });
+    }
+
+    if (this.pendingInteractOps.length === 0 && this.pendingQuestOps.length === 0) return;
+    const world: InteractWorld = {
+      objects: this.interactables,
+      npcs: this.npcs,
+      content: { defs: this.questDefs() },
+      nowMs,
+    };
+    const interacts = this.pendingInteractOps.splice(0);
+    const questOps = this.pendingQuestOps.splice(0);
+    for (const { playerId, op } of interacts) {
+      const player = this.players.get(playerId);
+      if (!player || player.dead) continue;
+      const effects = emptyEffects();
+      applyInteract(player, op, world, player.progress.gold, effects);
+      this.applyInteractEffects(player, effects, events);
+    }
+    for (const { playerId, op } of questOps) {
+      const player = this.players.get(playerId);
+      if (!player) continue;
+      const effects = emptyEffects();
+      applyQuestOp(player, op, world, effects);
+      this.applyInteractEffects(player, effects, events);
+    }
+  }
+
+  /** Turn one step's decisions into world changes and outgoing events. */
+  private applyInteractEffects(
+    player: ServerPlayer,
+    effects: InteractEffects,
+    events: CombatEvent[],
+  ): void {
+    const itemDeps = {
+      content: this.itemContent(),
+      bags: this.lootBags,
+      nowMs: Date.now(),
+      events,
+    };
+    for (const entry of effects.loot) {
+      // A chest rolls its table straight into the bag rather than dropping a
+      // world bag: you opened it, it is yours, and a chest that spat a bag onto
+      // the floor would be racing the friend standing next to you.
+      const drops = rollLootTable(
+        this.itemContent().lootTables,
+        entry.lootTableId,
+        1,
+        { killerLevel: player.level },
+        this.rng,
+      );
+      for (const drop of drops) {
+        // `rollLootTable` only ever yields items and gold; the exhaustive
+        // switch is the compiler's job, not a runtime branch nobody reaches.
+        if (drop.kind === 'item') grantItem(player, drop.itemId, drop.qty, itemDeps);
+        else grantGold(player, drop.qty, itemDeps);
+      }
+      // A chest is an INTERACT for quest purposes as well as a loot source.
+      this.questEvent(player, { kind: 'interact', refId: entry.objectId }, events);
+    }
+    for (const notice of effects.notices) {
+      if (notice.kind === 'interacted') {
+        const object = this.interactables.get(notice.objectId);
+        this.questEvent(
+          player,
+          object
+            ? { kind: 'interact', refId: notice.objectId, tag: object.row.name }
+            : { kind: 'interact', refId: notice.objectId },
+          events,
+        );
+        continue;
+      }
+      events.push({
+        type: 'interact-notice',
+        playerId: player.id,
+        objectId: notice.objectId,
+        text: notice.text,
+        kind: notice.kind,
+      });
+      if (notice.kind === 'attuned') {
+        events.push({
+          type: 'discovery',
+          playerId: player.id,
+          kind: 'shrine',
+          refId: notice.objectId,
+          label: notice.text,
+        });
+      }
+    }
+    if (effects.spendGold > 0) grantGold(player, -effects.spendGold, itemDeps);
+    if (effects.teleport) {
+      player.movement.x = effects.teleport.x;
+      player.movement.z = effects.teleport.z;
+      player.movement.y = this.terrain.heightAt(effects.teleport.x, effects.teleport.z);
+    }
+    for (const payout of effects.payouts) {
+      if (payout.xp > 0) {
+        awardXp(player, payout.xp, XpSource.Quest, this.progressionContent(), events);
+      }
+      if (payout.gold > 0) grantGold(player, payout.gold, itemDeps);
+      for (const item of payout.items) grantItem(player, item.itemId, item.qty, itemDeps);
+      events.push({
+        type: 'quest-rewarded',
+        playerId: player.id,
+        questId: payout.questId,
+        xp: payout.xp,
+        gold: payout.gold,
+        items: payout.items,
+        title: payout.title,
+      });
+      // A turn-in is itself a TALK at that NPC, which is what lets a later
+      // quest's "talk to Marla" step be satisfied by handing her the last one.
+      const def = this.questDefs().get(payout.questId);
+      const npc = def ? questTurnInNpc(def) : null;
+      if (npc) this.questEvent(player, { kind: 'talk', refId: npc }, events);
+    }
+    // A TALK — and the DELIVER that rides on it. Delivery is an ACT: the
+    // player hands the stack over, so the pack is checked and emptied here
+    // rather than being credited by merely owning the items. A player who
+    // turns up without them is told, not silently advanced.
+    if (effects.talkedTo) {
+      // Quests whose delivery came up short. They must be EXCLUDED from the
+      // talk below, or the same event that refused them would advance them.
+      const shortOfGoods = new Set<string>();
+      for (const [questId, state] of player.quests) {
+        if (state.status !== 'active') continue;
+        const def = this.questDefs().get(questId);
+        const step = def ? def.steps[state.step] : undefined;
+        if (!def || !step || step.type !== 'deliver' || step.npcId !== effects.talkedTo) continue;
+        if (countItem(player.items.inventory, step.itemId) < step.count) {
+          shortOfGoods.add(questId);
+          events.push({
+            type: 'quest-notice',
+            playerId: player.id,
+            kind: 'refused',
+            questId,
+            text: 'missing_items',
+          });
+          continue;
+        }
+        takeItem(player, step.itemId, step.count, itemDeps);
+      }
+      this.questEvent(player, { kind: 'talk', refId: effects.talkedTo }, events, shortOfGoods);
+    }
+    for (const notice of effects.notices2) {
+      events.push({
+        type: 'quest-notice',
+        playerId: player.id,
+        kind: notice.kind,
+        questId: notice.questId,
+        text: notice.text,
+      });
+    }
+    if (effects.questsDirty.length > 0) events.push({ type: 'quest-dirty', playerId: player.id });
+    for (const objectId of effects.objectsDirty) {
+      events.push({ type: 'interact-dirty', playerId: player.id, objectId });
+    }
+    if (effects.dialogueDirty) events.push({ type: 'dialogue-dirty', playerId: player.id });
+  }
+
   queueAllocateStats(playerId: number, deltas: AttributeSpread): void {
     this.pendingProgress.push({ kind: 'stats', playerId, deltas });
   }
@@ -1316,6 +1831,16 @@ export class World {
     // resolved instantly would be a duplication bug wearing a timer's clothes.
     // Fishing is NOT stepped here; it needs this tick's buttons (see step 1c).
     this.stepGathering(nowMs, events);
+    // 0e. Interact + quest intents (P11) — after gathering so a frame that
+    // pressed F at a node and a chest resolves the node, which is the more
+    // specific verb; before the sim so a shrine hop lands this tick.
+    this.stepInteractions(nowMs, events);
+    for (const playerId of this.pendingQuestSync.splice(0)) {
+      events.push({ type: 'quest-dirty', playerId });
+    }
+    for (const playerId of this.pendingDiscoverySync.splice(0)) {
+      events.push({ type: 'discovery-dirty', playerId });
+    }
 
     // Bags rot after 60 s (§3); whoever could see one re-syncs.
     for (const playerId of expireLootBags(this.lootBags, nowMs)) {
@@ -1420,6 +1945,10 @@ export class World {
             (evasive ? 1 + EVASIVE_MOVE_SPEED_PCT / 100 : 1) *
             (player.focusing ? FOCUS_MOVE_SPEED_MULT : 1) *
             (1 + nodeStats.moveSpeedPct / 100) *
+            // Epic+ item `stat_pct` riders (P12-D). Same multiplier chain as
+            // the node scalar, because a player cannot tell which of the two
+            // a "+6 % move speed" line came from and should not have to.
+            (1 + (player.items.bonus.pct.moveSpeed ?? 0) / 100) *
             whirlMult *
             castMult,
           dodgeCostDelta:
@@ -1598,13 +2127,22 @@ export class World {
       tickResource(player.resource, TICK_MS, inCombat);
       // Zone first-entry XP (P7, §1.1 discovery): polygon check once a second
       // per player, staggered by id — entering a zone is not a twitch event.
-      if (
-        !player.dead &&
-        this.zonePolys.length > 0 &&
-        (this.tickCounter + player.id) % 20 === 0 &&
-        player.level > 0
-      ) {
-        this.checkZoneDiscovery(player, events);
+      // Once a second per player, staggered by id — walking into a place is not
+      // a twitch event, and checking every zone AND every POI for every player
+      // every tick is the kind of quadratic that only shows up on the VPS.
+      //
+      // Zone and POI checks are deliberately separate guards: gating discovery
+      // on `zonePolys.length > 0` would mean a world with POIs but no zone
+      // polygons never discovers anything, which is exactly what a fresh map
+      // bake looks like before its zones are drawn.
+      if (!player.dead && (this.tickCounter + player.id) % 20 === 0 && player.level > 0) {
+        if (this.zonePolys.length > 0) this.checkZoneDiscovery(player, events);
+        this.checkPoiDiscovery(player, events);
+        this.questEvent(
+          player,
+          { kind: 'enter', x: player.movement.x, z: player.movement.z },
+          events,
+        );
       }
       // Low-HP procs (P7: Second Wind, Guardian of Dawn) — threshold checks
       // once per tick catch any crossing within 50 ms of the wound.
@@ -1703,6 +2241,126 @@ export class World {
         },
         nowMs,
       );
+    }
+  }
+
+  /**
+   * Offer one world event to a player's quest log, and turn what it did into
+   * combat events the gateway fans out.
+   *
+   * Every kill, item and interact comes through here. The fan-out is cheap on
+   * purpose (a handful of quests × one active step each) rather than indexed —
+   * an index of "which quests care about enemy_bog_blob" has to be rebuilt on
+   * every accept and abandon, and being wrong there is a quest that silently
+   * stops counting.
+   */
+  private questEvent(
+    player: ServerPlayer,
+    event: QuestEvent,
+    events: CombatEvent[],
+    skip?: ReadonlySet<string>,
+  ): void {
+    const defs = this.questDefs();
+    if (defs.size === 0 || player.quests.size === 0) return;
+    const outcome = applyQuestEvent(player.quests, { defs }, event, skip);
+    if (outcome.touched.length === 0) return;
+    events.push({ type: 'quest-progress', playerId: player.id, questIds: outcome.touched });
+    for (const done of outcome.stepsCompleted) {
+      events.push({
+        type: 'quest-step',
+        playerId: player.id,
+        questId: done.questId,
+        text: done.step.trackerText,
+      });
+    }
+    for (const questId of outcome.completed) {
+      events.push({ type: 'quest-complete', playerId: player.id, questId });
+    }
+    for (const hook of outcome.hooks) this.runQuestHook(player, hook, events);
+  }
+
+  /**
+   * The whitelisted scripting hooks (QUESTS_POI §8). Deliberately a closed set:
+   * every one of these is a dropdown in the quest editor, and the schema is
+   * what stops "no arbitrary scripting in 0.1.0" being a promise nobody checks.
+   */
+  private runQuestHook(player: ServerPlayer, hook: QuestHook, events: CombatEvent[]): void {
+    switch (hook.hook) {
+      case 'spawnGroup': {
+        const spawner = this.content?.spawners.find((entry) => entry.id === hook.spawnerId);
+        if (!spawner) break;
+        // The ambush behind step 2. Spawned through the ordinary path so the
+        // enemies behave normally — a scripted spawn that produced special
+        // enemies would be a second AI to keep correct.
+        for (const entry of spawner.entries) {
+          const def = this.content?.enemies.get(entry.enemyId);
+          if (!def) continue;
+          for (let i = 0; i < entry.count; i++) {
+            this.spawnEnemy(spawner, def, this.rollLevel(def, entry.level));
+          }
+        }
+        break;
+      }
+      case 'despawn': {
+        for (const enemy of [...this.enemies.values()]) {
+          if (enemy.campTag === hook.tag) this.removeEnemy(enemy);
+        }
+        break;
+      }
+      case 'toast':
+        events.push({ type: 'quest-toast', playerId: player.id, text: hook.text });
+        break;
+      case 'playEmote':
+        events.push({
+          type: 'npc-emote',
+          playerId: player.id,
+          npcId: hook.npcId,
+          clip: hook.clip,
+        });
+        break;
+      case 'grantBuff':
+        // Buffs come from the ability content the effect id names; an unknown
+        // id is a content mistake the publish rail catches, so it is a no-op
+        // here rather than a throw that would strand a quest mid-step.
+        events.push({
+          type: 'quest-buff',
+          playerId: player.id,
+          effectId: hook.effectId,
+          durationMs: hook.durationMs,
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
+   * POI rings → first-entry discovery XP, banner and map reveal (P11,
+   * WORLD.md §4.1).
+   *
+   * Uses the same `discoveryXp` curve zones do, scaled by the POI's own
+   * `xpBasis`, so a vista at level 3 and a vista at level 20 are both worth
+   * finding. Discovery is also a quest GATE (§5), so finding one can make a
+   * hidden quest exist — which is why the event carries the id rather than
+   * just a toast.
+   */
+  private checkPoiDiscovery(player: ServerPlayer, events: CombatEvent[]): void {
+    if (this.pois.length === 0) return;
+    for (const poi of poisEntered(this.pois, player, player.poisSeen)) {
+      player.poisSeen.add(poi.id);
+      const award = poiDiscoveryXp(
+        poi.xpBasis,
+        xpToNext(this.progressionContent().xpCurve, player.level),
+      );
+      awardXp(player, award, XpSource.Discovery, this.progressionContent(), events);
+      events.push({
+        type: 'discovery',
+        playerId: player.id,
+        kind: 'poi',
+        refId: poi.id,
+        label: poi.name,
+        poiKind: poi.kind,
+      });
     }
   }
 
@@ -1808,6 +2466,21 @@ export class World {
         this.progressionContent(),
         events,
       );
+    }
+    // Quest kill credit (P11): every TAGGED player, the same rule XP and loot
+    // use — being paid experience for a kill but skipped for the quest counter
+    // is the kind of inconsistency players notice within a minute.
+    if (enemy.def.archetype !== 'dummy') {
+      for (const playerId of killTaggers({
+        damage: enemy.damageBy,
+        healAssists: enemy.healAssists,
+      })) {
+        const tagger = this.players.get(playerId);
+        if (!tagger) continue;
+        const killEvent: QuestEvent = { kind: 'kill', refId: enemy.def.id };
+        if (enemy.campTag) killEvent.tag = enemy.campTag;
+        this.questEvent(tagger, killEvent, events);
+      }
     }
     // Loot (P8, ITEMS_LOOT.md §3–4): one INDEPENDENT roll per tagger, all
     // parcelled into a single bag at the corpse. Same tag rule as the XP

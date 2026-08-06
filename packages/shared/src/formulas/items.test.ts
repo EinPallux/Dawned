@@ -4,7 +4,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { ROLLS_BY_RARITY, itemDefSchema, validateItemDef, type ItemDef } from '../content/items.js';
+import {
+  ROLLS_BY_RARITY,
+  itemDefSchema,
+  validateItemDef,
+  type EquipSlot,
+  type ItemDef,
+} from '../content/items.js';
 import {
   hasCycle,
   lootTableDefSchema,
@@ -17,6 +23,7 @@ import {
   RARITY_MULTS,
   SLOT_WEIGHTS,
   baseArmorFor,
+  equipmentBonus,
   itemValue,
   killGold,
   rollItemStats,
@@ -374,5 +381,73 @@ describe('vendors (§6)', () => {
         stock: [{ itemId: 'weapon_sword' }],
       }),
     ).toThrow();
+  });
+});
+
+/**
+ * Epic+ item effects (§2). P8 shipped the schema and a server helper nobody
+ * ever called, so every Epic and every Legendary effect in the game was
+ * decoration — which is the one thing a "handcrafted unique with a named
+ * effect" cannot be. These pin the fold, and it lives in shared because the
+ * character sheet has to show the same number the server fights with.
+ */
+describe('item effects fold into the equipment bonus', () => {
+  const withEffect = (id: string, slot: string, effect: unknown): ItemDef =>
+    validateItemDef({
+      id,
+      name: id,
+      category: 'jewelry',
+      slot,
+      rarity: 'epic',
+      ilvl: 30,
+      icon: `test/${id}`,
+      stats: { vit: 1 },
+      effect,
+    });
+
+  // A `ring` item goes into `ring1` OR `ring2` — the def's slot is the KIND,
+  // the equipment map's key is the worn position, and conflating them made the
+  // first version of this test silently drop half its rings.
+  const worn = (pairs: [EquipSlot, ItemDef][]) =>
+    equipmentBonus(
+      new Map(pairs.map(([slot, def]) => [slot, { itemId: def.id, rolled: null }])),
+      new Map(pairs.map(([, def]) => [def.id, def])),
+    );
+
+  it('sums percent riders across slots', () => {
+    // Two +4 % rings are +8 %: a player counting their gear expects addition,
+    // not the larger one winning.
+    const bonus = worn([
+      ['ring1', withEffect('item_a', 'ring', { kind: 'stat_pct', stat: 'damageDealt', pct: 4 })],
+      ['amulet', withEffect('item_b', 'amulet', { kind: 'stat_pct', stat: 'damageDealt', pct: 4 })],
+      ['trinket', withEffect('item_c', 'trinket', { kind: 'stat_pct', stat: 'moveSpeed', pct: 6 })],
+    ]);
+    expect(bonus.pct.damageDealt).toBe(8);
+    expect(bonus.pct.moveSpeed).toBe(6);
+    expect(bonus.pct.armor).toBeUndefined();
+  });
+
+  it('accumulates on-kill gold', () => {
+    const bonus = worn([
+      ['ring1', withEffect('item_d', 'ring', { kind: 'on_kill_gold', gold: 3 })],
+      ['trinket', withEffect('item_e', 'trinket', { kind: 'on_kill_gold', gold: 2 })],
+    ]);
+    expect(bonus.killGold).toBe(5);
+  });
+
+  it('is empty for gear that carries no effect', () => {
+    const plain = validateItemDef({
+      id: 'item_plain',
+      name: 'Plain',
+      category: 'jewelry',
+      slot: 'ring',
+      rarity: 'common',
+      ilvl: 5,
+      icon: 'test/plain',
+      stats: { vit: 1 },
+    });
+    const bonus = worn([['ring1', plain]]);
+    expect(bonus.pct).toEqual({});
+    expect(bonus.killGold).toBe(0);
   });
 });

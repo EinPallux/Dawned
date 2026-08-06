@@ -955,6 +955,174 @@
       },
       "animations": []
     },
+    "items_weapons_sword_d": {
+      "id": "items_weapons_sword_d",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/sword_d.dab13dbc.glb",
+      "bytes": 30752,
+      "sourceHash": "43c9a02c65e2ddd2c7cd03e27303fa82e070bed5d287177af7417073bc15b327",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_D.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 730,
+      "bounds": {
+        "min": [
+          -0.3575,
+          -0.3227,
+          -0.2008
+        ],
+        "max": [
+          0.3575,
+          1.7154,
+          0.2008
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_sword_e": {
+      "id": "items_weapons_sword_e",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/sword_e.39e84a70.glb",
+      "bytes": 34640,
+      "sourceHash": "b292cedd67d376dc95104bf5da260915ec6b1bcdcbb2a5f56d3e8737a7f1eee9",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/sword_E.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 616,
+      "bounds": {
+        "min": [
+          -0.4397,
+          -0.428,
+          -0.1185
+        ],
+        "max": [
+          0.4397,
+          2.8237,
+          0.1185
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_spear_a": {
+      "id": "items_weapons_spear_a",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/spear_a.78217c2b.glb",
+      "bytes": 57508,
+      "sourceHash": "c905734f8ae6ca3ad5bfb5d341183ffc6f4d13b85d63894dab3a00b1c50c56f3",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/spear_A.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 1216,
+      "bounds": {
+        "min": [
+          -0.1392,
+          -1.0322,
+          -0.123
+        ],
+        "max": [
+          0.1392,
+          2.1066,
+          0.123
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_halberd": {
+      "id": "items_weapons_halberd",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/halberd.c1aa0c2a.glb",
+      "bytes": 68884,
+      "sourceHash": "d02d766fa60891ae3b3bc9ed391c40dd56b61765b5ea0e0ec6078c4ae263ae96",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/halberd.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 1496,
+      "bounds": {
+        "min": [
+          -0.7897,
+          -0.9322,
+          -0.1455
+        ],
+        "max": [
+          0.5031,
+          1.8146,
+          0.1454
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_fistweapon_a": {
+      "id": "items_weapons_fistweapon_a",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/fistweapon_a.ef809ec3.glb",
+      "bytes": 15116,
+      "sourceHash": "ba796e17d054ed5e7cc74a1f4b182a8502821e846c0e9278fb92a5a3071015cf",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/fistweapon_A.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 218,
+      "bounds": {
+        "min": [
+          -0.1724,
+          -0.0429,
+          -0.1617
+        ],
+        "max": [
+          0.0544,
+          0.0429,
+          0.1617
+        ]
+      },
+      "animations": []
+    },
+    "items_weapons_fistweapon_b": {
+      "id": "items_weapons_fistweapon_b",
+      "category": "items/weapons",
+      "file": "assets_baked/items/weapons/fistweapon_b.bd846a40.glb",
+      "bytes": 15704,
+      "sourceHash": "1f5aad3310a3ec1f400969f354a63946d29278e743f3dddfaec74847b57a1ddc",
+      "source": "assets/items/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf/fistweapon_B.gltf",
+      "pack": "kaykit-weapons",
+      "packName": "KayKit Fantasy Weapons Bits 1.0 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 220,
+      "bounds": {
+        "min": [
+          -0.4777,
+          -0.0428,
+          -0.1777
+        ],
+        "max": [
+          0.0428,
+          0.1335,
+          0.1777
+        ]
+      },
+      "animations": []
+    },
     "items_tools_pickaxe": {
       "id": "items_tools_pickaxe",
       "category": "items/tools",
@@ -1089,9 +1257,9 @@
     "enemies_skeleton_minion": {
       "id": "enemies_skeleton_minion",
       "category": "enemies",
-      "file": "assets_baked/enemies/skeleton_minion.50204e21.glb",
-      "bytes": 302644,
-      "sourceHash": "97df5d1b9cb51801bac54173acc0bea44fe48b32580524e4233e6f7cc09f7aae",
+      "file": "assets_baked/enemies/skeleton_minion.b93b36c9.glb",
+      "bytes": 493560,
+      "sourceHash": "7553f9508f249ce95c6fcb50eaab13f2a3ee79c294c0935648a0e0cd475add8c",
       "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Minion.glb",
       "pack": "kaykit-skeletons",
       "packName": "KayKit Skeletons 1.1 FREE",
@@ -1112,7 +1280,16 @@
           0.4538
         ]
       },
-      "animations": []
+      "animations": [
+        "Death_A",
+        "Hit_A",
+        "Idle_A",
+        "Idle_B",
+        "Interact",
+        "Throw",
+        "Running_A",
+        "Walking_A"
+      ]
     },
     "enemies_green_blob": {
       "id": "enemies_green_blob",
@@ -1624,7 +1801,7 @@
       "category": "characters",
       "file": "assets_baked/characters/superhero_female_fullbody.4e9e115c.glb",
       "bytes": 292520,
-      "sourceHash": "155fc052f9c5cad723e19c3bf50cf3c606d06b80a5449977b2357fdfc80ba01e",
+      "sourceHash": "377f7a5a421eb53b1c681c0ba5942fd3710826be7ed76da788d16d00f2fefd30",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1652,7 +1829,7 @@
       "category": "characters",
       "file": "assets_baked/characters/superhero_male_fullbody.da8ac88d.glb",
       "bytes": 260480,
-      "sourceHash": "dc12f8f97c13b7a07e7c8d2815e67e8cdd927536d7d7678a33a898a85125c8fe",
+      "sourceHash": "58177965c691fb0a21b492c19aaadb74fe711d9eb515c310185d4ad6625f823b",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1680,7 +1857,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_beard.a821a2a0.glb",
       "bytes": 91224,
-      "sourceHash": "e43ccab27811c01a8769389f78cdb620dfc0203e5cb898225c68d61c2b09b6b0",
+      "sourceHash": "d3cb0d772b02ef1d28b466311691d7e6d47f62e73b1a1f548667d1be2e4bca57",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Beard.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1708,7 +1885,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buns.1fc68dd7.glb",
       "bytes": 264612,
-      "sourceHash": "253394caa8e4eabf4605c10afd586a9ceafdc86c60c4079f51e914d18cce52aa",
+      "sourceHash": "6c9984b77165418e9f2f6c74bd5aaf9f31b040e8fb804bb6f40bcf6c313090e1",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buns.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1736,7 +1913,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buzzed.8dbf3857.glb",
       "bytes": 83244,
-      "sourceHash": "4d92c07ad49a795b4828045c44b2a2104f47d4f50206713a67015722764ce45a",
+      "sourceHash": "006a2d3941bf7501c11f4bea296eebf55cd5f0c7a3452f476de74e3025035257",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buzzed.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1764,7 +1941,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_buzzedfemale.5e8faee0.glb",
       "bytes": 83772,
-      "sourceHash": "bd09419be75352e5685797834bfb4bcfcff343847fb915e00d23fea0c17cd052",
+      "sourceHash": "c26b1f46e27930bf6b638b8e4f01912236955c2263a67ab969b6d9bad1ea3d48",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_BuzzedFemale.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1792,7 +1969,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_long.6eb203db.glb",
       "bytes": 240456,
-      "sourceHash": "fe0e9f3404e8502031080763629f8f0f0347cbf0e8333c29e05b2af4c80186d9",
+      "sourceHash": "eca43a0a14680a3d8940c5ee41fba4f4e7d67c0dde9a47cc00ff1a01e367986e",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Long.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1820,7 +1997,7 @@
       "category": "characters",
       "file": "assets_baked/characters/hair_simpleparted.cd612f7c.glb",
       "bytes": 101204,
-      "sourceHash": "6601c0a83f2ad211b0890db51bd6caa6efadc2e9eda1575615d9d821bed79637",
+      "sourceHash": "e16d726db3616f3a2efac29d9ac569bbf1f454edfc27ca40578e6d5da70cb3dd",
       "source": "assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf",
       "pack": "quaternius-base-characters",
       "packName": "Quaternius Universal Base Characters (Standard)",
@@ -1848,7 +2025,7 @@
       "category": "characters",
       "file": "assets_baked/characters/female_peasant.1a3743a0.glb",
       "bytes": 686464,
-      "sourceHash": "4b3cb90c2d35353cb77b6784666e866ce1c7101cbce6602b83df7f744daa2720",
+      "sourceHash": "9a7144c7a90e9fab4427d90ec912af9ff057c7871498f50dc06691bc3422ebd9",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Peasant.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -1876,7 +2053,7 @@
       "category": "characters",
       "file": "assets_baked/characters/female_ranger.f344256f.glb",
       "bytes": 1654600,
-      "sourceHash": "cf442fad7cc4b831bc200d2a50eda5bb065f441f54a3c3ba5a8d770e2f072058",
+      "sourceHash": "9c8296843dfc104577b0e5118492482f4118dcf0f41883b1f47a8faa2ee41dae",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Female_Ranger.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -1904,7 +2081,7 @@
       "category": "characters",
       "file": "assets_baked/characters/male_peasant.1ff17763.glb",
       "bytes": 654824,
-      "sourceHash": "c49d47cbdde801d425bfc06d1073a4d0be71d367bcfbe6d818ea8267c2157bff",
+      "sourceHash": "556479ed32a38fcceebeeb4a75fec08d68de2a30e63120935634c59f2c0de2a6",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Peasant.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -1932,7 +2109,7 @@
       "category": "characters",
       "file": "assets_baked/characters/male_ranger.fa540f1a.glb",
       "bytes": 1644860,
-      "sourceHash": "44277a4880b70f7c081b37dbc6598df03d2e78f9493be38e3fa75ce08d12df4c",
+      "sourceHash": "270a10734b481d0a5e211a6e7855fc6fa31f162b98fb08dba94194a0d080986c",
       "source": "assets/player_characters/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Outfits/Male_Ranger.gltf",
       "pack": "quaternius-outfits-fantasy",
       "packName": "Quaternius Modular Character Outfits — Fantasy (Standard)",
@@ -1960,7 +2137,7 @@
       "category": "characters",
       "file": "assets_baked/characters/ual1.f1959b9d.glb",
       "bytes": 2074608,
-      "sourceHash": "b33df808df7ee6817bae3b2b5b827bc1d306c41d9da15c9173bb67edfefd48d9",
+      "sourceHash": "3b7f9c6ff72254b1e253ef32f69d9eec9ac95de2fa20f211cfce793045c02a45",
       "source": "assets/player_characters/Universal Animation Library 1[PRO]/Unreal-Godot/UAL1.glb",
       "pack": "quaternius-ual1",
       "packName": "Quaternius Universal Animation Library 1 (PRO)",
@@ -2017,7 +2194,7 @@
       "category": "characters",
       "file": "assets_baked/characters/ual2_standard.56b3b900.glb",
       "bytes": 718816,
-      "sourceHash": "bb597b67985f00351e481f45b9116021a68d368f9d52511107ec5f3ab6d88a05",
+      "sourceHash": "d40f3d08fffd449973e55fa3499b4b834155141b8843434bad24314707042995",
       "source": "assets/player_characters/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
       "pack": "quaternius-ual2",
       "packName": "Quaternius Universal Animation Library 2 (Standard)",
@@ -2215,7 +2392,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_a_color1.61709477.glb",
       "bytes": 9004,
-      "sourceHash": "d996a037a97459124fb49e8751539bc35fee374070da83d2258b7f7ac95a7013",
+      "sourceHash": "72389935ecbcb7e1f72377305c61881a7e441aa5133cfb414f62bf2269e40e5c",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_A_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2243,7 +2420,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_c_color1.fb0ebf69.glb",
       "bytes": 10624,
-      "sourceHash": "391a93ef42708858891fd6c9b97c9b264b2ca4e7b4203bb4c8f3608940e71bf8",
+      "sourceHash": "d311c5b9e557590ffc24dd845b30dc38ec1cff2fe267b4670f42e3be2dd86145",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_C_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2271,7 +2448,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_3_d_color1.89c92bb5.glb",
       "bytes": 12428,
-      "sourceHash": "575dc63eec36ba23b92d8006dba5fd0cd3cab6487de8fb97418c730ec81cafc0",
+      "sourceHash": "0dbb7b4f196200b7a7825cfc961b51602a61a71223082e4eda44dd5935565338",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_3_D_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2299,7 +2476,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_2_e_color1.76a4623a.glb",
       "bytes": 23756,
-      "sourceHash": "9bb3f001cf8cf3dc8120d51b39d5e265d5ebfa247d6939c9b2698f28666b77e4",
+      "sourceHash": "aa447655d20315e0a289e3473712c4c55e31baa9c14149fd320ac9fb3db28aa7",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_E_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2327,7 +2504,7 @@
       "category": "world/nature",
       "file": "assets_baked/world/nature/rock_3_h_color1.28de8924.glb",
       "bytes": 15348,
-      "sourceHash": "e221982daa44dd2d226333c56cf6cc4190e6445556603695deefba553229f10b",
+      "sourceHash": "8088bbea33931dc827c6b1dcc5a2114d16af448a6bf948f153a0f33fb294682e",
       "source": "assets/world/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_3_H_Color1.gltf",
       "pack": "kaykit-forest",
       "packName": "KayKit Forest Nature Pack 1.0 FREE",
@@ -2693,6 +2870,2155 @@
         "Fish_Armature|Swimming_Normal"
       ]
     },
+    "world_props_chest": {
+      "id": "world_props_chest",
+      "category": "world/props",
+      "file": "assets_baked/world/props/chest.2fb3aabc.glb",
+      "bytes": 45668,
+      "sourceHash": "5b8da86fb4c4d7e59c43d02059db39d36f4c6a2edd074a2e85af8b18a8b2d5da",
+      "source": "assets/world/KayKit Low Poly Dungeon Pack/Assets/gltf/chest.gltf",
+      "pack": "kaykit-dungeon",
+      "packName": "KayKit Dungeon Asset Pack 1.1",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 728,
+      "bounds": {
+        "min": [
+          -0.85,
+          0,
+          -0.7
+        ],
+        "max": [
+          0.85,
+          1.3,
+          0.7458
+        ]
+      },
+      "animations": []
+    },
+    "world_props_pillar_decorated": {
+      "id": "world_props_pillar_decorated",
+      "category": "world/props",
+      "file": "assets_baked/world/props/pillar_decorated.cf8d6ccc.glb",
+      "bytes": 49116,
+      "sourceHash": "6a22888d2ed295549173ff86a9e6bbcce7874a39df3798f36c3b894be2b803b4",
+      "source": "assets/world/KayKit Low Poly Dungeon Pack/Assets/gltf/pillar_decorated.gltf",
+      "pack": "kaykit-dungeon",
+      "packName": "KayKit Dungeon Asset Pack 1.1",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 761,
+      "bounds": {
+        "min": [
+          -1.116,
+          0,
+          -0.75
+        ],
+        "max": [
+          1.116,
+          4,
+          0.9602
+        ]
+      },
+      "animations": []
+    },
+    "world_props_crate_wooden": {
+      "id": "world_props_crate_wooden",
+      "category": "world/props",
+      "file": "assets_baked/world/props/crate_wooden.4ef3c739.glb",
+      "bytes": 188048,
+      "sourceHash": "4fffa1062063fb02529659425a2999ca3c82e2f7e2c80388cfc305eb0f7ffae7",
+      "source": "assets/world/Fantasy Props Mega Kit[Standard]/Exports/glTF/Crate_Wooden.gltf",
+      "pack": "quaternius-fantasy-props",
+      "packName": "Quaternius Fantasy Props MegaKit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1576,
+      "bounds": {
+        "min": [
+          -0.546,
+          -0.0672,
+          -0.5822
+        ],
+        "max": [
+          0.5339,
+          1.1263,
+          0.5822
+        ]
+      },
+      "animations": []
+    },
+    "world_props_banner_2": {
+      "id": "world_props_banner_2",
+      "category": "world/props",
+      "file": "assets_baked/world/props/banner_2.d69d8ca0.glb",
+      "bytes": 169404,
+      "sourceHash": "7b2e7773c85bad56f3ae24052d27b4b7f9cd120b726def65335f44bf84d9ef06",
+      "source": "assets/world/Fantasy Props Mega Kit[Standard]/Exports/glTF/Banner_2.gltf",
+      "pack": "quaternius-fantasy-props",
+      "packName": "Quaternius Fantasy Props MegaKit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 429,
+      "bounds": {
+        "min": [
+          -0.0008,
+          -1.2336,
+          -0.093
+        ],
+        "max": [
+          1.6123,
+          0.8435,
+          0.0976
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_towncenter_firstage_level2": {
+      "id": "world_buildings_towncenter_firstage_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/towncenter_firstage_level2.307636d5.glb",
+      "bytes": 123692,
+      "sourceHash": "6e9c9583396e530c144f1d8a6eae9ac72706ba2c273aefca553f8f1a426a94cd",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/TownCenter_FirstAge_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3334,
+      "bounds": {
+        "min": [
+          -0.6319,
+          -0.024,
+          -0.6203
+        ],
+        "max": [
+          0.6319,
+          1.0636,
+          0.6203
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_houses_firstage_1_level2": {
+      "id": "world_buildings_houses_firstage_1_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/houses_firstage_1_level2.61a92594.glb",
+      "bytes": 35512,
+      "sourceHash": "e2ae7e41732e8717edc2b5662f1b8a1580d3df94994c89f22cf381f08eba55a1",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_1_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 632,
+      "bounds": {
+        "min": [
+          -0.4347,
+          0.0015,
+          -0.585
+        ],
+        "max": [
+          0.4347,
+          0.7661,
+          0.5874
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_houses_firstage_2_level1": {
+      "id": "world_buildings_houses_firstage_2_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/houses_firstage_2_level1.9e163d75.glb",
+      "bytes": 43988,
+      "sourceHash": "0892ffe9fe9a4a111c3037fd02f5dfd809911b00cabd9041e2f1ff7442f6fcdf",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_2_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 804,
+      "bounds": {
+        "min": [
+          -0.4347,
+          -0.0024,
+          -0.5874
+        ],
+        "max": [
+          0.4761,
+          0.7661,
+          0.5874
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_houses_firstage_3_level1": {
+      "id": "world_buildings_houses_firstage_3_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/houses_firstage_3_level1.551a839c.glb",
+      "bytes": 16460,
+      "sourceHash": "2f0034873dfd37761487d05e5d6a5b2f92ed43e04dc9b7f326ebd6d217b5abce",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_3_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 296,
+      "bounds": {
+        "min": [
+          -0.7059,
+          -0.0024,
+          -0.0067
+        ],
+        "max": [
+          -0.0294,
+          0.5717,
+          0.6446
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_market_firstage_level2": {
+      "id": "world_buildings_market_firstage_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/market_firstage_level2.5a17e48a.glb",
+      "bytes": 246816,
+      "sourceHash": "903137cd118579c30b7fe4b1949c604ea15d2b9bdf3ff4b0528b3fc46585dd1f",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Market_FirstAge_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 6064,
+      "bounds": {
+        "min": [
+          -0.9352,
+          -0.0072,
+          -0.9924
+        ],
+        "max": [
+          0.9644,
+          0.5454,
+          0.8743
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_port_firstage_level2": {
+      "id": "world_buildings_port_firstage_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/port_firstage_level2.54d0f389.glb",
+      "bytes": 231108,
+      "sourceHash": "f65a2226c218329985fcf539fdb5886a12ed0ad5036515d455e467fe5c238df4",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Port_FirstAge_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4676,
+      "bounds": {
+        "min": [
+          -0.6739,
+          -0.419,
+          -1.0509
+        ],
+        "max": [
+          1.17,
+          0.5522,
+          0.9306
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_dock_firstage": {
+      "id": "world_buildings_dock_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/dock_firstage.fc817fce.glb",
+      "bytes": 17576,
+      "sourceHash": "f2841ccf8d2cc85b8df0ca18fc7b754d404b349e104db35e809fad0590d397db",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Dock_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 388,
+      "bounds": {
+        "min": [
+          -0.2612,
+          -0.3539,
+          -0.6094
+        ],
+        "max": [
+          0.2631,
+          0.1119,
+          0.6094
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_temple_firstage_level1": {
+      "id": "world_buildings_temple_firstage_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/temple_firstage_level1.96e7cdac.glb",
+      "bytes": 214960,
+      "sourceHash": "966059dd29511f7395519b80d38af8b61d5a11b10cb534156e50d952a9ec3d14",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Temple_FirstAge_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4828,
+      "bounds": {
+        "min": [
+          -0.9052,
+          -0.0005,
+          -0.9052
+        ],
+        "max": [
+          0.9052,
+          1.8124,
+          0.9052
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_storage_firstage_level1": {
+      "id": "world_buildings_storage_firstage_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/storage_firstage_level1.de79c064.glb",
+      "bytes": 199252,
+      "sourceHash": "ac8c4cf9fbccc09cb83d1bf4604eb4298930898f5971997c27ced711f3afb70f",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Storage_FirstAge_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4088,
+      "bounds": {
+        "min": [
+          -0.7053,
+          -0.004,
+          -0.6289
+        ],
+        "max": [
+          0.7053,
+          0.7573,
+          0.8372
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_towerhouse_firstage": {
+      "id": "world_buildings_towerhouse_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/towerhouse_firstage.e486d7a9.glb",
+      "bytes": 92004,
+      "sourceHash": "cc8d172b7bbf508d0d3d7d4f37dd1248d4444354bd87412319ef208204223c53",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/TowerHouse_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1848,
+      "bounds": {
+        "min": [
+          -0.6928,
+          0.0005,
+          -0.585
+        ],
+        "max": [
+          0.6928,
+          1.4727,
+          0.585
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_houses_secondage_1_level1": {
+      "id": "world_buildings_houses_secondage_1_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/houses_secondage_1_level1.aaada7ef.glb",
+      "bytes": 106272,
+      "sourceHash": "56e8d0acd546d87c87dede79d3055eef258b7a06004761d21540e693dc71c124",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_SecondAge_1_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2336,
+      "bounds": {
+        "min": [
+          -0.5393,
+          -0.0061,
+          -0.5432
+        ],
+        "max": [
+          0.3506,
+          0.7661,
+          0.3212
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_walltowers_secondage": {
+      "id": "world_buildings_walltowers_secondage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/walltowers_secondage.4e0671a6.glb",
+      "bytes": 95892,
+      "sourceHash": "ae6aec514c00fb39c99d68a051f63d1e4153fdcbbcb9d6c078a62f0d9e93e532",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WallTowers_SecondAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1792,
+      "bounds": {
+        "min": [
+          -0.9798,
+          -0.0066,
+          -0.1807
+        ],
+        "max": [
+          0.9959,
+          0.7287,
+          0.1527
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_wall_secondage": {
+      "id": "world_buildings_wall_secondage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/wall_secondage.f7597365.glb",
+      "bytes": 13080,
+      "sourceHash": "301a255df0aafbb3dfdac70ee3d2f39418b548d40aa9f998a2fc56e176081479",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Wall_SecondAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 216,
+      "bounds": {
+        "min": [
+          -0.7866,
+          -0.0066,
+          -0.1226
+        ],
+        "max": [
+          0.7739,
+          0.4393,
+          0.1241
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_watchtower_firstage_level2": {
+      "id": "world_buildings_watchtower_firstage_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/watchtower_firstage_level2.5830db4b.glb",
+      "bytes": 40196,
+      "sourceHash": "c337d72ad9d7b06d08dc8dabeaaf96776cd8c687a76f1dc3c28ddeaefc67ffc1",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WatchTower_FirstAge_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 700,
+      "bounds": {
+        "min": [
+          -0.2363,
+          0,
+          -0.237
+        ],
+        "max": [
+          0.2687,
+          1.4625,
+          0.2823
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_wall_firstage": {
+      "id": "world_buildings_wall_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/wall_firstage.e61d147f.glb",
+      "bytes": 17672,
+      "sourceHash": "363760abd759fc5b5b18f6cff1dee335a224a90b8e1b8dddae959e1256b8bf9b",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Wall_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 404,
+      "bounds": {
+        "min": [
+          -0.6759,
+          -0.0122,
+          -0.0222
+        ],
+        "max": [
+          0.6759,
+          0.5138,
+          0.0367
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_walltowers_door_firstage": {
+      "id": "world_buildings_walltowers_door_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/walltowers_door_firstage.9e5a2960.glb",
+      "bytes": 64148,
+      "sourceHash": "260601cb72b74606a8fef9db2eef443473f563372aef0574a08811d27acba8a0",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WallTowers_Door_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1420,
+      "bounds": {
+        "min": [
+          -0.9711,
+          -0.0175,
+          -0.1689
+        ],
+        "max": [
+          0.9711,
+          0.655,
+          0.1446
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_barracks_firstage_level1": {
+      "id": "world_buildings_barracks_firstage_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/barracks_firstage_level1.97bb2e67.glb",
+      "bytes": 76148,
+      "sourceHash": "e600aa386fef4d6ca8118f72827e3ffea452ed7147af7cf7f9dc1552ab6d32ba",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Barracks_FirstAge_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1466,
+      "bounds": {
+        "min": [
+          -0.5048,
+          -0.0072,
+          -0.3916
+        ],
+        "max": [
+          0.5048,
+          0.712,
+          0.6865
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_windmill_firstage": {
+      "id": "world_buildings_windmill_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/windmill_firstage.75105c52.glb",
+      "bytes": 104748,
+      "sourceHash": "fa0fe1a4245609178e301bc260c1fc2a558653688a3f32d178c54024d7e59cb3",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Windmill_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2092,
+      "bounds": {
+        "min": [
+          -0.6609,
+          0,
+          -0.2733
+        ],
+        "max": [
+          0.6886,
+          1.9173,
+          0.3872
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_farm_firstage_level2_wheat": {
+      "id": "world_buildings_farm_firstage_level2_wheat",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/farm_firstage_level2_wheat.e9b10962.glb",
+      "bytes": 572536,
+      "sourceHash": "d6de91a675a943362da6f9c1c6fcd6e30c5e0ba46d738a3146d32ab9d35a401c",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Farm_FirstAge_Level2_Wheat.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 10582,
+      "bounds": {
+        "min": [
+          -0.8374,
+          0.0002,
+          -0.6848
+        ],
+        "max": [
+          0.8432,
+          0.1884,
+          0.4141
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_mine": {
+      "id": "world_buildings_mine",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/mine.feb25c8c.glb",
+      "bytes": 108688,
+      "sourceHash": "ff57388b8b527c339872696b79aa13e582dba22d9c3e64b8f1c94afe762af965",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Mine.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2294,
+      "bounds": {
+        "min": [
+          -0.5292,
+          -0.0154,
+          -0.65
+        ],
+        "max": [
+          0.7551,
+          1.1538,
+          0.7113
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_storage_secondage_level1": {
+      "id": "world_buildings_storage_secondage_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/storage_secondage_level1.91037805.glb",
+      "bytes": 396224,
+      "sourceHash": "85fd599400473e7930c7952506d8751e5a8d63a24744cd47958cdffeb7527328",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Storage_SecondAge_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 8160,
+      "bounds": {
+        "min": [
+          -0.849,
+          -0.0103,
+          -0.6778
+        ],
+        "max": [
+          0.8741,
+          0.4913,
+          0.7018
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_logs": {
+      "id": "world_buildings_logs",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/logs.27f2be1d.glb",
+      "bytes": 26792,
+      "sourceHash": "051f479030d758a1af21a61448cc28214915ddad2ce058b5cf8d1321cbe68c76",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Logs.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 940,
+      "bounds": {
+        "min": [
+          -0.558,
+          -0.0984,
+          -0.3499
+        ],
+        "max": [
+          0.6037,
+          0.1473,
+          0.4853
+        ]
+      },
+      "animations": []
+    },
+    "enemies_alpaking": {
+      "id": "enemies_alpaking",
+      "category": "enemies",
+      "file": "assets_baked/enemies/alpaking.2e408369.glb",
+      "bytes": 125724,
+      "sourceHash": "1e721b70b1cb275077199334bc0f3e49e17733d5e0485989c08ce2f7773a096b",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Alpaking.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2508,
+      "bounds": {
+        "min": [
+          -0.0215,
+          -0.0027,
+          0.0116
+        ],
+        "max": [
+          0.0215,
+          0.0197,
+          0.033
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_alpaking_evolved": {
+      "id": "enemies_alpaking_evolved",
+      "category": "enemies",
+      "file": "assets_baked/enemies/alpaking_evolved.cf632397.glb",
+      "bytes": 226616,
+      "sourceHash": "81f227fb934c39a5f183a7505579e10ac7ff2c059d3bc3ab3c159304aee88b41",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Alpaking Evolved.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4684,
+      "bounds": {
+        "min": [
+          -0.0215,
+          -0.0083,
+          0.0054
+        ],
+        "max": [
+          0.0215,
+          0.0214,
+          0.0373
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_dino": {
+      "id": "enemies_dino",
+      "category": "enemies",
+      "file": "assets_baked/enemies/dino.a4e47d0b.glb",
+      "bytes": 334388,
+      "sourceHash": "e006e19963e13da85332dff2ada6c93c8d4a70d7c2ca95d1cad865bdb8919274",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Dino.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5414,
+      "bounds": {
+        "min": [
+          -0.0232,
+          -0.0104,
+          0
+        ],
+        "max": [
+          0.0232,
+          0.0087,
+          0.0322
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Duck",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|Jump_Idle",
+        "CharacterArmature|Jump_Land",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Run",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Wave",
+        "CharacterArmature|Weapon",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_orc_enemy": {
+      "id": "enemies_orc_enemy",
+      "category": "enemies",
+      "file": "assets_baked/enemies/orc_enemy.8f136888.glb",
+      "bytes": 123244,
+      "sourceHash": "4ee1ab29845513d471cbad9425d8c51f86c58d783e183a261fdfddae8f68f170",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Orc Enemy.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2296,
+      "bounds": {
+        "min": [
+          -0.0078,
+          -0.0053,
+          0
+        ],
+        "max": [
+          0.0086,
+          0.005,
+          0.0146
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_tribal": {
+      "id": "enemies_tribal",
+      "category": "enemies",
+      "file": "assets_baked/enemies/tribal.ec3ea557.glb",
+      "bytes": 272828,
+      "sourceHash": "fcb4ae2ead25ce3b92f97a322b59917630eeeebe9b48c316944bc259a46eebdd",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Tribal.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5252,
+      "bounds": {
+        "min": [
+          -0.0275,
+          -0.0053,
+          0.0033
+        ],
+        "max": [
+          0.0275,
+          0.0085,
+          0.0444
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_hywirl": {
+      "id": "enemies_hywirl",
+      "category": "enemies",
+      "file": "assets_baked/enemies/hywirl.258049b4.glb",
+      "bytes": 173320,
+      "sourceHash": "19261af209d4767060de023e9a5f3535eaa1e346b5de9a18a982ac372c49c736",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Hywirl.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3296,
+      "bounds": {
+        "min": [
+          -0.0277,
+          -0.008,
+          0.0003
+        ],
+        "max": [
+          0.0277,
+          0.0097,
+          0.0277
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_cactoro": {
+      "id": "enemies_cactoro",
+      "category": "enemies",
+      "file": "assets_baked/enemies/cactoro.b176c29e.glb",
+      "bytes": 118016,
+      "sourceHash": "a65371323ceffd34dfd5557943d6283490f707868f587bbb743fbe1017ac4bab",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Cactoro.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2388,
+      "bounds": {
+        "min": [
+          -0.0209,
+          -0.0191,
+          0
+        ],
+        "max": [
+          0.0198,
+          0.0175,
+          0.0357
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_monkroose": {
+      "id": "enemies_monkroose",
+      "category": "enemies",
+      "file": "assets_baked/enemies/monkroose.4452e61f.glb",
+      "bytes": 349960,
+      "sourceHash": "e765676112ae28b88ac9bea7db99f357d4231f4d5dbf71c39503cb967ec52217",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Monkroose.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5824,
+      "bounds": {
+        "min": [
+          -0.0232,
+          -0.0072,
+          0
+        ],
+        "max": [
+          0.0232,
+          0.0077,
+          0.0298
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Duck",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|Jump_Idle",
+        "CharacterArmature|Jump_Land",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Run",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Wave",
+        "CharacterArmature|Weapon",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_ghost_skull": {
+      "id": "enemies_ghost_skull",
+      "category": "enemies",
+      "file": "assets_baked/enemies/ghost_skull.2f37cb2b.glb",
+      "bytes": 205156,
+      "sourceHash": "95daabe3d15e4392b538355896281db53ea8a1cf378505640f911d9ac1358aa5",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Ghost Skull.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3144,
+      "bounds": {
+        "min": [
+          -0.0276,
+          -0.0069,
+          0.0028
+        ],
+        "max": [
+          0.0274,
+          0.0085,
+          0.0338
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_goleling": {
+      "id": "enemies_goleling",
+      "category": "enemies",
+      "file": "assets_baked/enemies/goleling.69ca7374.glb",
+      "bytes": 177536,
+      "sourceHash": "5e5870e51a3d8bd4bc0a5c6208a9db04f3092b30d957a101b61fd297c217e1ee",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Goleling.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3696,
+      "bounds": {
+        "min": [
+          -0.0219,
+          -0.0051,
+          0.0149
+        ],
+        "max": [
+          0.0219,
+          0.0143,
+          0.0304
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_goleling_evolved": {
+      "id": "enemies_goleling_evolved",
+      "category": "enemies",
+      "file": "assets_baked/enemies/goleling_evolved.9cfdd1fb.glb",
+      "bytes": 258728,
+      "sourceHash": "d6eb55cf8bb4fd970dd9877d123f08e47c5cdb0a6d6f7f06fc857cc97d81cc9d",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Goleling Evolved.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5864,
+      "bounds": {
+        "min": [
+          -0.0219,
+          -0.0076,
+          0.0124
+        ],
+        "max": [
+          0.0219,
+          0.0143,
+          0.0381
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_demon": {
+      "id": "enemies_demon",
+      "category": "enemies",
+      "file": "assets_baked/enemies/demon.0855047e.glb",
+      "bytes": 254932,
+      "sourceHash": "3cfa09a8ead365e33b19d49aa454c3e5c02f8c47bea9b5fd45ad2cf638a81df1",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Demon.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4784,
+      "bounds": {
+        "min": [
+          -0.0274,
+          -0.0063,
+          0.0114
+        ],
+        "max": [
+          0.0274,
+          0.0143,
+          0.0281
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_blue_demon": {
+      "id": "enemies_blue_demon",
+      "category": "enemies",
+      "file": "assets_baked/enemies/blue_demon.f7774be8.glb",
+      "bytes": 355352,
+      "sourceHash": "1b0f1f858d0a7146e24df2430100099e539528900eb29e0c80684fea9e164d5e",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Blue Demon.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 5800,
+      "bounds": {
+        "min": [
+          -0.0429,
+          -0.0285,
+          -0.0001
+        ],
+        "max": [
+          0.0429,
+          0.0115,
+          0.0525
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Duck",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|Jump_Idle",
+        "CharacterArmature|Jump_Land",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Run",
+        "CharacterArmature|Run2",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Wave",
+        "CharacterArmature|Weapon",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_yeti": {
+      "id": "enemies_yeti",
+      "category": "enemies",
+      "file": "assets_baked/enemies/yeti.782a3408.glb",
+      "bytes": 103960,
+      "sourceHash": "c94429287ef4cc8e43b0986a25042d2d4f9b58865bbd68c2e8bf1645b0444cae",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Yeti.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2136,
+      "bounds": {
+        "min": [
+          -0.0127,
+          -0.0132,
+          -0.0002
+        ],
+        "max": [
+          0.0127,
+          0.0127,
+          0.0241
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_squidle": {
+      "id": "enemies_squidle",
+      "category": "enemies",
+      "file": "assets_baked/enemies/squidle.27d71e5f.glb",
+      "bytes": 250304,
+      "sourceHash": "c87fd5c5630c3580a03aabee8cd748c371402aff7a8f7fa481162fec9289e2da",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Squidle.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4880,
+      "bounds": {
+        "min": [
+          -0.036,
+          -0.0091,
+          0.0131
+        ],
+        "max": [
+          0.036,
+          0.0188,
+          0.0392
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_dragon": {
+      "id": "enemies_dragon",
+      "category": "enemies",
+      "file": "assets_baked/enemies/dragon.219005f4.glb",
+      "bytes": 207000,
+      "sourceHash": "fadae2f2208ff9bd7f35d6991d0ece61469992d4fdc38b7948c1b0e2f7507a81",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Dragon.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4562,
+      "bounds": {
+        "min": [
+          -0.0219,
+          -0.01,
+          0.016
+        ],
+        "max": [
+          0.0219,
+          0.0143,
+          0.0314
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_dragon_evolved": {
+      "id": "enemies_dragon_evolved",
+      "category": "enemies",
+      "file": "assets_baked/enemies/dragon_evolved.01652638.glb",
+      "bytes": 367880,
+      "sourceHash": "44baaf34b21ff6e3a8f6ecda684c9026461d7d3114996e975df500bcf9601707",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Dragon Evolved.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 7438,
+      "bounds": {
+        "min": [
+          -0.0274,
+          -0.0098,
+          0.003
+        ],
+        "max": [
+          0.0274,
+          0.0143,
+          0.0316
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Fast_Flying",
+        "CharacterArmature|Flying_Idle",
+        "CharacterArmature|Headbutt",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_bunny": {
+      "id": "enemies_bunny",
+      "category": "enemies",
+      "file": "assets_baked/enemies/bunny.d95ee072.glb",
+      "bytes": 452432,
+      "sourceHash": "190f076d6055d4cbc92baed72ba0e7fd543549cf32f787c21b76b13bd53219a2",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Bunny.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 8284,
+      "bounds": {
+        "min": [
+          -0.0232,
+          -0.0092,
+          0
+        ],
+        "max": [
+          0.0245,
+          0.0088,
+          0.0344
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Death",
+        "CharacterArmature|Duck",
+        "CharacterArmature|HitReact",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|Jump_Idle",
+        "CharacterArmature|Jump_Land",
+        "CharacterArmature|No",
+        "CharacterArmature|Punch",
+        "CharacterArmature|Run",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Wave",
+        "CharacterArmature|Weapon",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_chicken": {
+      "id": "enemies_chicken",
+      "category": "enemies",
+      "file": "assets_baked/enemies/chicken.e36eee3d.glb",
+      "bytes": 119148,
+      "sourceHash": "6507bf6a8e4c7f1f897eb2e1e106cefa42eca4ff11917dbed0a4c002f382db21",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Chicken.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2904,
+      "bounds": {
+        "min": [
+          -0.0117,
+          -0.013,
+          -0.0001
+        ],
+        "max": [
+          0.0117,
+          0.008,
+          0.0234
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_birb": {
+      "id": "enemies_birb",
+      "category": "enemies",
+      "file": "assets_baked/enemies/birb.e5a1672f.glb",
+      "bytes": 145672,
+      "sourceHash": "66d98e6cd96b8983ae16e6a348c7783fefd65a020ef0a363768c2176db596770",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Birb.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3164,
+      "bounds": {
+        "min": [
+          -0.014,
+          -0.0201,
+          -0.0003
+        ],
+        "max": [
+          0.014,
+          0.0074,
+          0.0258
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "enemies_skeleton_rogue": {
+      "id": "enemies_skeleton_rogue",
+      "category": "enemies",
+      "file": "assets_baked/enemies/skeleton_rogue.d2733d0f.glb",
+      "bytes": 506132,
+      "sourceHash": "b4a9089dca7c9d5e12d8219325d1803473e577fd7306a97d79bd9f3123dbddb1",
+      "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Rogue.glb",
+      "pack": "kaykit-skeletons",
+      "packName": "KayKit Skeletons 1.1 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 5278,
+      "bounds": {
+        "min": [
+          -0.9713,
+          -1.1218,
+          -0.5816
+        ],
+        "max": [
+          0.9713,
+          2.1661,
+          0.5712
+        ]
+      },
+      "animations": [
+        "Death_A",
+        "Hit_A",
+        "Idle_A",
+        "Idle_B",
+        "Interact",
+        "Throw",
+        "Running_A",
+        "Walking_A"
+      ]
+    },
+    "enemies_skeleton_mage": {
+      "id": "enemies_skeleton_mage",
+      "category": "enemies",
+      "file": "assets_baked/enemies/skeleton_mage.42165d90.glb",
+      "bytes": 440732,
+      "sourceHash": "9e7ffb775f34b53906277897adff83b4103d5c0e364f7b2f3c156784a3b7c58a",
+      "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Mage.glb",
+      "pack": "kaykit-skeletons",
+      "packName": "KayKit Skeletons 1.1 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 4588,
+      "bounds": {
+        "min": [
+          -0.9691,
+          -0.4222,
+          -0.8483
+        ],
+        "max": [
+          0.9691,
+          2.1661,
+          0.887
+        ]
+      },
+      "animations": [
+        "Death_A",
+        "Hit_A",
+        "Idle_A",
+        "Idle_B",
+        "Interact",
+        "Throw",
+        "Running_A",
+        "Walking_A"
+      ]
+    },
+    "enemies_skeleton_warrior": {
+      "id": "enemies_skeleton_warrior",
+      "category": "enemies",
+      "file": "assets_baked/enemies/skeleton_warrior.19f8247d.glb",
+      "bytes": 542388,
+      "sourceHash": "26caf863ed4194ec819c94c143227d987564e83fd37c82aa3ab37b9313988fc6",
+      "source": "assets/enemy_models/KayKit_Skeletons_1.1_FREE/characters/gltf/Skeleton_Warrior.glb",
+      "pack": "kaykit-skeletons",
+      "packName": "KayKit Skeletons 1.1 FREE",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 5934,
+      "bounds": {
+        "min": [
+          -0.9713,
+          0,
+          -0.7582
+        ],
+        "max": [
+          0.9713,
+          2.1661,
+          0.7005
+        ]
+      },
+      "animations": [
+        "Death_A",
+        "Hit_A",
+        "Idle_A",
+        "Idle_B",
+        "Interact",
+        "Throw",
+        "Running_A",
+        "Walking_A"
+      ]
+    },
+    "enemies_ninja": {
+      "id": "enemies_ninja",
+      "category": "enemies",
+      "file": "assets_baked/enemies/ninja.57e6e476.glb",
+      "bytes": 99352,
+      "sourceHash": "ce5294c7635599a9723f9627c9177be1561946c9afdf7bfbed65bacd4370acb9",
+      "source": "assets/enemy_models/Quaternius Monster Bundle/Ninja.glb",
+      "pack": "quaternius-monsters",
+      "packName": "Quaternius Monster Bundle",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2160,
+      "bounds": {
+        "min": [
+          -0.0116,
+          -0.0139,
+          -0.0023
+        ],
+        "max": [
+          0.0133,
+          0.0127,
+          0.0279
+        ]
+      },
+      "animations": [
+        "CharacterArmature|Bite_Front",
+        "CharacterArmature|Dance",
+        "CharacterArmature|Death",
+        "CharacterArmature|HitRecieve",
+        "CharacterArmature|Idle",
+        "CharacterArmature|Jump",
+        "CharacterArmature|No",
+        "CharacterArmature|Walk",
+        "CharacterArmature|Yes"
+      ]
+    },
+    "world_props_bonfire_lit": {
+      "id": "world_props_bonfire_lit",
+      "category": "world/props",
+      "file": "assets_baked/world/props/bonfire_lit.631e6779.glb",
+      "bytes": 48648,
+      "sourceHash": "765389d01bd49cac9dab3fa65006dd9d04802c744da4709a14411330c654b294",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Bonfire_Lit.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1162,
+      "bounds": {
+        "min": [
+          -0.2024,
+          -0.0138,
+          -0.1795
+        ],
+        "max": [
+          0.2042,
+          0.339,
+          0.1829
+        ]
+      },
+      "animations": []
+    },
+    "world_props_well": {
+      "id": "world_props_well",
+      "category": "world/props",
+      "file": "assets_baked/world/props/well.f4617382.glb",
+      "bytes": 84044,
+      "sourceHash": "2718b2d218b9f06acfbc5452cee3d3215c0fe6b3c2e5f52c3a96a270265a291f",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Well.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1870,
+      "bounds": {
+        "min": [
+          -0.3374,
+          -0.2523,
+          -0.365
+        ],
+        "max": [
+          0.3289,
+          0.9981,
+          0.6385
+        ]
+      },
+      "animations": []
+    },
+    "world_props_marketstand_1": {
+      "id": "world_props_marketstand_1",
+      "category": "world/props",
+      "file": "assets_baked/world/props/marketstand_1.98b77b69.glb",
+      "bytes": 73288,
+      "sourceHash": "5f5c77de8c80b22f54df834e27847d4c40ed1a8df7bca745f773380ca22a7a06",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/MarketStand_1.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1548,
+      "bounds": {
+        "min": [
+          -0.4755,
+          -0.0047,
+          -0.5965
+        ],
+        "max": [
+          0.4755,
+          1.0444,
+          0.5933
+        ]
+      },
+      "animations": []
+    },
+    "world_props_marketstand_2": {
+      "id": "world_props_marketstand_2",
+      "category": "world/props",
+      "file": "assets_baked/world/props/marketstand_2.5988900b.glb",
+      "bytes": 54656,
+      "sourceHash": "0740c31e4b9cff68461cdfc0032261741311fb325cc575ecd43f40e7ff72d47b",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/MarketStand_2.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1132,
+      "bounds": {
+        "min": [
+          -0.3014,
+          -0.0029,
+          -0.5771
+        ],
+        "max": [
+          0.2158,
+          1.0393,
+          0.5771
+        ]
+      },
+      "animations": []
+    },
+    "world_props_cart": {
+      "id": "world_props_cart",
+      "category": "world/props",
+      "file": "assets_baked/world/props/cart.f8047d12.glb",
+      "bytes": 105156,
+      "sourceHash": "b7b7c46ae80d49907c258db52c4bc6df6854509b22c4865cb67820015f18c524",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Cart.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 2660,
+      "bounds": {
+        "min": [
+          -0.231,
+          -0.0005,
+          -0.3224
+        ],
+        "max": [
+          0.231,
+          0.7955,
+          0.605
+        ]
+      },
+      "animations": []
+    },
+    "world_props_hay": {
+      "id": "world_props_hay",
+      "category": "world/props",
+      "file": "assets_baked/world/props/hay.df0fffea.glb",
+      "bytes": 26932,
+      "sourceHash": "d4d4f6942fece0362d1d2e18090b0b49a71e8b8a23242eee37e09a5e7c055e50",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Hay.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 488,
+      "bounds": {
+        "min": [
+          -0.0618,
+          0.0004,
+          -0.0636
+        ],
+        "max": [
+          0.0592,
+          0.1789,
+          0.0612
+        ]
+      },
+      "animations": []
+    },
+    "world_props_bench_1": {
+      "id": "world_props_bench_1",
+      "category": "world/props",
+      "file": "assets_baked/world/props/bench_1.7884ae8b.glb",
+      "bytes": 18356,
+      "sourceHash": "ae1560fe8a59cee5ca535708a9784ae0f08b6facd2321975f35c72478535c9c0",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Bench_1.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 376,
+      "bounds": {
+        "min": [
+          -0.3325,
+          -0.0013,
+          -0.0813
+        ],
+        "max": [
+          0.3325,
+          0.3145,
+          0.1611
+        ]
+      },
+      "animations": []
+    },
+    "world_props_barrel": {
+      "id": "world_props_barrel",
+      "category": "world/props",
+      "file": "assets_baked/world/props/barrel.ee217aad.glb",
+      "bytes": 51296,
+      "sourceHash": "6fd0dff7b4ee0299920cd8ff5c50d811d3f2e9ea03b55f3513b549109c8d0bbb",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Barrel.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1312,
+      "bounds": {
+        "min": [
+          -0.0791,
+          0.0009,
+          -0.0787
+        ],
+        "max": [
+          0.0791,
+          0.2052,
+          0.0781
+        ]
+      },
+      "animations": []
+    },
+    "world_props_crate": {
+      "id": "world_props_crate",
+      "category": "world/props",
+      "file": "assets_baked/world/props/crate.b04f88f2.glb",
+      "bytes": 34944,
+      "sourceHash": "757a623805e5b03be13cdd307dc27168c6630f91275c658c51d0122065fc0c84",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Crate.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 784,
+      "bounds": {
+        "min": [
+          -0.0801,
+          -0.002,
+          -0.0801
+        ],
+        "max": [
+          0.0801,
+          0.1583,
+          0.0801
+        ]
+      },
+      "animations": []
+    },
+    "world_props_gazebo": {
+      "id": "world_props_gazebo",
+      "category": "world/props",
+      "file": "assets_baked/world/props/gazebo.f71d9e27.glb",
+      "bytes": 37772,
+      "sourceHash": "f3748ec7fa8b102479c9eebf78a49829bcf1c649a39380cb2c2bd20deb96e595",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Gazebo.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 698,
+      "bounds": {
+        "min": [
+          -0.5236,
+          0,
+          -0.6213
+        ],
+        "max": [
+          0.5134,
+          1.3471,
+          0.6381
+        ]
+      },
+      "animations": []
+    },
+    "world_props_fence": {
+      "id": "world_props_fence",
+      "category": "world/props",
+      "file": "assets_baked/world/props/fence.a7ae104b.glb",
+      "bytes": 10280,
+      "sourceHash": "2c57f16dd38c2e450135597daf5fc4745ebcd3b529fb51de86b9be47da277522",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Fence.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 208,
+      "bounds": {
+        "min": [
+          -0.4009,
+          -0.0028,
+          -0.0128
+        ],
+        "max": [
+          0.3901,
+          0.3232,
+          0.0131
+        ]
+      },
+      "animations": []
+    },
+    "world_props_cauldron": {
+      "id": "world_props_cauldron",
+      "category": "world/props",
+      "file": "assets_baked/world/props/cauldron.b1b18229.glb",
+      "bytes": 45340,
+      "sourceHash": "8a79463cb50f3b2d484dde37a5dd6de2fc556815c85108b565f2050f80dd53c4",
+      "source": "assets/world/Medieval Village Pack/Props/OBJ/Cauldron.obj",
+      "pack": "medieval-village",
+      "packName": "Medieval Village Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 1238,
+      "bounds": {
+        "min": [
+          -0.1803,
+          -0.0028,
+          -0.1494
+        ],
+        "max": [
+          0.1803,
+          0.249,
+          0.1494
+        ]
+      },
+      "animations": []
+    },
+    "world_props_shrine": {
+      "id": "world_props_shrine",
+      "category": "world/props",
+      "file": "assets_baked/world/props/shrine.bd2221fa.glb",
+      "bytes": 11008,
+      "sourceHash": "c0f3301bede0ef589d0628651b122d6b27a131a0cdcffcb71f179bf680f3c3d0",
+      "source": "assets/world/Halloween Bundle KayKit/Shrine.glb",
+      "pack": "kaykit-halloween",
+      "packName": "KayKit Halloween Bundle",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 94,
+      "bounds": {
+        "min": [
+          -0.0055,
+          0,
+          -0.0055
+        ],
+        "max": [
+          0.0055,
+          0.024,
+          0.0055
+        ]
+      },
+      "animations": []
+    },
+    "world_props_arch_gate": {
+      "id": "world_props_arch_gate",
+      "category": "world/props",
+      "file": "assets_baked/world/props/arch_gate.2e2f71fa.glb",
+      "bytes": 63096,
+      "sourceHash": "ab1a9ecb479cf6418306577eab17191ba0da57a823f78c723b0c9dbb78762e3b",
+      "source": "assets/world/Halloween Bundle KayKit/Arch Gate.glb",
+      "pack": "kaykit-halloween",
+      "packName": "KayKit Halloween Bundle",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 868,
+      "bounds": {
+        "min": [
+          -0.0211,
+          0,
+          -0.0038
+        ],
+        "max": [
+          0.0211,
+          0.0441,
+          0.0038
+        ]
+      },
+      "animations": []
+    },
+    "world_props_gravemarker": {
+      "id": "world_props_gravemarker",
+      "category": "world/props",
+      "file": "assets_baked/world/props/gravemarker.0f01fbd8.glb",
+      "bytes": 15472,
+      "sourceHash": "a6dffdc33ae4dcf54948b132ab9c0ede926c2c628ba4169a97a5f48a2739c271",
+      "source": "assets/world/Halloween Bundle KayKit/Gravemarker.glb",
+      "pack": "kaykit-halloween",
+      "packName": "KayKit Halloween Bundle",
+      "author": "Kay Lousberg (KayKit)",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://kaylousberg.itch.io/",
+      "triangles": 136,
+      "bounds": {
+        "min": [
+          -0.0041,
+          0,
+          -0.0004
+        ],
+        "max": [
+          0.0039,
+          0.0118,
+          0.0038
+        ]
+      },
+      "animations": []
+    },
+    "world_props_pointer_001": {
+      "id": "world_props_pointer_001",
+      "category": "world/props",
+      "file": "assets_baked/world/props/pointer_001.78b89d50.glb",
+      "bytes": 53128,
+      "sourceHash": "675cb3cf51adb2e0f1c65415c4dba440c93820556540250b07292c0402174964",
+      "source": "assets/world/Fantasy Free Pack/Separate_assets_glb/pointer_001.glb",
+      "pack": "fantasy-free-pack",
+      "packName": "Fantasy FREE Pack",
+      "author": "unattributed (owner-supplied)",
+      "license": "owner-asserted",
+      "licenseVerified": false,
+      "licenseUrl": "owner upload",
+      "triangles": 140,
+      "bounds": {
+        "min": [
+          -0.2209,
+          0,
+          -0.3957
+        ],
+        "max": [
+          0.3463,
+          2.1736,
+          0.2985
+        ]
+      },
+      "animations": []
+    },
+    "icon_caro-asercion__round-potion": {
+      "id": "icon_caro-asercion__round-potion",
+      "category": "icons",
+      "file": "assets_baked/icons/caro-asercion__round-potion.620fd443.svg",
+      "bytes": 935,
+      "sourceHash": "fd1f23cc8e7e4a4144188f272db1ed9075397c75dd931026b0b76a92828827f0",
+      "source": "assets_vendor/game-icons/caro-asercion/round-potion.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "caro-asercion (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "caro-asercion/round-potion"
+    },
+    "icon_cathelineau__tree-face": {
+      "id": "icon_cathelineau__tree-face",
+      "category": "icons",
+      "file": "assets_baked/icons/cathelineau__tree-face.7a440b61.svg",
+      "bytes": 5854,
+      "sourceHash": "21eb46c9f1ed27ab99c882204f170fb0c9640d37195a2fe733f1f8f505c455b3",
+      "source": "assets_vendor/game-icons/cathelineau/tree-face.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "cathelineau (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "cathelineau/tree-face"
+    },
+    "icon_darkzaitzev__hooded-figure": {
+      "id": "icon_darkzaitzev__hooded-figure",
+      "category": "icons",
+      "file": "assets_baked/icons/darkzaitzev__hooded-figure.06a0663c.svg",
+      "bytes": 1388,
+      "sourceHash": "ab342f2459da4dc5d22d7fbfce36308ce5c5e8c43b215a80d9773b687044d962",
+      "source": "assets_vendor/game-icons/darkzaitzev/hooded-figure.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "DarkZaitzev (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "darkzaitzev/hooded-figure"
+    },
     "icon_darkzaitzev__smoke-bomb": {
       "id": "icon_darkzaitzev__smoke-bomb",
       "category": "icons",
@@ -2710,6 +5036,60 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "darkzaitzev/smoke-bomb"
+    },
+    "icon_delapouite__amber-mosquito": {
+      "id": "icon_delapouite__amber-mosquito",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__amber-mosquito.a275ac44.svg",
+      "bytes": 2401,
+      "sourceHash": "6a834a81fa34cb08c27abbbea33deed5c1fa7bec72b6dcd0406c86b7133b985b",
+      "source": "assets_vendor/game-icons/delapouite/amber-mosquito.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/amber-mosquito"
+    },
+    "icon_delapouite__armor-upgrade": {
+      "id": "icon_delapouite__armor-upgrade",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__armor-upgrade.15130aab.svg",
+      "bytes": 668,
+      "sourceHash": "e8bd5c6618bb2333c0455e3711d05ee45dbf4d81a832c7d2e6abbd8b360dc0a7",
+      "source": "assets_vendor/game-icons/delapouite/armor-upgrade.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/armor-upgrade"
+    },
+    "icon_delapouite__armored-boomerang": {
+      "id": "icon_delapouite__armored-boomerang",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__armored-boomerang.2aadc358.svg",
+      "bytes": 1126,
+      "sourceHash": "89fe981f5b9cde9c0678ad7218fa793288c07800f47e3e936040c6743d5a4052",
+      "source": "assets_vendor/game-icons/delapouite/armored-boomerang.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/armored-boomerang"
     },
     "icon_delapouite__backpack": {
       "id": "icon_delapouite__backpack",
@@ -2729,6 +5109,78 @@
       "animations": [],
       "iconSlug": "delapouite/backpack"
     },
+    "icon_delapouite__bandana": {
+      "id": "icon_delapouite__bandana",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__bandana.1acd8a2f.svg",
+      "bytes": 1439,
+      "sourceHash": "b015ec80f1d3b39ca1bcf097f07ae4941ee4d32f2e8eaaf770f78b963e3b3953",
+      "source": "assets_vendor/game-icons/delapouite/bandana.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/bandana"
+    },
+    "icon_delapouite__bracer": {
+      "id": "icon_delapouite__bracer",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__bracer.8a41a8af.svg",
+      "bytes": 3947,
+      "sourceHash": "9f27534725de0d3d2f5f2b020be16a7bcf73aec4b296b7453f78ddab4fb310ae",
+      "source": "assets_vendor/game-icons/delapouite/bracer.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/bracer"
+    },
+    "icon_delapouite__bread-slice": {
+      "id": "icon_delapouite__bread-slice",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__bread-slice.b9015cdc.svg",
+      "bytes": 1686,
+      "sourceHash": "d23a004357b2d6a2bd27b3dd340e0abd343f1c4c30b7cd34303da830a9325648",
+      "source": "assets_vendor/game-icons/delapouite/bread-slice.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/bread-slice"
+    },
+    "icon_delapouite__cape-armor": {
+      "id": "icon_delapouite__cape-armor",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__cape-armor.7254dd48.svg",
+      "bytes": 2578,
+      "sourceHash": "397b8d82ad2481ace0ecb4a0c59ffbfc451ce365c5a5f5c2783e51e628f6b87c",
+      "source": "assets_vendor/game-icons/delapouite/cape-armor.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/cape-armor"
+    },
     "icon_delapouite__charging-bull": {
       "id": "icon_delapouite__charging-bull",
       "category": "icons",
@@ -2746,6 +5198,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "delapouite/charging-bull"
+    },
+    "icon_delapouite__chest-armor": {
+      "id": "icon_delapouite__chest-armor",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__chest-armor.6aafb591.svg",
+      "bytes": 950,
+      "sourceHash": "aaffd4f871b76880a84f9330bc1ebb9416f69a0acd5e5283b81eed8dc441b7b8",
+      "source": "assets_vendor/game-icons/delapouite/chest-armor.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/chest-armor"
     },
     "icon_delapouite__circling-fish": {
       "id": "icon_delapouite__circling-fish",
@@ -2783,6 +5253,24 @@
       "animations": [],
       "iconSlug": "delapouite/clownfish"
     },
+    "icon_delapouite__coal-pile": {
+      "id": "icon_delapouite__coal-pile",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__coal-pile.130a3963.svg",
+      "bytes": 888,
+      "sourceHash": "92eef09303cb8c21eebef4368e4de17d3f1bc2965e3d16b43b7b4f9bcba73ae7",
+      "source": "assets_vendor/game-icons/delapouite/coal-pile.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/coal-pile"
+    },
     "icon_delapouite__dolphin": {
       "id": "icon_delapouite__dolphin",
       "category": "icons",
@@ -2801,6 +5289,24 @@
       "animations": [],
       "iconSlug": "delapouite/dolphin"
     },
+    "icon_delapouite__dwarf-face": {
+      "id": "icon_delapouite__dwarf-face",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__dwarf-face.c20dc93f.svg",
+      "bytes": 1239,
+      "sourceHash": "b658e4948f85701ee066ed49861213b03a3166579286c50340fee98967760869",
+      "source": "assets_vendor/game-icons/delapouite/dwarf-face.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/dwarf-face"
+    },
     "icon_delapouite__eel": {
       "id": "icon_delapouite__eel",
       "category": "icons",
@@ -2818,6 +5324,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "delapouite/eel"
+    },
+    "icon_delapouite__emerald-necklace": {
+      "id": "icon_delapouite__emerald-necklace",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__emerald-necklace.3478632b.svg",
+      "bytes": 1156,
+      "sourceHash": "e6a0b7049f8c6b33d98ad83724225545f52403de130f4e83e3f36a8cfaf5ed92",
+      "source": "assets_vendor/game-icons/delapouite/emerald-necklace.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/emerald-necklace"
     },
     "icon_delapouite__fish-monster": {
       "id": "icon_delapouite__fish-monster",
@@ -2854,6 +5378,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "delapouite/fish-scales"
+    },
+    "icon_delapouite__flanged-mace": {
+      "id": "icon_delapouite__flanged-mace",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__flanged-mace.26571558.svg",
+      "bytes": 1380,
+      "sourceHash": "11fd961620f37fb5fe9bc8f3b9af42bdf03782e64aeb6a172e843fe93fb3aab4",
+      "source": "assets_vendor/game-icons/delapouite/flanged-mace.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/flanged-mace"
     },
     "icon_delapouite__gauntlet": {
       "id": "icon_delapouite__gauntlet",
@@ -2945,6 +5487,24 @@
       "animations": [],
       "iconSlug": "delapouite/grass"
     },
+    "icon_delapouite__hand-bandage": {
+      "id": "icon_delapouite__hand-bandage",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__hand-bandage.ecdfa0f9.svg",
+      "bytes": 1907,
+      "sourceHash": "4782b0927690e7f7ee9f955247a8062079da309b3b9ed1164aad8a9ff0e55503",
+      "source": "assets_vendor/game-icons/delapouite/hand-bandage.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/hand-bandage"
+    },
     "icon_delapouite__health-potion": {
       "id": "icon_delapouite__health-potion",
       "category": "icons",
@@ -2999,6 +5559,96 @@
       "animations": [],
       "iconSlug": "delapouite/honey-jar"
     },
+    "icon_delapouite__hot-meal": {
+      "id": "icon_delapouite__hot-meal",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__hot-meal.20448d98.svg",
+      "bytes": 2812,
+      "sourceHash": "2f6e7e030fa9745b82feec6331b5e691d34b624c20a679e9f377ad490812c145",
+      "source": "assets_vendor/game-icons/delapouite/hot-meal.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/hot-meal"
+    },
+    "icon_delapouite__katana": {
+      "id": "icon_delapouite__katana",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__katana.34b62188.svg",
+      "bytes": 1176,
+      "sourceHash": "63ed192439356e747e8354f47d83e120e6903c7d818d4ed21f1680db41736e07",
+      "source": "assets_vendor/game-icons/delapouite/katana.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/katana"
+    },
+    "icon_delapouite__knee-bandage": {
+      "id": "icon_delapouite__knee-bandage",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__knee-bandage.c0bcaec0.svg",
+      "bytes": 1266,
+      "sourceHash": "f21f7fa9b0be8b6a8a79b26bc78f4240b3a1cc763d3f71811a3c9854f8629550",
+      "source": "assets_vendor/game-icons/delapouite/knee-bandage.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/knee-bandage"
+    },
+    "icon_delapouite__knee-pad": {
+      "id": "icon_delapouite__knee-pad",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__knee-pad.378f22ea.svg",
+      "bytes": 2181,
+      "sourceHash": "512d0e637eafef493364c13f2b8576b207d6c4addaacf30a57ca45cf72b930a8",
+      "source": "assets_vendor/game-icons/delapouite/knee-pad.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/knee-pad"
+    },
+    "icon_delapouite__leather-armor": {
+      "id": "icon_delapouite__leather-armor",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__leather-armor.2815cd60.svg",
+      "bytes": 1941,
+      "sourceHash": "2f5f291cd5d7a35b52a3dbe8686372844317a98850e57aa9801be90951d0940c",
+      "source": "assets_vendor/game-icons/delapouite/leather-armor.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/leather-armor"
+    },
     "icon_delapouite__leg-armor": {
       "id": "icon_delapouite__leg-armor",
       "category": "icons",
@@ -3017,6 +5667,42 @@
       "animations": [],
       "iconSlug": "delapouite/leg-armor"
     },
+    "icon_delapouite__light-helm": {
+      "id": "icon_delapouite__light-helm",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__light-helm.709a962a.svg",
+      "bytes": 1178,
+      "sourceHash": "d267ddecbf3e6493da30274ec6df2bc47d0d6fc9c554c3e7023362480f93ce8b",
+      "source": "assets_vendor/game-icons/delapouite/light-helm.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/light-helm"
+    },
+    "icon_delapouite__locked-heart": {
+      "id": "icon_delapouite__locked-heart",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__locked-heart.cfa1d1f7.svg",
+      "bytes": 1139,
+      "sourceHash": "bec7bbed006131e3df493aa2a535d54636a86971b53bd6b214eaaf6825fcf1f0",
+      "source": "assets_vendor/game-icons/delapouite/locked-heart.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/locked-heart"
+    },
     "icon_delapouite__log": {
       "id": "icon_delapouite__log",
       "category": "icons",
@@ -3034,6 +5720,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "delapouite/log"
+    },
+    "icon_delapouite__magic-potion": {
+      "id": "icon_delapouite__magic-potion",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__magic-potion.80475cbf.svg",
+      "bytes": 4379,
+      "sourceHash": "4c087818f17b886d98eb440912c0bfd3d86ca97373e7f488f5e901a700cab51a",
+      "source": "assets_vendor/game-icons/delapouite/magic-potion.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/magic-potion"
     },
     "icon_delapouite__manta-ray": {
       "id": "icon_delapouite__manta-ray",
@@ -3070,6 +5774,96 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "delapouite/meal"
+    },
+    "icon_delapouite__medicines": {
+      "id": "icon_delapouite__medicines",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__medicines.73b2d130.svg",
+      "bytes": 825,
+      "sourceHash": "a6291ce8dcf91181ab7698c08a6aa332e8998a9a8c2d3bf0f9049e103159dd63",
+      "source": "assets_vendor/game-icons/delapouite/medicines.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/medicines"
+    },
+    "icon_delapouite__metal-boot": {
+      "id": "icon_delapouite__metal-boot",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__metal-boot.d9ffcf7e.svg",
+      "bytes": 1674,
+      "sourceHash": "fe12aae517b26994177a6c0976df4e5e1f39d5cbd0c7a3b7b92ed526fe3656a7",
+      "source": "assets_vendor/game-icons/delapouite/metal-boot.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/metal-boot"
+    },
+    "icon_delapouite__mighty-force": {
+      "id": "icon_delapouite__mighty-force",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__mighty-force.bf033609.svg",
+      "bytes": 970,
+      "sourceHash": "d39cc92b105a98615cd801329f07cf558c7f801baf37134c2250fb786779a8de",
+      "source": "assets_vendor/game-icons/delapouite/mighty-force.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/mighty-force"
+    },
+    "icon_delapouite__mineral-pearls": {
+      "id": "icon_delapouite__mineral-pearls",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__mineral-pearls.51249833.svg",
+      "bytes": 1313,
+      "sourceHash": "10e1dba01014a06ac23a58398eea7c029b1950353437b11c22ed03db96675e87",
+      "source": "assets_vendor/game-icons/delapouite/mineral-pearls.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/mineral-pearls"
+    },
+    "icon_delapouite__necklace-display": {
+      "id": "icon_delapouite__necklace-display",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__necklace-display.2fa0aa6d.svg",
+      "bytes": 854,
+      "sourceHash": "786b22781e10d9f67bae824a19bdc9ba080a7af5e4d56b53cdc9ca7cd67af41c",
+      "source": "assets_vendor/game-icons/delapouite/necklace-display.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/necklace-display"
     },
     "icon_delapouite__pearl-earring": {
       "id": "icon_delapouite__pearl-earring",
@@ -3143,6 +5937,42 @@
       "animations": [],
       "iconSlug": "delapouite/ring"
     },
+    "icon_delapouite__ring-mould": {
+      "id": "icon_delapouite__ring-mould",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__ring-mould.b8436dbc.svg",
+      "bytes": 1791,
+      "sourceHash": "fa882328a878142ad91cdbb22a5f84f8e99cc9252b150dc0d4a232897f15d852",
+      "source": "assets_vendor/game-icons/delapouite/ring-mould.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/ring-mould"
+    },
+    "icon_delapouite__rolled-cloth": {
+      "id": "icon_delapouite__rolled-cloth",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__rolled-cloth.a133e5ee.svg",
+      "bytes": 1989,
+      "sourceHash": "6ad70c7b61e22f72f9e84292a93316340700649a6f0def33ee3069d71e9409fa",
+      "source": "assets_vendor/game-icons/delapouite/rolled-cloth.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/rolled-cloth"
+    },
     "icon_delapouite__rupee": {
       "id": "icon_delapouite__rupee",
       "category": "icons",
@@ -3197,6 +6027,24 @@
       "animations": [],
       "iconSlug": "delapouite/shark-fin"
     },
+    "icon_delapouite__sharp-halberd": {
+      "id": "icon_delapouite__sharp-halberd",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__sharp-halberd.d279cbcc.svg",
+      "bytes": 1272,
+      "sourceHash": "ce4c55367f35c6cdc2f2649692e53b9eaa3d4ec6e8b18a79bebf67b7337e6918",
+      "source": "assets_vendor/game-icons/delapouite/sharp-halberd.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/sharp-halberd"
+    },
     "icon_delapouite__shield-bash": {
       "id": "icon_delapouite__shield-bash",
       "category": "icons",
@@ -3214,6 +6062,78 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "delapouite/shield-bash"
+    },
+    "icon_delapouite__shoulder-armor": {
+      "id": "icon_delapouite__shoulder-armor",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__shoulder-armor.a23216be.svg",
+      "bytes": 605,
+      "sourceHash": "d36d3712df19c4c2875a17780469f977f3e1cb887a36752323d31d5cc265cece",
+      "source": "assets_vendor/game-icons/delapouite/shoulder-armor.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/shoulder-armor"
+    },
+    "icon_delapouite__skirt": {
+      "id": "icon_delapouite__skirt",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__skirt.cea7a264.svg",
+      "bytes": 866,
+      "sourceHash": "8267f4f91815debca92fd16fc0de32d6e91239ae4bf901d6f0b25affe1826574",
+      "source": "assets_vendor/game-icons/delapouite/skirt.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/skirt"
+    },
+    "icon_delapouite__sleeveless-jacket": {
+      "id": "icon_delapouite__sleeveless-jacket",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__sleeveless-jacket.96a9b55c.svg",
+      "bytes": 1446,
+      "sourceHash": "f8c313088e5e20fb65a812dd55d9f8fa238b7a8d681700fd3baaa6f07ca0409b",
+      "source": "assets_vendor/game-icons/delapouite/sleeveless-jacket.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/sleeveless-jacket"
+    },
+    "icon_delapouite__slippers": {
+      "id": "icon_delapouite__slippers",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__slippers.3f47de93.svg",
+      "bytes": 1062,
+      "sourceHash": "39f2a12217bb5fd5f1ead880661ce84d6974324431327348cf035def5f010358",
+      "source": "assets_vendor/game-icons/delapouite/slippers.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/slippers"
     },
     "icon_delapouite__sperm-whale": {
       "id": "icon_delapouite__sperm-whale",
@@ -3233,6 +6153,24 @@
       "animations": [],
       "iconSlug": "delapouite/sperm-whale"
     },
+    "icon_delapouite__spiked-dragon-head": {
+      "id": "icon_delapouite__spiked-dragon-head",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__spiked-dragon-head.4509993f.svg",
+      "bytes": 1943,
+      "sourceHash": "ab6d52692c3b5b005c0cd6c5773aa3ebee75749ac77a7c542814c816f62c6da9",
+      "source": "assets_vendor/game-icons/delapouite/spiked-dragon-head.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/spiked-dragon-head"
+    },
     "icon_delapouite__stone-pile": {
       "id": "icon_delapouite__stone-pile",
       "category": "icons",
@@ -3250,6 +6188,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "delapouite/stone-pile"
+    },
+    "icon_delapouite__stone-wall": {
+      "id": "icon_delapouite__stone-wall",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__stone-wall.2e053ca8.svg",
+      "bytes": 1248,
+      "sourceHash": "e23679107a29756d0cd8e4a6bcee10796dad45ac6698ed3724670a07789852b1",
+      "source": "assets_vendor/game-icons/delapouite/stone-wall.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/stone-wall"
     },
     "icon_delapouite__sunflower": {
       "id": "icon_delapouite__sunflower",
@@ -3287,6 +6243,42 @@
       "animations": [],
       "iconSlug": "delapouite/sunrise"
     },
+    "icon_delapouite__thor-hammer": {
+      "id": "icon_delapouite__thor-hammer",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__thor-hammer.3d539879.svg",
+      "bytes": 725,
+      "sourceHash": "786f6aba15b6e64cd49114b0309b81a63c0c9d271b458c5e5b66262055b25f85",
+      "source": "assets_vendor/game-icons/delapouite/thor-hammer.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/thor-hammer"
+    },
+    "icon_delapouite__tomahawk": {
+      "id": "icon_delapouite__tomahawk",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__tomahawk.4fe38f47.svg",
+      "bytes": 1918,
+      "sourceHash": "96a34cc43ab38c09dc5368fa4dbaa1e9129282dbd906d0996d36b4c727e4e309",
+      "source": "assets_vendor/game-icons/delapouite/tomahawk.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/tomahawk"
+    },
     "icon_delapouite__tree-growth": {
       "id": "icon_delapouite__tree-growth",
       "category": "icons",
@@ -3305,6 +6297,24 @@
       "animations": [],
       "iconSlug": "delapouite/tree-growth"
     },
+    "icon_delapouite__tribal-gear": {
+      "id": "icon_delapouite__tribal-gear",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__tribal-gear.4221fb22.svg",
+      "bytes": 1385,
+      "sourceHash": "76a698f8ece5c0631549215c6789f7560d7812da14a9320b8a0281585e6564a2",
+      "source": "assets_vendor/game-icons/delapouite/tribal-gear.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/tribal-gear"
+    },
     "icon_delapouite__tusks-flag": {
       "id": "icon_delapouite__tusks-flag",
       "category": "icons",
@@ -3322,6 +6332,42 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "delapouite/tusks-flag"
+    },
+    "icon_delapouite__underwear-shorts": {
+      "id": "icon_delapouite__underwear-shorts",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__underwear-shorts.4720ac78.svg",
+      "bytes": 275,
+      "sourceHash": "dfcf79e145637327fdf642ba36b7924b5fe139a2c80cdf4be675f97726b8dfb5",
+      "source": "assets_vendor/game-icons/delapouite/underwear-shorts.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/underwear-shorts"
+    },
+    "icon_delapouite__war-axe": {
+      "id": "icon_delapouite__war-axe",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__war-axe.02589a13.svg",
+      "bytes": 2408,
+      "sourceHash": "eaf7108711aab7b61285c879403060800ae28091b05356bbbfa5cd0759da3c3f",
+      "source": "assets_vendor/game-icons/delapouite/war-axe.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/war-axe"
     },
     "icon_delapouite__warhammer": {
       "id": "icon_delapouite__warhammer",
@@ -3377,6 +6423,114 @@
       "animations": [],
       "iconSlug": "delapouite/wood-beam"
     },
+    "icon_delapouite__wood-club": {
+      "id": "icon_delapouite__wood-club",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__wood-club.fdbe9dd3.svg",
+      "bytes": 2635,
+      "sourceHash": "65341f7e1777368aa2eec416d322d41d7f66199c8f88a3a01ce2eb147b33a741",
+      "source": "assets_vendor/game-icons/delapouite/wood-club.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/wood-club"
+    },
+    "icon_delapouite__wool": {
+      "id": "icon_delapouite__wool",
+      "category": "icons",
+      "file": "assets_baked/icons/delapouite__wool.674379de.svg",
+      "bytes": 4480,
+      "sourceHash": "79714c97002c49df882a59b66735f0bd30e1fa8d6001b4853765098d7e47b4bf",
+      "source": "assets_vendor/game-icons/delapouite/wool.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Delapouite (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "delapouite/wool"
+    },
+    "icon_irongamer__armored-pants": {
+      "id": "icon_irongamer__armored-pants",
+      "category": "icons",
+      "file": "assets_baked/icons/irongamer__armored-pants.13c3ffc0.svg",
+      "bytes": 755,
+      "sourceHash": "e46f4ac03063f4c9f0eab0a8fec9d736d53515fade51832f38d51027e36664b0",
+      "source": "assets_vendor/game-icons/irongamer/armored-pants.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "irongamer (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "irongamer/armored-pants"
+    },
+    "icon_kier-heyl__dwarf-helmet": {
+      "id": "icon_kier-heyl__dwarf-helmet",
+      "category": "icons",
+      "file": "assets_baked/icons/kier-heyl__dwarf-helmet.dcc61377.svg",
+      "bytes": 1319,
+      "sourceHash": "60561ca3113332feabd3b8465c2c22aac38217a124795cd2aa17a198cfed735b",
+      "source": "assets_vendor/game-icons/kier-heyl/dwarf-helmet.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "kier-heyl (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "kier-heyl/dwarf-helmet"
+    },
+    "icon_lorc__acorn": {
+      "id": "icon_lorc__acorn",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__acorn.e8d603dd.svg",
+      "bytes": 1401,
+      "sourceHash": "d54f4aade08d34410bc671c1fc14c3b68908d2de6f9f883fa1eadb177d5e5d2c",
+      "source": "assets_vendor/game-icons/lorc/acorn.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/acorn"
+    },
+    "icon_lorc__anvil-impact": {
+      "id": "icon_lorc__anvil-impact",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__anvil-impact.a0802018.svg",
+      "bytes": 681,
+      "sourceHash": "4c3292e20c806e539209c06d3c80e1f4480ec15af0e131a379bc4fbc80da075e",
+      "source": "assets_vendor/game-icons/lorc/anvil-impact.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/anvil-impact"
+    },
     "icon_lorc__armor-vest": {
       "id": "icon_lorc__armor-vest",
       "category": "icons",
@@ -3412,6 +6566,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/aura"
+    },
+    "icon_lorc__axe-swing": {
+      "id": "icon_lorc__axe-swing",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__axe-swing.c03a3c5e.svg",
+      "bytes": 1237,
+      "sourceHash": "78576679ea62c531b4b5fecbbd4b2b9bee1a15252075d47009b7d7b5062c1d4d",
+      "source": "assets_vendor/game-icons/lorc/axe-swing.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/axe-swing"
     },
     "icon_lorc__barbute": {
       "id": "icon_lorc__barbute",
@@ -3485,6 +6657,24 @@
       "animations": [],
       "iconSlug": "lorc/belt-buckles"
     },
+    "icon_lorc__black-hole-bolas": {
+      "id": "icon_lorc__black-hole-bolas",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__black-hole-bolas.ab319282.svg",
+      "bytes": 2412,
+      "sourceHash": "8df051387471b47552dd9032a251369fe3c9f4bacd57a0a2a954fff7be034383",
+      "source": "assets_vendor/game-icons/lorc/black-hole-bolas.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/black-hole-bolas"
+    },
     "icon_lorc__bleeding-wound": {
       "id": "icon_lorc__bleeding-wound",
       "category": "icons",
@@ -3557,6 +6747,60 @@
       "animations": [],
       "iconSlug": "lorc/bone-knife"
     },
+    "icon_lorc__book-aura": {
+      "id": "icon_lorc__book-aura",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__book-aura.a96a1050.svg",
+      "bytes": 1220,
+      "sourceHash": "53ada24959a16c6ee8c09f0e402197d2704c5016daf1105b850c00b6d5fbb471",
+      "source": "assets_vendor/game-icons/lorc/book-aura.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/book-aura"
+    },
+    "icon_lorc__boot-prints": {
+      "id": "icon_lorc__boot-prints",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__boot-prints.42da3338.svg",
+      "bytes": 613,
+      "sourceHash": "ed938f70863d184a6181e965efc6d8df026d295a6bcbf4b260ca3a408f35f52c",
+      "source": "assets_vendor/game-icons/lorc/boot-prints.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/boot-prints"
+    },
+    "icon_lorc__boot-stomp": {
+      "id": "icon_lorc__boot-stomp",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__boot-stomp.e635cab6.svg",
+      "bytes": 1862,
+      "sourceHash": "06718185518d7656a63e7a223035b305ee1d75bc2c5273c4e602423c81340df0",
+      "source": "assets_vendor/game-icons/lorc/boot-stomp.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/boot-stomp"
+    },
     "icon_lorc__boots": {
       "id": "icon_lorc__boots",
       "category": "icons",
@@ -3574,6 +6818,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/boots"
+    },
+    "icon_lorc__bordered-shield": {
+      "id": "icon_lorc__bordered-shield",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__bordered-shield.b50b9c13.svg",
+      "bytes": 1585,
+      "sourceHash": "a644f5b7aad40c18cc0dae1fe10219fa0ead817c48733741632ec6db00fd52ea",
+      "source": "assets_vendor/game-icons/lorc/bordered-shield.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/bordered-shield"
     },
     "icon_lorc__bowie-knife": {
       "id": "icon_lorc__bowie-knife",
@@ -3665,6 +6927,42 @@
       "animations": [],
       "iconSlug": "lorc/broken-bottle"
     },
+    "icon_lorc__broken-heart-zone": {
+      "id": "icon_lorc__broken-heart-zone",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__broken-heart-zone.31c31a84.svg",
+      "bytes": 1025,
+      "sourceHash": "eddfe75ebccc378369e297495f3187d61abfe676f0ba9fd0f99b6c5d835c28fb",
+      "source": "assets_vendor/game-icons/lorc/broken-heart-zone.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/broken-heart-zone"
+    },
+    "icon_lorc__broken-skull": {
+      "id": "icon_lorc__broken-skull",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__broken-skull.4686e357.svg",
+      "bytes": 2404,
+      "sourceHash": "40811c1d2c9fe6c701aaf811b60c91e62cd1b9841ff5abd2a27b294d561e492b",
+      "source": "assets_vendor/game-icons/lorc/broken-skull.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/broken-skull"
+    },
     "icon_lorc__bubbling-flask": {
       "id": "icon_lorc__bubbling-flask",
       "category": "icons",
@@ -3682,6 +6980,42 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/bubbling-flask"
+    },
+    "icon_lorc__bull-horns": {
+      "id": "icon_lorc__bull-horns",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__bull-horns.62fd583c.svg",
+      "bytes": 773,
+      "sourceHash": "1c4154d7a9d21a0ccd529112c3fbdd8dd45b13c2ef23c0217c9ace4aa101b161",
+      "source": "assets_vendor/game-icons/lorc/bull-horns.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/bull-horns"
+    },
+    "icon_lorc__burning-embers": {
+      "id": "icon_lorc__burning-embers",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__burning-embers.e62ddd42.svg",
+      "bytes": 2260,
+      "sourceHash": "8d6a3545eaf28c82a017f1eb0f1de10beb7a458c1ea19e64eda73660eb98676d",
+      "source": "assets_vendor/game-icons/lorc/burning-embers.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/burning-embers"
     },
     "icon_lorc__burning-tree": {
       "id": "icon_lorc__burning-tree",
@@ -3701,6 +7035,42 @@
       "animations": [],
       "iconSlug": "lorc/burning-tree"
     },
+    "icon_lorc__cake-slice": {
+      "id": "icon_lorc__cake-slice",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__cake-slice.c8feafc4.svg",
+      "bytes": 3735,
+      "sourceHash": "d7e5038ebf62d7dd16cd1ce213c90995717b2d464d320e8dab21a71f96ec4243",
+      "source": "assets_vendor/game-icons/lorc/cake-slice.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/cake-slice"
+    },
+    "icon_lorc__candle-flame": {
+      "id": "icon_lorc__candle-flame",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__candle-flame.31eab03d.svg",
+      "bytes": 1292,
+      "sourceHash": "b0d4c8281cd555161571030f4ec3d0ce65028a69ca0dd74186279b30fe364e51",
+      "source": "assets_vendor/game-icons/lorc/candle-flame.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/candle-flame"
+    },
     "icon_lorc__checked-shield": {
       "id": "icon_lorc__checked-shield",
       "category": "icons",
@@ -3719,6 +7089,42 @@
       "animations": [],
       "iconSlug": "lorc/checked-shield"
     },
+    "icon_lorc__cheese-wedge": {
+      "id": "icon_lorc__cheese-wedge",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__cheese-wedge.5bbd29ed.svg",
+      "bytes": 1638,
+      "sourceHash": "045320bc8d6c23b32841b7f6d5350e6ca1078f73fb93592f585e0679539cab0a",
+      "source": "assets_vendor/game-icons/lorc/cheese-wedge.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/cheese-wedge"
+    },
+    "icon_lorc__claw-slashes": {
+      "id": "icon_lorc__claw-slashes",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__claw-slashes.ad2cdb37.svg",
+      "bytes": 730,
+      "sourceHash": "9e1cc7b3fa3f89cc930dae02d19e126fb18e3af022bec86ffb657ecf2031bc53",
+      "source": "assets_vendor/game-icons/lorc/claw-slashes.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/claw-slashes"
+    },
     "icon_lorc__cowled": {
       "id": "icon_lorc__cowled",
       "category": "icons",
@@ -3736,6 +7142,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/cowled"
+    },
+    "icon_lorc__crested-helmet": {
+      "id": "icon_lorc__crested-helmet",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__crested-helmet.1fc721fb.svg",
+      "bytes": 1438,
+      "sourceHash": "0a818b8bff0bcfc86e8e1cb2119bb49a317ac222496e7467d9558664ae643d91",
+      "source": "assets_vendor/game-icons/lorc/crested-helmet.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/crested-helmet"
     },
     "icon_lorc__crossed-swords": {
       "id": "icon_lorc__crossed-swords",
@@ -3791,6 +7215,24 @@
       "animations": [],
       "iconSlug": "lorc/crystal-growth"
     },
+    "icon_lorc__crystal-shine": {
+      "id": "icon_lorc__crystal-shine",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__crystal-shine.5fe5e52f.svg",
+      "bytes": 2457,
+      "sourceHash": "ee651db337fd64985f237ffd3bbac536887b4d2575b4668154ce23f6b113dca4",
+      "source": "assets_vendor/game-icons/lorc/crystal-shine.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/crystal-shine"
+    },
     "icon_lorc__crystal-wand": {
       "id": "icon_lorc__crystal-wand",
       "category": "icons",
@@ -3808,6 +7250,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/crystal-wand"
+    },
+    "icon_lorc__curled-leaf": {
+      "id": "icon_lorc__curled-leaf",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__curled-leaf.747e3e46.svg",
+      "bytes": 1369,
+      "sourceHash": "ea62ce524180d08f52e095cd98df8c5f4bb0332ede3746da78dff9be55b9e8bd",
+      "source": "assets_vendor/game-icons/lorc/curled-leaf.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/curled-leaf"
     },
     "icon_lorc__curvy-knife": {
       "id": "icon_lorc__curvy-knife",
@@ -3881,6 +7341,42 @@
       "animations": [],
       "iconSlug": "lorc/diamond-hard"
     },
+    "icon_lorc__dorsal-scales": {
+      "id": "icon_lorc__dorsal-scales",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__dorsal-scales.25caaa4a.svg",
+      "bytes": 1418,
+      "sourceHash": "c17790e2e462d343e8f5e500e3b4f478045e542cd9f2f53b28cf165ebc1ad175",
+      "source": "assets_vendor/game-icons/lorc/dorsal-scales.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/dorsal-scales"
+    },
+    "icon_lorc__dragon-head": {
+      "id": "icon_lorc__dragon-head",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__dragon-head.aadd0fcb.svg",
+      "bytes": 2819,
+      "sourceHash": "c14ad5d895d7fcc96859fac0e1a2878210f8da42293f1231aca2490a6e7f2177",
+      "source": "assets_vendor/game-icons/lorc/dragon-head.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/dragon-head"
+    },
     "icon_lorc__dripping-honey": {
       "id": "icon_lorc__dripping-honey",
       "category": "icons",
@@ -3916,6 +7412,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/dripping-knife"
+    },
+    "icon_lorc__dust-cloud": {
+      "id": "icon_lorc__dust-cloud",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__dust-cloud.a9556bfd.svg",
+      "bytes": 1328,
+      "sourceHash": "bc3dd3fb27b6092f57debcb752203a8f8a7d10be648d618fb14a50320a6a6c47",
+      "source": "assets_vendor/game-icons/lorc/dust-cloud.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/dust-cloud"
     },
     "icon_lorc__eclipse-flare": {
       "id": "icon_lorc__eclipse-flare",
@@ -3988,6 +7502,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/energy-arrow"
+    },
+    "icon_lorc__fire-bottle": {
+      "id": "icon_lorc__fire-bottle",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__fire-bottle.8ab66e88.svg",
+      "bytes": 1372,
+      "sourceHash": "e426f8f20093dbe770f1e05a39ff9b9eddba198fb714f53e68f887ee3f932095",
+      "source": "assets_vendor/game-icons/lorc/fire-bottle.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/fire-bottle"
     },
     "icon_lorc__fire-wave": {
       "id": "icon_lorc__fire-wave",
@@ -4079,6 +7611,60 @@
       "animations": [],
       "iconSlug": "lorc/fishing-hook"
     },
+    "icon_lorc__fist": {
+      "id": "icon_lorc__fist",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__fist.6d1ec3e7.svg",
+      "bytes": 2032,
+      "sourceHash": "90109145ee04ed507f70ff934f5f939ffaea7c50fda8ee18e001de120fe3c115",
+      "source": "assets_vendor/game-icons/lorc/fist.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/fist"
+    },
+    "icon_lorc__flaming-sheet": {
+      "id": "icon_lorc__flaming-sheet",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__flaming-sheet.e716f9d1.svg",
+      "bytes": 916,
+      "sourceHash": "a0a30c6bbcdd9748859758b70436e9386063fcf74d71c0e4c1e0fff3af91a186",
+      "source": "assets_vendor/game-icons/lorc/flaming-sheet.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/flaming-sheet"
+    },
+    "icon_lorc__foot-trip": {
+      "id": "icon_lorc__foot-trip",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__foot-trip.1ef50d54.svg",
+      "bytes": 2031,
+      "sourceHash": "c4c2ed147b4852bbe75c709f0282a8b308801a2d70cbdb40e8b16402aa478309",
+      "source": "assets_vendor/game-icons/lorc/foot-trip.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/foot-trip"
+    },
     "icon_lorc__frozen-orb": {
       "id": "icon_lorc__frozen-orb",
       "category": "icons",
@@ -4096,6 +7682,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/frozen-orb"
+    },
+    "icon_lorc__gavel": {
+      "id": "icon_lorc__gavel",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__gavel.c4c39d5f.svg",
+      "bytes": 491,
+      "sourceHash": "e881b149ed305b5ed8145490659a870ecb22b83cadba1cacd94928b6ab480e32",
+      "source": "assets_vendor/game-icons/lorc/gavel.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/gavel"
     },
     "icon_lorc__gem-chain": {
       "id": "icon_lorc__gem-chain",
@@ -4169,6 +7773,24 @@
       "animations": [],
       "iconSlug": "lorc/ghost"
     },
+    "icon_lorc__glass-heart": {
+      "id": "icon_lorc__glass-heart",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__glass-heart.d87a8538.svg",
+      "bytes": 2651,
+      "sourceHash": "7eba168b5e50ed505d09310e3b37487eb86fb47c6541c0886427bff6c56c6fd5",
+      "source": "assets_vendor/game-icons/lorc/glass-heart.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/glass-heart"
+    },
     "icon_lorc__glowing-hands": {
       "id": "icon_lorc__glowing-hands",
       "category": "icons",
@@ -4186,6 +7808,60 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/glowing-hands"
+    },
+    "icon_lorc__gold-scarab": {
+      "id": "icon_lorc__gold-scarab",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__gold-scarab.58803d01.svg",
+      "bytes": 2371,
+      "sourceHash": "283a9c75df5f53f652d3a39bfaa77d32d286ac64fa3a5f1791b68f5071ef1d62",
+      "source": "assets_vendor/game-icons/lorc/gold-scarab.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/gold-scarab"
+    },
+    "icon_lorc__gooey-eyed-sun": {
+      "id": "icon_lorc__gooey-eyed-sun",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__gooey-eyed-sun.6761e404.svg",
+      "bytes": 3298,
+      "sourceHash": "3c5e723f9be3ad14cccb59847a84f61600e3c4a61c6774003b08b6be151b5ad6",
+      "source": "assets_vendor/game-icons/lorc/gooey-eyed-sun.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/gooey-eyed-sun"
+    },
+    "icon_lorc__gooey-molecule": {
+      "id": "icon_lorc__gooey-molecule",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__gooey-molecule.c2921390.svg",
+      "bytes": 2777,
+      "sourceHash": "3f2062927f3b90bec5727e4a236f4c873340760db9834733334b9a110816dc91",
+      "source": "assets_vendor/game-icons/lorc/gooey-molecule.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/gooey-molecule"
     },
     "icon_lorc__hammer-drop": {
       "id": "icon_lorc__hammer-drop",
@@ -4205,6 +7881,24 @@
       "animations": [],
       "iconSlug": "lorc/hammer-drop"
     },
+    "icon_lorc__hand": {
+      "id": "icon_lorc__hand",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__hand.645e688d.svg",
+      "bytes": 1424,
+      "sourceHash": "1ecb290805e5605fa9673a6164e257d20a0e4adb7eb030b20a859db844a1c173",
+      "source": "assets_vendor/game-icons/lorc/hand.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/hand"
+    },
     "icon_lorc__heart-bottle": {
       "id": "icon_lorc__heart-bottle",
       "category": "icons",
@@ -4222,6 +7916,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/heart-bottle"
+    },
+    "icon_lorc__heat-haze": {
+      "id": "icon_lorc__heat-haze",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__heat-haze.cc28efa3.svg",
+      "bytes": 395,
+      "sourceHash": "141ba026ec084ed1a42507c98a75ccbdd871a58c4a9b2562118a0e7a0b0acdeb",
+      "source": "assets_vendor/game-icons/lorc/heat-haze.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/heat-haze"
     },
     "icon_lorc__holy-symbol": {
       "id": "icon_lorc__holy-symbol",
@@ -4259,6 +7971,42 @@
       "animations": [],
       "iconSlug": "lorc/hood"
     },
+    "icon_lorc__horned-helm": {
+      "id": "icon_lorc__horned-helm",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__horned-helm.a33626e3.svg",
+      "bytes": 1335,
+      "sourceHash": "59b7f728f434ced1caaa4a2f03b1a380e1215eb74d524749f5e7365281678c11",
+      "source": "assets_vendor/game-icons/lorc/horned-helm.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/horned-helm"
+    },
+    "icon_lorc__hot-spices": {
+      "id": "icon_lorc__hot-spices",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__hot-spices.0967bd61.svg",
+      "bytes": 2636,
+      "sourceHash": "546e7768f54023c69b5cb49432feabd01e6bc07d4b1445b4ddc1484e8adc54d9",
+      "source": "assets_vendor/game-icons/lorc/hot-spices.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/hot-spices"
+    },
     "icon_lorc__ice-spear": {
       "id": "icon_lorc__ice-spear",
       "category": "icons",
@@ -4276,6 +8024,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/ice-spear"
+    },
+    "icon_lorc__incense": {
+      "id": "icon_lorc__incense",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__incense.b65d469f.svg",
+      "bytes": 1753,
+      "sourceHash": "e45f63d68feac71a4f311a7033ae43313fe8fb455322a8cedc62ac95e5e3301b",
+      "source": "assets_vendor/game-icons/lorc/incense.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/incense"
     },
     "icon_lorc__leaf-skeleton": {
       "id": "icon_lorc__leaf-skeleton",
@@ -4366,6 +8132,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/magic-shield"
+    },
+    "icon_lorc__magic-swirl": {
+      "id": "icon_lorc__magic-swirl",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__magic-swirl.ee5c481f.svg",
+      "bytes": 1246,
+      "sourceHash": "0caf11370169ccf706b8ff1beb6ac9f7d3246ac770063c654dd42df0f592addd",
+      "source": "assets_vendor/game-icons/lorc/magic-swirl.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/magic-swirl"
     },
     "icon_lorc__mailed-fist": {
       "id": "icon_lorc__mailed-fist",
@@ -4475,6 +8259,60 @@
       "animations": [],
       "iconSlug": "lorc/mushroom"
     },
+    "icon_lorc__mushroom-cloud": {
+      "id": "icon_lorc__mushroom-cloud",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__mushroom-cloud.81a16823.svg",
+      "bytes": 3329,
+      "sourceHash": "a3f829b53328647993cb761dba6045f6763e7c2e8b9db21d21080c272d550c88",
+      "source": "assets_vendor/game-icons/lorc/mushroom-cloud.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/mushroom-cloud"
+    },
+    "icon_lorc__oak": {
+      "id": "icon_lorc__oak",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__oak.9b45fbe6.svg",
+      "bytes": 2698,
+      "sourceHash": "ab11da6310a182085284acfa550aa5622b481d20c04ac26b30e22c4a23300449",
+      "source": "assets_vendor/game-icons/lorc/oak.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/oak"
+    },
+    "icon_lorc__piercing-sword": {
+      "id": "icon_lorc__piercing-sword",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__piercing-sword.e965af6c.svg",
+      "bytes": 845,
+      "sourceHash": "335f1f0143377600a18bae50a42ac3116775164bca0f8d168547a29dbd039582",
+      "source": "assets_vendor/game-icons/lorc/piercing-sword.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/piercing-sword"
+    },
     "icon_lorc__plain-dagger": {
       "id": "icon_lorc__plain-dagger",
       "category": "icons",
@@ -4493,6 +8331,78 @@
       "animations": [],
       "iconSlug": "lorc/plain-dagger"
     },
+    "icon_lorc__plate-claw": {
+      "id": "icon_lorc__plate-claw",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__plate-claw.1a773f06.svg",
+      "bytes": 1056,
+      "sourceHash": "e55147a349e4038758063bd0501a59a9fed51816d268e1874518809c3368a7c2",
+      "source": "assets_vendor/game-icons/lorc/plate-claw.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/plate-claw"
+    },
+    "icon_lorc__pointy-sword": {
+      "id": "icon_lorc__pointy-sword",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__pointy-sword.378613ae.svg",
+      "bytes": 1019,
+      "sourceHash": "664296c33c4bcb0f913f8af02a29fa8bc6b555fff557a7fd786a2dc60f5decdb",
+      "source": "assets_vendor/game-icons/lorc/pointy-sword.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/pointy-sword"
+    },
+    "icon_lorc__poison-bottle": {
+      "id": "icon_lorc__poison-bottle",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__poison-bottle.8b90a3ae.svg",
+      "bytes": 2461,
+      "sourceHash": "6b0e457a30238bc99a7567ac9ace76bf77386c1b92f985cbe1338d119e754492",
+      "source": "assets_vendor/game-icons/lorc/poison-bottle.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/poison-bottle"
+    },
+    "icon_lorc__portal": {
+      "id": "icon_lorc__portal",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__portal.fe33e730.svg",
+      "bytes": 1666,
+      "sourceHash": "45b1ba55ef44b3e3b58c073709dc65186cdac43285c206873096d2a6eb93de55",
+      "source": "assets_vendor/game-icons/lorc/portal.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/portal"
+    },
     "icon_lorc__potion-ball": {
       "id": "icon_lorc__potion-ball",
       "category": "icons",
@@ -4510,6 +8420,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/potion-ball"
+    },
+    "icon_lorc__psychic-waves": {
+      "id": "icon_lorc__psychic-waves",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__psychic-waves.b5abb9cd.svg",
+      "bytes": 1847,
+      "sourceHash": "4173c2037d9799994a9de86ab2dd55115ef2bcc9498de6a85e92b1f0d22142ce",
+      "source": "assets_vendor/game-icons/lorc/psychic-waves.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/psychic-waves"
     },
     "icon_lorc__quake-stomp": {
       "id": "icon_lorc__quake-stomp",
@@ -4583,6 +8511,24 @@
       "animations": [],
       "iconSlug": "lorc/rock"
     },
+    "icon_lorc__root-tip": {
+      "id": "icon_lorc__root-tip",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__root-tip.c5bce726.svg",
+      "bytes": 1234,
+      "sourceHash": "bc72708f3d4634325ffa080ad41f9c8f798f1ee17475d305d97c31e20f8e4045",
+      "source": "assets_vendor/game-icons/lorc/root-tip.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/root-tip"
+    },
     "icon_lorc__rune-stone": {
       "id": "icon_lorc__rune-stone",
       "category": "icons",
@@ -4600,6 +8546,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/rune-stone"
+    },
+    "icon_lorc__sacrificial-dagger": {
+      "id": "icon_lorc__sacrificial-dagger",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__sacrificial-dagger.17a652b8.svg",
+      "bytes": 926,
+      "sourceHash": "fd855b279d3c05f93e25d0498732114e9227758a0d18678b922f3315cf8afb6a",
+      "source": "assets_vendor/game-icons/lorc/sacrificial-dagger.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/sacrificial-dagger"
     },
     "icon_lorc__saphir": {
       "id": "icon_lorc__saphir",
@@ -4691,6 +8655,60 @@
       "animations": [],
       "iconSlug": "lorc/shard-sword"
     },
+    "icon_lorc__sharp-smile": {
+      "id": "icon_lorc__sharp-smile",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__sharp-smile.79225b08.svg",
+      "bytes": 1924,
+      "sourceHash": "2c1bbffcb885f73590df3ac7929e29738bd4a3a0f213037b337213fe8252d388",
+      "source": "assets_vendor/game-icons/lorc/sharp-smile.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/sharp-smile"
+    },
+    "icon_lorc__shield-echoes": {
+      "id": "icon_lorc__shield-echoes",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__shield-echoes.1b8907d4.svg",
+      "bytes": 1311,
+      "sourceHash": "2f98cc09b8e059e302592efec43f00bb0d8e538abeea2fb371678b1e894f0afa",
+      "source": "assets_vendor/game-icons/lorc/shield-echoes.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/shield-echoes"
+    },
+    "icon_lorc__shining-claw": {
+      "id": "icon_lorc__shining-claw",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__shining-claw.709ad041.svg",
+      "bytes": 1050,
+      "sourceHash": "e8cfc711d95cae5439597b2b18858fcc2391935ab306eee17a141696541df006",
+      "source": "assets_vendor/game-icons/lorc/shining-claw.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/shining-claw"
+    },
     "icon_lorc__shouting": {
       "id": "icon_lorc__shouting",
       "category": "icons",
@@ -4744,6 +8762,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/sliced-bread"
+    },
+    "icon_lorc__spear-hook": {
+      "id": "icon_lorc__spear-hook",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__spear-hook.005f6740.svg",
+      "bytes": 1274,
+      "sourceHash": "0cae5351007ec04cdd9eb87ff7170efc6794e76450e39541b85a6c8a5e5bd88f",
+      "source": "assets_vendor/game-icons/lorc/spear-hook.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/spear-hook"
     },
     "icon_lorc__spiked-mace": {
       "id": "icon_lorc__spiked-mace",
@@ -4835,6 +8871,24 @@
       "animations": [],
       "iconSlug": "lorc/standing-potion"
     },
+    "icon_lorc__star-prominences": {
+      "id": "icon_lorc__star-prominences",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__star-prominences.21690e15.svg",
+      "bytes": 2266,
+      "sourceHash": "1375d1632c9d8eee02bb4f108dbe6cded448f74c4258c4e3117cea94cbee2b48",
+      "source": "assets_vendor/game-icons/lorc/star-prominences.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/star-prominences"
+    },
     "icon_lorc__star-swirl": {
       "id": "icon_lorc__star-swirl",
       "category": "icons",
@@ -4907,6 +8961,60 @@
       "animations": [],
       "iconSlug": "lorc/stone-block"
     },
+    "icon_lorc__stone-sphere": {
+      "id": "icon_lorc__stone-sphere",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__stone-sphere.6632f5c8.svg",
+      "bytes": 2169,
+      "sourceHash": "1071e4e27afe2334bb81367d26ef026cf03360be7dcb581dcaa6a016d31babab",
+      "source": "assets_vendor/game-icons/lorc/stone-sphere.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/stone-sphere"
+    },
+    "icon_lorc__stone-tablet": {
+      "id": "icon_lorc__stone-tablet",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__stone-tablet.dc1477c8.svg",
+      "bytes": 865,
+      "sourceHash": "6f669662a197599577846f89e1d217f7a0cc8422d51ca8bda61c0ce2240298ba",
+      "source": "assets_vendor/game-icons/lorc/stone-tablet.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/stone-tablet"
+    },
+    "icon_lorc__sun": {
+      "id": "icon_lorc__sun",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__sun.3cca2655.svg",
+      "bytes": 2026,
+      "sourceHash": "a031f146f8d46c49a2d5480e08eda3378e455200b208f8b23858f977abe0f279",
+      "source": "assets_vendor/game-icons/lorc/sun.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/sun"
+    },
     "icon_lorc__sun-radiations": {
       "id": "icon_lorc__sun-radiations",
       "category": "icons",
@@ -4942,6 +9050,42 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/sunbeams"
+    },
+    "icon_lorc__surrounded-shield": {
+      "id": "icon_lorc__surrounded-shield",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__surrounded-shield.4b8a059c.svg",
+      "bytes": 1819,
+      "sourceHash": "eaeb068e27b541682cc6b481bc95ee9c3b85ec3875904ef87b6647484f3a5570",
+      "source": "assets_vendor/game-icons/lorc/surrounded-shield.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/surrounded-shield"
+    },
+    "icon_lorc__sword-hilt": {
+      "id": "icon_lorc__sword-hilt",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__sword-hilt.d1ffa525.svg",
+      "bytes": 1394,
+      "sourceHash": "266294cfade0a919b2fc486d79334540602da487027dce9e239fbaf73c2395fc",
+      "source": "assets_vendor/game-icons/lorc/sword-hilt.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/sword-hilt"
     },
     "icon_lorc__targeting": {
       "id": "icon_lorc__targeting",
@@ -5051,6 +9195,24 @@
       "animations": [],
       "iconSlug": "lorc/tied-scroll"
     },
+    "icon_lorc__tornado": {
+      "id": "icon_lorc__tornado",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__tornado.ab7315fd.svg",
+      "bytes": 2327,
+      "sourceHash": "714db5052a1fbafb19a7e26e41fed4e87fe849d51b5cdd7d1878c83a840114cc",
+      "source": "assets_vendor/game-icons/lorc/tornado.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/tornado"
+    },
     "icon_lorc__tree-branch": {
       "id": "icon_lorc__tree-branch",
       "category": "icons",
@@ -5068,6 +9230,24 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/tree-branch"
+    },
+    "icon_lorc__trident": {
+      "id": "icon_lorc__trident",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__trident.02ba7a7c.svg",
+      "bytes": 498,
+      "sourceHash": "2b210ecb0e80b85224b3c28dd6396d0b7919e22824d6fb4a6ad9946a3bb866ba",
+      "source": "assets_vendor/game-icons/lorc/trident.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/trident"
     },
     "icon_lorc__trousers": {
       "id": "icon_lorc__trousers",
@@ -5087,6 +9267,24 @@
       "animations": [],
       "iconSlug": "lorc/trousers"
     },
+    "icon_lorc__vine-whip": {
+      "id": "icon_lorc__vine-whip",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__vine-whip.72616054.svg",
+      "bytes": 1361,
+      "sourceHash": "84679197b85c7a23e01c3418b62c7409987b965475b1b8c554be2ac4baf0dbcb",
+      "source": "assets_vendor/game-icons/lorc/vine-whip.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/vine-whip"
+    },
     "icon_lorc__visored-helm": {
       "id": "icon_lorc__visored-helm",
       "category": "icons",
@@ -5104,6 +9302,78 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/visored-helm"
+    },
+    "icon_lorc__volcano": {
+      "id": "icon_lorc__volcano",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__volcano.dfec5b2c.svg",
+      "bytes": 1537,
+      "sourceHash": "769501ff138390997c1f3e21c5fd091beeab0d30bb66f49bdee192006d2c79ae",
+      "source": "assets_vendor/game-icons/lorc/volcano.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/volcano"
+    },
+    "icon_lorc__walking-boot": {
+      "id": "icon_lorc__walking-boot",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__walking-boot.9f0a3e0e.svg",
+      "bytes": 1460,
+      "sourceHash": "d4a99851d5b8969132ddf1d345c3d3dbd4ae61e2f595669903e190642b951a68",
+      "source": "assets_vendor/game-icons/lorc/walking-boot.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/walking-boot"
+    },
+    "icon_lorc__water-splash": {
+      "id": "icon_lorc__water-splash",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__water-splash.bcf21730.svg",
+      "bytes": 1838,
+      "sourceHash": "6475e84792dfb6a18e2b55bc7901c7b392ef697603bc14a65260360dc1d8eb28",
+      "source": "assets_vendor/game-icons/lorc/water-splash.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/water-splash"
+    },
+    "icon_lorc__wave-strike": {
+      "id": "icon_lorc__wave-strike",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__wave-strike.5ceb5b63.svg",
+      "bytes": 2453,
+      "sourceHash": "b495a8206fbeaa87ef854121c7d8e8e0006c7d56daf8ba69fae7f77457650fb8",
+      "source": "assets_vendor/game-icons/lorc/wave-strike.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/wave-strike"
     },
     "icon_lorc__whirlwind": {
       "id": "icon_lorc__whirlwind",
@@ -5123,6 +9393,24 @@
       "animations": [],
       "iconSlug": "lorc/whirlwind"
     },
+    "icon_lorc__winged-leg": {
+      "id": "icon_lorc__winged-leg",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__winged-leg.f1f67c99.svg",
+      "bytes": 952,
+      "sourceHash": "ddf1567894866500c7cb2ca7faf4b5485cf8a65a0b6c9b04925fd32677a2c738",
+      "source": "assets_vendor/game-icons/lorc/winged-leg.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/winged-leg"
+    },
     "icon_lorc__wizard-staff": {
       "id": "icon_lorc__wizard-staff",
       "category": "icons",
@@ -5140,6 +9428,150 @@
       "bounds": null,
       "animations": [],
       "iconSlug": "lorc/wizard-staff"
+    },
+    "icon_lorc__wolverine-claws": {
+      "id": "icon_lorc__wolverine-claws",
+      "category": "icons",
+      "file": "assets_baked/icons/lorc__wolverine-claws.46437a9d.svg",
+      "bytes": 2089,
+      "sourceHash": "e5dc32b7185110e6724a17944410cafe20b2e320647924de53c708264ca42867",
+      "source": "assets_vendor/game-icons/lorc/wolverine-claws.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Lorc (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "lorc/wolverine-claws"
+    },
+    "icon_sbed__crush": {
+      "id": "icon_sbed__crush",
+      "category": "icons",
+      "file": "assets_baked/icons/sbed__crush.9f51fd65.svg",
+      "bytes": 263,
+      "sourceHash": "95fdf21a6510b65a5c1805fadd4657cf171b97abe5ff2833ee9ea8476448cae6",
+      "source": "assets_vendor/game-icons/sbed/crush.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "sbed (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "sbed/crush"
+    },
+    "icon_sbed__vial": {
+      "id": "icon_sbed__vial",
+      "category": "icons",
+      "file": "assets_baked/icons/sbed__vial.176edf6d.svg",
+      "bytes": 847,
+      "sourceHash": "42347a05738398b2d07bad19528610daa09e7dab1705e5e7191cb2eb1811d00a",
+      "source": "assets_vendor/game-icons/sbed/vial.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "sbed (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "sbed/vial"
+    },
+    "icon_skoll__bracers": {
+      "id": "icon_skoll__bracers",
+      "category": "icons",
+      "file": "assets_baked/icons/skoll__bracers.915501fb.svg",
+      "bytes": 2251,
+      "sourceHash": "1eda8f483509b9b2aab8e3554cb81f5747076e22cbc94bddbbebde4566622c37",
+      "source": "assets_vendor/game-icons/skoll/bracers.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Skoll (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "skoll/bracers"
+    },
+    "icon_skoll__fangs": {
+      "id": "icon_skoll__fangs",
+      "category": "icons",
+      "file": "assets_baked/icons/skoll__fangs.8acd390d.svg",
+      "bytes": 1912,
+      "sourceHash": "5b1d809152033b537825af703cd87f1d497d7ea5f3f19242d2f0b83a4d1b6734",
+      "source": "assets_vendor/game-icons/skoll/fangs.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "Skoll (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "skoll/fangs"
+    },
+    "icon_willdabeast__chain-mail": {
+      "id": "icon_willdabeast__chain-mail",
+      "category": "icons",
+      "file": "assets_baked/icons/willdabeast__chain-mail.c02d1412.svg",
+      "bytes": 1836,
+      "sourceHash": "5745a98f7949fa081163cb722cb6f742df5e694d3655e0e70a8c56163929cc38",
+      "source": "assets_vendor/game-icons/willdabeast/chain-mail.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "willdabeast (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "willdabeast/chain-mail"
+    },
+    "icon_willdabeast__orb-wand": {
+      "id": "icon_willdabeast__orb-wand",
+      "category": "icons",
+      "file": "assets_baked/icons/willdabeast__orb-wand.c1b18e44.svg",
+      "bytes": 1211,
+      "sourceHash": "37074b15ad118612dca83eada1522575228f16b7f693761d191d9221354cdb13",
+      "source": "assets_vendor/game-icons/willdabeast/orb-wand.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "willdabeast (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "willdabeast/orb-wand"
+    },
+    "icon_willdabeast__round-shield": {
+      "id": "icon_willdabeast__round-shield",
+      "category": "icons",
+      "file": "assets_baked/icons/willdabeast__round-shield.4992f46b.svg",
+      "bytes": 1152,
+      "sourceHash": "ee9b574fc11c6a4e9de5e0a909db39099cdce086ceea1b881e438a231a2eb90d",
+      "source": "assets_vendor/game-icons/willdabeast/round-shield.svg",
+      "pack": "game-icons",
+      "packName": "Game-icons.net",
+      "author": "willdabeast (game-icons.net)",
+      "license": "CC-BY-3.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "triangles": 0,
+      "bounds": null,
+      "animations": [],
+      "iconSlug": "willdabeast/round-shield"
     }
   }
 }

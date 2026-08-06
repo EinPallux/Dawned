@@ -210,3 +210,59 @@ Editor_ (terrain sculpt/paint, prop placement, spawn/zone/POI painting) on top o
 (island masks → heightmap synth → auto-splat pass), then hand-dressed per the beats above. The owner
 can extend it, or wipe any layer (props/spawns/paint) per zone and redecorate from scratch. Nothing
 about the shipped world is special-cased in code.
+
+### 7.1 As built — the terrain (P12-A, 2026-08-06)
+
+The base is a whole-world mask synthesis run from the panel
+(`tools/content/world-data.ts` + `pnpm world:author`), previewable offline with
+`pnpm world:preview`. **Measured: 57.6 % land** — inside §1's 55–60 % — over 766 chunks of 1024,
+with **all six isles confirmed separate landmasses by flood fill** and every land vertex standing
+in a zone.
+
+Two things about the shape are decisions rather than implementation:
+
+- **The isles are generated OVERLAPPING and the straits are cut afterwards.** §1 asks for two
+  things at once: 55–60 % of a 2048 m box as land, and bridges that gate the natural path. Six
+  landmasses far enough apart to leave open water between them cannot cover that much of the box.
+  So the masks merge into one continent and six `carve` masks sever it — which is also what a
+  strait _is_. Bank steepness is depth over half-width and terrain past 55° is auto-unwalkable
+  (§6), so every channel is wide relative to its depth: swimmable, with beaches on both shores.
+- **A strait's geometry is derived from the two isles it separates**, not typed. Typed, three of
+  the five original channels severed nothing — the isles joined around the ends of the cuts, and
+  one carve sat at nearly a right angle to where it belonged. A depth probe at each channel's own
+  centre reported open water for all five, which was true and useless; only a flood fill answers
+  "is this still one landmass".
+
+Three deviations from the text above, each reported rather than quietly absorbed:
+
+| Spec                                                     | As built                                                                          | Why                                                                                                                                                                                                          |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| §1's diagram puts a small islet in the **north-west**    | it stands in the southern Dawnsea instead                                         | at 57 % coverage Emberwood, Sungraze and Ashcrag fill that third of the map between them. Three attempts up there came back either absorbed into Ashcrag or cut in half by the Emberwood channel — no water. |
+| a sandbar **halfway across** the Dawnshore↔Weald channel | the wreck bar sits in open sea off Dawnshore's north-east cape                    | carves apply after every land mask, so a bar in the deepest part of a 76 m strait would have to be a 76 m mountain to break the surface. The rest-stop beat costs the channel; the bar keeps its shore.      |
+| **The Dawnsea** is "n/a" in §2's zone table              | it is a real zone row, listed LAST so the six land zones win the first-match test | publish blocks on land in no zone, and the sandbars stand in water no isle's ring reaches. Its ambience is the open-ocean profile the zones file would otherwise carry as `defaultAmbience`.                 |
+
+**Bridges are causeways** (P12-B). §6 wants them to be landmark art pieces, and they are dressed
+that way — but the crossing itself is GROUND, not a prop. The walkgrid runs one way: a prop can
+subtract from it (`solid` stamps its footprint unwalkable, which is what stops you walking through
+a house) but nothing can add to it. So a bridge model laid over a channel is scenery you swim
+underneath and §1's "joined by bridges" would be false. Each of the four crossings is therefore a
+22 m-wide neck of terrain raised back over its own strait, standing ~5 m above the waterline, with
+plank and dock props on top. The consequence is honest and worth naming: the five main isles are
+one landmass connected through four necks rather than five islands in a row. Every strait is open
+water everywhere else, so the neck is a real chokepoint and swimming remains the shortcut. The
+Elder Grove has no causeway — §3.6's long swim and one-way portal are still the only ways in.
+USER_QUESTIONS Q30 carries the decision and the alternative (giving props real collision).
+
+Rivers, per-chunk water overrides and the waterfall grotto (§6) are **not** in the base pass — they
+are hand-dressing on top of it, and the map editor's per-chunk water tool is what places them.
+
+**The sea is a per-chunk declaration, and the base pass forgot to make it** (found in P12-E). A
+chunk carries its own `waterLevel`, and the client draws a water surface only where that value is
+not null — which is what makes the per-chunk override above possible at all. The whole-world
+generation plan shipped `waterLevel: null`, so all 1024 chunks declared no water: every channel,
+every bay and 42 % of the map was an invisible hole with the ocean floor visible at the bottom of
+it, and nothing could be a fishing spot, because "submerged" is defined as ground below its own
+chunk's water. Two phases passed without anyone noticing, because nothing had needed water to
+exist until the gathering nodes did. Sea level is written into every chunk now; a chunk standing
+entirely above it simply renders its plane underground, which costs nothing and means a later
+sculpt that digs a bay gets water in it for free.

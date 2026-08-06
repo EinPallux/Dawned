@@ -7,7 +7,7 @@
  */
 
 /** Bumped on any wire-format change; mismatched clients are told to reload. */
-export const PROTOCOL_VERSION = 13; // v13 (P10): gathering nodes + professions
+export const PROTOCOL_VERSION = 14; // v14 (P11): quests, dialogue, POIs, interactables
 
 /** Client → server opcodes. */
 export const ClientOp = {
@@ -35,6 +35,19 @@ export const ClientOp = {
    * boundary. Held inputs do NOT come this way; they ride InputIntent.
    */
   GatherOp: 0x0a,
+  /**
+   * Touch a world object (v14): a chest, a shrine, a signpost, a portal, a
+   * quest board, an NPC. The `F` verb for everything that is NOT a resource
+   * node — nodes kept their own op because they carry a HOLD, and folding a
+   * channel into the same envelope as an instant would mean one shape that is
+   * two things.
+   */
+  InteractOp: 0x0b,
+  /**
+   * Quest journal intents (v14): accept, decline, abandon, pin, turn in, and
+   * the dialogue button presses. UI clicks, so JSON — same lane as ItemOp.
+   */
+  QuestOp: 0x0c,
 } as const;
 export type ClientOp = (typeof ClientOp)[keyof typeof ClientOp];
 
@@ -91,6 +104,25 @@ export const ServerOp = {
    * client's bar and the server's judgement cannot disagree.
    */
   FishingState: 0xa2,
+  /** SELF's whole quest log: active quests, counters, and what is turn-in-able (v14). */
+  QuestSync: 0xa3,
+  /** A quest beat worth a toast: accepted, step done, completed, rewarded (v14). */
+  QuestNotice: 0xa4,
+  /**
+   * The conversation on screen (v14): who is speaking, the line, the buttons.
+   * The server drives it because a choice can accept a quest — letting the
+   * client walk its own copy of the tree would make the accept a client
+   * decision with a server rubber-stamp, which is the wrong way round.
+   */
+  DialogueState: 0xa5,
+  /** Everything this character has discovered — the map's fog (v14). */
+  DiscoverySync: 0xa6,
+  /**
+   * Nearby interactable state (v14): which chests are open and refilling,
+   * which shrines are attuned. Positions are not in here for the same reason
+   * NodeStates omits them — the client already has the bake.
+   */
+  InteractState: 0xa7,
 } as const;
 export type ServerOp = (typeof ServerOp)[keyof typeof ServerOp];
 

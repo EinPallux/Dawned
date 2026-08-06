@@ -6,10 +6,12 @@
  *    hooks, not through this service.
  */
 
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   characterDiscoveries,
   characterProfessions,
+  characterQuests,
+  characterInteractions,
   characterItems,
   characterSkills,
   characters,
@@ -163,7 +165,10 @@ export class CharacterService {
   }
 
   /** Discovered refs of one kind (zone first-entry, P10 material codex). */
-  async loadDiscoveries(characterId: number, kind: 'zone' | 'codex'): Promise<Set<string>> {
+  async loadDiscoveries(
+    characterId: number,
+    kind: 'zone' | 'codex' | 'poi' | 'shrine',
+  ): Promise<Set<string>> {
     const rows = await this.db
       .select()
       .from(characterDiscoveries)
@@ -174,11 +179,124 @@ export class CharacterService {
   }
 
   /** Record a first-time discovery; the PK makes double-pays impossible. */
-  async addDiscovery(characterId: number, kind: 'zone' | 'codex', refId: string): Promise<void> {
+  async addDiscovery(
+    characterId: number,
+    kind: 'zone' | 'codex' | 'poi' | 'shrine',
+    refId: string,
+  ): Promise<void> {
     await this.db
       .insert(characterDiscoveries)
       .values({ characterId, kind, refId })
       .onConflictDoNothing();
+  }
+
+  /**
+   * Un-find every discovery of the given kinds (`/ops/forget`, P11-E).
+   *
+   * Paired with the in-memory clear so the lever survives a relog. A "forget"
+   * that the next login undoes is worse than no lever: the run would pass once
+   * and then quietly measure nothing.
+   */
+  async clearDiscoveries(
+    characterId: number,
+    kinds: readonly ('zone' | 'codex' | 'poi' | 'shrine')[],
+  ): Promise<void> {
+    if (kinds.length === 0) return;
+    await this.db
+      .delete(characterDiscoveries)
+      .where(
+        and(
+          eq(characterDiscoveries.characterId, characterId),
+          inArray(characterDiscoveries.kind, [...kinds]),
+        ),
+      );
+  }
+
+  /** Quest rows for one character (P11). */
+  async loadQuests(
+    characterId: number,
+  ): Promise<
+    { questId: string; status: string; step: number; counter: number; pinned: boolean }[]
+  > {
+    const rows = await this.db
+      .select()
+      .from(characterQuests)
+      .where(eq(characterQuests.characterId, characterId));
+    return rows.map((row) => ({
+      questId: row.questId,
+      status: row.status,
+      step: row.step,
+      counter: row.counter,
+      pinned: row.pinned,
+    }));
+  }
+
+  /** Write-through of one quest's state. */
+  async saveQuest(
+    characterId: number,
+    row: { questId: string; status: string; step: number; counter: number; pinned: boolean },
+  ): Promise<void> {
+    await this.db
+      .insert(characterQuests)
+      .values({
+        characterId,
+        questId: row.questId,
+        status: row.status as 'active' | 'complete' | 'turned_in' | 'abandoned',
+        step: row.step,
+        counter: row.counter,
+        pinned: row.pinned,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [characterQuests.characterId, characterQuests.questId],
+        set: {
+          status: row.status as 'active' | 'complete' | 'turned_in' | 'abandoned',
+          step: row.step,
+          counter: row.counter,
+          pinned: row.pinned,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  /** Per-character interactable records (P11): chests opened, shrines attuned. */
+  async loadInteractions(
+    characterId: number,
+  ): Promise<{ objectId: string; kind: string; count: number }[]> {
+    const rows = await this.db
+      .select()
+      .from(characterInteractions)
+      .where(eq(characterInteractions.characterId, characterId));
+    return rows.map((row) => ({ objectId: row.objectId, kind: row.kind, count: row.count }));
+  }
+
+  /**
+   * Write-through of one object's record. Stored as one row per (object,
+   * kind): "opened" carries the cooldown in `count` (−1 = one-shot, spent),
+   * "attuned" is a marker, "used" is the interact-step tally.
+   */
+  async saveInteraction(
+    characterId: number,
+    objectId: string,
+    record: { openedUntilMs: number; attuned: boolean; uses: number },
+  ): Promise<void> {
+    const rows: { kind: 'opened' | 'attuned' | 'used'; count: number }[] = [];
+    if (record.openedUntilMs !== 0) rows.push({ kind: 'opened', count: record.openedUntilMs });
+    if (record.attuned) rows.push({ kind: 'attuned', count: 1 });
+    if (record.uses > 0) rows.push({ kind: 'used', count: record.uses });
+    for (const row of rows) {
+      await this.db
+        .insert(characterInteractions)
+        .values({ characterId, objectId, kind: row.kind, count: row.count, at: new Date() })
+        .onConflictDoUpdate({
+          target: [
+            characterInteractions.characterId,
+            characterInteractions.objectId,
+            characterInteractions.kind,
+          ],
+          set: { count: row.count, at: new Date() },
+        });
+    }
   }
 
   /** Gathering-profession rows for one character (P10). */

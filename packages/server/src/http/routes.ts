@@ -139,6 +139,21 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
     return { nodes: [...content.resourceNodes.values()] };
   });
 
+  /**
+   * Published quests (P11): the client needs names, journal prose and step
+   * text to render a journal at all. The STATE is never here — that comes from
+   * `QuestSync` and is the server's alone; this is the catalogue, exactly as
+   * `/api/content/items` is.
+   */
+  app.get('/api/content/quests', () => {
+    return { quests: [...content.quests.values()] };
+  });
+
+  /** Published NPCs (P11): names, models and clips so the client can stand them up. */
+  app.get('/api/content/npcs', () => {
+    return { npcs: [...content.npcs.values()] };
+  });
+
   /** Minimal public status for the login screen's server pip. */
   app.get('/api/status', () => ({
     online: true,
@@ -215,6 +230,7 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
         spawn: next.meta.spawn,
         zones: next.zones,
         nodes: next.nodes,
+        world: { npcs: next.npcs, interactables: next.interactables, pois: next.pois },
       });
       mapVersion = next.meta.mapVersion;
       gateway.broadcastSystemChat(
@@ -421,6 +437,118 @@ export const registerRoutes = (app: App, deps: RouteDeps): void => {
       return reply.code(404).send({ error: 'player not online' });
     }
     return reply.send({ ok: true, armed: player, item, casts });
+  });
+
+  /**
+   * Put a quest on a character at a given step (P11).
+   *
+   * The A4 quest editor's "grant to my GM character at step n" button, and how
+   * a verification run reaches step 3 of a four-part chain without playing the
+   * first three. It sets STATE, never rewards: the turn-in, the payout and the
+   * counters are the untouched real path, same as `/ops/fish` supplying the
+   * fish but not the catch.
+   */
+  app.post('/ops/quest', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as
+      { player?: unknown; quest?: unknown; step?: unknown; drop?: unknown } | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    const quest = typeof body?.quest === 'string' ? body.quest.trim() : '';
+    const step = typeof body?.step === 'number' ? Math.max(0, Math.floor(body.step)) : 0;
+    const drop = body?.drop === true;
+    if (!player || !quest) return reply.code(400).send({ error: 'player and quest required' });
+    if (!content.quests.has(quest)) {
+      return reply.code(404).send({ error: `unknown quest "${quest}"` });
+    }
+    if (!world.setQuestByName(player, quest, step, drop)) {
+      return reply.code(404).send({ error: 'player not online' });
+    }
+    return reply.send({ ok: true, player, quest, step, drop });
+  });
+
+  /**
+   * Un-find POIs / zones / shrines / used objects, so the discovery loop can
+   * be MEASURED again (P11-E; ARCHITECTURE.md §3).
+   *
+   * First-entry-only is the whole point of discovery, which means a character
+   * that has walked the island can never show the banner, the XP or the map
+   * reveal a second time. Same argument as `/ops/hurt` keeping the P9 boss bot
+   * alive and `/ops/fish` putting a rare on the line: the lever undoes the
+   * SETUP, never the thing being measured.
+   */
+  app.post('/ops/forget', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    const body = request.body as
+      | {
+          player?: unknown;
+          pois?: unknown;
+          zones?: unknown;
+          shrines?: unknown;
+          objects?: unknown;
+        }
+      | undefined;
+    const player = typeof body?.player === 'string' ? body.player.trim() : '';
+    if (!player) return reply.code(400).send({ error: 'player required' });
+    // POIs alone by default: zone XP is a far bigger award, and a run that
+    // wants a vista back should not be handed four levels with it.
+    const what = {
+      pois: body?.pois !== false,
+      zones: body?.zones === true,
+      shrines: body?.shrines === true,
+      objects: body?.objects === true,
+    };
+    const cleared = world.forgetDiscoveries(player, what);
+    if (!cleared) return reply.code(404).send({ error: 'player not online' });
+    return reply.send({ ok: true, player, ...cleared });
+  });
+
+  /**
+   * What the bestiary became in this world (P12-C): camps seeded, enemies
+   * alive, per-zone population, and — the line that matters — camps that
+   * produced nothing. 124 camps published into open water look exactly like
+   * 124 camps published onto land from the publish button's side.
+   */
+  app.get('/ops/camps', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    return reply.send({ ok: true, ...world.campReport });
+  });
+
+  /**
+   * What the live world actually seeded from the map bake (P11).
+   *
+   * The counterpart to `/ops/respawnnodes` reporting "65 nodes, 0 orphans": a
+   * publish saying "ok" is the PANEL's account of its own work, and a bake that
+   * carries four villagers the world quietly dropped looks identical from
+   * outside. This is the line that proves the content crossed the boundary, and
+   * `orphanNpcs` names the placements whose definition did not resolve.
+   */
+  app.get('/ops/worldobjects', (request, reply) => {
+    const remote = request.socket.remoteAddress ?? '';
+    if (!LOCALHOST.has(remote)) {
+      return reply.code(403).send({ error: 'ops API is localhost-only' });
+    }
+    if (request.headers['x-ops-secret'] !== config.OPS_SECRET) {
+      return reply.code(401).send({ error: 'bad ops secret' });
+    }
+    return reply.send({ ok: true, ...world.worldObjects });
   });
 
   /**

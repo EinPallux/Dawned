@@ -100,7 +100,7 @@ export const createPlayerItems = (
     equipment: new Map<EquipSlot, ItemStack>(persisted?.equipment),
     gold,
   },
-  bonus: { stats: {}, weapon: null },
+  bonus: { stats: {}, weapon: null, pct: {}, killGold: 0 },
   cooldowns: new Map(),
   openVendorId: null,
   buyback: [],
@@ -220,6 +220,9 @@ export const rollEnemyLoot = (
     } else {
       share.gold += killGold(enemy.level, rng);
     }
+    // `on_kill_gold` trinkets (§2 "treasure-hunter"), the other half of the
+    // item-effect wiring P8 left unread.
+    share.gold += player.items.bonus.killGold;
     if (share.items.length > 0 || share.gold > 0) shares.set(player.id, share);
   }
   if (shares.size === 0) return null;
@@ -664,6 +667,37 @@ export const grantItem = (
   if (result.leftover > 0) notice(deps, player, 'full', { itemId });
   dirty(deps, player);
   return result.leftover;
+};
+
+/**
+ * Take `qty` of an item out of the bag, oldest cell first (quest delivery).
+ *
+ * The mirror of `grantItem`, and the reason it exists as its own function: a
+ * DELIVER step hands over an ITEM, not a slot, and the caller has no business
+ * knowing which cells the stack is spread across. Returns how many were
+ * actually removed — the caller has already checked `countItem`, so a short
+ * return means the pack changed underneath and the step must not complete.
+ */
+export const takeItem = (
+  player: ServerPlayer,
+  itemId: string,
+  qty: number,
+  deps: ItemOpDeps,
+): number => {
+  let remaining = Math.max(0, Math.floor(qty));
+  let removed = 0;
+  for (const [slot, stack] of [...player.items.inventory.bag]) {
+    if (remaining <= 0) break;
+    if (stack.itemId !== itemId) continue;
+    const take = Math.min(remaining, stack.qty);
+    const plan = planRemove(player.items.inventory, slot, take);
+    if (!plan.ok) continue;
+    applyMutations(player, plan.mutations);
+    remaining -= take;
+    removed += take;
+  }
+  if (removed > 0) dirty(deps, player);
+  return removed;
 };
 
 /** Purse grant (GM primitive, quest rewards later). Never goes negative. */
