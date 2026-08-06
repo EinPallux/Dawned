@@ -457,6 +457,28 @@ export const contentWorldSettings = pgTable(
   (table) => [primaryKey({ columns: [table.key, table.status] })],
 );
 
+/**
+ * The hash an authoring script last wrote for a published content row.
+ *
+ * Content scripts rewrite every row they own on every run, which is fine on a
+ * throwaway dev box and destructive on the live server: a number retuned in the
+ * panel would be reverted to whatever the script's data file says, on every
+ * deploy that touches content. This is the evidence that tells "the script wrote
+ * this" apart from "a person changed it" — live hash equal to the recorded one
+ * means nobody has touched it since, anything else means hands off
+ * (migration 0021; Dawned-Admin `tools/content/owner-edits.mjs` is the consumer).
+ */
+export const contentAuthored = pgTable(
+  'content_authored',
+  {
+    kind: text('kind').notNull(),
+    rowId: text('row_id').notNull(),
+    hash: text('hash').notNull(),
+    authoredAt: timestamp('authored_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.kind, table.rowId] })],
+);
+
 // ---------------------------------------------------------------------------
 // Content: enemies + spawners (DATABASE.md §3, P4). Same draft/published
 // row-status contract as world settings. The definition lives in one `def`
