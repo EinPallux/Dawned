@@ -166,7 +166,21 @@ const goTo = async (page, x, z, label, { expectPrompt = null, settle = 1200 } = 
         expectPrompt,
         { timeout: 30000 },
       )
-      .catch(() => fail(`nothing matching /${expectPrompt}/ came into reach at ${label}`));
+      .catch(async () => {
+        // Say what the client actually believed. "No prompt" has several
+        // causes that look identical from outside — the thing has not seated
+        // on its terrain yet, it is out of reach, or it is SPENT (a chest that
+        // is emptied reads "<name> — emptied", with no `F`, which is a
+        // perfectly good prompt and simply not the one being waited for).
+        const believed = await page
+          .evaluate(() => window.__dawned.interactProbe())
+          .catch(() => null);
+        fail(
+          `nothing matching /${expectPrompt}/ came into reach at ${label} — the client says ` +
+            `${believed?.prompt ? `"${believed.prompt}"` : 'nothing is in reach'}` +
+            `${believed?.object ? ` (${believed.object.id}, ${believed.object.distance.toFixed(1)} m, spent=${believed.object.spent})` : ''}`,
+        );
+      });
   } else {
     await sleep(settle);
   }

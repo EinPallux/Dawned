@@ -1549,6 +1549,23 @@ export const runWorld = (
       z: number;
       seated: boolean;
     }[] => worldObjects?.roster ?? [],
+    /**
+     * What the client believes about the thing it could interact with right
+     * now — including whether it thinks the thing is spent, which is the
+     * difference between "F — Open the crate" and "the crate — emptied" and
+     * therefore between a quest that continues and one that does not.
+     */
+    interactProbe: (): {
+      prompt: string;
+      object: ObjectInReach | null;
+    } => {
+      const self = connection.renderPosition();
+      const object = worldObjects?.inReach(self.x, self.z) ?? null;
+      return {
+        prompt: object ? objectPromptText(object) : '',
+        object,
+      };
+    },
     /** Every POI the bake carries — what the world map draws against the fog. */
     poiList: (): {
       id: string;
