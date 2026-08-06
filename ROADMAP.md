@@ -911,6 +911,15 @@ pull` can never repoint the live world at a bake from a dev checkout) and P12's 
       PREFLIGHT — proving it by creating a directory there from inside a copy of the live sandbox
       — because the alternative is finding out after several minutes of terrain generation, which
       is exactly what happened.
+      **A second fresh-box fault came out of the next attempt, and it is the same shape: the panel's
+      content scripts had only ever run against a database that already held the previous phase's
+      output.** `world:bestiary` stubs the loot tables its enemies name, because an enemy publish
+      blocks on an unpublished ref — but the list of stubs was TYPED, and covered the seven zone
+      tables only. The six `loot_boss_*` are P12-D's, so on a box holding nothing but the seed
+      migrations they do not exist and the deploy stopped at step 3 with six refusals. The set is
+      DERIVED from the enemies now. Fixed panel-side, then the WHOLE CHAIN was run against a virgin
+      database (migrations only, a second panel on its own MAP_DIR) rather than reasoned about,
+      because reasoning about it is what produced the bug.
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel
 

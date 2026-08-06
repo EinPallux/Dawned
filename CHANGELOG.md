@@ -21,6 +21,10 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
   written down in a public repository. Harmless on a throwaway development machine, a permanent
   back door on a real one — and running them on a real one is exactly what deploying a world means.
   They take a real login now and create nothing.
+- **Fixed: the world build stopped at the bestiary on a fresh server.** Enemies point at loot
+  tables, and the six boss tables are created a step later — fine on a machine that grew through
+  every phase in order, wrong on a server that only has the shipped database. The bestiary step
+  now works out which tables it needs from the enemies themselves instead of a hand-written list.
 - **Fixed: the panel could never publish a map on the server.** Its service is locked down so it
   can only write one directory, and maps are baked into a different one — a mismatch that had been
   there since the map editor shipped, and that nothing had tried until the first world deploy. The
