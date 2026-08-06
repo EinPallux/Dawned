@@ -911,6 +911,26 @@ database. Both sides of the comparison have to be the stored row. Proven over fo
 real database: adopt 218 → silent re-run → a hand-edited row survives → `--force-authored` puts the
 authored value back. DEPLOYMENT.md §5.1–5.3.
 
+**Every open finding from the sweep is closed (2026-08-06).** **The `/ops` gate is structural**: it
+was six lines copied into all nineteen handlers, all nineteen had them, and nothing made a twentieth
+route carry them — one `onRequest` hook gates every `/ops/` URL and `ops-guard.test.ts` asserts the
+PROPERTY (routes exist, one gate, no per-handler copies), so it cannot be quietly undone. Verified
+live: 401 with no secret, 401 with a wrong one, 200 with the right one, `/api` untouched. Comparison
+is `timingSafeEqual`, and **production refuses the default OPS_SECRET** — a literal in a public
+repository that opens every GM lever.
+**BACKUP.sh cannot fill the disk.** Retention kept up to 70 dumps at a size that went 11 MB → 65 MB
+the day the Dawnlands landed, and nothing anywhere ran `df`; a full disk stops Postgres writing and
+takes the game with it. Now a budget trimmed oldest-first BEFORE each run (never the newest of a
+series), a hard floor that refuses to add while the game keeps running, an early warning at twice
+the floor, and `--report`. Both paths exercised against a fake over-budget directory.
+**ROLLBACK.sh restores the world with the database.** The nightly backup had archived the live bake
+since 2026-08-05 and nothing used it, so a rollback paired yesterday's data with today's world.
+It pairs the map archive taken at or before the dump's own timestamp (`--map` / `--no-map`), sorting
+by the timestamp in the NAME rather than mtime — the comparison is on the name, and a copied file
+carries a new mtime while its name still says when it was taken. Caught by testing four cases,
+including a dump older than every archive.
+**680 unit tests green.**
+
 ### Running it locally
 
 ```bash

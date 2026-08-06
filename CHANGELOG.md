@@ -5,6 +5,23 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Fixed — the safety net, the rollback and the ops lock (2026-08-06)
+
+- **Backups can no longer fill the disk.** Retention kept up to 70 database dumps, at a size that
+  went from 11 MB to 65 MB the day the world landed and grows with it — and nothing anywhere
+  checked free space. A full disk stops the database writing and takes the game down. There is a
+  size budget trimmed oldest-first before each run, a hard floor that refuses to add another backup
+  (saying so, while the game keeps running), an early warning well before that, and
+  `BACKUP.sh --report`.
+- **Rolling back now restores the world with the database.** The nightly backup had been archiving
+  the live map since August 5th and nothing ever used it, so a rollback paired old data with the
+  current world — content pointing at places that no longer exist. It picks the map archive taken
+  at or before the database dump, with `--map` to choose one and `--no-map` to skip.
+- **The ops lock is enforced in one place** instead of being repeated in all nineteen admin
+  endpoints, so a new one cannot be added without it, and the secret is compared in constant time.
+  A production server also refuses to start on the example secret, which is published in this
+  repository.
+
 ### Added — one command updates everything, and your edits survive it (2026-08-06)
 
 - **`UPDATE.sh` now updates everything on every run**: code, dependencies, assets, database
