@@ -167,10 +167,16 @@ const goTo = async (page, x, z, label, { expectPrompt = null, settle = 1200 } = 
      * standing at the object closes that window; the run says it did so, and
      * still fails if the second attempt also finds the thing spent.
      */
-    const spentNow = async () =>
-      (await page.evaluate(() => window.__dawned.interactProbe()).catch(() => null))?.object
-        ?.spent === true;
-    if (await spentNow()) {
+    const probe = async () =>
+      await page.evaluate(() => window.__dawned.interactProbe()).catch(() => null);
+    // Wait for SOMETHING to come into reach before judging it: the check used
+    // to run in the same breath as the teleport, when nothing was in reach yet,
+    // so it never saw the state it exists to catch.
+    await until(page, () => (window.__dawned.interactProbe().object ?? null) !== null, {
+      label: `something to come into reach at ${label}`,
+      timeout: 20000,
+    }).catch(() => undefined);
+    if ((await probe())?.object?.spent === true) {
       note(`${label} reads as spent — re-issuing the object reset and looking again`);
       await ops('/ops/forget', { player: CHARACTER, pois: false, objects: true });
       await sleep(1500);

@@ -256,6 +256,14 @@ export interface ConnectionEvents {
   /** A read or a refusal from the last `F` — the HUD line. */
   onInteractNotice?: (notice: { objectId: string; text: string; kind: string }) => void;
   /**
+   * The whole spent/attuned set, EVERY time it changes.
+   *
+   * Separate from `onInteractNotice` because a notice is optional: the message
+   * that tells you a chest is now empty, or that a respawn has un-emptied it,
+   * usually carries no line at all.
+   */
+  onInteractState?: (message: InteractStateMessage) => void;
+  /**
    * The quest log changed. Separate from the panel subscription because the
    * HUD tracker and the NPC glyphs are not React — they need a callback, not a
    * `useSyncExternalStore` snapshot, and re-deriving them per frame to avoid
@@ -1107,6 +1115,7 @@ export class Connection {
       case ServerOp.InteractState: {
         const message = decodeJsonEnvelope<InteractStateMessage>(reader);
         this.interactState = message;
+        this.events.onInteractState?.(message);
         if (message.notice) this.events.onInteractNotice?.(message.notice);
         this.notifyQuests();
         return;

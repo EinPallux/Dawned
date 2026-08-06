@@ -897,6 +897,19 @@ export const runWorld = (
         questVersion++;
         notifyQuests();
       },
+      /**
+       * Apply the spent/attuned set LIVE.
+       *
+       * It used to be applied exactly once, when the world objects were built,
+       * and never again — so a chest you had just emptied still offered
+       * "F — Open" until a relog, a respawned one never un-emptied, and an
+       * attuned shrine kept saying "Attune" instead of "Travel". Which state
+       * you saw depended on whether the objects happened to seat before or
+       * after the message arrived, which is why it looked intermittent.
+       */
+      onInteractState: (message) => {
+        worldObjects?.setInteractState(message.spent, message.attuned, connection.serverNow());
+      },
       onInteractNotice: (notice) => {
         if (notice.kind === 'refused') hud.showRefusal(notice.text);
         else hud.toast(notice.text, { tone: 'plain' });
