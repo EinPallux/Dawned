@@ -22,7 +22,7 @@
 | P9    | Enemies & AI Depth                       | L    | ✅ done (2026-08-05)      |
 | P10   | Gathering Professions                    | M    | ✅ done (2026-08-05)      |
 | P11   | Quests, POIs & Interactables             | L    | ✅ done (2026-08-06)      |
-| P12   | World Building (the Dawnlands)           | XL   | 🔲                        |
+| P12   | World Building (the Dawnlands)           | XL   | 🟨 in progress            |
 | P13   | GM Suite & Live Ops                      | M    | 🔲                        |
 | P14   | Polish, Performance, Audio & Hardening   | L    | 🔲                        |
 | P15   | Release 0.1.0                            | M    | 🔲                        |
@@ -705,6 +705,29 @@ authored (~210 total); world map bake + minimap tiles; walkability bake + perf p
 **DoD:** CONTENT_0.1.md tables hit 100% (script-verified counts); full 1→30 leveling route exists
 and was walked by at least one dev character per class archetype pair; every zone screenshot-reviewed
 against its palette/mood spec; owner walkthrough signoff zone by zone.
+
+**Progress (2026-08-06):**
+
+- [x] **P12-A** the archipelago terrain. The panel gained the tool first: the editor's island
+      button generates into the RESIDENT region (13×13 chunks max) and the world is 32×32, so a
+      whole-world pass runs server-side (`/api/map/generate-stream`, admin-only, checkpointed).
+      Masks COMBINE rather than overwrite so overlapping isles make an isthmus, `carve` masks
+      subtract so a strait can sever one, and erosion runs over the world as ONE height field
+      because the per-chunk version must skip the border rows adjacent chunks share.
+      **Measured, and identical to what `pnpm world:preview` computes offline** (which is the
+      proof both run the same maths): 1024 chunks written, 766 carrying land, **57.6 % coverage**
+      inside WORLD.md §1's 55–60 %, 0 unclaimed splat texels, and all six isles confirmed
+      SEPARATE landmasses by flood fill. Every land vertex stands in a zone, so publish's
+      land-in-no-zone gate is answered. Three deviations are recorded in WORLD.md §7.1.
+      **Deliberately not published**: the new archipelago puts open water where the dev island
+      was, so every P8–P11 placement is on a disabled chunk. Placing them on the new ground is
+      P12-B onward; the live game keeps serving the old bake until then.
+- [ ] **P12-B** zones, settlements, bridges, shrines
+- [ ] **P12-C** the full bestiary and ~140 spawners
+- [ ] **P12-D** items T3–T5, legendaries, loot and vendors
+- [ ] **P12-E** ~370 resource node placements
+- [ ] **P12-F** POIs, interactables, NPCs and the remaining quests
+- [ ] **P12-G** the DoD run (content report, 1→30 route, per-zone perf)
 
 ## P13 — GM Suite & Live Ops (M) ⚙A5 in parallel
 

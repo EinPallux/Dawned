@@ -5,6 +5,20 @@ versioning: 0.x.y during Early Access (0.1.0 = first playable release, see ROADM
 
 ## [Unreleased]
 
+### Added — the Dawnlands exist (2026-08-06, P12-A)
+
+- **The real world is generated**: five isles and the hidden Elder Grove, four islets, and the
+  channels between them, raised from island masks through the panel rather than by a script in this
+  repo. 57.6 % of the 2048 m world is land, over 766 chunks, with each isle confirmed a separate
+  landmass — so the bridges to come will gate the path the way WORLD.md §1 promises.
+- It is **not live yet**, deliberately. The new archipelago puts open water where the dev island
+  was, so every villager, camp, chest and resource node from P8–P11 is standing on nothing. Placing
+  them on the new ground is the rest of P12; the game keeps serving the world you can play today
+  until then.
+- Deviations from the design doc — the north-west islet with nowhere to stand, the sandbar that
+  could not sit mid-channel, and the Dawnsea becoming a real zone — are written down in WORLD.md
+  §7.1 rather than quietly absorbed.
+
 ### Fixed — a chest you emptied still said "open me" (2026-08-06, P11-E)
 
 - **The client learned which chests were spent exactly once — when the world objects first

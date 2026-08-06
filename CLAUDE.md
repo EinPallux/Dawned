@@ -117,7 +117,8 @@ all seems fine"). Their A1 sync points landed in the panel (XP-curve + skill-tre
 then items + loot + vendors). **P0–P11 are ✅ complete on their measured DoDs — P9 + P10 closed
 2026-08-05 and are owner-accepted; P11 — Quests, POIs & Interactables closed 2026-08-06**
 (A/B/C/D built on protocol v14, E measured), paired with the panel's A4 quest editor, which is
-live. **P12 — World Building: the Dawnlands is the next phase.**
+live. **P12 — World Building: the Dawnlands is 🟨 in progress: A is built (the terrain), B–G
+remain.**
 **A phase closes on its MEASURED DoD, not on a playtest** (owner decision, 2026-08-05): the
 priority is reaching P15 with every phase built. Record what was measured — including any
 deviation, like P10's one-profession grind — and move on. The owner has explicitly deferred
@@ -508,6 +509,37 @@ from a circle holding four nodes — both complete, neither leaves room for a se
 population pass. New lever `/ops/forget` (un-find POIs, zones, shrines or used objects), because
 discovery is first-entry-only and without it the loop can be measured exactly once per character.
 **`pnpm check` green at 642 unit tests**, 92 baked assets / 15.27 MB.
+
+**P12-A — the Dawnlands have a shape (2026-08-06).** The panel had to gain the tool first: its
+island button generates into the RESIDENT region (13x13 chunks, capped after 17x17 measured
+7.5 M triangles a frame) and the world is 32x32, so a tool that can only see a fifth of the map
+cannot compose an archipelago. Whole-world generation runs server-side now
+(`/api/map/generate-stream`, admin-only, lock-held, checkpoint first, SSE progress) over ONE 2049²
+height field -- the per-chunk erosion pass must skip the border rows adjacent chunks SHARE, which
+leaves an un-eroded lattice every 64 m. Two things the old generator could not do: masks COMBINE
+rather than overwrite (two overlapping isles make an isthmus instead of the second erasing the
+first) and `carve` masks SUBTRACT, which is how a strait severs an isthmus the masks just merged.
+That pairing is what lets the world be 55-60 % land AND have bridges that gate the path -- six
+landmasses far enough apart to leave open water between them cannot cover that much of a 2048 m
+box, so the isles are generated overlapping and the straits are cut afterwards, which is also what
+a strait IS.
+**Measured, and identical to what `pnpm world:preview` computes offline** (the proof that the
+endpoint and the preview run one copy of the maths): 1024 chunks written, **766 carrying land,
+57.6 % coverage** inside WORLD.md §1's 55-60 %, 0 unclaimed splat texels, every land vertex
+standing in a zone, and **all six isles confirmed SEPARATE landmasses by flood fill**.
+**That flood fill is the finding.** Typed by hand, three of the five original straits severed
+NOTHING: the isles joined around the ends of the cuts and one carve sat at nearly a right angle to
+where it belonged -- while a depth probe at each channel's own centre reported "open water" for all
+five, which was true and completely beside the point. Straits derive their centre, angle and length
+from the two isles they separate now. The preview also caught islets drowned inside their own
+channel and land standing in no zone (which blocks publish), each before a single chunk was written.
+**Nothing is published.** The new archipelago puts open water where the dev island was, so
+validation refuses every P8-P11 placement -- 26 spawners, 4 NPCs, 65 nodes, the shrines, the crate,
+the stumps -- as standing on a disabled chunk. That refusal is correct and answering it is P12-B
+onward; the live game keeps serving the old bake until the content is on the new ground. Three
+deviations (the north-west islet with no water to stand in, the mid-channel sandbar that would have
+to be a 76 m mountain, and the Dawnsea becoming a real zone row because publish blocks on land in
+no zone) are tabled in WORLD.md's new §7.1.
 
 ### Running it locally
 

@@ -31,7 +31,7 @@ nothing beyond it.
   (XP-curve + skill-tree editors, then items + loot + vendors). **P9 and P10 are both built
   and measured (2026-08-05) and owner-accepted; P11 — Quests, POIs & Interactables is
   ✅ complete — A/B/C/D built (protocol v14, client included) and E measured its DoD on
-  2026-08-06.** ALL fine-tuning is deferred to the end of the project by the
+  2026-08-06. P12 — World Building is 🟨 in progress: A (the terrain) is built, B–G remain.** ALL fine-tuning is deferred to the end of the project by the
   owner's decision — never pause a phase to polish balance. P7 on top of the P5/P6 caster platform: the XP pipeline
   (kill tag rule, falloff, per-enemy xpMult, xpRate lever, discovery XP, cascading
   level-ups + §1.3 juice), attribute allocation + all 96 skill-tree nodes as published
@@ -284,3 +284,17 @@ nothing beyond it.
     second player (P12's population pass). New lever `/ops/forget` (un-find POIs, zones, shrines
     or used objects), because discovery is first-entry-only and without it the loop can be
     measured exactly once per character. **642 unit tests green**, 92 baked assets / 15.27 MB.
+
+    **P12-A — the Dawnlands have a shape (2026-08-06).** Whole-world generation runs server-side
+    in the panel (`/api/map/generate-stream`), because the editor's island button works on the
+    RESIDENT region (13×13 chunks) and the world is 32×32. Masks COMBINE rather than overwrite so
+    overlapping isles make an isthmus; `carve` masks SUBTRACT so a strait can sever one — which is
+    what lets the world be 55–60 % land AND have bridges that gate the path. Erosion runs over ONE
+    2049² field because the per-chunk pass must skip the border rows chunks share.
+    **Measured, identical to `pnpm world:preview`'s offline numbers:** 1024 chunks, **766 carrying
+    land, 57.6 % coverage**, 0 unclaimed texels, every land vertex in a zone, **all six isles
+    separate landmasses by flood fill**. That flood fill is the finding — typed by hand, three of
+    five straits severed NOTHING while a depth probe at each channel's centre said "open water" for
+    all of them. Straits derive their geometry from the two isles they separate now.
+    **Nothing is published**: the new sea sits where the dev island was, so every P8–P11 placement
+    is on a disabled chunk. That is P12-B onward. Deviations in WORLD.md §7.1.
