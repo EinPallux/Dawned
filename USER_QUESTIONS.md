@@ -8,7 +8,9 @@
 
 ## Open questions
 
-> One open question: **Q26** (per-zone music/sfx). Q27 was answered on 2026-08-05 — the reel is
+> Three open questions: **Q26** (per-zone music/sfx) and **Q28–Q29**, both raised by the P11-E DoD
+> run and both already implemented as their recommended default — say the word and either reverts
+> in minutes. Q27 was answered on 2026-08-05 — the reel is
 > left as shipped and judged in the playtest. Q25 was answered by P10 starting — its recommended default WAS "do it in the professions
 > phase", and that phase is now under way, so the node schema lands as a P10-A deliverable and the
 > map editor's node layer comes alive with it.
@@ -32,6 +34,39 @@ the editor picks up the music/sfx dropdowns for free (the form is schema-driven)
 rather have the fields NOW so you can fill them in while building the world, say so — it is a
 five-line schema change here plus two selects in the panel, and the game would ignore them until
 the audio phase lands.
+
+### Q28 — should a "gather N of these" step get a map circle? (P11-E, 2026-08-06)
+
+QUESTS_POI §1 rule 4 is explicit that an EXPLORE step never marks anything — clue text only. It
+says nothing about a COLLECT step, and the pilot set shipped both of its gather steps with no
+hint at all. In practice that reads as no instruction: "six good lengths of birch" tells a player
+who has never chopped anything nothing whatsoever, and the 13 birch placements are three clusters
+180 m apart. Mossbloom is worse — it grows 360 m from the Weald the prose sends you to.
+
+**Recommended default (implemented): give gather steps a circle**, pointed at the nearest real
+cluster. The explore rule stays untouched, because the point of an explore step is that finding
+the place IS the objective; for a gather step the objective is the picking, and hiding the herb
+just adds a scavenger hunt nobody asked for.
+
+If you would rather professions carried their own knowledge — a codex entry, "you have gathered
+this before, so the map shows it" — that is a nicer answer and a bigger one, and it belongs with
+the professions polish rather than here. Reverting is two `hint` fields.
+
+### Q29 — a quest interactable that never comes back (P11-E, 2026-08-06)
+
+The crate in "The Lost Crate" and the four marked stumps in "What Took Them" were authored
+one-shot (`respawnMs: 0`). That means opening the crate BEFORE Torv mentions it ends the quest
+before it starts, permanently, with no way back — a quest lost to ordinary curiosity, which is
+the exact opposite of §1 rule 2 ("quests are found, not funneled"). Spent state is per-character,
+so this is not a shared-loot question.
+
+**Recommended default (implemented): nothing a quest step needs is one-shot.** Both now return
+after five minutes. Publish does not enforce this yet — the panel would have to know that an
+interactable is named by a step, which it can see; worth adding if you agree it is a rule.
+
+The alternative is to keep one-shot props and make the QUEST tolerant instead (credit the step on
+approach if the object is already spent). That is more code in the quest runtime for a case a
+respawn timer solves in one field, which is why it is not the recommendation.
 
 ## Decision log
 
