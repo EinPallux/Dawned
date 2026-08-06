@@ -128,6 +128,15 @@
       "verified": true,
       "source": "https://quaternius.com/",
       "root": "assets/world/Fantasy Props Mega Kit[Standard]"
+    },
+    "quaternius-buildings": {
+      "name": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "verified": true,
+      "$licenseNote": "The folder ships no License_Standard.txt of its own \u2014 its siblings in this repo (Fantasy Props MegaKit, Stylized Nature MegaKit) do, and they read CC0 1.0 Universal for the Standard build. Same publisher, same [Standard] packaging, same glTF export. Ultimate Nature Kit 2 was already shipped on exactly this reasoning; writing it down here so it is a judgement on the record rather than an assumption nobody re-checks.",
+      "source": "https://quaternius.com/",
+      "root": "assets/world/Ultimate Fatasy Buildings Kit[Standard]"
     }
   },
   "$selectionComment": "P0 ships a starter subset that proves the pipeline end to end. P2/P9/P12 extend these globs as the world, bestiary and item set land \u2014 the pipeline itself does not change.",
@@ -641,6 +650,160 @@
       "pack": "quaternius-fantasy-props",
       "category": "world/props",
       "glob": "Exports/glTF/Banner_2.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Dawnhaven's hall \u2014 the silhouette a new player orients on from the beach.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/TownCenter_FirstAge_Level2.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Village house A. Three distinct house shapes is the minimum for a street that does not read as copy-paste.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Houses_FirstAge_1_Level2.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Village house B.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Houses_FirstAge_2_Level1.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Village house C.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Houses_FirstAge_3_Level1.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "The market \u2014 where P8's vendor posts stand.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Market_FirstAge_Level2.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Dawnhaven's harbour building.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Port_FirstAge_Level2.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "The jetty. Torv stands on it, and the plank pieces dress the causeway bridges.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Dock_FirstAge.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "The shrine house at the respawn anchor.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Temple_FirstAge_Level1.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "A granary/warehouse \u2014 settlement filler with its own shape.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Storage_FirstAge_Level1.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Mosshollow's tall house, the one thing visible over the Weald canopy.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/TowerHouse_FirstAge.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "SecondAge stone house \u2014 Emberwood's ruined-town camp reads as an older, grander build than Dawnhaven.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Houses_SecondAge_1_Level1.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Stone wall tower, the necropolis and Cinderfall's broken gate.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/WallTowers_SecondAge.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Stone wall run.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Wall_SecondAge.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Sunwatch's watchtower \u2014 the landmark on a zone built for long sightlines.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/WatchTower_FirstAge_Level2.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Timber palisade run.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Wall_FirstAge.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "The palisade gate.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/WallTowers_Door_FirstAge.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Sunwatch's barracks.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Barracks_FirstAge_Level1.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "The windmill of \u00a73.4's farm-ruin camps.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Windmill_FirstAge.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "A farmstead with standing wheat.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Farm_FirstAge_Level2_Wheat.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "The mine entrance at Rustpick and in Ashcrag's abandoned complex.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Mine.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Ore storage.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Storage_SecondAge_Level1.gltf",
+      "limit": 1
+    },
+    {
+      "$comment": "Stacked timber \u2014 logging site and mining camp dressing.",
+      "pack": "quaternius-buildings",
+      "category": "world/buildings",
+      "glob": "glTF/Logs.gltf",
       "limit": 1
     }
   ]

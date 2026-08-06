@@ -9,10 +9,10 @@ no ledger entry). An in-game credits screen renders this file.
 
 | Source | Packs (in `assets/`) | License |
 |---|---|---|
-| **Quaternius** (quaternius.com) | Universal Base Characters, Modular Character Outfits – Fantasy, Universal Animation Library 1 [PRO] & 2 [Standard], Monster Bundle, Animated Fish Bundle, Ultimate Nature Kit 2 [Standard], Stylized Nature MegaKit [Standard], Cube World, Farm, Pirate bundles | CC0 / Quaternius pack terms — verify per-pack files at Phase 0 (ledger item) |
+| **Quaternius** (quaternius.com) | Universal Base Characters, Modular Character Outfits – Fantasy, Universal Animation Library 1 [PRO] & 2 [Standard], Monster Bundle, Animated Fish Bundle, Ultimate Nature Kit 2 [Standard], Stylized Nature MegaKit [Standard], Fantasy Props MegaKit [Standard], **Ultimate Fantasy Buildings Kit [Standard]**, Cube World, Farm, Pirate bundles | CC0 1.0 Universal. Two of these ship `License_Standard.txt` in-folder stating exactly that; **Ultimate Nature Kit 2 and the Buildings Kit do not**, and are shipped on the judgement that they are the same publisher, the same `[Standard]` packaging and the same glTF export as their siblings. Written down rather than assumed — if that is ever wrong, these two are what to pull. |
 | **KayKit** (Kay Lousberg, kaylousberg.com) | Adventurers 2.0 FREE, Skeletons 1.1 FREE, Fantasy Weapon Bits, RPG Tools Bits, ResourceBits, Forest Nature Pack, Low Poly Dungeon Pack, Halloween Bundle | CC0 (credit appreciated — hereby given!) |
 | **Kenney** (kenney.nl) | Fantasy UI Borders, Particle Pack | CC0 |
-| Various (Sketchfab & itch sources) | Low Poly Fantasy Weapons, Misc Weapons MiniPoly, Gems & Ores, Nature/Rocks/Desert/Egypt/Village/Buildings packs, Noise Texture Pack | Per-pack — **license verification is a gate** before any file is served. P10 wanted the Gems & Ores pack for its ore-in-stone rocks and did **not** use it: the folder carries no license file and its glTF is a third-party conversion, so its provenance cannot be attributed. The mining nodes are tinted KayKit rocks instead. |
+| Various (Sketchfab & itch sources) | Low Poly Fantasy Weapons, Misc Weapons MiniPoly, Gems & Ores, Nature/Rocks/Desert/Egypt/**Medieval Village** packs, Noise Texture Pack | Per-pack — **license verification is a gate** before any file is served. P10 wanted the Gems & Ores pack for its ore-in-stone rocks and did **not** use it: the folder carries no license file and its glTF is a third-party conversion, so its provenance cannot be attributed. The mining nodes are tinted KayKit rocks instead. P12 wanted the **Medieval Village Pack** for Sungraze farmsteads and did not use it for the same reason — no license file, FBX/OBJ only, unattributable; the farmsteads come from the Buildings Kit's own `Farm_*` and `Windmill_*` models instead. |
 | **Owner-made** | `assets/backgrounds/*` (menu/board art) | Project-internal |
 
 ## Icons
@@ -118,6 +118,32 @@ Pack id `quaternius-base-characters` · author **Quaternius** · license **CC0-1
 - `characters_hair_simpleparted` — assets/player_characters/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf
 - `characters_superhero_female_fullbody` — assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf
 - `characters_superhero_male_fullbody` — assets/player_characters/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf
+
+### Quaternius Ultimate Fantasy Buildings Kit (Standard)
+Pack id `quaternius-buildings` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/
+
+- `world_buildings_barracks_firstage_level1` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Barracks_FirstAge_Level1.gltf
+- `world_buildings_dock_firstage` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Dock_FirstAge.gltf
+- `world_buildings_farm_firstage_level2_wheat` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Farm_FirstAge_Level2_Wheat.gltf
+- `world_buildings_houses_firstage_1_level2` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_1_Level2.gltf
+- `world_buildings_houses_firstage_2_level1` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_2_Level1.gltf
+- `world_buildings_houses_firstage_3_level1` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_3_Level1.gltf
+- `world_buildings_houses_secondage_1_level1` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_SecondAge_1_Level1.gltf
+- `world_buildings_logs` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Logs.gltf
+- `world_buildings_market_firstage_level2` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Market_FirstAge_Level2.gltf
+- `world_buildings_mine` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Mine.gltf
+- `world_buildings_port_firstage_level2` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Port_FirstAge_Level2.gltf
+- `world_buildings_storage_firstage_level1` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Storage_FirstAge_Level1.gltf
+- `world_buildings_storage_secondage_level1` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Storage_SecondAge_Level1.gltf
+- `world_buildings_temple_firstage_level1` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Temple_FirstAge_Level1.gltf
+- `world_buildings_towerhouse_firstage` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/TowerHouse_FirstAge.gltf
+- `world_buildings_towncenter_firstage_level2` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/TownCenter_FirstAge_Level2.gltf
+- `world_buildings_wall_firstage` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Wall_FirstAge.gltf
+- `world_buildings_wall_secondage` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Wall_SecondAge.gltf
+- `world_buildings_walltowers_door_firstage` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WallTowers_Door_FirstAge.gltf
+- `world_buildings_walltowers_secondage` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WallTowers_SecondAge.gltf
+- `world_buildings_watchtower_firstage_level2` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WatchTower_FirstAge_Level2.gltf
+- `world_buildings_windmill_firstage` — assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Windmill_FirstAge.gltf
 
 ### Quaternius Fantasy Props MegaKit (Standard)
 Pack id `quaternius-fantasy-props` · author **Quaternius** · license **CC0-1.0** · https://quaternius.com/

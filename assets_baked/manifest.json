@@ -2804,6 +2804,622 @@
         ]
       },
       "animations": []
+    },
+    "world_buildings_towncenter_firstage_level2": {
+      "id": "world_buildings_towncenter_firstage_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/towncenter_firstage_level2.307636d5.glb",
+      "bytes": 123692,
+      "sourceHash": "6e9c9583396e530c144f1d8a6eae9ac72706ba2c273aefca553f8f1a426a94cd",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/TownCenter_FirstAge_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 3334,
+      "bounds": {
+        "min": [
+          -0.6319,
+          -0.024,
+          -0.6203
+        ],
+        "max": [
+          0.6319,
+          1.0636,
+          0.6203
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_houses_firstage_1_level2": {
+      "id": "world_buildings_houses_firstage_1_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/houses_firstage_1_level2.61a92594.glb",
+      "bytes": 35512,
+      "sourceHash": "e2ae7e41732e8717edc2b5662f1b8a1580d3df94994c89f22cf381f08eba55a1",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_1_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 632,
+      "bounds": {
+        "min": [
+          -0.4347,
+          0.0015,
+          -0.585
+        ],
+        "max": [
+          0.4347,
+          0.7661,
+          0.5874
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_houses_firstage_2_level1": {
+      "id": "world_buildings_houses_firstage_2_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/houses_firstage_2_level1.9e163d75.glb",
+      "bytes": 43988,
+      "sourceHash": "0892ffe9fe9a4a111c3037fd02f5dfd809911b00cabd9041e2f1ff7442f6fcdf",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_2_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 804,
+      "bounds": {
+        "min": [
+          -0.4347,
+          -0.0024,
+          -0.5874
+        ],
+        "max": [
+          0.4761,
+          0.7661,
+          0.5874
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_houses_firstage_3_level1": {
+      "id": "world_buildings_houses_firstage_3_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/houses_firstage_3_level1.551a839c.glb",
+      "bytes": 16460,
+      "sourceHash": "2f0034873dfd37761487d05e5d6a5b2f92ed43e04dc9b7f326ebd6d217b5abce",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_FirstAge_3_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 296,
+      "bounds": {
+        "min": [
+          -0.7059,
+          -0.0024,
+          -0.0067
+        ],
+        "max": [
+          -0.0294,
+          0.5717,
+          0.6446
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_market_firstage_level2": {
+      "id": "world_buildings_market_firstage_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/market_firstage_level2.5a17e48a.glb",
+      "bytes": 246816,
+      "sourceHash": "903137cd118579c30b7fe4b1949c604ea15d2b9bdf3ff4b0528b3fc46585dd1f",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Market_FirstAge_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 6064,
+      "bounds": {
+        "min": [
+          -0.9352,
+          -0.0072,
+          -0.9924
+        ],
+        "max": [
+          0.9644,
+          0.5454,
+          0.8743
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_port_firstage_level2": {
+      "id": "world_buildings_port_firstage_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/port_firstage_level2.54d0f389.glb",
+      "bytes": 231108,
+      "sourceHash": "f65a2226c218329985fcf539fdb5886a12ed0ad5036515d455e467fe5c238df4",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Port_FirstAge_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4676,
+      "bounds": {
+        "min": [
+          -0.6739,
+          -0.419,
+          -1.0509
+        ],
+        "max": [
+          1.17,
+          0.5522,
+          0.9306
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_dock_firstage": {
+      "id": "world_buildings_dock_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/dock_firstage.fc817fce.glb",
+      "bytes": 17576,
+      "sourceHash": "f2841ccf8d2cc85b8df0ca18fc7b754d404b349e104db35e809fad0590d397db",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Dock_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 388,
+      "bounds": {
+        "min": [
+          -0.2612,
+          -0.3539,
+          -0.6094
+        ],
+        "max": [
+          0.2631,
+          0.1119,
+          0.6094
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_temple_firstage_level1": {
+      "id": "world_buildings_temple_firstage_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/temple_firstage_level1.96e7cdac.glb",
+      "bytes": 214960,
+      "sourceHash": "966059dd29511f7395519b80d38af8b61d5a11b10cb534156e50d952a9ec3d14",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Temple_FirstAge_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4828,
+      "bounds": {
+        "min": [
+          -0.9052,
+          -0.0005,
+          -0.9052
+        ],
+        "max": [
+          0.9052,
+          1.8124,
+          0.9052
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_storage_firstage_level1": {
+      "id": "world_buildings_storage_firstage_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/storage_firstage_level1.de79c064.glb",
+      "bytes": 199252,
+      "sourceHash": "ac8c4cf9fbccc09cb83d1bf4604eb4298930898f5971997c27ced711f3afb70f",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Storage_FirstAge_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 4088,
+      "bounds": {
+        "min": [
+          -0.7053,
+          -0.004,
+          -0.6289
+        ],
+        "max": [
+          0.7053,
+          0.7573,
+          0.8372
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_towerhouse_firstage": {
+      "id": "world_buildings_towerhouse_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/towerhouse_firstage.e486d7a9.glb",
+      "bytes": 92004,
+      "sourceHash": "cc8d172b7bbf508d0d3d7d4f37dd1248d4444354bd87412319ef208204223c53",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/TowerHouse_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1848,
+      "bounds": {
+        "min": [
+          -0.6928,
+          0.0005,
+          -0.585
+        ],
+        "max": [
+          0.6928,
+          1.4727,
+          0.585
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_houses_secondage_1_level1": {
+      "id": "world_buildings_houses_secondage_1_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/houses_secondage_1_level1.aaada7ef.glb",
+      "bytes": 106272,
+      "sourceHash": "56e8d0acd546d87c87dede79d3055eef258b7a06004761d21540e693dc71c124",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Houses_SecondAge_1_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2336,
+      "bounds": {
+        "min": [
+          -0.5393,
+          -0.0061,
+          -0.5432
+        ],
+        "max": [
+          0.3506,
+          0.7661,
+          0.3212
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_walltowers_secondage": {
+      "id": "world_buildings_walltowers_secondage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/walltowers_secondage.4e0671a6.glb",
+      "bytes": 95892,
+      "sourceHash": "ae6aec514c00fb39c99d68a051f63d1e4153fdcbbcb9d6c078a62f0d9e93e532",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WallTowers_SecondAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1792,
+      "bounds": {
+        "min": [
+          -0.9798,
+          -0.0066,
+          -0.1807
+        ],
+        "max": [
+          0.9959,
+          0.7287,
+          0.1527
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_wall_secondage": {
+      "id": "world_buildings_wall_secondage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/wall_secondage.f7597365.glb",
+      "bytes": 13080,
+      "sourceHash": "301a255df0aafbb3dfdac70ee3d2f39418b548d40aa9f998a2fc56e176081479",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Wall_SecondAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 216,
+      "bounds": {
+        "min": [
+          -0.7866,
+          -0.0066,
+          -0.1226
+        ],
+        "max": [
+          0.7739,
+          0.4393,
+          0.1241
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_watchtower_firstage_level2": {
+      "id": "world_buildings_watchtower_firstage_level2",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/watchtower_firstage_level2.5830db4b.glb",
+      "bytes": 40196,
+      "sourceHash": "c337d72ad9d7b06d08dc8dabeaaf96776cd8c687a76f1dc3c28ddeaefc67ffc1",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WatchTower_FirstAge_Level2.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 700,
+      "bounds": {
+        "min": [
+          -0.2363,
+          0,
+          -0.237
+        ],
+        "max": [
+          0.2687,
+          1.4625,
+          0.2823
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_wall_firstage": {
+      "id": "world_buildings_wall_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/wall_firstage.e61d147f.glb",
+      "bytes": 17672,
+      "sourceHash": "363760abd759fc5b5b18f6cff1dee335a224a90b8e1b8dddae959e1256b8bf9b",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Wall_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 404,
+      "bounds": {
+        "min": [
+          -0.6759,
+          -0.0122,
+          -0.0222
+        ],
+        "max": [
+          0.6759,
+          0.5138,
+          0.0367
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_walltowers_door_firstage": {
+      "id": "world_buildings_walltowers_door_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/walltowers_door_firstage.9e5a2960.glb",
+      "bytes": 64148,
+      "sourceHash": "260601cb72b74606a8fef9db2eef443473f563372aef0574a08811d27acba8a0",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/WallTowers_Door_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1420,
+      "bounds": {
+        "min": [
+          -0.9711,
+          -0.0175,
+          -0.1689
+        ],
+        "max": [
+          0.9711,
+          0.655,
+          0.1446
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_barracks_firstage_level1": {
+      "id": "world_buildings_barracks_firstage_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/barracks_firstage_level1.97bb2e67.glb",
+      "bytes": 76148,
+      "sourceHash": "e600aa386fef4d6ca8118f72827e3ffea452ed7147af7cf7f9dc1552ab6d32ba",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Barracks_FirstAge_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 1466,
+      "bounds": {
+        "min": [
+          -0.5048,
+          -0.0072,
+          -0.3916
+        ],
+        "max": [
+          0.5048,
+          0.712,
+          0.6865
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_windmill_firstage": {
+      "id": "world_buildings_windmill_firstage",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/windmill_firstage.75105c52.glb",
+      "bytes": 104748,
+      "sourceHash": "fa0fe1a4245609178e301bc260c1fc2a558653688a3f32d178c54024d7e59cb3",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Windmill_FirstAge.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2092,
+      "bounds": {
+        "min": [
+          -0.6609,
+          0,
+          -0.2733
+        ],
+        "max": [
+          0.6886,
+          1.9173,
+          0.3872
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_farm_firstage_level2_wheat": {
+      "id": "world_buildings_farm_firstage_level2_wheat",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/farm_firstage_level2_wheat.e9b10962.glb",
+      "bytes": 572536,
+      "sourceHash": "d6de91a675a943362da6f9c1c6fcd6e30c5e0ba46d738a3146d32ab9d35a401c",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Farm_FirstAge_Level2_Wheat.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 10582,
+      "bounds": {
+        "min": [
+          -0.8374,
+          0.0002,
+          -0.6848
+        ],
+        "max": [
+          0.8432,
+          0.1884,
+          0.4141
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_mine": {
+      "id": "world_buildings_mine",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/mine.feb25c8c.glb",
+      "bytes": 108688,
+      "sourceHash": "ff57388b8b527c339872696b79aa13e582dba22d9c3e64b8f1c94afe762af965",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Mine.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 2294,
+      "bounds": {
+        "min": [
+          -0.5292,
+          -0.0154,
+          -0.65
+        ],
+        "max": [
+          0.7551,
+          1.1538,
+          0.7113
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_storage_secondage_level1": {
+      "id": "world_buildings_storage_secondage_level1",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/storage_secondage_level1.91037805.glb",
+      "bytes": 396224,
+      "sourceHash": "85fd599400473e7930c7952506d8751e5a8d63a24744cd47958cdffeb7527328",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Storage_SecondAge_Level1.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 8160,
+      "bounds": {
+        "min": [
+          -0.849,
+          -0.0103,
+          -0.6778
+        ],
+        "max": [
+          0.8741,
+          0.4913,
+          0.7018
+        ]
+      },
+      "animations": []
+    },
+    "world_buildings_logs": {
+      "id": "world_buildings_logs",
+      "category": "world/buildings",
+      "file": "assets_baked/world/buildings/logs.27f2be1d.glb",
+      "bytes": 26792,
+      "sourceHash": "051f479030d758a1af21a61448cc28214915ddad2ce058b5cf8d1321cbe68c76",
+      "source": "assets/world/Ultimate Fatasy Buildings Kit[Standard]/glTF/Logs.gltf",
+      "pack": "quaternius-buildings",
+      "packName": "Quaternius Ultimate Fantasy Buildings Kit (Standard)",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "licenseVerified": true,
+      "licenseUrl": "https://quaternius.com/",
+      "triangles": 940,
+      "bounds": {
+        "min": [
+          -0.558,
+          -0.0984,
+          -0.3499
+        ],
+        "max": [
+          0.6037,
+          0.1473,
+          0.4853
+        ]
+      },
+      "animations": []
     }
   }
 }
